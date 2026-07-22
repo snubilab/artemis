@@ -4859,6 +4859,17 @@ class TTEService:
             }
         )
 
+        if self._drug_anchored_entry():
+            # A+B: the entry IS the (freshly, exact-matched) drug. Repoint the
+            # DrugEra entry to the newly-mapped concept set (the stored base entry
+            # may carry a stale/wrong concept) and skip the redundant PRESENCE rule.
+            for crit in (base.get("PrimaryCriteria") or {}).get("CriteriaList") or []:
+                for domain, body in crit.items():
+                    if domain in ("DrugEra", "DrugExposure") and isinstance(body, dict):
+                        body["CodesetId"] = next_id
+            self._repair_stale_drug_concept_sets(base)
+            return base
+
         # Drug PRESENCE rule: at least 1 occurrence
         # Window: from washout_days before index to 365 days after index
         # (drug may come after disease diagnosis)
@@ -5009,6 +5020,7 @@ class TTEService:
         for body in entry_bodies:
             body["CodesetId"] = new_id
 
+        self._repair_stale_drug_concept_sets(base)
         return base
 
     # ------------------------------------------------------------------
@@ -5308,6 +5320,131 @@ class TTEService:
             "_mapping_metadata": mapped_criterion.get("mapping_metadata"),
         }
 
+    def _exact_ingredient_mapping(self, seed: str) -> dict[str, Any] | None:
+        """Defect B: resolve a drug seed to its standard RxNorm Ingredient by exact
+        (case-insensitive) name, bypassing embedding search. Returns a mapping dict
+        (same shape as the Agent2 path) or None when there is no unique exact match.
+
+        Ambiguous (>1) or absent (class name, investigational code, typo) seeds
+        return None so the caller falls through to the existing pipeline unchanged.
+        """
+        try:
+            import psycopg2
+
+            from src.settings import settings
+
+            conn = psycopg2.connect(settings.DATABASE_URL)
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""
+                        SELECT concept_id FROM {settings.CDM_SCHEMA}.concept
+                        WHERE LOWER(concept_name) = LOWER(%s)
+                          AND standard_concept = 'S'
+                          AND concept_class_id = 'Ingredient'
+                          AND vocabulary_id = 'RxNorm'
+                          AND invalid_reason IS NULL
+                        """,
+                        (seed.strip(),),
+                    )
+                    rows = cur.fetchall()
+            finally:
+                conn.close()
+        except Exception as exc:
+            logging.debug("[TTE] exact-ingredient lookup failed for '%s': %s", seed, exc)
+            return None
+
+        if len(rows) != 1:
+            return None  # no match or ambiguous -> fall through to embedding search
+
+        candidates = self._fetch_concept_candidates([int(rows[0][0])])
+        if not candidates:
+            return None
+        from src.agents.conceptset.expression_builder import get_expression_builder
+
+        recommendation = get_expression_builder().build_expression(
+            candidates, roll_up=True, criterion_name=seed.strip()
+        )
+        expression = recommendation.expression.to_atlas_json()
+        if not expression.get("items"):
+            return None
+        return {
+            "name": recommendation.name or seed.strip(),
+            "expression": expression,
+            "domain": "Drug",
+            "mapping_metadata": None,
+        }
+
+    def _repair_stale_drug_concept_sets(self, base: dict[str, Any]) -> None:
+        """Defect B repair: re-map any concept set whose NAME is exactly one
+        standard RxNorm Ingredient to that ingredient, fixing stale/wrong drug
+        concepts baked into the stored base (e.g. a set named 'linagliptin' that
+        holds sitagliptin). Class / descriptive / combo names (no unique exact
+        ingredient) are left untouched. Mutates base in place.
+
+        Uses one batched name lookup (not one query per set) to stay cheap.
+        """
+        concept_sets = base.get("ConceptSets") or []
+        names = {
+            (cs.get("name") or "").strip().lower()
+            for cs in concept_sets
+            if (cs.get("name") or "").strip()
+        }
+        if not names:
+            return
+        try:
+            import psycopg2
+
+            from src.settings import settings
+
+            conn = psycopg2.connect(settings.DATABASE_URL)
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""
+                        SELECT LOWER(concept_name), concept_id
+                        FROM {settings.CDM_SCHEMA}.concept
+                        WHERE LOWER(concept_name) = ANY(%s)
+                          AND standard_concept = 'S'
+                          AND concept_class_id = 'Ingredient'
+                          AND vocabulary_id = 'RxNorm'
+                          AND invalid_reason IS NULL
+                        """,
+                        (list(names),),
+                    )
+                    rows = cur.fetchall()
+            finally:
+                conn.close()
+        except Exception as exc:
+            logging.debug("[TTE] concept-set repair lookup failed: %s", exc)
+            return
+
+        by_name: dict[str, list[int]] = {}
+        for lname, cid in rows:
+            by_name.setdefault(lname, []).append(int(cid))
+        unique = {k: v[0] for k, v in by_name.items() if len(v) == 1}
+        if not unique:
+            return
+
+        from src.agents.conceptset.expression_builder import get_expression_builder
+
+        builder = get_expression_builder()
+        for cs in concept_sets:
+            cid = unique.get((cs.get("name") or "").strip().lower())
+            if cid is None:
+                continue
+            items = cs.get("expression", {}).get("items", [])
+            if len(items) == 1 and items[0].get("concept", {}).get("CONCEPT_ID") == cid:
+                continue  # already the right single ingredient
+            candidates = self._fetch_concept_candidates([cid])
+            if not candidates:
+                continue
+            expr = builder.build_expression(
+                candidates, roll_up=True, criterion_name=cs.get("name", "")
+            ).expression.to_atlas_json()
+            if expr.get("items"):
+                cs["expression"] = expr
+
     def _recommend_seeded_concept_set(
         self,
         seed_text: str,
@@ -5319,6 +5456,16 @@ class TTEService:
         normalized_seed = " ".join(seed_text.split()).strip()
         if not normalized_seed:
             raise ValueError("Missing seed text for cohort definition mapping")
+
+        # Defect B fix: for drug seeds, an EXACT standard RxNorm Ingredient name
+        # match wins over embedding search (fixes linagliptin->sitagliptin,
+        # warfarin->LOINC lab, glimepiride->combo). Runs before the cache so it
+        # also overrides previously-cached wrong mappings. Gated with the
+        # drug-anchored (gold) mode so A/B/C toggle together.
+        if expected_domain == "Drug" and self._drug_anchored_entry():
+            _exact = self._exact_ingredient_mapping(normalized_seed)
+            if _exact is not None:
+                return _exact
 
         # --- Cache lookup ---
         _cache_enabled = os.environ.get("CRITERION_CACHE_ENABLED", "true").lower() == "true"
