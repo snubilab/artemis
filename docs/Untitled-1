@@ -1,0 +1,3178 @@
+{
+    "ConceptSets": [
+        {
+            "id": 0,
+            "name": "PCI and CABG",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "11101003",
+                            "CONCEPT_ID": 4006788,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "397193006",
+                            "CONCEPT_ID": 4264285,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty by rotoablation",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "397431004",
+                            "CONCEPT_ID": 4265293,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty with rotoablation, single vessel",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "85053006",
+                            "CONCEPT_ID": 4225903,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty, multiple vessels",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "36969009",
+                            "CONCEPT_ID": 4283892,
+                            "CONCEPT_NAME": "Placement of stent in coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "232726007",
+                            "CONCEPT_ID": 4337738,
+                            "CONCEPT_NAME": "Percutaneous endarterectomy of coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "426485003",
+                            "CONCEPT_ID": 4139198,
+                            "CONCEPT_NAME": "Percutaneous transluminal thrombolysis of artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "L71.6",
+                            "CONCEPT_ID": 44511532,
+                            "CONCEPT_NAME": "Percutaneous transluminal thrombolysis of artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "936451000000108",
+                            "CONCEPT_ID": 45770795,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty and insertion of drug eluting stent into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "203741000000101",
+                            "CONCEPT_ID": 44789455,
+                            "CONCEPT_NAME": "Insertion of drug-eluting coronary artery stent",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "698740005",
+                            "CONCEPT_ID": 44784573,
+                            "CONCEPT_NAME": "Percutaneous transluminal atherectomy of coronary artery by rotary cutter using fluoroscopic guidance",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "L66.1",
+                            "CONCEPT_ID": 44512256,
+                            "CONCEPT_NAME": "Percutaneous transluminal arterial thrombolysis and reconstruction",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.9",
+                            "CONCEPT_ID": 44511273,
+                            "CONCEPT_NAME": "Unspecified percutaneous transluminal balloon angioplasty and insertion of stent into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.8",
+                            "CONCEPT_ID": 44511272,
+                            "CONCEPT_NAME": "Other specified percutaneous transluminal balloon angioplasty and insertion of stent into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.4",
+                            "CONCEPT_ID": 44511271,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty and insertion of 3 or more stents into coronary artery NEC",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.2",
+                            "CONCEPT_ID": 44511269,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty and insertion of 3 or more drug-eluting stents into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.1",
+                            "CONCEPT_ID": 44511268,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty and insertion of 1-2 drug-eluting stents into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K49.8",
+                            "CONCEPT_ID": 44511133,
+                            "CONCEPT_NAME": "Other specified transluminal balloon angioplasty of coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K49.3",
+                            "CONCEPT_ID": 44511131,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty of bypass graft of coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K49.2",
+                            "CONCEPT_ID": 44511130,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty of multiple coronary arteries",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "HCPCS",
+                            "CONCEPT_CODE": "C9602",
+                            "CONCEPT_ID": 43533353,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary atherectomy, with drug eluting intracoronary stent, with coronary angioplasty when performed; single major coronary artery or branch",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "HCPCS"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "HCPCS",
+                            "CONCEPT_CODE": "C9601",
+                            "CONCEPT_ID": 43533352,
+                            "CONCEPT_NAME": "Percutaneous transcatheter placement of drug-eluting intracoronary stent(s), with coronary angioplasty when performed; each additional branch of a major coronary artery (list separately in addition to code for primary procedure)",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "HCPCS"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "HCPCS",
+                            "CONCEPT_CODE": "C9603",
+                            "CONCEPT_ID": 43533248,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary atherectomy, with drug-eluting intracoronary stent, with coronary angioplasty when performed; each additional branch of a major coronary artery (list separately in addition to code for primary procedure)",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "HCPCS"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "HCPCS",
+                            "CONCEPT_CODE": "C9600",
+                            "CONCEPT_ID": 43533247,
+                            "CONCEPT_NAME": "Percutaneous transcatheter placement of drug eluting intracoronary stent(s), with coronary angioplasty when performed; single major coronary artery or branch",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "HCPCS"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "609154002",
+                            "CONCEPT_ID": 43531440,
+                            "CONCEPT_NAME": "Percutaneous transluminal insertion of metal stent into coronary artery using fluoroscopic guidance",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "609153008",
+                            "CONCEPT_ID": 43531439,
+                            "CONCEPT_NAME": "Percutaneous insertion of drug eluting stent into coronary artery using fluoroscopic guidance",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "609152003",
+                            "CONCEPT_ID": 43531438,
+                            "CONCEPT_NAME": "Percutaneous insertion of stent into aneurysm of coronary artery using fluoroscopic guidance",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "429499003",
+                            "CONCEPT_ID": 4329263,
+                            "CONCEPT_NAME": "Placement of stent in circumflex branch of left coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "75761004",
+                            "CONCEPT_ID": 4328103,
+                            "CONCEPT_NAME": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "397194000",
+                            "CONCEPT_ID": 4264286,
+                            "CONCEPT_NAME": "Percutaneous rotational coronary endarterectomy",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "91338001",
+                            "CONCEPT_ID": 4238755,
+                            "CONCEPT_NAME": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty, single vessel",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "80762004",
+                            "CONCEPT_ID": 4216356,
+                            "CONCEPT_NAME": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty, multiple vessels",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "414509005",
+                            "CONCEPT_ID": 4214516,
+                            "CONCEPT_NAME": "Insertion of drug coated stent",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "U",
+                            "INVALID_REASON_CAPTION": "Invalid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "429639007",
+                            "CONCEPT_ID": 4181025,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty with insertion of stent into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "428488008",
+                            "CONCEPT_ID": 4178148,
+                            "CONCEPT_NAME": "Placement of stent in anterior descending branch of left coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "428068004",
+                            "CONCEPT_ID": 4175997,
+                            "CONCEPT_NAME": "Percutaneous transluminal thrombolysis and reconstruction of artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "418982001",
+                            "CONCEPT_ID": 4171077,
+                            "CONCEPT_NAME": "Fluoroscopic angiography of coronary artery and insertion of stent",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "175066001",
+                            "CONCEPT_ID": 4020653,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty of bypass graft of coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "4-dig billing code",
+                            "CONCEPT_CODE": "36.07",
+                            "CONCEPT_ID": 2001506,
+                            "CONCEPT_NAME": "Insertion of drug-eluting coronary artery stent(s)",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "ICD9Proc"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "4-dig billing code",
+                            "CONCEPT_CODE": "36.06",
+                            "CONCEPT_ID": 2001505,
+                            "CONCEPT_NAME": "Insertion of non-drug-eluting coronary artery stent(s)",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "ICD9Proc"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "4-dig billing code",
+                            "CONCEPT_CODE": "00.66",
+                            "CONCEPT_ID": 2000064,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty [PTCA]",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "ICD9Proc"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "429673002",
+                            "CONCEPT_ID": 443563,
+                            "CONCEPT_NAME": "Arteriosclerosis of coronary artery bypass graft",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 31,
+            "name": "[TROY] TnT",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Lab Test",
+                            "CONCEPT_CODE": "6598-7",
+                            "CONCEPT_ID": 3019800,
+                            "CONCEPT_NAME": "Troponin T.cardiac [Mass/volume] in Serum or Plasma",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "LOINC"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 32,
+            "name": "[TROY] TnI",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Lab Test",
+                            "CONCEPT_CODE": "42757-5",
+                            "CONCEPT_ID": 3033745,
+                            "CONCEPT_NAME": "Troponin I.cardiac [Mass/volume] in Blood",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "LOINC"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Lab Test",
+                            "CONCEPT_CODE": "10839-9",
+                            "CONCEPT_ID": 3021337,
+                            "CONCEPT_NAME": "Troponin I.cardiac [Mass/volume] in Serum or Plasma",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "LOINC"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 33,
+            "name": "[TROY] Creatin kinase-myocardial band",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "104613001",
+                            "CONCEPT_ID": 4017058,
+                            "CONCEPT_NAME": "Creatine kinase MB measurement",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Lab Test",
+                            "CONCEPT_CODE": "13969-1",
+                            "CONCEPT_ID": 3005785,
+                            "CONCEPT_NAME": "Creatine kinase.MB [Mass/volume] in Serum or Plasma",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "LOINC"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 34,
+            "name": "[TROY] TnI by high sensitivity method (positive)",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Lab Test",
+                            "CONCEPT_CODE": "67151-1",
+                            "CONCEPT_ID": 40769783,
+                            "CONCEPT_NAME": "Troponin T.cardiac [Mass/volume] in Serum or Plasma by High sensitivity method",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "LOINC"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 40,
+            "name": "[TROY] Old MI",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "1755008",
+                            "CONCEPT_ID": 314666,
+                            "CONCEPT_NAME": "Old myocardial infarction",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 41,
+            "name": "[TROY] (acute) MI",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "57054005",
+                            "CONCEPT_ID": 312327,
+                            "CONCEPT_NAME": "Acute myocardial infarction",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "22298006",
+                            "CONCEPT_ID": 4329847,
+                            "CONCEPT_NAME": "Myocardial infarction",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "1755008",
+                            "CONCEPT_ID": 314666,
+                            "CONCEPT_NAME": "Old myocardial infarction",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "isExcluded": true,
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 54,
+            "name": "[TROY] PCI, PTCA and CABG, and transmyocardial revascularization",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "429673002",
+                            "CONCEPT_ID": 443563,
+                            "CONCEPT_NAME": "Arteriosclerosis of coronary artery bypass graft",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "418982001",
+                            "CONCEPT_ID": 4171077,
+                            "CONCEPT_NAME": "Fluoroscopic angiography of coronary artery and insertion of stent",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "75761004",
+                            "CONCEPT_ID": 4328103,
+                            "CONCEPT_NAME": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "80762004",
+                            "CONCEPT_ID": 4216356,
+                            "CONCEPT_NAME": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty, multiple vessels",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "91338001",
+                            "CONCEPT_ID": 4238755,
+                            "CONCEPT_NAME": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty, single vessel",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "414509005",
+                            "CONCEPT_ID": 4214516,
+                            "CONCEPT_NAME": "Insertion of drug coated stent",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "U",
+                            "INVALID_REASON_CAPTION": "Invalid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "203741000000101",
+                            "CONCEPT_ID": 44789455,
+                            "CONCEPT_NAME": "Insertion of drug-eluting coronary artery stent",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "4-dig billing code",
+                            "CONCEPT_CODE": "36.07",
+                            "CONCEPT_ID": 2001506,
+                            "CONCEPT_NAME": "Insertion of drug-eluting coronary artery stent(s)",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "ICD9Proc"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "4-dig billing code",
+                            "CONCEPT_CODE": "36.06",
+                            "CONCEPT_ID": 2001505,
+                            "CONCEPT_NAME": "Insertion of non-drug-eluting coronary artery stent(s)",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "ICD9Proc"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.8",
+                            "CONCEPT_ID": 44511272,
+                            "CONCEPT_NAME": "Other specified percutaneous transluminal balloon angioplasty and insertion of stent into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K49.8",
+                            "CONCEPT_ID": 44511133,
+                            "CONCEPT_NAME": "Other specified transluminal balloon angioplasty of coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "232726007",
+                            "CONCEPT_ID": 4337738,
+                            "CONCEPT_NAME": "Percutaneous endarterectomy of coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "609153008",
+                            "CONCEPT_ID": 43531439,
+                            "CONCEPT_NAME": "Percutaneous insertion of drug eluting stent into coronary artery using fluoroscopic guidance",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "609152003",
+                            "CONCEPT_ID": 43531438,
+                            "CONCEPT_NAME": "Percutaneous insertion of stent into aneurysm of coronary artery using fluoroscopic guidance",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "397194000",
+                            "CONCEPT_ID": 4264286,
+                            "CONCEPT_NAME": "Percutaneous rotational coronary endarterectomy",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "HCPCS",
+                            "CONCEPT_CODE": "C9600",
+                            "CONCEPT_ID": 43533247,
+                            "CONCEPT_NAME": "Percutaneous transcatheter placement of drug eluting intracoronary stent(s), with coronary angioplasty when performed; single major coronary artery or branch",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "HCPCS"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "HCPCS",
+                            "CONCEPT_CODE": "C9601",
+                            "CONCEPT_ID": 43533352,
+                            "CONCEPT_NAME": "Percutaneous transcatheter placement of drug-eluting intracoronary stent(s), with coronary angioplasty when performed; each additional branch of a major coronary artery (list separately in addition to code for primary procedure)",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "HCPCS"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "175759007",
+                            "CONCEPT_ID": 4019536,
+                            "CONCEPT_NAME": "Percutaneous transluminal angioplasty of artery NEC",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "U",
+                            "INVALID_REASON_CAPTION": "Invalid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "L66.1",
+                            "CONCEPT_ID": 44512256,
+                            "CONCEPT_NAME": "Percutaneous transluminal arterial thrombolysis and reconstruction",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "698740005",
+                            "CONCEPT_ID": 44784573,
+                            "CONCEPT_NAME": "Percutaneous transluminal atherectomy of coronary artery by rotary cutter using fluoroscopic guidance",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.1",
+                            "CONCEPT_ID": 44511268,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty and insertion of 1-2 drug-eluting stents into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.2",
+                            "CONCEPT_ID": 44511269,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty and insertion of 3 or more drug-eluting stents into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.4",
+                            "CONCEPT_ID": 44511271,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty and insertion of 3 or more stents into coronary artery NEC",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "936451000000108",
+                            "CONCEPT_ID": 45770795,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty and insertion of drug eluting stent into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "175066001",
+                            "CONCEPT_ID": 4020653,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty of bypass graft of coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K49.3",
+                            "CONCEPT_ID": 44511131,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty of bypass graft of coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K49.2",
+                            "CONCEPT_ID": 44511130,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty of multiple coronary arteries",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "429639007",
+                            "CONCEPT_ID": 4181025,
+                            "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty with insertion of stent into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "11101003",
+                            "CONCEPT_ID": 4006788,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "4-dig billing code",
+                            "CONCEPT_CODE": "00.66",
+                            "CONCEPT_ID": 2000064,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty [PTCA]",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "ICD9Proc"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "397193006",
+                            "CONCEPT_ID": 4264285,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty by rotoablation",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "397431004",
+                            "CONCEPT_ID": 4265293,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty with rotoablation, single vessel",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "85053006",
+                            "CONCEPT_ID": 4225903,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary angioplasty, multiple vessels",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "HCPCS",
+                            "CONCEPT_CODE": "C9602",
+                            "CONCEPT_ID": 43533353,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary atherectomy, with drug eluting intracoronary stent, with coronary angioplasty when performed; single major coronary artery or branch",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "HCPCS"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "HCPCS",
+                            "CONCEPT_CODE": "C9603",
+                            "CONCEPT_ID": 43533248,
+                            "CONCEPT_NAME": "Percutaneous transluminal coronary atherectomy, with drug-eluting intracoronary stent, with coronary angioplasty when performed; each additional branch of a major coronary artery (list separately in addition to code for primary procedure)",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "HCPCS"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "609154002",
+                            "CONCEPT_ID": 43531440,
+                            "CONCEPT_NAME": "Percutaneous transluminal insertion of metal stent into coronary artery using fluoroscopic guidance",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "428068004",
+                            "CONCEPT_ID": 4175997,
+                            "CONCEPT_NAME": "Percutaneous transluminal thrombolysis and reconstruction of artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "426485003",
+                            "CONCEPT_ID": 4139198,
+                            "CONCEPT_NAME": "Percutaneous transluminal thrombolysis of artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "L71.6",
+                            "CONCEPT_ID": 44511532,
+                            "CONCEPT_NAME": "Percutaneous transluminal thrombolysis of artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "428488008",
+                            "CONCEPT_ID": 4178148,
+                            "CONCEPT_NAME": "Placement of stent in anterior descending branch of left coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "429499003",
+                            "CONCEPT_ID": 4329263,
+                            "CONCEPT_NAME": "Placement of stent in circumflex branch of left coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "36969009",
+                            "CONCEPT_ID": 4283892,
+                            "CONCEPT_NAME": "Placement of stent in coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "15256002",
+                            "CONCEPT_ID": 4034857,
+                            "CONCEPT_NAME": "Transmyocardial revascularization by laser technique",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Procedure",
+                            "CONCEPT_CODE": "K75.9",
+                            "CONCEPT_ID": 44511273,
+                            "CONCEPT_NAME": "Unspecified percutaneous transluminal balloon angioplasty and insertion of stent into coronary artery",
+                            "DOMAIN_ID": "Procedure",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "N",
+                            "STANDARD_CONCEPT_CAPTION": "Non-Standard",
+                            "VOCABULARY_ID": "OPCS4"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 55,
+            "name": "[TROY intervention] Ticagrelor",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "1116632",
+                            "CONCEPT_ID": 40241186,
+                            "CONCEPT_NAME": "Ticagrelor",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 56,
+            "name": "[TROY condition] STEMI",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "57054005",
+                            "CONCEPT_ID": 312327,
+                            "CONCEPT_NAME": "Acute myocardial infarction",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "54329005",
+                            "CONCEPT_ID": 434376,
+                            "CONCEPT_NAME": "Acute myocardial infarction of anterior wall",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "73795002",
+                            "CONCEPT_ID": 438170,
+                            "CONCEPT_NAME": "Acute myocardial infarction of inferior wall",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "401314000",
+                            "CONCEPT_ID": 4270024,
+                            "CONCEPT_NAME": "Acute non-ST segment elevation myocardial infarction",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "isExcluded": true,
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "194856005",
+                            "CONCEPT_ID": 4108217,
+                            "CONCEPT_NAME": "Subsequent myocardial infarction",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 57,
+            "name": "[TROY condition] ACS (excluding STEMI)",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "401314000",
+                            "CONCEPT_ID": 4270024,
+                            "CONCEPT_NAME": "Acute non-ST segment elevation myocardial infarction",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "4557003",
+                            "CONCEPT_ID": 315296,
+                            "CONCEPT_NAME": "Preinfarction syndrome",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 58,
+            "name": "[TROY condition] peripheral arterial disease",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "400047006",
+                            "CONCEPT_ID": 321052,
+                            "CONCEPT_NAME": "Peripheral vascular disease",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 59,
+            "name": "[TROY lab] calculated creatinine clearance (CrCl)",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Lab Test",
+                            "CONCEPT_CODE": "26752-6",
+                            "CONCEPT_ID": 3022988,
+                            "CONCEPT_NAME": "Creatinine renal clearance in 2 hour Urine and Serum or Plasma",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "LOINC"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Lab Test",
+                            "CONCEPT_CODE": "2164-2",
+                            "CONCEPT_ID": 3005770,
+                            "CONCEPT_NAME": "Creatinine renal clearance in 24 hour Urine and Serum or Plasma",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "LOINC"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Lab Test",
+                            "CONCEPT_CODE": "12195-4",
+                            "CONCEPT_ID": 3027108,
+                            "CONCEPT_NAME": "Creatinine renal clearance/1.73 sq M in 24 hour Urine and Serum or Plasma",
+                            "DOMAIN_ID": "Measurement",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "LOINC"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 60,
+            "name": "[TROY condition] Diabetes mellitus",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "74627003",
+                            "CONCEPT_ID": 442793,
+                            "CONCEPT_NAME": "Complication due to diabetes mellitus",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "73211009",
+                            "CONCEPT_ID": 201820,
+                            "CONCEPT_NAME": "Diabetes mellitus",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "268519009",
+                            "CONCEPT_ID": 443238,
+                            "CONCEPT_NAME": "Diabetic - poor control",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "420868002",
+                            "CONCEPT_ID": 435216,
+                            "CONCEPT_NAME": "Disorder due to type 1 diabetes mellitus",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "8801005",
+                            "CONCEPT_ID": 195771,
+                            "CONCEPT_NAME": "Secondary diabetes mellitus",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "isExcluded": true,
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "46635009",
+                            "CONCEPT_ID": 201254,
+                            "CONCEPT_NAME": "Type 1 diabetes mellitus",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "444073006",
+                            "CONCEPT_ID": 40484648,
+                            "CONCEPT_NAME": "Type 1 diabetes mellitus uncontrolled",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 61,
+            "name": "[TROY condition] Chronic renal disease",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "431855005",
+                            "CONCEPT_ID": 443614,
+                            "CONCEPT_NAME": "Chronic kidney disease stage 1",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "431856006",
+                            "CONCEPT_ID": 443601,
+                            "CONCEPT_NAME": "Chronic kidney disease stage 2",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "433144002",
+                            "CONCEPT_ID": 443597,
+                            "CONCEPT_NAME": "Chronic kidney disease stage 3",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "431857002",
+                            "CONCEPT_ID": 443612,
+                            "CONCEPT_NAME": "Chronic kidney disease stage 4",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "433146000",
+                            "CONCEPT_ID": 443611,
+                            "CONCEPT_NAME": "Chronic kidney disease stage 5",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "46177005",
+                            "CONCEPT_ID": 193782,
+                            "CONCEPT_NAME": "End-stage renal disease",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 62,
+            "name": "[TROY condition] Intracranial hemorrhage",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "95454007",
+                            "CONCEPT_ID": 4319328,
+                            "CONCEPT_NAME": "Brain stem hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "75038005",
+                            "CONCEPT_ID": 4326561,
+                            "CONCEPT_NAME": "Cerebellar hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "73020009",
+                            "CONCEPT_ID": 4218781,
+                            "CONCEPT_NAME": "Cerebral hemisphere hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "274100004",
+                            "CONCEPT_ID": 376713,
+                            "CONCEPT_NAME": "Cerebral hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "49422009",
+                            "CONCEPT_ID": 4176892,
+                            "CONCEPT_NAME": "Cortical hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "195168007",
+                            "CONCEPT_ID": 4110185,
+                            "CONCEPT_NAME": "Intracerebral hemorrhage, intraventricular",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "1386000",
+                            "CONCEPT_ID": 439847,
+                            "CONCEPT_NAME": "Intracranial hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "195176009",
+                            "CONCEPT_ID": 4111709,
+                            "CONCEPT_NAME": "Non-traumatic subdural hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "397809001",
+                            "CONCEPT_ID": 436430,
+                            "CONCEPT_NAME": "Nontraumatic extradural hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "405538007",
+                            "CONCEPT_ID": 4226021,
+                            "CONCEPT_NAME": "Spontaneous hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "21454007",
+                            "CONCEPT_ID": 432923,
+                            "CONCEPT_NAME": "Subarachnoid hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "195155004",
+                            "CONCEPT_ID": 4108952,
+                            "CONCEPT_NAME": "Subarachnoid hemorrhage from carotid siphon and bifurcation",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "195160000",
+                            "CONCEPT_ID": 4111708,
+                            "CONCEPT_NAME": "Subarachnoid hemorrhage from vertebral artery",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "20908003",
+                            "CONCEPT_ID": 4049659,
+                            "CONCEPT_NAME": "Subcortical hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "35486000",
+                            "CONCEPT_ID": 439040,
+                            "CONCEPT_NAME": "Subdural hemorrhage",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 63,
+            "name": "[TROY condition] peptic ulcer",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Clinical Finding",
+                            "CONCEPT_CODE": "13200003",
+                            "CONCEPT_ID": 4027663,
+                            "CONCEPT_NAME": "Peptic ulcer",
+                            "DOMAIN_ID": "Condition",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "SNOMED"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 64,
+            "name": "[TROY drug] Fibrinolytic agents",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "40028",
+                            "CONCEPT_ID": 19044890,
+                            "CONCEPT_NAME": "Anistreplase",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "76895",
+                            "CONCEPT_ID": 19024191,
+                            "CONCEPT_NAME": "Reteplase",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "10106",
+                            "CONCEPT_ID": 19136187,
+                            "CONCEPT_NAME": "Streptokinase",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "259280",
+                            "CONCEPT_ID": 19098548,
+                            "CONCEPT_NAME": "Tenecteplase",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "11055",
+                            "CONCEPT_ID": 1307515,
+                            "CONCEPT_NAME": "Urokinase",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "8410",
+                            "CONCEPT_ID": 1347450,
+                            "CONCEPT_NAME": "alteplase",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 65,
+            "name": "[TROY drug] CYP inhibitors and inducers",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "703",
+                            "CONCEPT_ID": 1309944,
+                            "CONCEPT_NAME": "Amiodarone",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "2002",
+                            "CONCEPT_ID": 740275,
+                            "CONCEPT_NAME": "Carbamazepine",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "2541",
+                            "CONCEPT_ID": 997276,
+                            "CONCEPT_NAME": "Cimetidine",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "4493",
+                            "CONCEPT_ID": 755695,
+                            "CONCEPT_NAME": "Fluoxetine",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "114289",
+                            "CONCEPT_ID": 1711523,
+                            "CONCEPT_NAME": "Indinavir",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "6135",
+                            "CONCEPT_ID": 985708,
+                            "CONCEPT_NAME": "Ketoconazole",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "6922",
+                            "CONCEPT_ID": 1707164,
+                            "CONCEPT_NAME": "Metronidazole",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "7646",
+                            "CONCEPT_ID": 923645,
+                            "CONCEPT_NAME": "Omeprazole",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "8134",
+                            "CONCEPT_ID": 734275,
+                            "CONCEPT_NAME": "Phenobarbital",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "8183",
+                            "CONCEPT_ID": 740910,
+                            "CONCEPT_NAME": "Phenytoin",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "9384",
+                            "CONCEPT_ID": 1763204,
+                            "CONCEPT_NAME": "Rifampin",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "85762",
+                            "CONCEPT_ID": 1748921,
+                            "CONCEPT_NAME": "Ritonavir",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 66,
+            "name": "[TROY drug] anticoagulants",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "11289",
+                            "CONCEPT_ID": 1310149,
+                            "CONCEPT_NAME": "Warfarin",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "1364430",
+                            "CONCEPT_ID": 43013024,
+                            "CONCEPT_NAME": "apixaban",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "1546356",
+                            "CONCEPT_ID": 45775372,
+                            "CONCEPT_NAME": "dabigatran",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "1037042",
+                            "CONCEPT_ID": 40228152,
+                            "CONCEPT_NAME": "dabigatran etexilate",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "1599538",
+                            "CONCEPT_ID": 45892847,
+                            "CONCEPT_NAME": "edoxaban",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "1114195",
+                            "CONCEPT_ID": 40241331,
+                            "CONCEPT_NAME": "rivaroxaban",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 67,
+            "name": "[TROY intervention] Clopidogrel",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "32968",
+                            "CONCEPT_ID": 1322184,
+                            "CONCEPT_NAME": "clopidogrel",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 68,
+            "name": "[TROY intervention] Ticagrelor (ATC)",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "1116632",
+                            "CONCEPT_ID": 40241186,
+                            "CONCEPT_NAME": "ticagrelor",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "ATC 5th",
+                            "CONCEPT_CODE": "B01AC24",
+                            "CONCEPT_ID": 40252640,
+                            "CONCEPT_NAME": "ticagrelor; oral",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "C",
+                            "STANDARD_CONCEPT_CAPTION": "Classification",
+                            "VOCABULARY_ID": "ATC"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 69,
+            "name": "[TROY intervention] Clopidogrel (ATC)",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                            "CONCEPT_CODE": "32968",
+                            "CONCEPT_ID": 1322184,
+                            "CONCEPT_NAME": "clopidogrel",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "S",
+                            "STANDARD_CONCEPT_CAPTION": "Standard",
+                            "VOCABULARY_ID": "RxNorm"
+                        },
+                        "includeDescendants": true
+                    },
+                    {
+                        "concept": {
+                            "CONCEPT_CLASS_ID": "ATC 5th",
+                            "CONCEPT_CODE": "B01AC04",
+                            "CONCEPT_ID": 21600989,
+                            "CONCEPT_NAME": "clopidogrel; oral",
+                            "DOMAIN_ID": "Drug",
+                            "INVALID_REASON": "V",
+                            "INVALID_REASON_CAPTION": "Valid",
+                            "STANDARD_CONCEPT": "C",
+                            "STANDARD_CONCEPT_CAPTION": "Classification",
+                            "VOCABULARY_ID": "ATC"
+                        },
+                        "includeDescendants": true
+                    }
+                ]
+            }
+        }
+    ],
+    "PrimaryCriteria": {
+        "CriteriaList": [
+            {
+                "DrugEra": {
+                    "CodesetId": 68,
+                    "EraStartDate": {
+                        "Value": "2011-07-22",
+                        "Op": "gte"
+                    },
+                    "EraLength": {
+                        "Value": 7,
+                        "Op": "gte"
+                    }
+                }
+            }
+        ],
+        "ObservationWindow": {
+            "PriorDays": 180,
+            "PostDays": 0
+        },
+        "PrimaryCriteriaLimit": {
+            "Type": "First"
+        }
+    },
+    "QualifiedLimit": {
+        "Type": "First"
+    },
+    "ExpressionLimit": {
+        "Type": "First"
+    },
+    "InclusionRules": [
+        {
+            "name": "Patients were eligible for enrollment if they were hospitalized for an acute coronary syndrome, with or without ST-segment elevation, with an onset of symptoms during the previous 24 hours. ",
+            "description": "Inclusion criteria #1",
+            "expression": {
+                "Type": "ANY",
+                "CriteriaList": [
+                    {
+                        "Criteria": {
+                            "ConditionOccurrence": {
+                                "CodesetId": 56
+                            }
+                        },
+                        "StartWindow": {
+                            "Start": {
+                                "Days": 7,
+                                "Coeff": -1
+                            },
+                            "End": {
+                                "Days": 0,
+                                "Coeff": 1
+                            },
+                            "UseEventEnd": false
+                        },
+                        "Occurrence": {
+                            "Type": 2,
+                            "Count": 1
+                        }
+                    },
+                    {
+                        "Criteria": {
+                            "ConditionOccurrence": {
+                                "CorrelatedCriteria": {
+                                    "Type": "AT_LEAST",
+                                    "Count": 1,
+                                    "CriteriaList": [],
+                                    "DemographicCriteriaList": [],
+                                    "Groups": [
+                                        {
+                                            "Type": "ANY",
+                                            "CriteriaList": [
+                                                {
+                                                    "Criteria": {
+                                                        "Measurement": {
+                                                            "CodesetId": 31,
+                                                            "RangeHighRatio": {
+                                                                "Value": 1,
+                                                                "Op": "gt"
+                                                            }
+                                                        }
+                                                    },
+                                                    "StartWindow": {
+                                                        "Start": {
+                                                            "Days": 7,
+                                                            "Coeff": -1
+                                                        },
+                                                        "End": {
+                                                            "Days": 0,
+                                                            "Coeff": 1
+                                                        },
+                                                        "UseEventEnd": false
+                                                    },
+                                                    "Occurrence": {
+                                                        "Type": 2,
+                                                        "Count": 1
+                                                    }
+                                                },
+                                                {
+                                                    "Criteria": {
+                                                        "Measurement": {
+                                                            "CodesetId": 32,
+                                                            "RangeHighRatio": {
+                                                                "Value": 1,
+                                                                "Op": "gt"
+                                                            }
+                                                        }
+                                                    },
+                                                    "StartWindow": {
+                                                        "Start": {
+                                                            "Days": 7,
+                                                            "Coeff": -1
+                                                        },
+                                                        "End": {
+                                                            "Days": 0,
+                                                            "Coeff": 1
+                                                        },
+                                                        "UseEventEnd": false
+                                                    },
+                                                    "Occurrence": {
+                                                        "Type": 2,
+                                                        "Count": 1
+                                                    }
+                                                },
+                                                {
+                                                    "Criteria": {
+                                                        "Measurement": {
+                                                            "CodesetId": 33,
+                                                            "RangeHighRatio": {
+                                                                "Value": 1,
+                                                                "Op": "gt"
+                                                            }
+                                                        }
+                                                    },
+                                                    "StartWindow": {
+                                                        "Start": {
+                                                            "Days": 7,
+                                                            "Coeff": -1
+                                                        },
+                                                        "End": {
+                                                            "Days": 0,
+                                                            "Coeff": 1
+                                                        },
+                                                        "UseEventEnd": false
+                                                    },
+                                                    "Occurrence": {
+                                                        "Type": 2,
+                                                        "Count": 1
+                                                    }
+                                                },
+                                                {
+                                                    "Criteria": {
+                                                        "Measurement": {
+                                                            "CodesetId": 34,
+                                                            "RangeHighRatio": {
+                                                                "Value": 1,
+                                                                "Op": "gt"
+                                                            }
+                                                        }
+                                                    },
+                                                    "StartWindow": {
+                                                        "Start": {
+                                                            "Days": 7,
+                                                            "Coeff": -1
+                                                        },
+                                                        "End": {
+                                                            "Days": 0,
+                                                            "Coeff": 1
+                                                        },
+                                                        "UseEventEnd": false
+                                                    },
+                                                    "Occurrence": {
+                                                        "Type": 2,
+                                                        "Count": 1
+                                                    }
+                                                }
+                                            ],
+                                            "DemographicCriteriaList": [],
+                                            "Groups": []
+                                        },
+                                        {
+                                            "Type": "ANY",
+                                            "CriteriaList": [
+                                                {
+                                                    "Criteria": {
+                                                        "ConditionOccurrence": {
+                                                            "CodesetId": 60
+                                                        }
+                                                    },
+                                                    "StartWindow": {
+                                                        "Start": {
+                                                            "Coeff": -1
+                                                        },
+                                                        "End": {
+                                                            "Days": 0,
+                                                            "Coeff": 1
+                                                        },
+                                                        "UseEventEnd": false
+                                                    },
+                                                    "Occurrence": {
+                                                        "Type": 2,
+                                                        "Count": 1
+                                                    }
+                                                },
+                                                {
+                                                    "Criteria": {
+                                                        "ConditionOccurrence": {
+                                                            "CodesetId": 58
+                                                        }
+                                                    },
+                                                    "StartWindow": {
+                                                        "Start": {
+                                                            "Coeff": -1
+                                                        },
+                                                        "End": {
+                                                            "Days": 0,
+                                                            "Coeff": 1
+                                                        },
+                                                        "UseEventEnd": false
+                                                    },
+                                                    "Occurrence": {
+                                                        "Type": 2,
+                                                        "Count": 1
+                                                    }
+                                                },
+                                                {
+                                                    "Criteria": {
+                                                        "Measurement": {
+                                                            "CodesetId": 59,
+                                                            "ValueAsNumber": {
+                                                                "Value": 60,
+                                                                "Op": "lt"
+                                                            }
+                                                        }
+                                                    },
+                                                    "StartWindow": {
+                                                        "Start": {
+                                                            "Coeff": -1
+                                                        },
+                                                        "End": {
+                                                            "Days": 0,
+                                                            "Coeff": 1
+                                                        },
+                                                        "UseEventEnd": false
+                                                    },
+                                                    "Occurrence": {
+                                                        "Type": 2,
+                                                        "Count": 1
+                                                    }
+                                                },
+                                                {
+                                                    "Criteria": {
+                                                        "ConditionOccurrence": {
+                                                            "CodesetId": 61
+                                                        }
+                                                    },
+                                                    "StartWindow": {
+                                                        "Start": {
+                                                            "Coeff": -1
+                                                        },
+                                                        "End": {
+                                                            "Coeff": 1
+                                                        },
+                                                        "UseEventEnd": false
+                                                    },
+                                                    "Occurrence": {
+                                                        "Type": 2,
+                                                        "Count": 1
+                                                    }
+                                                }
+                                            ],
+                                            "DemographicCriteriaList": [
+                                                {
+                                                    "Age": {
+                                                        "Value": 60,
+                                                        "Op": "gte"
+                                                    }
+                                                }
+                                            ],
+                                            "Groups": [
+                                                {
+                                                    "Type": "ANY",
+                                                    "CriteriaList": [
+                                                        {
+                                                            "Criteria": {
+                                                                "ConditionOccurrence": {
+                                                                    "CodesetId": 41
+                                                                }
+                                                            },
+                                                            "StartWindow": {
+                                                                "Start": {
+                                                                    "Days": 30,
+                                                                    "Coeff": -1
+                                                                },
+                                                                "End": {
+                                                                    "Days": 0,
+                                                                    "Coeff": 1
+                                                                },
+                                                                "UseEventEnd": false
+                                                            },
+                                                            "Occurrence": {
+                                                                "Type": 2,
+                                                                "Count": 1
+                                                            }
+                                                        },
+                                                        {
+                                                            "Criteria": {
+                                                                "ProcedureOccurrence": {
+                                                                    "CodesetId": 40
+                                                                }
+                                                            },
+                                                            "StartWindow": {
+                                                                "Start": {
+                                                                    "Coeff": -1
+                                                                },
+                                                                "End": {
+                                                                    "Days": 0,
+                                                                    "Coeff": 1
+                                                                },
+                                                                "UseEventEnd": false
+                                                            },
+                                                            "Occurrence": {
+                                                                "Type": 2,
+                                                                "Count": 1
+                                                            }
+                                                        },
+                                                        {
+                                                            "Criteria": {
+                                                                "ProcedureOccurrence": {
+                                                                    "CodesetId": 54
+                                                                }
+                                                            },
+                                                            "StartWindow": {
+                                                                "Start": {
+                                                                    "Days": 30,
+                                                                    "Coeff": -1
+                                                                },
+                                                                "End": {
+                                                                    "Days": 0,
+                                                                    "Coeff": 1
+                                                                },
+                                                                "UseEventEnd": false
+                                                            },
+                                                            "Occurrence": {
+                                                                "Type": 2,
+                                                                "Count": 1
+                                                            }
+                                                        }
+                                                    ],
+                                                    "DemographicCriteriaList": [],
+                                                    "Groups": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "CodesetId": 57
+                            }
+                        },
+                        "StartWindow": {
+                            "Start": {
+                                "Days": 7,
+                                "Coeff": -1
+                            },
+                            "End": {
+                                "Days": 0,
+                                "Coeff": 1
+                            },
+                            "UseEventEnd": false
+                        },
+                        "Occurrence": {
+                            "Type": 2,
+                            "Count": 1
+                        }
+                    }
+                ],
+                "DemographicCriteriaList": [],
+                "Groups": []
+            }
+        },
+        {
+            "name": "contraindication against the use of clopidogrel",
+            "description": "Inclusion criteria #2",
+            "expression": {
+                "Type": "ALL",
+                "CriteriaList": [
+                    {
+                        "Criteria": {
+                            "ConditionOccurrence": {
+                                "CodesetId": 62
+                            }
+                        },
+                        "StartWindow": {
+                            "Start": {
+                                "Days": 180,
+                                "Coeff": -1
+                            },
+                            "End": {
+                                "Days": 0,
+                                "Coeff": 1
+                            },
+                            "UseEventEnd": false
+                        },
+                        "Occurrence": {
+                            "Type": 0,
+                            "Count": 0
+                        }
+                    },
+                    {
+                        "Criteria": {
+                            "ConditionOccurrence": {
+                                "CodesetId": 63
+                            }
+                        },
+                        "StartWindow": {
+                            "Start": {
+                                "Days": 180,
+                                "Coeff": -1
+                            },
+                            "End": {
+                                "Days": 0,
+                                "Coeff": 1
+                            },
+                            "UseEventEnd": false
+                        },
+                        "Occurrence": {
+                            "Type": 0,
+                            "Count": 0
+                        }
+                    }
+                ],
+                "DemographicCriteriaList": [],
+                "Groups": []
+            }
+        },
+        {
+            "name": "fibrinolytic therapy within 24 hours before randomization",
+            "description": "Exclusion criteria #1",
+            "expression": {
+                "Type": "ALL",
+                "CriteriaList": [
+                    {
+                        "Criteria": {
+                            "DrugEra": {
+                                "CodesetId": 64
+                            }
+                        },
+                        "StartWindow": {
+                            "Start": {
+                                "Days": 1,
+                                "Coeff": -1
+                            },
+                            "End": {
+                                "Days": 0,
+                                "Coeff": 1
+                            },
+                            "UseEventEnd": false
+                        },
+                        "Occurrence": {
+                            "Type": 0,
+                            "Count": 0
+                        }
+                    }
+                ],
+                "DemographicCriteriaList": [],
+                "Groups": []
+            }
+        },
+        {
+            "name": "a need for oral anticoagulation therapy",
+            "description": "Exclusion criteria #1",
+            "expression": {
+                "Type": "ANY",
+                "CriteriaList": [
+                    {
+                        "Criteria": {
+                            "DrugExposure": {
+                                "CodesetId": 66
+                            }
+                        },
+                        "StartWindow": {
+                            "Start": {
+                                "Days": 180,
+                                "Coeff": -1
+                            },
+                            "End": {
+                                "Days": 0,
+                                "Coeff": 1
+                            },
+                            "UseEventEnd": false
+                        },
+                        "Occurrence": {
+                            "Type": 0,
+                            "Count": 0
+                        }
+                    }
+                ],
+                "DemographicCriteriaList": [],
+                "Groups": []
+            }
+        },
+        {
+            "name": "concomitant therapy with a strong cytochrome P-450 3A inhibitor or inducer",
+            "description": "Exclusion criteria #1",
+            "expression": {
+                "Type": "ALL",
+                "CriteriaList": [
+                    {
+                        "Criteria": {
+                            "DrugEra": {
+                                "CodesetId": 65
+                            }
+                        },
+                        "StartWindow": {
+                            "Start": {
+                                "Coeff": -1
+                            },
+                            "End": {
+                                "Days": 0,
+                                "Coeff": 1
+                            },
+                            "UseEventEnd": false
+                        },
+                        "EndWindow": {
+                            "Start": {
+                                "Days": 7,
+                                "Coeff": -1
+                            },
+                            "End": {
+                                "Days": 0,
+                                "Coeff": 1
+                            },
+                            "UseEventEnd": true
+                        },
+                        "Occurrence": {
+                            "Type": 0,
+                            "Count": 0
+                        }
+                    }
+                ],
+                "DemographicCriteriaList": [],
+                "Groups": []
+            }
+        }
+    ],
+    "EndStrategy": {
+        "CustomEra": {
+            "DrugCodesetId": 68,
+            "GapDays": 7,
+            "Offset": 0
+        }
+    },
+    "CensoringCriteria": [
+        {
+            "DrugExposure": {
+                "CodesetId": 69
+            }
+        }
+    ],
+    "CollapseSettings": {
+        "CollapseType": "ERA",
+        "EraPad": 0
+    },
+    "CensorWindow": {},
+    "cdmVersionRange": ">=5.0.0"
+}

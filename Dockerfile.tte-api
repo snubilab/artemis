@@ -1,0 +1,48 @@
+FROM python:3.10-slim-bookworm
+
+WORKDIR /app
+
+# System deps for psycopg2, weasyprint, native extensions, and Java (for PySpark)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    gcc \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
+    libcairo2 \
+    openjdk-17-jdk-headless \
+    poppler-utils \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Architecture-agnostic JAVA_HOME via symlink
+RUN ln -sf /usr/lib/jvm/java-17-openjdk-* /usr/lib/jvm/java-17
+ENV JAVA_HOME=/usr/lib/jvm/java-17
+ENV SPARK_JDBC_JAR=/app/jdbc/postgresql-42.7.3.jar
+
+# Download PostgreSQL JDBC driver at build time
+RUN mkdir -p /app/jdbc && \
+    curl -fsSL https://jdbc.postgresql.org/download/postgresql-42.7.3.jar \
+    -o /app/jdbc/postgresql-42.7.3.jar
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Install uv for fast dependency resolution
+RUN pip install --no-cache-dir uv
+
+# Install Python deps from single source of truth
+COPY requirements.txt .
+RUN uv pip install --system --no-cache -r requirements.txt
+
+# Copy source
+COPY src ./src
+COPY scripts ./scripts
+
+# Validate all required packages at build time — image fails to build if any missing
+RUN python -m src.boot_check
+
+EXPOSE 8080
+
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8080"]

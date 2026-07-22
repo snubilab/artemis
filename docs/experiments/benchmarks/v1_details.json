@@ -1,0 +1,3175 @@
+[
+  {
+    "troy_name": "liraglutide",
+    "search_name": "liraglutide",
+    "troy_ids": [
+      40170911
+    ],
+    "troy_concepts": [
+      {
+        "id": 40170911,
+        "name": "liraglutide",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      }
+    ],
+    "artemis_ids": [
+      40170911
+    ],
+    "exact_overlap": [
+      40170911
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 1,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "left ventricular hypertrophy",
+    "search_name": "left ventricular hypertrophy",
+    "troy_ids": [
+      4184746
+    ],
+    "troy_concepts": [
+      {
+        "id": 4184746,
+        "name": "Left ventricular hypertrophy",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      618995,
+      3654813,
+      3654814,
+      3654815,
+      4184746,
+      4322893
+    ],
+    "exact_overlap": [
+      4184746
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 6,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "left ventricular dysfunction",
+    "search_name": "left ventricular dysfunction",
+    "troy_ids": [
+      4047088,
+      4212798
+    ],
+    "troy_concepts": [
+      {
+        "id": 4047088,
+        "name": "Left ventricular systolic dysfunction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4212798,
+        "name": "Left ventricular diastolic dysfunction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      439846,
+      442982,
+      764973,
+      764978,
+      764982,
+      4047088,
+      4145696,
+      4178584,
+      4212798,
+      4323898,
+      4325525,
+      40487105,
+      43020659,
+      43020660,
+      43020895,
+      44784440,
+      44804772,
+      44804773,
+      44804774
+    ],
+    "exact_overlap": [
+      4047088,
+      4212798
+    ],
+    "functional_match_ids": [],
+    "troy_count": 2,
+    "artemis_count": 19,
+    "exact_count": 2,
+    "functional_count": 0,
+    "total_match_count": 2,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "PAD",
+    "search_name": "PAD",
+    "troy_ids": [
+      3654996
+    ],
+    "troy_concepts": [
+      {
+        "id": 3654996,
+        "name": "Peripheral arterial disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      315558,
+      317309,
+      3654996,
+      4117679,
+      4141106,
+      4208944,
+      4231826,
+      35615018,
+      35615019,
+      37110250,
+      37110251,
+      37163013,
+      37163014,
+      37163039,
+      37163040,
+      37163042,
+      40483538,
+      43021846
+    ],
+    "exact_overlap": [
+      3654996
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 18,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "intermittent claudication",
+    "search_name": "intermittent claudication",
+    "troy_ids": [
+      442774
+    ],
+    "troy_concepts": [
+      {
+        "id": 442774,
+        "name": "Intermittent claudication",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      442774,
+      761826,
+      761827,
+      761828,
+      4316222,
+      36712806,
+      36717006,
+      36717286,
+      37312529
+    ],
+    "exact_overlap": [
+      442774
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 9,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "pramlintide",
+    "search_name": "pramlintide",
+    "troy_ids": [
+      1517998
+    ],
+    "troy_concepts": [
+      {
+        "id": 1517998,
+        "name": "Pramlintide",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      }
+    ],
+    "artemis_ids": [
+      1517998
+    ],
+    "exact_overlap": [
+      1517998
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 1,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "diabetic ketoacidosis",
+    "search_name": "diabetic ketoacidosis",
+    "troy_ids": [
+      443727
+    ],
+    "troy_concepts": [
+      {
+        "id": 443727,
+        "name": "Diabetic ketoacidosis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      439770,
+      443727,
+      443734,
+      761050,
+      4009303,
+      4095288,
+      4096041,
+      4224254,
+      4228443
+    ],
+    "exact_overlap": [
+      443727
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 9,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "oxygen use_device",
+    "search_name": "oxygen use_device",
+    "troy_ids": [
+      953194,
+      2616614,
+      2616615,
+      2616616,
+      2616617,
+      2616618,
+      2616619,
+      2616620,
+      2616621,
+      2616622,
+      2616623,
+      2616624,
+      2616952,
+      2616953,
+      2616954,
+      2616961,
+      2616962,
+      2719318,
+      2721366,
+      2721367,
+      40660809
+    ],
+    "troy_concepts": [
+      {
+        "id": 2616614,
+        "name": "Stationary compressed gaseous oxygen system, rental; includes container, contents, regulator, flowmeter, humidifier, nebulizer, cannula or mask, and tubing",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616615,
+        "name": "Stationary compressed gas system, purchase; includes regulator, flowmeter, humidifier, nebulizer, cannula or mask, and tubing",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616616,
+        "name": "Portable gaseous oxygen system, purchase; includes regulator, flowmeter, humidifier, cannula or mask, and tubing",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616617,
+        "name": "Portable gaseous oxygen system, rental; includes portable container, regulator, flowmeter, humidifier, cannula or mask, and tubing",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 40660809,
+        "name": "Portable liquid oxygen system, rental; home liquefier used to fill portable liquid oxygen containers, includes portable containers, regulator, flowmeter, humidifier, cannula or mask and tubing, with or without supply reservoir and contents gauge",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616618,
+        "name": "Portable liquid oxygen system, rental; includes portable container, supply reservoir, humidifier, flowmeter, refill adaptor, contents gauge, cannula or mask, and tubing",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616619,
+        "name": "Portable liquid oxygen system, purchase; includes portable container, supply reservoir, flowmeter, humidifier, contents gauge, cannula or mask, tubing and refill adaptor",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616620,
+        "name": "Stationary liquid oxygen system, rental; includes container, contents, regulator, flowmeter, humidifier, nebulizer, cannula or mask, & tubing",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616621,
+        "name": "Stationary liquid oxygen system, purchase; includes use of reservoir, contents indicator, regulator, flowmeter, humidifier, nebulizer, cannula or mask, and tubing",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616622,
+        "name": "Stationary oxygen contents, gaseous, 1 month's supply = 1 unit",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616623,
+        "name": "Stationary oxygen contents, liquid, 1 month's supply = 1 unit",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616624,
+        "name": "Portable oxygen contents, gaseous, 1 month's supply = 1 unit",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 953194,
+        "name": "Portable oxygen contents, liquid, 1 month's supply = 1 unit, prescribed amount at rest or nighttime exceeds 4 liters per minute (lpm)",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616952,
+        "name": "Oxygen concentrator, single delivery port, capable of delivering 85 percent or greater oxygen concentration at the prescribed flow rate",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616953,
+        "name": "Oxygen concentrator, dual delivery port, capable of delivering 85 percent or greater oxygen concentration at the prescribed flow rate, each",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616954,
+        "name": "Portable oxygen concentrator, rental",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616961,
+        "name": "Oxygen and water vapor enriching system with heated delivery",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2616962,
+        "name": "Oxygen and water vapor enriching system without heated delivery",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2719318,
+        "name": "Portable gaseous oxygen system, rental; home compressor used to fill portable oxygen cylinders; includes portable containers, regulator, flowmeter, humidifier, cannula or mask, and tubing",
+        "domain": "Drug",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2721366,
+        "name": "Oxygen contents, gaseous, 1 unit equals 1 cubic foot",
+        "domain": "Device",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 2721367,
+        "name": "Oxygen contents, liquid, 1 unit equals 1 pound",
+        "domain": "Device",
+        "vocab": "HCPCS"
+      }
+    ],
+    "artemis_ids": [
+      45759134
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 21,
+    "artemis_count": 1,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "ESLD",
+    "search_name": "ESLD",
+    "troy_ids": [
+      22340,
+      24966,
+      28779,
+      137977,
+      200528,
+      4026032,
+      4055223,
+      4058676,
+      45769564
+    ],
+    "troy_concepts": [
+      {
+        "id": 45769564,
+        "name": "End stage liver disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4026032,
+        "name": "Acute hepatic failure",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4058676,
+        "name": "Acute necrosis of liver",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4055223,
+        "name": "Toxic hepatitis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 24966,
+        "name": "Esophageal varices",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 28779,
+        "name": "Bleeding esophageal varices",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 22340,
+        "name": "Esophageal varices without bleeding",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 137977,
+        "name": "Jaundice",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 200528,
+        "name": "Ascites",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      45769564
+    ],
+    "exact_overlap": [
+      45769564
+    ],
+    "functional_match_ids": [],
+    "troy_count": 9,
+    "artemis_count": 1,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "MEN2",
+    "search_name": "MEN2",
+    "troy_ids": [
+      24612
+    ],
+    "troy_concepts": [
+      {
+        "id": 24612,
+        "name": "Multiple endocrine neoplasia, type 2",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      199775,
+      36717452,
+      45757539,
+      45770824
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [
+      36717452,
+      45757539,
+      45770824
+    ],
+    "troy_count": 1,
+    "artemis_count": 4,
+    "exact_count": 0,
+    "functional_count": 3,
+    "total_match_count": 3,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "MTC",
+    "search_name": "MTC",
+    "troy_ids": [
+      4111011
+    ],
+    "troy_concepts": [
+      {
+        "id": 4111011,
+        "name": "Medullary thyroid carcinoma",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      1244518,
+      4111011
+    ],
+    "exact_overlap": [
+      4111011
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 2,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Stroke, TIAs",
+    "search_name": "Stroke, TIAs",
+    "troy_ids": [
+      372924,
+      373503,
+      375557,
+      376713,
+      432923,
+      439847,
+      441874,
+      443454,
+      4148906,
+      43530727
+    ],
+    "troy_concepts": [
+      {
+        "id": 372924,
+        "name": "Cerebral artery occlusion",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 375557,
+        "name": "Cerebral embolism",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 376713,
+        "name": "Cerebral hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 443454,
+        "name": "Cerebral infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 441874,
+        "name": "Cerebral thrombosis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 439847,
+        "name": "Intracranial hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 43530727,
+        "name": "Spontaneous cerebral hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4148906,
+        "name": "Spontaneous subarachnoid hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 432923,
+        "name": "Subarachnoid hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 373503,
+        "name": "Transient cerebral ischemia",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      4136755
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 10,
+    "artemis_count": 1,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] Revasculariazation_final",
+    "search_name": "Revasculariazation_final",
+    "troy_ids": [
+      443563,
+      2000064,
+      2001505,
+      2001506,
+      4006788,
+      4019536,
+      4020466,
+      4020653,
+      4034857,
+      4139198,
+      4171077,
+      4175997,
+      4178148,
+      4181025,
+      4184298,
+      4214516,
+      4216356,
+      4225903,
+      4238755,
+      4264285,
+      4264286,
+      4265293,
+      4283892,
+      4328103,
+      4329263,
+      4337738,
+      43531438,
+      43531439,
+      43531440,
+      43533247,
+      43533248,
+      43533352,
+      43533353,
+      44511130,
+      44511131,
+      44511133,
+      44511268,
+      44511269,
+      44511271,
+      44511272,
+      44511273,
+      44511532,
+      44512256,
+      44784573,
+      44789455,
+      45770795
+    ],
+    "troy_concepts": [
+      {
+        "id": 4020466,
+        "name": "Arterial bypass graft",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 443563,
+        "name": "Arteriosclerosis of coronary artery bypass graft",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4171077,
+        "name": "Fluoroscopic angiography of coronary artery and insertion of stent",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4328103,
+        "name": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4216356,
+        "name": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty, multiple vessels",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4238755,
+        "name": "Infusion of intra-arterial thrombolytic agent with percutaneous transluminal coronary angioplasty, single vessel",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4214516,
+        "name": "Insertion of drug coated stent",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 44789455,
+        "name": "Insertion of drug-eluting coronary artery stent",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 2001506,
+        "name": "Insertion of drug-eluting coronary artery stent(s)",
+        "domain": "Procedure",
+        "vocab": "ICD9Proc"
+      },
+      {
+        "id": 2001505,
+        "name": "Insertion of non-drug-eluting coronary artery stent(s)",
+        "domain": "Procedure",
+        "vocab": "ICD9Proc"
+      },
+      {
+        "id": 44511272,
+        "name": "Other specified percutaneous transluminal balloon angioplasty and insertion of stent into coronary artery",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 44511133,
+        "name": "Other specified transluminal balloon angioplasty of coronary artery",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 4337738,
+        "name": "Percutaneous endarterectomy of coronary artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 43531439,
+        "name": "Percutaneous insertion of drug eluting stent into coronary artery using fluoroscopic guidance",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 43531438,
+        "name": "Percutaneous insertion of stent into aneurysm of coronary artery using fluoroscopic guidance",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4264286,
+        "name": "Percutaneous rotational coronary endarterectomy",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 43533247,
+        "name": "Percutaneous transcatheter placement of drug eluting intracoronary stent(s), with coronary angioplasty when performed; single major coronary artery or branch",
+        "domain": "Procedure",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 43533352,
+        "name": "Percutaneous transcatheter placement of drug-eluting intracoronary stent(s), with coronary angioplasty when performed; each additional branch of a major coronary artery (list separately in addition to code for primary procedure)",
+        "domain": "Procedure",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 4184298,
+        "name": "Percutaneous transluminal angioplasty",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4019536,
+        "name": "Percutaneous transluminal angioplasty of artery NEC",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 44512256,
+        "name": "Percutaneous transluminal arterial thrombolysis and reconstruction",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 44784573,
+        "name": "Percutaneous transluminal atherectomy of coronary artery by rotary cutter using fluoroscopic guidance",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 44511268,
+        "name": "Percutaneous transluminal balloon angioplasty and insertion of 1-2 drug-eluting stents into coronary artery",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 44511269,
+        "name": "Percutaneous transluminal balloon angioplasty and insertion of 3 or more drug-eluting stents into coronary artery",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 44511271,
+        "name": "Percutaneous transluminal balloon angioplasty and insertion of 3 or more stents into coronary artery NEC",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 45770795,
+        "name": "Percutaneous transluminal balloon angioplasty and insertion of drug eluting stent into coronary artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4020653,
+        "name": "Percutaneous transluminal balloon angioplasty of bypass graft of coronary artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 44511131,
+        "name": "Percutaneous transluminal balloon angioplasty of bypass graft of coronary artery",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 44511130,
+        "name": "Percutaneous transluminal balloon angioplasty of multiple coronary arteries",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 4181025,
+        "name": "Percutaneous transluminal balloon angioplasty with insertion of stent into coronary artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4006788,
+        "name": "Percutaneous transluminal coronary angioplasty",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 2000064,
+        "name": "Percutaneous transluminal coronary angioplasty [PTCA]",
+        "domain": "Procedure",
+        "vocab": "ICD9Proc"
+      },
+      {
+        "id": 4264285,
+        "name": "Percutaneous transluminal coronary angioplasty by rotoablation",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4265293,
+        "name": "Percutaneous transluminal coronary angioplasty with rotoablation, single vessel",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4225903,
+        "name": "Percutaneous transluminal coronary angioplasty, multiple vessels",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 43533353,
+        "name": "Percutaneous transluminal coronary atherectomy, with drug eluting intracoronary stent, with coronary angioplasty when performed; single major coronary artery or branch",
+        "domain": "Procedure",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 43533248,
+        "name": "Percutaneous transluminal coronary atherectomy, with drug-eluting intracoronary stent, with coronary angioplasty when performed; each additional branch of a major coronary artery (list separately in addition to code for primary procedure)",
+        "domain": "Procedure",
+        "vocab": "HCPCS"
+      },
+      {
+        "id": 43531440,
+        "name": "Percutaneous transluminal insertion of metal stent into coronary artery using fluoroscopic guidance",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4175997,
+        "name": "Percutaneous transluminal thrombolysis and reconstruction of artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4139198,
+        "name": "Percutaneous transluminal thrombolysis of artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 44511532,
+        "name": "Percutaneous transluminal thrombolysis of artery",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      },
+      {
+        "id": 4178148,
+        "name": "Placement of stent in anterior descending branch of left coronary artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4329263,
+        "name": "Placement of stent in circumflex branch of left coronary artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4283892,
+        "name": "Placement of stent in coronary artery",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4034857,
+        "name": "Transmyocardial revascularization by laser technique",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 44511273,
+        "name": "Unspecified percutaneous transluminal balloon angioplasty and insertion of stent into coronary artery",
+        "domain": "Procedure",
+        "vocab": "OPCS4"
+      }
+    ],
+    "artemis_ids": [
+      4049825
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 46,
+    "artemis_count": 1,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] HbA1c",
+    "search_name": "HbA1c",
+    "troy_ids": [
+      3004410
+    ],
+    "troy_concepts": [
+      {
+        "id": 3004410,
+        "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+        "domain": "Measurement",
+        "vocab": "LOINC"
+      }
+    ],
+    "artemis_ids": [
+      3004410,
+      3005131
+    ],
+    "exact_overlap": [
+      3004410
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 2,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] arterial stenosis",
+    "search_name": "arterial stenosis",
+    "troy_ids": [
+      321052,
+      442615,
+      1414819,
+      4119613
+    ],
+    "troy_concepts": [
+      {
+        "id": 442615,
+        "name": "Carotid artery stenosis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4119613,
+        "name": "Coronary artery stenosis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 1414819,
+        "name": "Lower extremity arterial stenosis (machine translation)",
+        "domain": "Condition",
+        "vocab": "ICD10CN"
+      },
+      {
+        "id": 321052,
+        "name": "Peripheral vascular disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      317305,
+      374371,
+      619136,
+      4062247,
+      4109330,
+      4114011,
+      4119613,
+      4120097,
+      4120099,
+      4139543,
+      4148535,
+      4208944,
+      4226026,
+      4226129,
+      4231816,
+      4231826,
+      37119077,
+      37209660,
+      42538826,
+      42538980
+    ],
+    "exact_overlap": [
+      4119613
+    ],
+    "functional_match_ids": [],
+    "troy_count": 4,
+    "artemis_count": 20,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Heart Failure (NYHA class II-III)",
+    "search_name": "Heart Failure (NYHA class II-III)",
+    "troy_ids": [
+      315295,
+      316139
+    ],
+    "troy_concepts": [
+      {
+        "id": 315295,
+        "name": "Congestive rheumatic heart failure",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 316139,
+        "name": "Heart failure",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      439846,
+      443587,
+      444031,
+      444101,
+      619797,
+      1074906,
+      4004279,
+      4103448,
+      4108244,
+      4111554,
+      4124705,
+      4199500,
+      4205558,
+      4233224,
+      4259490,
+      37163128,
+      37311948,
+      43020657,
+      45766164
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [
+      439846,
+      443587,
+      444031,
+      444101,
+      619797,
+      1074906,
+      4004279,
+      4103448,
+      4108244,
+      4111554,
+      4124705,
+      4199500,
+      4205558,
+      4233224,
+      4259490,
+      37163128,
+      37311948,
+      43020657,
+      45766164
+    ],
+    "troy_count": 2,
+    "artemis_count": 19,
+    "exact_count": 0,
+    "functional_count": 19,
+    "total_match_count": 19,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "COPY OF: [TROY] unstable angina",
+    "search_name": "COPY OF: unstable angina",
+    "troy_ids": [
+      315296,
+      35207680
+    ],
+    "troy_concepts": [
+      {
+        "id": 315296,
+        "name": "Preinfarction syndrome",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 35207680,
+        "name": "Unstable angina",
+        "domain": "Condition",
+        "vocab": "ICD10CM"
+      }
+    ],
+    "artemis_ids": [
+      4078531,
+      4119455,
+      4119942,
+      4198141,
+      4231426
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 2,
+    "artemis_count": 5,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] ischemic heart disease",
+    "search_name": "ischemic heart disease",
+    "troy_ids": [
+      312327,
+      314666,
+      315286,
+      315830,
+      315832,
+      316427,
+      319039,
+      319844,
+      321318,
+      434376,
+      436706,
+      438168,
+      438170,
+      438438,
+      441579,
+      4119949,
+      4119950,
+      4121467,
+      4121468,
+      4126801,
+      4185932,
+      4267568,
+      4270024,
+      4296653,
+      4303359,
+      4324413,
+      4329847,
+      37017177,
+      37115756,
+      40481919,
+      44825431
+    ],
+    "troy_concepts": [
+      {
+        "id": 4126801,
+        "name": "Acute Q wave myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4296653,
+        "name": "Acute ST segment elevation myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4267568,
+        "name": "Acute anteroseptal myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 319844,
+        "name": "Acute ischemic heart disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 312327,
+        "name": "Acute myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 434376,
+        "name": "Acute myocardial infarction of anterior wall",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 438438,
+        "name": "Acute myocardial infarction of anterolateral wall",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 438170,
+        "name": "Acute myocardial infarction of inferior wall",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 441579,
+        "name": "Acute myocardial infarction of inferoposterior wall",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 436706,
+        "name": "Acute myocardial infarction of lateral wall",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4324413,
+        "name": "Acute myocardial infarction of posterobasal wall",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4303359,
+        "name": "Acute myocardial infarction of septum",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4270024,
+        "name": "Acute non-ST segment elevation myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 319039,
+        "name": "Acute posterior myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 44825431,
+        "name": "Aneurysm and dissection of heart",
+        "domain": "Condition",
+        "vocab": "ICD9CM"
+      },
+      {
+        "id": 316427,
+        "name": "Aneurysm of coronary vessels",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 438168,
+        "name": "Aneurysm of heart",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 315832,
+        "name": "Angina decubitus",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 321318,
+        "name": "Angina pectoris",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 315286,
+        "name": "Chronic ischemic heart disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 40481919,
+        "name": "Coronary atherosclerosis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 37115756,
+        "name": "Dissection of coronary artery",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4185932,
+        "name": "Ischemic heart disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4329847,
+        "name": "Myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4119949,
+        "name": "Old anterior myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4121467,
+        "name": "Old inferior myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4119950,
+        "name": "Old lateral myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 314666,
+        "name": "Old myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4121468,
+        "name": "Old posterior myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 315830,
+        "name": "Prinzmetal angina",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 37017177,
+        "name": "Subacute ischemic heart disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      315286,
+      319844,
+      321318,
+      4068938,
+      4119455,
+      4124683,
+      4124686,
+      4145696,
+      4170094,
+      4185302,
+      4186397,
+      4215140,
+      4219755,
+      4263712,
+      4329847,
+      37016755,
+      37017177,
+      37171484,
+      43531588,
+      45766117
+    ],
+    "exact_overlap": [
+      315286,
+      319844,
+      321318,
+      4329847,
+      37017177
+    ],
+    "functional_match_ids": [
+      4068938,
+      4119455,
+      4124683,
+      4124686,
+      4145696,
+      4170094,
+      4185302,
+      4186397,
+      4215140,
+      4219755,
+      4263712,
+      37016755,
+      37171484,
+      43531588,
+      45766117
+    ],
+    "troy_count": 31,
+    "artemis_count": 20,
+    "exact_count": 5,
+    "functional_count": 15,
+    "total_match_count": 20,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] eGFR",
+    "search_name": "eGFR",
+    "troy_ids": [
+      3049187
+    ],
+    "troy_concepts": [
+      {
+        "id": 3049187,
+        "name": "Glomerular filtration rate/1.73 sq M.predicted among non-blacks [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)",
+        "domain": "Measurement",
+        "vocab": "LOINC"
+      }
+    ],
+    "artemis_ids": [
+      3027108,
+      3029829,
+      3029859,
+      3053283,
+      36303797,
+      36306178,
+      40764999,
+      46236952
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 8,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] Coronary artery disease",
+    "search_name": "Coronary artery disease",
+    "troy_ids": [
+      317576
+    ],
+    "troy_concepts": [
+      {
+        "id": 317576,
+        "name": "Coronary arteriosclerosis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      316427,
+      316995,
+      317576,
+      321109,
+      4080593,
+      4104178,
+      4107246,
+      4124846,
+      4127089,
+      4160782,
+      4187067,
+      4188638,
+      4194618,
+      4258690,
+      4270354,
+      37018767,
+      40483833
+    ],
+    "exact_overlap": [
+      317576
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 17,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] microalbuminuria or proteimuria",
+    "search_name": "microalbuminuria or proteimuria",
+    "troy_ids": [
+      75650,
+      4195061
+    ],
+    "troy_concepts": [
+      {
+        "id": 4195061,
+        "name": "Microalbuminuria",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 75650,
+        "name": "Proteinuria",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      3000837,
+      3018104,
+      3025987,
+      3029937,
+      3036634,
+      4017498,
+      4020542,
+      4021120,
+      4107077,
+      4135536,
+      4164903,
+      4193719,
+      36660325,
+      36660607,
+      44789232
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 2,
+    "artemis_count": 15,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] hypertension",
+    "search_name": "hypertension",
+    "troy_ids": [
+      316866
+    ],
+    "troy_concepts": [
+      {
+        "id": 316866,
+        "name": "Hypertensive disorder",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      312648,
+      317898,
+      320128,
+      1340364,
+      4034031,
+      4058987,
+      4083723,
+      4148205,
+      4159755,
+      4180283,
+      4209293,
+      4215640,
+      4217486,
+      4221991,
+      4263067,
+      4269358,
+      4302591,
+      4321603,
+      44811110,
+      45757787,
+      45771064
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [
+      312648,
+      317898,
+      320128,
+      1340364,
+      4058987,
+      4159755,
+      4180283,
+      4209293,
+      4217486,
+      4221991,
+      4263067,
+      44811110,
+      45757787,
+      45771064
+    ],
+    "troy_count": 1,
+    "artemis_count": 21,
+    "exact_count": 0,
+    "functional_count": 14,
+    "total_match_count": 14,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Type 1 Diabetes Mellitus",
+    "search_name": "Type 1 Diabetes Mellitus",
+    "troy_ids": [
+      201254
+    ],
+    "troy_concepts": [
+      {
+        "id": 201254,
+        "name": "Type 1 diabetes mellitus",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      766252,
+      1244603,
+      3661732,
+      4047906,
+      4063042,
+      4099214,
+      4099215,
+      4102018,
+      4145827,
+      37163452,
+      37174264,
+      37174265,
+      37174270,
+      40484649,
+      43531009,
+      45757674,
+      45766051
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [
+      766252,
+      1244603,
+      3661732,
+      4047906,
+      4063042,
+      4099214,
+      4099215,
+      4102018,
+      4145827,
+      37163452,
+      37174264,
+      37174265,
+      37174270,
+      40484649,
+      43531009,
+      45757674,
+      45766051
+    ],
+    "troy_count": 1,
+    "artemis_count": 17,
+    "exact_count": 0,
+    "functional_count": 17,
+    "total_match_count": 17,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Type 2 Diabetes Mellitus",
+    "search_name": "Type 2 Diabetes Mellitus",
+    "troy_ids": [
+      201826
+    ],
+    "troy_concepts": [
+      {
+        "id": 201826,
+        "name": "Type 2 diabetes mellitus",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      201826,
+      766253,
+      4063043,
+      4099651,
+      4129519,
+      4130162,
+      4230254,
+      4304377,
+      37163431,
+      40485020,
+      43531010,
+      43531597,
+      45757474,
+      45757508,
+      45766052
+    ],
+    "exact_overlap": [
+      201826
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 15,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Calcitonin",
+    "search_name": "Calcitonin",
+    "troy_ids": [
+      3010989,
+      44817130
+    ],
+    "troy_concepts": [
+      {
+        "id": 3010989,
+        "name": "Calcitonin [Mass/volume] in Serum or Plasma",
+        "domain": "Measurement",
+        "vocab": "LOINC"
+      },
+      {
+        "id": 44817130,
+        "name": "Procalcitonin [Mass/volume] in Serum or Plasma by Immunoassay",
+        "domain": "Measurement",
+        "vocab": "LOINC"
+      }
+    ],
+    "artemis_ids": [
+      3010989,
+      3012344,
+      3023824,
+      3023937,
+      3024001,
+      3024466,
+      3029243,
+      3029392,
+      3029693,
+      3030197,
+      3030397,
+      3035612,
+      3036488,
+      3036643,
+      3047179,
+      4153268,
+      40761986,
+      40762631,
+      46236276,
+      46236277,
+      46236322
+    ],
+    "exact_overlap": [
+      3010989
+    ],
+    "functional_match_ids": [],
+    "troy_count": 2,
+    "artemis_count": 21,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] GLP-1 receptor agonists",
+    "search_name": "GLP-1 receptor agonists",
+    "troy_ids": [
+      793143,
+      1583722,
+      40170911,
+      44506754,
+      44816332,
+      45774435
+    ],
+    "troy_concepts": [
+      {
+        "id": 44816332,
+        "name": "albiglutide",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 45774435,
+        "name": "dulaglutide",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1583722,
+        "name": "exenatide",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 40170911,
+        "name": "liraglutide",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 44506754,
+        "name": "Lixisenatide",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 793143,
+        "name": "semaglutide",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      }
+    ],
+    "artemis_ids": [
+      715259,
+      793143,
+      1254263,
+      1583722,
+      1718596,
+      1718703
+    ],
+    "exact_overlap": [
+      793143,
+      1583722
+    ],
+    "functional_match_ids": [
+      1718596,
+      1718703
+    ],
+    "troy_count": 6,
+    "artemis_count": 6,
+    "exact_count": 2,
+    "functional_count": 2,
+    "total_match_count": 4,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "COPY OF: [TROY] DPP4 inhibitors",
+    "search_name": "COPY OF: DPP4 inhibitors",
+    "troy_ids": [
+      1580747,
+      19122137,
+      40166035,
+      40239216,
+      43013884
+    ],
+    "troy_concepts": [
+      {
+        "id": 43013884,
+        "name": "alogliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 40239216,
+        "name": "Linagliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 40166035,
+        "name": "saxagliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1580747,
+        "name": "sitagliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 19122137,
+        "name": "vildagliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      }
+    ],
+    "artemis_ids": [
+      4241477
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 5,
+    "artemis_count": 1,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] Insulin",
+    "search_name": "Insulin",
+    "troy_ids": [
+      1502905,
+      1513843,
+      1513849,
+      1513876,
+      1516976,
+      1531601,
+      1544838,
+      1550023,
+      1562586,
+      1567198,
+      1586346,
+      1586369,
+      1588986,
+      1590165,
+      1596977,
+      19078608,
+      21600713,
+      35602717,
+      35605670
+    ],
+    "troy_concepts": [
+      {
+        "id": 21600713,
+        "name": "INSULINS AND ANALOGUES",
+        "domain": "Drug",
+        "vocab": "ATC"
+      },
+      {
+        "id": 35605670,
+        "name": "insulin argine",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1531601,
+        "name": "Insulin, Aspart Protamine, Human",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1567198,
+        "name": "Insulin, Aspart, Human",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 35602717,
+        "name": "insulin degludec",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1516976,
+        "name": "insulin detemir",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1502905,
+        "name": "Insulin Glargine",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1544838,
+        "name": "Insulin, Glulisine, Human",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1588986,
+        "name": "insulin human, rDNA origin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1550023,
+        "name": "Insulin Lispro",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1513876,
+        "name": "Insulin, Protamine Lispro, Human",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 19078608,
+        "name": "Insulin, Protamine Zinc, Beef-Pork 100 UNT/ML Injectable Suspension",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1590165,
+        "name": "insulin, regular, beef-pork",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1596977,
+        "name": "Regular Insulin, Human",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1586346,
+        "name": "Insulin, Regular, Pork",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1513843,
+        "name": "Lente Insulin, Beef-Pork",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1513849,
+        "name": "Insulin, Zinc, Human",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1562586,
+        "name": "Insulin, Zinc, Pork",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1586369,
+        "name": "Ultralente Insulin, Human",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      }
+    ],
+    "artemis_ids": [
+      793405,
+      1502905,
+      1502905,
+      1516976,
+      1531601,
+      1544838,
+      1550023,
+      1567198,
+      1596953,
+      1596977
+    ],
+    "exact_overlap": [
+      1502905,
+      1516976,
+      1531601,
+      1544838,
+      1550023,
+      1567198,
+      1596977
+    ],
+    "functional_match_ids": [
+      793405
+    ],
+    "troy_count": 19,
+    "artemis_count": 10,
+    "exact_count": 7,
+    "functional_count": 1,
+    "total_match_count": 8,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Stroke",
+    "search_name": "Stroke",
+    "troy_ids": [
+      372924,
+      375557,
+      376713,
+      432923,
+      439847,
+      441874,
+      443454,
+      4148906,
+      43530727
+    ],
+    "troy_concepts": [
+      {
+        "id": 372924,
+        "name": "Cerebral artery occlusion",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 375557,
+        "name": "Cerebral embolism",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 376713,
+        "name": "Cerebral hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 443454,
+        "name": "Cerebral infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 441874,
+        "name": "Cerebral thrombosis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 439847,
+        "name": "Intracranial hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 43530727,
+        "name": "Spontaneous cerebral hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4148906,
+        "name": "Spontaneous subarachnoid hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 432923,
+        "name": "Subarachnoid hemorrhage",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      602584,
+      603206,
+      618685,
+      764721,
+      4045734,
+      4046363,
+      4099974,
+      4108360,
+      4110195,
+      4159152,
+      4298750,
+      35609033,
+      37110241,
+      37312014,
+      37312015,
+      37395576,
+      42535146,
+      42535147,
+      42535460,
+      43531605,
+      43531607
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [
+      764721,
+      4298750,
+      43531605,
+      43531607
+    ],
+    "troy_count": 9,
+    "artemis_count": 21,
+    "exact_count": 0,
+    "functional_count": 4,
+    "total_match_count": 4,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Oxygen therapy (NYHA class IV)",
+    "search_name": "Oxygen therapy (NYHA class IV)",
+    "troy_ids": [
+      4239130
+    ],
+    "troy_concepts": [
+      {
+        "id": 4239130,
+        "name": "Oxygen therapy",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      4239130
+    ],
+    "exact_overlap": [
+      4239130
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 1,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] ESRD",
+    "search_name": "ESRD",
+    "troy_ids": [
+      193782
+    ],
+    "troy_concepts": [
+      {
+        "id": 193782,
+        "name": "End-stage renal disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      193782,
+      4030520,
+      4128200
+    ],
+    "exact_overlap": [
+      193782
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 3,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] renal dialysis",
+    "search_name": "renal dialysis",
+    "troy_ids": [
+      4120120,
+      4146536,
+      4324124
+    ],
+    "troy_concepts": [
+      {
+        "id": 4120120,
+        "name": "Hemodialysis",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4324124,
+        "name": "Peritoneal dialysis",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4146536,
+        "name": "Renal dialysis",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      4146536
+    ],
+    "exact_overlap": [
+      4146536
+    ],
+    "functional_match_ids": [],
+    "troy_count": 3,
+    "artemis_count": 1,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] kidney transplant (condition)",
+    "search_name": "kidney transplant (condition)",
+    "troy_ids": [
+      42539502
+    ],
+    "troy_concepts": [
+      {
+        "id": 42539502,
+        "name": "Transplanted kidney present",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      2003626,
+      4021107,
+      4022474,
+      4022805,
+      4197300,
+      4322471,
+      4343000,
+      35623146,
+      35623147,
+      36717743,
+      37204160,
+      46272953,
+      46273963
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 13,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] kidney transplant (procedure)",
+    "search_name": "kidney transplant (procedure)",
+    "troy_ids": [
+      4322471
+    ],
+    "troy_concepts": [
+      {
+        "id": 4322471,
+        "name": "Transplant of kidney",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      2003626,
+      4021107,
+      4022474,
+      4022805,
+      4197300,
+      4322471,
+      4343000,
+      35623146,
+      35623147,
+      36717743,
+      37204160,
+      46272953,
+      46273963
+    ],
+    "exact_overlap": [
+      4322471
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 13,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Total bilirubin",
+    "search_name": "Total bilirubin",
+    "troy_ids": [
+      3024128
+    ],
+    "troy_concepts": [
+      {
+        "id": 3024128,
+        "name": "Bilirubin.total [Mass/volume] in Serum or Plasma",
+        "domain": "Measurement",
+        "vocab": "LOINC"
+      }
+    ],
+    "artemis_ids": [
+      3024128
+    ],
+    "exact_overlap": [
+      3024128
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 1,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] liver disease_procedure",
+    "search_name": "liver disease_procedure",
+    "troy_ids": [
+      4284254
+    ],
+    "troy_concepts": [
+      {
+        "id": 4284254,
+        "name": "Ligation of esophageal varices",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      4049626,
+      4068066,
+      4068637,
+      4086910,
+      4104319,
+      4125623,
+      4142374,
+      4144190,
+      4171687,
+      4181614,
+      4181887,
+      4215524,
+      4218894,
+      4232329,
+      4275715,
+      4303723,
+      4314001,
+      4341102,
+      35622628,
+      44783762
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 20,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] significant liver disease",
+    "search_name": "significant liver disease",
+    "troy_ids": [
+      28779,
+      197917,
+      200528,
+      4064161,
+      4111998,
+      4185719,
+      4243963,
+      4291005,
+      4337543
+    ],
+    "troy_concepts": [
+      {
+        "id": 200528,
+        "name": "Ascites",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 28779,
+        "name": "Bleeding esophageal varices",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4185719,
+        "name": "Cholestatic jaundice syndrome",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4064161,
+        "name": "Cirrhosis of liver",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 197917,
+        "name": "Disorder of biliary tract",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4111998,
+        "name": "Esophageal varices associated with another disorder",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4243963,
+        "name": "Hemolytic jaundice",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4337543,
+        "name": "Hepatic necrosis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4291005,
+        "name": "Viral hepatitis",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      193355,
+      1340309,
+      3655916,
+      4058685,
+      4059290,
+      4104000,
+      4141669,
+      4245954,
+      4296301,
+      4340950,
+      4340951,
+      4341650,
+      4342883
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [
+      193355,
+      4104000,
+      4245954,
+      4341650,
+      4342883
+    ],
+    "troy_count": 9,
+    "artemis_count": 13,
+    "exact_count": 0,
+    "functional_count": 5,
+    "total_match_count": 5,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] organ transplant_cond",
+    "search_name": "organ transplant_cond",
+    "troy_ids": [
+      25698,
+      200906,
+      4151240,
+      4309320,
+      42537742,
+      42537745,
+      42538117,
+      42539502,
+      42539698
+    ],
+    "troy_concepts": [
+      {
+        "id": 42537745,
+        "name": "Bone marrow transplant present",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 200906,
+        "name": "Complication of transplanted intestines",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 25698,
+        "name": "Complication of transplanted pancreas",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 42538117,
+        "name": "Transplanted heart present",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 42539502,
+        "name": "Transplanted kidney present",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 42537742,
+        "name": "Transplanted liver present",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 42539698,
+        "name": "Transplanted lung present",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4151240,
+        "name": "Transplanted organ failure",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4309320,
+        "name": "Transplanted organ rejection",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      2003626,
+      4021107,
+      4022474,
+      4022805,
+      4076862,
+      4137127,
+      4197300,
+      4265621,
+      4266668,
+      4322471,
+      4337138,
+      4343000,
+      35623146,
+      35623147,
+      36717743,
+      37204160,
+      44810212,
+      46272953,
+      46273963
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 9,
+    "artemis_count": 19,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] transplant_proc",
+    "search_name": "transplant_proc",
+    "troy_ids": [
+      4028623,
+      4076862,
+      4137127,
+      4208341,
+      4266668,
+      4300185,
+      4322471,
+      4337138,
+      4337611,
+      4337612
+    ],
+    "troy_concepts": [
+      {
+        "id": 4337612,
+        "name": "Double lung transplant",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4337611,
+        "name": "Single lung transplant",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4208341,
+        "name": "Solid organ transplant",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4322471,
+        "name": "Transplant of kidney",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4337138,
+        "name": "Transplant of lung",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4300185,
+        "name": "Transplantation",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4028623,
+        "name": "Transplantation of bone marrow",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4137127,
+        "name": "Transplantation of heart",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4076862,
+        "name": "Transplantation of liver",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4266668,
+        "name": "Transplantation of pancreas",
+        "domain": "Procedure",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      4171571
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 10,
+    "artemis_count": 1,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "COPY OF: [TROY] History of malignant neoplasm",
+    "search_name": "COPY OF: History of malignant neoplasm",
+    "troy_ids": [
+      443392,
+      42542326
+    ],
+    "troy_concepts": [
+      {
+        "id": 443392,
+        "name": "Malignant neoplastic disease",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 42542326,
+        "name": "Non-melanoma skin cancer",
+        "domain": "Condition",
+        "vocab": "HemOnc"
+      }
+    ],
+    "artemis_ids": [
+      618646,
+      1075593,
+      4174136,
+      4196255,
+      4196256,
+      4198435,
+      4198436,
+      4198437,
+      4200884,
+      4200887,
+      4200888,
+      4200889,
+      4201477,
+      4201480,
+      4201482,
+      4201483,
+      4201484,
+      36712762,
+      36713996,
+      45769825
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [
+      618646,
+      1075593,
+      4174136,
+      4196255,
+      4196256,
+      4198435,
+      4198436,
+      4198437,
+      4200884,
+      4200887,
+      4200888,
+      4200889,
+      4201477,
+      4201480,
+      4201482,
+      4201483,
+      4201484,
+      36712762,
+      36713996,
+      45769825
+    ],
+    "troy_count": 2,
+    "artemis_count": 20,
+    "exact_count": 0,
+    "functional_count": 20,
+    "total_match_count": 20,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] substance abuse",
+    "search_name": "substance abuse",
+    "troy_ids": [
+      436954,
+      440069,
+      4279309
+    ],
+    "troy_concepts": [
+      {
+        "id": 436954,
+        "name": "Drug abuse",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 440069,
+        "name": "Drug dependence",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4279309,
+        "name": "Substance abuse",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      440081,
+      1448778,
+      1448779,
+      1448780,
+      1448809,
+      1448828,
+      1448829,
+      1448830,
+      1448831,
+      1448841,
+      4004672,
+      4197130,
+      35610526,
+      37165431,
+      37165528,
+      37165529
+    ],
+    "exact_overlap": [],
+    "functional_match_ids": [],
+    "troy_count": 3,
+    "artemis_count": 16,
+    "exact_count": 0,
+    "functional_count": 0,
+    "total_match_count": 0,
+    "category": "B_WRONG_CONCEPTS"
+  },
+  {
+    "troy_name": "[TROY] Pregnancy, childbirth and puerperium finding",
+    "search_name": "Pregnancy, childbirth and puerperium finding",
+    "troy_ids": [
+      4088927
+    ],
+    "troy_concepts": [
+      {
+        "id": 4088927,
+        "name": "Pregnancy, childbirth and puerperium finding",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      435875,
+      443700,
+      444094,
+      1449093,
+      4038495,
+      4041280,
+      4088927,
+      4090071,
+      4091197,
+      4119969,
+      4128846,
+      4136986,
+      4143215,
+      4170626,
+      4181975,
+      4182460,
+      4182763,
+      4241830,
+      42872398,
+      45757170,
+      45757172
+    ],
+    "exact_overlap": [
+      4088927
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 21,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] Myocardial Infarction (MI)",
+    "search_name": "Myocardial Infarction (MI)",
+    "troy_ids": [
+      4329847
+    ],
+    "troy_concepts": [
+      {
+        "id": 4329847,
+        "name": "Myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      312327,
+      314666,
+      436706,
+      439693,
+      444406,
+      604179,
+      618951,
+      765132,
+      4030582,
+      4108217,
+      4124686,
+      4126801,
+      4170094,
+      4173632,
+      4200113,
+      4209541,
+      4215259,
+      4323202,
+      4329847,
+      37309626
+    ],
+    "exact_overlap": [
+      4329847
+    ],
+    "functional_match_ids": [],
+    "troy_count": 1,
+    "artemis_count": 20,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] (acute) MI",
+    "search_name": "(acute) MI",
+    "troy_ids": [
+      312327,
+      314666,
+      4329847
+    ],
+    "troy_concepts": [
+      {
+        "id": 312327,
+        "name": "Acute myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 4329847,
+        "name": "Myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 314666,
+        "name": "Old myocardial infarction",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      312327,
+      319039,
+      434376,
+      436706,
+      438170,
+      441579,
+      444406,
+      3654465,
+      4051874,
+      4108669,
+      4119947,
+      4126801,
+      4145721,
+      4243372,
+      4270024,
+      4296653,
+      35610091,
+      35610093,
+      37160791,
+      44782769,
+      45766115
+    ],
+    "exact_overlap": [
+      312327
+    ],
+    "functional_match_ids": [
+      319039,
+      434376,
+      436706,
+      438170,
+      441579,
+      444406,
+      3654465,
+      4051874,
+      4108669,
+      4119947,
+      4126801,
+      4145721,
+      4243372,
+      4270024,
+      4296653,
+      35610091,
+      35610093,
+      37160791,
+      44782769,
+      45766115
+    ],
+    "troy_count": 3,
+    "artemis_count": 21,
+    "exact_count": 1,
+    "functional_count": 20,
+    "total_match_count": 21,
+    "category": "FULL_MATCH"
+  },
+  {
+    "troy_name": "[TROY] DPP4 inhibitors",
+    "search_name": "DPP4 inhibitors",
+    "troy_ids": [
+      1580747,
+      19122137,
+      40166035,
+      40239216,
+      43013884
+    ],
+    "troy_concepts": [
+      {
+        "id": 43013884,
+        "name": "alogliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 40239216,
+        "name": "Linagliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 40166035,
+        "name": "saxagliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 1580747,
+        "name": "sitagliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      },
+      {
+        "id": 19122137,
+        "name": "vildagliptin",
+        "domain": "Drug",
+        "vocab": "RxNorm"
+      }
+    ],
+    "artemis_ids": [
+      853652,
+      855998,
+      995234,
+      1580747,
+      4008077
+    ],
+    "exact_overlap": [
+      1580747
+    ],
+    "functional_match_ids": [],
+    "troy_count": 5,
+    "artemis_count": 5,
+    "exact_count": 1,
+    "functional_count": 0,
+    "total_match_count": 1,
+    "category": "C_PARTIAL_MATCH"
+  },
+  {
+    "troy_name": "CKD 4-5",
+    "search_name": "CKD 4-5",
+    "troy_ids": [
+      443611,
+      443612
+    ],
+    "troy_concepts": [
+      {
+        "id": 443612,
+        "name": "Chronic kidney disease stage 4",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      },
+      {
+        "id": 443611,
+        "name": "Chronic kidney disease stage 5",
+        "domain": "Condition",
+        "vocab": "SNOMED"
+      }
+    ],
+    "artemis_ids": [
+      443611,
+      443612
+    ],
+    "exact_overlap": [
+      443611,
+      443612
+    ],
+    "functional_match_ids": [],
+    "troy_count": 2,
+    "artemis_count": 2,
+    "exact_count": 2,
+    "functional_count": 0,
+    "total_match_count": 2,
+    "category": "FULL_MATCH"
+  }
+]

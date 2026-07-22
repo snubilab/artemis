@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+
+# Large / runtime artifacts (not source)
+chroma_db/
+tmp/
+data/
+output/
+artifacts/
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs & OS
+*.log
+.DS_Store
