@@ -274,6 +274,18 @@ class TTEService:
     def _uses_explicit_comparator(self, study: dict[str, Any]) -> bool:
         return self._get_comparison_mode(study) == "explicit_comparator"
 
+    # Defect A/C fix (ADR-019): drug-anchored entry + active-comparator design.
+    _PLACEBO_ARM_NAMES = {"sugar pill", "sham"}
+
+    def _drug_anchored_entry(self) -> bool:
+        """True when drug-anchored entry mode (Defect A / ADR-019) is enabled."""
+        return os.environ.get("TTE_DRUG_ANCHORED_ENTRY", "").strip().lower() in ("1", "true", "yes")
+
+    def _is_placebo_arm(self, name: str) -> bool:
+        """True when an arm denotes placebo/no-drug (no real-world cohort possible)."""
+        n = (name or "").strip().lower()
+        return (not n) or ("placebo" in n) or (n in self._PLACEBO_ARM_NAMES)
+
     def apply_artifact(
         self, artifact_id: str, target_sections: list[str], base_study_version: int
     ) -> ArtifactApplyResponse:
@@ -3780,6 +3792,15 @@ class TTEService:
             # Comparator arm in non-explicit mode: build as Target + Drug ABSENCE
             # instead of deriving at execution time (target_minus_treatment).
             is_derived_comparator = index == 1 and not self._uses_explicit_comparator(study)
+            # ADR-019 Phase 1: when drug-anchored mode is on and the comparator arm
+            # names a real drug (not placebo), build an active-comparator new-user
+            # cohort on that drug (gold design) instead of treatment-drug ABSENCE.
+            is_active_comparator = (
+                is_derived_comparator
+                and self._drug_anchored_entry()
+                and bool(arm_name)
+                and not self._is_placebo_arm(arm_name)
+            )
 
             arm_key = f"arm_{index}"
 
@@ -3788,9 +3809,18 @@ class TTEService:
                 _elig: dict[str, Any] = eligibility,
                 _idx: int = index,
                 _is_derived_comp: bool = is_derived_comparator,
+                _is_active_comp: bool = is_active_comparator,
                 _treatment_name: str = treatment_arm_name,
             ) -> dict[str, Any]:
-                # Derived comparator: disease-based primary + drug ABSENCE
+                # Active comparator (ADR-019): new-user cohort on the real comparator drug
+                if _is_active_comp:
+                    return self._build_drug_anchored_comparator_circe(
+                        _elig,
+                        _arm_name,
+                        time_params=study.get("timeParams") or {},
+                        study=study,
+                    )
+                # Derived comparator: disease-based primary + drug ABSENCE (legacy / placebo)
                 if _is_derived_comp:
                     return self._build_disease_based_comparator_circe(
                         _elig,
@@ -3807,9 +3837,10 @@ class TTEService:
                     study=study,
                 )
 
-            # For derived comparator, override label
+            # Label: active comparator uses its own drug; derived uses "No <treatment>"
             comparator_label = (
-                f"No {treatment_arm_name}" if is_derived_comparator
+                arm_name if is_active_comparator
+                else f"No {treatment_arm_name}" if is_derived_comparator
                 else (arm_name or f"Treatment arm {index + 1}")
             )
 
@@ -4674,7 +4705,7 @@ class TTEService:
         # TTE_DRUG_ANCHORED_ENTRY is set, skip the drug->disease swap entirely and
         # keep the base's DrugEra entry so cohorts match gold's new-user design.
         # Default off -> no behavior change unless explicitly enabled.
-        if os.environ.get("TTE_DRUG_ANCHORED_ENTRY", "").strip().lower() in ("1", "true", "yes"):
+        if self._drug_anchored_entry():
             return base
         pc = base.get("PrimaryCriteria") or {}
         criteria_list = pc.get("CriteriaList") or []
@@ -4917,6 +4948,66 @@ class TTEService:
             },
         }
         base.setdefault("InclusionRules", []).append(drug_rule)
+
+        return base
+
+    def _build_drug_anchored_comparator_circe(
+        self,
+        eligibility: dict[str, Any],
+        comparator_drug_name: str,
+        *,
+        time_params: dict[str, Any] | None = None,
+        study: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Active-comparator cohort (ADR-019 Phase 1): DrugEra new-user entry on the
+        REAL comparator drug + shared eligibility rules, matching the gold design.
+
+        Unlike the derived comparator, this uses neither a disease anchor nor a
+        treatment-drug ABSENCE rule. The base's DrugEra entry concept set is
+        repointed to the comparator drug so the cohort captures its new users.
+        """
+        if not comparator_drug_name or not comparator_drug_name.strip():
+            raise ValueError("comparator_drug_name must be a non-empty string")
+
+        structured = eligibility.get("structuredExpression")
+        if isinstance(structured, dict) and "PrimaryCriteria" in structured:
+            base = deepcopy(structured)
+        else:
+            base = self._build_seeded_target_circe(deepcopy(eligibility))
+        base.pop("_criterionMappingMetadata", None)
+
+        # Locate the DrugEra/DrugExposure entry criteria in the base.
+        entry_bodies = [
+            body
+            for crit in (base.get("PrimaryCriteria") or {}).get("CriteriaList") or []
+            for domain, body in crit.items()
+            if domain in ("DrugEra", "DrugExposure") and isinstance(body, dict)
+        ]
+        if not entry_bodies:
+            # Non-drug base (unexpected for canonical studies): fall back to the
+            # derived comparator so we never emit an unanchored cohort.
+            logging.warning(
+                "[TTE] Active comparator: no DrugEra entry in base; falling back "
+                "to derived comparator for '%s'", comparator_drug_name)
+            return self._build_disease_based_comparator_circe(
+                eligibility, comparator_drug_name, time_params=time_params, study=study)
+
+        mapped_drug = self._recommend_seeded_concept_set(
+            comparator_drug_name.strip(), expected_domain="Drug")
+
+        # Add the comparator drug as a new concept set and repoint the entry to it
+        # (avoids clobbering the treatment-drug concept set if rules still use it).
+        existing_ids = [cs["id"] for cs in base.get("ConceptSets", [])] or [0]
+        new_id = max(existing_ids) + 1
+        base.setdefault("ConceptSets", []).append(
+            {
+                "id": new_id,
+                "name": mapped_drug["name"],
+                "expression": deepcopy(mapped_drug["expression"]),
+            }
+        )
+        for body in entry_bodies:
+            body["CodesetId"] = new_id
 
         return base
 
