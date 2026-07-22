@@ -4670,6 +4670,12 @@ class TTEService:
         Target = disease patients, Treatment = disease + drug PRESENCE,
         Comparator = disease + drug ABSENCE.
         """
+        # Defect A fix (follow-gold, drug-anchored entry): when
+        # TTE_DRUG_ANCHORED_ENTRY is set, skip the drug->disease swap entirely and
+        # keep the base's DrugEra entry so cohorts match gold's new-user design.
+        # Default off -> no behavior change unless explicitly enabled.
+        if os.environ.get("TTE_DRUG_ANCHORED_ENTRY", "").strip().lower() in ("1", "true", "yes"):
+            return base
         pc = base.get("PrimaryCriteria") or {}
         criteria_list = pc.get("CriteriaList") or []
         if not criteria_list:
