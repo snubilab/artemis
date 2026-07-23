@@ -5064,18 +5064,16 @@ class TTEService:
         return (primary.get("cohortName") or primary.get("description")
                 or "cardiovascular outcomes").strip()
 
-    def _mock_hitl_approve_comparator(self, artifact: Any) -> str | None:
-        """MOCK human-in-the-loop approval.
-
-        The real HITL review panel is not wired yet — this stub auto-approves the
-        recommender's top CV-neutral class so the rest of the pipeline can run.
-        Replace with a real approval channel when the review UI lands.
+    def _mock_hitl_approve_comparator(self, result: Any) -> dict[str, Any] | None:
+        """MOCK human-in-the-loop approval — auto-approve the top literature-first
+        recommendation {drug_class, ingredients} so the pipeline can run. The real HITL
+        review panel is not wired yet; replace this stub with a review channel later.
         """
-        rec = getattr(artifact, "recommendation", None) if artifact else None
-        approved = rec.get("class") if isinstance(rec, dict) else None
-        if approved:
-            logging.info("[TTE] MOCK HITL auto-approved comparator class: %s", approved)
-        return approved
+        rec = result.get("recommendation") if isinstance(result, dict) else getattr(result, "recommendation", None)
+        if isinstance(rec, dict) and rec.get("drug_class") and rec.get("ingredients"):
+            logging.info("[TTE] MOCK HITL auto-approved comparator: %s", rec["drug_class"])
+            return rec
+        return None
 
     def _resolve_class_drug_concept_set(
         self, class_name: str, ingredients: list[str]
@@ -5130,6 +5128,170 @@ class TTEService:
             return None
         return {"name": f"{class_name} (recommended comparator)", "expression": expr}
 
+    def _discover_comparator_candidates(self, treatment_drug_name: str) -> list[dict[str, Any]]:
+        """Data-driven candidate comparator classes from the CDM vocabulary.
+
+        The treatment drug's ATC-4th SIBLINGS (same ATC-3rd pharmacological subgroup)
+        are its candidate comparator classes, each carrying its member RxNorm
+        ingredients present in the CDM. No hardcoded class list. The treatment's own
+        class and ATC catch-all buckets ("Other …", "Combinations …") are excluded.
+
+        Uses the 'RxNorm - ATC pr lat' (primary ATC) relationship to anchor the drug's
+        true class — otherwise combination products (e.g. insulin+GLP-1) would steer
+        discovery into the wrong subgroup. Returns [] on any failure (caller falls back).
+        """
+        drug = (treatment_drug_name or "").strip()
+        if not drug:
+            return []
+        try:
+            import psycopg2
+
+            from src.settings import settings
+
+            conn = psycopg2.connect(settings.DATABASE_URL)
+        except Exception as exc:
+            logging.debug("[TTE] candidate discovery connect failed: %s", exc)
+            return []
+        S = settings.CDM_SCHEMA
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""SELECT concept_id FROM {S}.concept
+                        WHERE LOWER(concept_name) = LOWER(%s) AND vocabulary_id = 'RxNorm'
+                          AND concept_class_id = 'Ingredient' AND standard_concept = 'S'
+                          AND invalid_reason IS NULL""",
+                    (drug,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return []
+                ingredient_id = row[0]
+                # Primary ATC (disambiguates combination-product cross-links).
+                cur.execute(
+                    f"""SELECT concept_id_2 FROM {S}.concept_relationship
+                        WHERE concept_id_1 = %s AND relationship_id = 'RxNorm - ATC pr lat'
+                          AND invalid_reason IS NULL""",
+                    (ingredient_id,),
+                )
+                prim = cur.fetchone()
+                if not prim:
+                    return []
+                # Resolve to the drug's own ATC-4th class.
+                cur.execute(f"SELECT concept_class_id FROM {S}.concept WHERE concept_id = %s", (prim[0],))
+                cls_row = cur.fetchone()
+                if cls_row and cls_row[0] == "ATC 4th":
+                    own_atc4 = prim[0]
+                else:
+                    cur.execute(
+                        f"""SELECT c.concept_id FROM {S}.concept_ancestor ca
+                            JOIN {S}.concept c ON c.concept_id = ca.ancestor_concept_id
+                            WHERE ca.descendant_concept_id = %s AND c.vocabulary_id = 'ATC'
+                              AND c.concept_class_id = 'ATC 4th'""",
+                        (prim[0],),
+                    )
+                    r = cur.fetchone()
+                    own_atc4 = r[0] if r else None
+                if not own_atc4:
+                    return []
+                # ATC-3rd parent, then its ATC-4th children (the sibling classes).
+                cur.execute(
+                    f"""SELECT c.concept_id FROM {S}.concept_ancestor ca
+                        JOIN {S}.concept c ON c.concept_id = ca.ancestor_concept_id
+                        WHERE ca.descendant_concept_id = %s AND c.vocabulary_id = 'ATC'
+                          AND c.concept_class_id = 'ATC 3rd'""",
+                    (own_atc4,),
+                )
+                r = cur.fetchone()
+                if not r:
+                    return []
+                atc3 = r[0]
+                cur.execute(
+                    f"""SELECT c.concept_id, c.concept_name FROM {S}.concept_ancestor ca
+                        JOIN {S}.concept c ON c.concept_id = ca.descendant_concept_id
+                        WHERE ca.ancestor_concept_id = %s AND c.vocabulary_id = 'ATC'
+                          AND c.concept_class_id = 'ATC 4th'
+                        ORDER BY c.concept_code""",
+                    (atc3,),
+                )
+                siblings = cur.fetchall()
+                out: list[dict[str, Any]] = []
+                for cid, name in siblings:
+                    if cid == own_atc4:
+                        continue
+                    low = name.lower()
+                    if low.startswith("other") or "combinations" in low:
+                        continue  # ATC catch-all buckets — not real comparator classes
+                    cur.execute(
+                        f"""SELECT DISTINCT c.concept_name FROM {S}.concept_ancestor ca
+                            JOIN {S}.concept c ON c.concept_id = ca.descendant_concept_id
+                            WHERE ca.ancestor_concept_id = %s AND c.vocabulary_id = 'RxNorm'
+                              AND c.concept_class_id = 'Ingredient' AND c.standard_concept = 'S'
+                              AND c.invalid_reason IS NULL
+                            ORDER BY 1""",
+                        (cid,),
+                    )
+                    ings = [x[0] for x in cur.fetchall()]
+                    if ings:
+                        out.append({"drug_class": name, "atc4_id": cid, "ingredients": ings})
+                return out
+        except Exception as exc:
+            logging.debug("[TTE] candidate discovery failed for '%s': %s", drug, exc)
+            return []
+        finally:
+            conn.close()
+
+    def _treatment_atc_class(self, drug_name: str) -> str:
+        """The treatment drug's own ATC-4th class name (context for the literature query)."""
+        drug = (drug_name or "").strip()
+        if not drug:
+            return ""
+        try:
+            import psycopg2
+
+            from src.settings import settings
+
+            conn = psycopg2.connect(settings.DATABASE_URL)
+        except Exception:
+            return ""
+        S = settings.CDM_SCHEMA
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""SELECT concept_id FROM {S}.concept WHERE LOWER(concept_name) = LOWER(%s)
+                        AND vocabulary_id = 'RxNorm' AND concept_class_id = 'Ingredient'
+                        AND standard_concept = 'S' AND invalid_reason IS NULL""",
+                    (drug,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return ""
+                cur.execute(
+                    f"""SELECT concept_id_2 FROM {S}.concept_relationship
+                        WHERE concept_id_1 = %s AND relationship_id = 'RxNorm - ATC pr lat'
+                          AND invalid_reason IS NULL""",
+                    (row[0],),
+                )
+                prim = cur.fetchone()
+                if not prim:
+                    return ""
+                cur.execute(f"SELECT concept_class_id, concept_name FROM {S}.concept WHERE concept_id = %s", (prim[0],))
+                cc = cur.fetchone()
+                if cc and cc[0] == "ATC 4th":
+                    return cc[1]
+                cur.execute(
+                    f"""SELECT c.concept_name FROM {S}.concept_ancestor ca
+                        JOIN {S}.concept c ON c.concept_id = ca.ancestor_concept_id
+                        WHERE ca.descendant_concept_id = %s AND c.vocabulary_id = 'ATC'
+                          AND c.concept_class_id = 'ATC 4th'""",
+                    (prim[0],),
+                )
+                r = cur.fetchone()
+                return r[0] if r else ""
+        except Exception:
+            return ""
+        finally:
+            conn.close()
+
     def _build_recommended_placebo_comparator_circe(
         self,
         eligibility: dict[str, Any],
@@ -5138,18 +5300,18 @@ class TTEService:
         study: dict[str, Any] | None = None,
         time_params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """A placebo arm has no real-world cohort, so recommend a CV-neutral active
-        comparator (ADR-028), MOCK-approve it (HITL not wired), and build a new-user
-        cohort on that class. Falls back to the derived (disease + drug ABSENCE)
-        comparator whenever a recommendation cannot be produced or mapped."""
+        """A placebo arm has no real-world cohort. Literature-FIRST (ADR-028 revised):
+        prior emulations / comparative-effectiveness studies name the CV-neutral active
+        comparator; the CDM only grounds feasibility. MOCK-approve (HITL not wired), then
+        build a new-user cohort. Falls back to the derived (disease + drug ABSENCE)
+        comparator whenever a recommendation cannot be produced or grounded."""
 
         def _fallback() -> dict[str, Any]:
             return self._build_disease_based_comparator_circe(
                 eligibility, treatment_arm_name, time_params=time_params, study=study)
 
         try:
-            from src.agents.comparator.literature import class_ingredients, class_of_drug
-            from src.agents.comparator.recommender import recommend_comparator
+            from src.agents.comparator.recommender import recommend_from_literature
         except Exception as exc:
             logging.warning("[TTE] comparator recommender unavailable (%s); derived comparator", exc)
             return _fallback()
@@ -5159,32 +5321,36 @@ class TTEService:
             logging.warning("[TTE] placebo comparator: unknown indication; derived comparator")
             return _fallback()
 
+        # Literature-FIRST: prior emulations / comparative-effectiveness studies name the
+        # CV-neutral active comparator; the CDM only grounds feasibility (below).
         try:
-            artifact = recommend_comparator(
+            result = recommend_from_literature(
                 treatment_arm_name,
+                self._treatment_atc_class(treatment_arm_name),
                 indication,
                 self._recommender_outcome(study),
                 trial_name=(study or {}).get("name"),
-                treatment_class=class_of_drug(treatment_arm_name),
             )
         except Exception as exc:
-            logging.warning("[TTE] comparator recommendation failed (%s); derived comparator", exc)
+            logging.warning("[TTE] literature-first recommendation failed (%s); derived comparator", exc)
             return _fallback()
 
-        approved = self._mock_hitl_approve_comparator(artifact)
+        approved = self._mock_hitl_approve_comparator(result)  # {drug_class, ingredients} or None
         if not approved:
-            logging.warning("[TTE] placebo comparator: no class approved; derived comparator")
+            logging.warning("[TTE] placebo comparator: no recommendation approved; derived comparator")
             return _fallback()
 
-        concept_set = self._resolve_class_drug_concept_set(approved, class_ingredients(approved))
+        # CDM grounding (feasibility): keep only the recommended drugs that exist in the CDM.
+        concept_set = self._resolve_class_drug_concept_set(approved["drug_class"], approved["ingredients"])
         if not concept_set:
             logging.warning(
-                "[TTE] placebo comparator: could not map class '%s'; derived comparator", approved)
+                "[TTE] placebo comparator: '%s' not groundable in CDM; derived comparator",
+                approved["drug_class"])
             return _fallback()
 
-        logging.info("[TTE] placebo comparator: active-comparator cohort on '%s'", approved)
+        logging.info("[TTE] placebo comparator (literature-first): '%s'", approved["drug_class"])
         return self._build_drug_anchored_comparator_circe(
-            eligibility, approved, time_params=time_params, study=study,
+            eligibility, approved["drug_class"], time_params=time_params, study=study,
             prebuilt_concept_set=concept_set)
 
     # ------------------------------------------------------------------

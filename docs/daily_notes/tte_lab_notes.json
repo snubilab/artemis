@@ -1,0 +1,222 @@
+[
+  {
+    "date": "2026-07-23",
+    "title": "실험노트 — placebo 대조군 문헌추천기: 구현·검증·데이터기반화·최적화",
+    "sections": [
+      {
+        "h": "실험 0 · 개요 / 목표",
+        "items": [
+          "배경: 문제 C(대조군) 중 placebo 시험(LEADER/CARMELINA/EMPA)은 실세계에 placebo 복용 기록이 없어 대조군을 만들 수 없음.",
+          "가설: 치료약·질환·주요 결과지표가 주어지면, 문헌으로부터 심혈관에 '중립(neutral)'인 능동대조약(active comparator)을 근거와 함께 추천할 수 있다.",
+          "성공기준: (1) 로컬 LLM으로 end-to-end 동작, (2) 의학적으로 타당(적대적 검증 통과), (3) 후보군이 하드코딩 아닌 데이터 기반, (4) 실용적 속도."
+        ]
+      },
+      {
+        "h": "실험 1 · 로컬 vLLM 진단 및 연결  [해결]",
+        "items": [
+          "목적: 추천기 분류에 쓸 vLLM(Qwen)을 붙인다.",
+          "방법: .env의 원격 vLLM 도달성 확인 → 실패 시 GPU/포트 정찰(nvidia-smi, ss -ltnp, /proc cmdline).",
+          "관찰: 원격 61.107.200.12:8000 타임아웃(외부 박스, 다운). 반면 이 GB10에 vLLM이 이미 기동 중 — :8000 = snuh/hari-q3-8b(Qwen3-8B, tool-parser qwen3_xml), :8002 = google/medgemma-1.5-4b. .env는 죽은 원격을 가리키고 있었음.",
+          "부수 발견: host에서 .env 직접 로드 시 미선언 키(bedrock/vertex)로 Settings(extra=forbid) 크래시.",
+          "결과: .env VLLM_BASE_URL을 Tailscale IP 100.66.233.6:8000로 영구 반영(host·컨테이너 공용, 컨테이너에서 도달 확인). Settings를 extra=ignore로 근본 수정.",
+          "결론: 'vLLM이 없다'가 아니라 '주소가 틀렸다'였음. 새로 띄울 필요 없었음."
+        ]
+      },
+      {
+        "h": "실험 2 · 문헌기반 추천기 end-to-end  [성공]",
+        "items": [
+          "목적: 문헌 → CV-neutral 대조약 추천을 로컬 vLLM으로 실동작.",
+          "방법: literature.py(PubMed esearch→efetch로 후보 클래스별 CV근거·반증·선행 emulation 수집) + recommender.py(vLLM이 neutral/beneficial/harmful 분류 → 중립·선행 우선 랭킹 → HITL 제안 아티팩트).",
+          "관찰: reasoning 모델이라 <think> 블록 방출 → /no_think + <think> strip으로 JSON 파싱 안정화.",
+          "결과: empagliflozin/EMPA-REG → DPP-4 inhibitors neutral 0.75 추천, GLP-1은 beneficial(보호제)로 올바르게 제외.",
+          "결론: 로컬 Qwen3만으로 문헌기반 추천 성립. status=proposed(자동적용 금지, HITL)."
+        ]
+      },
+      {
+        "h": "실험 3 · 적대적 검증 (서브에이전트 워크플로우)  [sound-with-caveats]",
+        "items": [
+          "목적: 추천이 임상적으로 맞는지 독립 검증.",
+          "방법: 3개 렌즈 병렬(① landmark CVOT 임상근거 ② 랭킹·제외 타당성 ③ 인용 PMID 진위) → 종합 에이전트.",
+          "관찰: DPP-4 = SGLT2i emulation의 교과서적 CV-neutral 대조군 확정(SAVOR 1.00, EXAMINE 0.96, TECOS 0.98, CARMELINA 1.02, CAROLINA 0.98). GLP-1 제외 정확. 결함 발견: 문헌 모듈이 엉뚱한 클래스 논문 인용(Metformin←세마글루타이드, TZD←CAROLINA), saxagliptin HF 신호(HR 1.27) caveat.",
+          "결과: 클래스+CV 관련성 게이트 추가 → 오인용 제거. 재실행 시 TZD가 neutral→harmful로 자동 교정.",
+          "결론: 근거를 고치니 판정이 따라옴. 검증이 실제 결함을 잡음."
+        ]
+      },
+      {
+        "h": "실험 4 · TTE placebo 분기 연결(mock HITL) + 컨테이너 실증  [성공, 버그 1건 수정]",
+        "items": [
+          "목적: 추천 아티팩트 → 실제 대조군 코호트(Circe) 생성으로 연결.",
+          "방법: placebo arm 라우팅 분기 신설 → 추천 → mock HITL 자동승인 → 클래스 ingredient union concept set → drug-anchored builder로 DrugEra entry repoint. HITL은 _mock_hitl_approve_comparator 한 곳만 mock.",
+          "관찰: artemis-api 컨테이너 real CDM에서 LEADER(liraglutide/placebo) → DPP-4 추천 → DrugEra 코호트. 그런데 로그에 'Filtered overbroad concept 1580747 (sitagliptin)' — roll_up 필터가 최다 DPP-4i인 sitagliptin을 descendant 폭증 이유로 제거(4/5만 담김).",
+          "결과: DrugEra는 ingredient-level이라 descendant 확장 불필요 → roll_up=False로 교정 → 5/5(sitagliptin 포함) 보존 재검증.",
+          "결론: 오프라인 로직만으론 안 보이던 버그를 실 CDM 실행이 드러냄."
+        ]
+      },
+      {
+        "h": "실험 5 · 후보 발굴 데이터 기반화 (하드코딩 제거)  [성공, 함정 1건]",
+        "items": [
+          "목적: 대조군 후보 클래스를 코드가 아니라 CDM 어휘에서 발굴(연구용).",
+          "방법: 치료약 ingredient → primary ATC(RxNorm - ATC pr lat) → own ATC 4th → ATC 3rd parent → 형제 ATC 4th(Other/Combinations 제외) → 각 클래스의 CDM 내 RxNorm ingredient.",
+          "함정: 그냥 ATC ancestor를 잡으면 liraglutide가 insulin combination(A10AE)로 새서 인슐린 형제가 나옴 → primary ATC로 앵커해야 진짜 클래스(A10BJ, GLP-1 receptor agonists) → 형제 A10B(비인슐린 당뇨약).",
+          "결과: 하드코딩(CANDIDATE_CLASSES/CLASS_INGREDIENTS/…) 전부 삭제, fallback 없음.",
+          "결론: 후보 풀 자체가 CDM 실재 기반. 아래는 현재 코드 1회 실행(temperature=0, 결정적)의 실제 후보 전체와 랭킹 — 클래스명은 ATC 정식 영어명."
+        ],
+        "table": {
+          "head": ["Trial", "Treatment (ATC class)", "# candidates", "Recommended #1", "#1 verdict"],
+          "rows": [
+            ["LEADER", "liraglutide (GLP-1 receptor agonists)", "7", "Biguanides", "neutral 0.80"],
+            ["PLATO", "ticagrelor (Platelet aggregation inhibitors)", "5", "Heparin group", "neutral 0.75"],
+            ["ARISTOTLE", "apixaban (Direct factor Xa inhibitors)", "5", "Direct thrombin inhibitors", "neutral 0.75"]
+          ]
+        }
+      },
+      {
+        "h": "실험 5-A · LEADER — candidates & ranking (liraglutide)",
+        "items": ["발굴 후보 = A10B(비인슐린 당뇨약)의 ATC 4th 형제, 치료약 클래스 GLP-1 receptor agonists 제외. 추천기 랭킹:"],
+        "table": {
+          "head": ["#", "Candidate class (ATC 4th)", "Verdict", "Conf"],
+          "rows": [
+            ["1", "Biguanides", "neutral", "0.80"],
+            ["2", "Sulfonylureas", "neutral", "0.75"],
+            ["3", "Alpha glucosidase inhibitors", "neutral", "0.70"],
+            ["4", "Dipeptidyl peptidase 4 (DPP-4) inhibitors", "neutral", "0.60"],
+            ["5", "Thiazolidinediones", "neutral", "0.50"],
+            ["6", "Sulfonamides (heterocyclic)", "unknown", "0.00"],
+            ["7", "Sodium-glucose co-transporter 2 (SGLT2) inhibitors", "beneficial", "0.95"]
+          ]
+        }
+      },
+      {
+        "h": "실험 5-B · PLATO — candidates & ranking (ticagrelor)",
+        "items": ["발굴 후보 = B01A(antithrombotic agents)의 ATC 4th 형제, 치료약 클래스 Platelet aggregation inhibitors 제외:"],
+        "table": {
+          "head": ["#", "Candidate class (ATC 4th)", "Verdict", "Conf"],
+          "rows": [
+            ["1", "Heparin group", "neutral", "0.75"],
+            ["2", "Direct thrombin inhibitors", "neutral", "0.75"],
+            ["3", "Vitamin K antagonists", "neutral", "0.75"],
+            ["4", "Direct factor Xa inhibitors", "neutral", "0.70"],
+            ["5", "Enzymes", "neutral", "0.50"]
+          ]
+        }
+      },
+      {
+        "h": "실험 5-C · ARISTOTLE — candidates & ranking (apixaban)",
+        "items": [
+          "발굴 후보 = B01A의 ATC 4th 형제, 치료약 클래스 Direct factor Xa inhibitors 제외:",
+          "참고: 실제 ARISTOTLE 대조약인 Vitamin K antagonists(warfarin)가 후보로 발굴되나, 이 실행에선 beneficial로 분류돼 4위(중립 아님→제외)이고 Direct thrombin inhibitors가 1위. 이전 코드 버전에선 VKA가 neutral 1위였음 — anticoagulant는 중립/유익 경계가 얇고 신뢰도가 뭉쳐(0.70~0.85) 1순위가 갈림(실험 7 참조)."
+        ],
+        "table": {
+          "head": ["#", "Candidate class (ATC 4th)", "Verdict", "Conf"],
+          "rows": [
+            ["1", "Direct thrombin inhibitors", "neutral", "0.75"],
+            ["2", "Heparin group", "neutral", "0.70"],
+            ["3", "Enzymes", "unknown", "0.50"],
+            ["4", "Vitamin K antagonists  (= real ARISTOTLE comparator, warfarin)", "beneficial", "0.85"],
+            ["5", "Platelet aggregation inhibitors excl. heparin", "beneficial", "0.85"]
+          ]
+        }
+      },
+      {
+        "h": "실험 6 · 성능 최적화  [133s → 41s, 3.3x]",
+        "items": [
+          "목적: 추천 1건 ~133s를 단축.",
+          "방법: 계측(래퍼로 단계별 시간) → 병목 규명 → efetch 배치화 + vLLM 분류 병렬화 + 출력(supporting_pmids) 축소.",
+          "관찰: PubMed efetch가 80회 직렬(건당 0.34s sleep 포함)로 68s, vLLM 분류가 7건 직렬로 56s. vLLM은 실제로 배치 처리됨(직렬≒동시)이나 실 프롬프트 per-call 생성이 8s로 병렬 이득 제한 → 진짜 레버는 출력 토큰.",
+          "결과: 아래 표. 총 133s→41s. 랭킹은 동일(결정성은 실험 7).",
+          "결론: 배치 I/O + 생성 토큰 축소가 핵심."
+        ],
+        "table": {
+          "head": ["단계", "before", "after"],
+          "rows": [
+            ["PubMed (esearch+efetch+sleep)", "77s (efetch 80회)", "23s (efetch 배치 15회)"],
+            ["vLLM 분류", "56s (7건 직렬)", "18s (병렬+출력축소)"],
+            ["CDM 후보 발굴", "4s", "4s"],
+            ["총계", "133.5s", "40.9s (3.3x)"]
+          ]
+        }
+      },
+      {
+        "h": "실험 7 · 결정성 조사 (추천이 왜 바뀌나)  [결정적임]",
+        "items": [
+          "목적: 실행마다 추천이 달라 보이는 원인 규명(temperature=0인데?).",
+          "방법: (a) 동일 프롬프트로 vLLM greedy 직렬 5회 vs 동시 5회 (b) 동일 쿼리 esearch 2회 (c) 같은 코드로 LEADER 연속 2회.",
+          "관찰(아래 표): vLLM 직렬·동시 모두 동일, PubMed 동일, 연속 2회 랭킹 100% 동일.",
+          "결과: 결정적. 앞서 'DPP-4→Biguanides' 변동은 RNG가 아니라 측정 사이 프롬프트를 바꿔서(supporting_pmids 제거, findings 6000↔3000).",
+          "결론: 실제 변동 요인은 RNG가 아니라 (a) PubMed 시간 드리프트(새 논문 색인) (b) 중립 후보들이 0.7~0.8로 근소차라 작은 입력변화에 1순위 뒤집힘(구조적 취약)."
+        ],
+        "table": {
+          "head": ["검사", "결과"],
+          "rows": [
+            ["vLLM greedy 직렬 5회", "전부 동일"],
+            ["vLLM greedy 동시 5회", "전부 동일 (배치 FP 비결정성 없음)"],
+            ["esearch 동일쿼리 2회", "동일 PMID"],
+            ["LEADER 추천 연속 2회", "랭킹·1순위 완전 동일"]
+          ]
+        }
+      },
+      {
+        "h": "실험 8 · 대시보드 개선",
+        "items": [
+          "Daily Notes: 미니 캘린더 추가(노트 있는 날짜 하이라이트+점, 클릭 필터, 월 이동) → 오른쪽 sticky 사이드로 배치.",
+          "Issue Log: 정적 HTML → 데이터 기반(JSON)으로 전환, 캘린더 공유(공용 noteView 함수), 각 문제에 '기존 output → 새 output' 명시, 탭 라벨 날짜 제거.",
+          "표 지원: JSON 섹션에 table 타입 추가(head/rows) — Incident 표·감사 표 복원.",
+          "이 실험노트 탭도 같은 메커니즘(별도 JSON tte_lab_notes.json)."
+        ]
+      },
+      {
+        "h": "실험 9 · 문헌 우선 재설계 (candidate 발굴을 CDM→문헌으로)  [파이프라인 통합]",
+        "items": [
+          "동기: 적대적 검증(서브에이전트 3렌즈)에서 ATC 형제 발굴의 임상 실패 확인 — LEADER는 metformin을 중립 오판(정답 DPP-4i가 4위로 매장), PLATO는 heparin(급성 정맥→경구 항혈소판제 대용 불가), 동일계열 제외로 실제 대조약 clopidogrel 놓침.",
+          "재설계: CDM 구조(ATC 형제) 대신 문헌에서 후보 발굴 — 선행 emulation·비교효과·methods 문헌에서 실제 쓴/권장 대조약을 LLM이 추출(경로·라인·CV중립 판단 포함) → CDM으로 실재(feasibility)만 검증. CDM 역할이 '발굴'→'grounding'으로 이동(프로젝트 테마 일치).",
+          "결과: 임상 감사가 요구한 정답이 그대로 1등으로 올라옴(아래 표). placebo 분기를 이 로직으로 교체 완료(recommend_from_literature → mock HITL → CDM grounding → DrugEra 대조군)."
+        ],
+        "table": {
+          "head": ["Trial", "기존 (ATC 형제)", "문헌 우선 (신규)"],
+          "rows": [
+            ["LEADER (GLP-1, placebo)", "metformin (중립 오판·배경치료)", "DPP-4 inhibitors ✅ (sitagliptin 등 5개 grounded)"],
+            ["EMPA-REG (SGLT2, placebo)", "동일 문제 예상", "DPP-4 inhibitors ✅"],
+            ["PLATO (항혈소판, active)", "Heparin group (급성 정맥, 부적절)", "Clopidogrel ✅ = 실제 PLATO 대조약"]
+          ]
+        }
+      },
+      {
+        "h": "문헌 검색 방법 (PubMed E-utilities) — 클릭해 펼치기",
+        "collapsed": true,
+        "items": [
+          "파이프라인: PubMed esearch(PMID 검색) → efetch 배치(제목+초록) → LLM 대조약 추출 → CDM grounding. 쿼리별 relevance 상위 8건, dedup 후 초록을 프롬프트에 투입(≤8000자).",
+          "쿼리1 (해당 시험의 선행 emulation): (\"{trial}\"[Title/Abstract]) AND (emulation OR observational OR \"comparative effectiveness\") AND (comparator OR \"active comparator\")",
+          "쿼리2 (약/클래스 비교효과·new-user): (\"{treatment}\" OR \"{treatment_class}\") AND (\"active comparator\" OR emulation OR \"new-user\" OR \"comparative effectiveness\") AND ({outcome} OR cardiovascular) AND ({indication})",
+          "쿼리3 (클래스 active comparator): (\"{treatment_class}\") AND \"active comparator\" AND ({indication})",
+          "수집량(실측): LEADER 23편 · EMPA-REG 22편 · PLATO 15편. LLM은 same_setting(경로/라인) + CV verdict를 함께 판정하고, neutral·same_setting·CDM실재 조건을 만족하는 최상위를 추천(자동적용 아님, HITL 제안)."
+        ]
+      },
+      {
+        "h": "실험 10 · placebo 시험 전체 스냅샷 + 재현성",
+        "items": [
+          "gold 6개 중 placebo 시험 3개(LEADER/EMPA-REG/CARMELINA)에 문헌 우선 추천 생성 + 로컬 불변 스냅샷 저장.",
+          "CARMELINA 주목: 치료약 linagliptin이 DPP-4i 자신 → 자기 클래스 제외 → 문헌 우선이 Sulfonylureas 추천(실제 자매시험 CAROLINA가 glimepiride=SU 사용과 일치). ATC 방식으론 불가능한 맥락 판단.",
+          "재현성: 각 시험의 검색 문서를 data/comparator_literature/{trial}.json에 불변 저장(쿼리 3종 + 문서 전체 + 추출결과 + saved_at). 재실행 시 source=cache로 문서 고정 → temp=0 LLM → 픽 불변. PubMed 드리프트 무관.",
+          "저장 파일: leader.json(23편) · empa_reg_outcome.json(20편) · carmelina.json(15편)."
+        ],
+        "table": {
+          "head": ["Trial", "치료약 (클래스)", "추천 대조군", "CDM grounded"],
+          "rows": [
+            ["LEADER", "liraglutide (GLP-1)", "DPP-4 inhibitors", "sitagliptin 등 5"],
+            ["EMPA-REG", "empagliflozin (SGLT2)", "DPP-4 inhibitors", "sitagliptin 등 5"],
+            ["CARMELINA", "linagliptin (DPP-4)", "Sulfonylureas", "glimepiride 등 4"]
+          ]
+        }
+      },
+      {
+        "h": "산출물 / 커밋",
+        "items": [
+          "코드: comparator/literature.py·recommender.py(추천기+배치+병렬+데이터기반), services/tte_service.py(placebo 분기+ATC 발굴), agent1/pubmed_fetcher.py(배치 efetch), settings.py(extra=ignore).",
+          "문서: ADR-027(active-comparator)/ADR-028(문헌추천기)/ADR-029(feasibility), 대시보드 3→4탭.",
+          "기존 커밋: 7cf3fd5(A)/2f1ca57(C)/16e8ee8(B)/134e494(placebo wiring). 데이터기반화+최적화 세션분은 미커밋(요청 시 커밋).",
+          "다음: 실제 HITL 패널(mock 대체), WebAPI 코호트 실제 생성→아주대·계명대 재검증, 신뢰도 뭉침 안정화(앙상블/근거강도 tiebreak), 문제 D 구현."
+        ]
+      }
+    ]
+  }
+]

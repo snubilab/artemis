@@ -82,6 +82,44 @@ def fetch_pubmed_abstract(pmid: str, timeout: int = 10) -> Optional[PubMedPaper]
         return None
 
 
+def fetch_pubmed_abstracts(pmids: List[str], timeout: int = 20) -> Dict[str, PubMedPaper]:
+    """Batch efetch: fetch many PMIDs in ONE request. Returns {pmid: PubMedPaper}.
+
+    Far cheaper than per-PMID fetches (one round-trip + one courtesy delay for N papers).
+    """
+    ids = [str(p) for p in pmids if p]
+    if not ids:
+        return {}
+    try:
+        response = requests.get(
+            PUBMED_EFETCH,
+            params={"db": "pubmed", "id": ",".join(ids), "retmode": "xml", "rettype": "abstract"},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        xml_text = response.text
+    except Exception as e:
+        print(f"[PubMed Fetcher] Batch fetch failed ({len(ids)} ids): {e}")
+        return {}
+
+    out: Dict[str, PubMedPaper] = {}
+    # Split the article set into individual articles and parse each one.
+    for chunk in re.split(r"(?=<PubmedArticle>)", xml_text):
+        if "<PubmedArticle>" not in chunk:
+            continue
+        pm = re.search(r"<PMID[^>]*>(\d+)</PMID>", chunk)
+        if not pm:
+            continue
+        pmid = pm.group(1)
+        tm = re.search(r"<ArticleTitle>(.*?)</ArticleTitle>", chunk, re.DOTALL)
+        title = tm.group(1).strip() if tm else ""
+        abstracts = re.findall(r"<AbstractText[^>]*>(.*?)</AbstractText>", chunk, re.DOTALL)
+        abstract = "\n\n".join(a.strip() for a in abstracts) if abstracts else ""
+        if title or abstract:
+            out[pmid] = PubMedPaper(pmid=pmid, title=title, abstract=abstract)
+    return out
+
+
 def _best_section_match(text: str, patterns: List[str]) -> List[str]:
     """Find the best (longest substantive) section match across all regex matches.
 

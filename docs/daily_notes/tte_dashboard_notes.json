@@ -17,8 +17,8 @@
         "h": "근본원인·해결 (vLLM)",
         "items": [
           "vLLM은 이미 이 GB10에 떠 있었음 — :8000 snuh/hari-q3-8b(Qwen3-8B), :8002 google/medgemma-1.5-4b",
-          ".env의 VLLM_BASE_URL이 죽은 원격(61.107.200.12:8000)을 가리켜 못 쓴 것뿐 → localhost:8000로 연결해 해결",
-          "host 직접 실행 시 .env의 미선언 키(bedrock/vertex)로 Settings(extra=forbid) 크래시 → clean CWD + env override로 우회"
+          ".env의 VLLM_BASE_URL이 죽은 원격(61.107.200.12:8000)을 가리켜 못 쓴 것뿐 → Tailscale IP 100.66.233.6:8000로 .env에 영구 반영(host·컨테이너 공용)",
+          "host 실행 시 .env의 미선언 키(bedrock/vertex)로 Settings(extra=forbid) 크래시 → Settings extra=ignore로 근본 해결(다른 SDK가 읽는 키는 무시)"
         ]
       },
       {
@@ -31,11 +31,61 @@
         ]
       },
       {
+        "h": "TTE placebo 분기 연결·실증",
+        "items": [
+          "placebo arm → 추천기 → mock HITL 자동승인 → 클래스 ingredient union → DrugEra comparator 코호트 연결 (실패 시 레거시 fallback)",
+          "치료약 클래스 역매핑(class_of_drug)으로 자기 클래스 후보 제외 (liraglutide→GLP-1 제외)",
+          "artemis-api 컨테이너 real CDM 실증: LEADER(liraglutide/placebo)→DPP-4 추천→DrugEra 코호트 5개 ingredient, entry repoint 성공",
+          "실행이 드러낸 버그: roll_up 필터가 sitagliptin(최다 DPP-4i) 제거 → DrugEra는 ingredient-level이라 roll_up=False로 교정, 5/5 보존 재검증",
+          "HITL은 mock 한 곳(_mock_hitl_approve_comparator)만 — 실제 패널 붙일 때 이 메서드만 교체",
+          "커밋: 134e494 (placebo wiring + sitagliptin 수정)"
+        ]
+      },
+      {
+        "h": "후보 발굴 데이터 기반화 (하드코딩 제거, 연구용)",
+        "items": [
+          "문제: 후보 대조군 클래스가 코드에 박혀 있었음(CANDIDATE_CLASSES/CLASS_INGREDIENTS 등) — CDM 실재 여부와 무관",
+          "수정: 치료약의 ATC 형제 클래스를 CDM 어휘에서 발굴 — primary ATC(RxNorm-ATC pr lat)로 앵커 → own ATC-4th → ATC-3rd parent → 형제 ATC-4th(Other/Combinations 제외) → 각 클래스의 CDM 내 RxNorm ingredient",
+          "하드코딩 목록·헬퍼 전부 삭제 (fallback 없음). 발굴 실패 시엔 파생 comparator로만 떨어짐",
+          "결과: 3개 스터디 전부 정상 발굴·추천 (LEADER 당뇨 7클래스 / PLATO·ARISTOTLE 항혈전 5클래스) — trial별 추천 순위는 아래 섹션 참조"
+        ]
+      },
+      {
+        "h": "trial별 추천 순위 (샘플 실행)",
+        "items": [
+          "LEADER (liraglutide/T2DM) → 추천 Biguanides · ①Biguanides neut 0.80 ②Sulfonylureas 0.75 ③α-glucosidase 0.70 ④DPP-4i 0.60 ⑤TZD 0.50 ⑥Sulfonamides unkn ⑦SGLT2i bene 0.95(보호제→제외)",
+          "PLATO (ticagrelor/ACS) → 추천 헤파린군 · ①헤파린군 neut 0.75 ②직접트롬빈억제제 0.75 ③Vitamin K길항제 0.75 ④직접Xa억제제 0.70 ⑤Enzymes 0.50",
+          "ARISTOTLE (apixaban/AF) → 추천 직접트롬빈억제제 · ①직접트롬빈억제제 neut 0.75 ②헤파린군 0.70 ③Enzymes unkn ④Vitamin K길항제 bene 0.85(제외) ⑤항혈소판제 bene 0.85(제외)",
+          "결정성 검증: temperature=0이라 같은 코드·같은 시점이면 결정적 — LEADER 연속 2회 랭킹 동일, vLLM greedy 5회·PubMed 동일쿼리 재현 확인. 위 순위가 이전 실행과 다른 건 개발 중 프롬프트를 바꿔서였고 RNG 아님",
+          "실제 변동 요인: (a) PubMed가 시간 경과로 새 논문을 색인 (b) 중립 후보들이 0.7~0.8로 근소차라 작은 입력 변화에 1순위가 뒤집힘(구조적 취약). 안정성 필요 시 다회 앙상블/근거강도 tiebreak/더 큰 모델. 최종은 HITL"
+        ]
+      },
+      {
+        "h": "성능 최적화 (133s→41s, 3.3x)",
+        "items": [
+          "문제: 추천 1건 ~133s — efetch 80회 직렬+NCBI sleep 68s, vLLM 분류 7건 직렬 56s",
+          "수정1: PubMed efetch 배치화(한 번에 여러 PMID) — 80회→15회, PubMed 77s→23s",
+          "수정2: vLLM 분류 병렬화 + 출력 축소(불필요한 supporting_pmids 제거) — vLLM 56s→18s",
+          "결과: 총 133s→41s (발굴 4s + PubMed 23s + vLLM 18s)"
+        ]
+      },
+      {
+        "h": "문헌 우선 재설계 + placebo 전체 스냅샷",
+        "items": [
+          "적대적 검증(서브에이전트 3렌즈)에서 ATC 형제 발굴의 임상 실패 확인 — LEADER metformin 중립 오판(정답 DPP-4i가 4위로 매장), PLATO heparin(급성 정맥→경구 대용 불가), 동일계열 제외로 실제 대조약 clopidogrel 놓침.",
+          "재설계(문헌 우선): 후보를 CDM ATC 구조가 아니라 문헌(선행 emulation·비교효과)에서 발굴 → LLM이 경로·라인·CV중립 판단해 추출 → CDM은 feasibility grounding만. placebo 분기 파이프라인 교체 완료(recommend_from_literature).",
+          "결과: LEADER→DPP-4 inhibitors · EMPA-REG→DPP-4 inhibitors · CARMELINA→Sulfonylureas(치료약이 DPP-4라 자기 제외 → SU, 실제 CAROLINA가 쓴 glimepiride 계열과 일치). PLATO(active)는 clopidogrel=실제 대조약. 전부 CDM grounded.",
+          "재현성: 검색 문서를 data/comparator_literature/{trial}.json에 불변 스냅샷(쿼리+문서+추출+saved_at) 저장 → 재실행 시 source=cache 재사용 → PubMed 드리프트에도 픽 고정. placebo 3개 시험 스냅샷 생성 완료.",
+          "대시보드: 실험노트 탭 신설(실험 0~9, 표 6개) + 문헌 검색 방법 접이식(details, 기본 접힘) + Issue Log 데이터기반화(기존→새 output) + 캘린더(sticky, 스크롤 따라옴)·맨위로 버튼·표 복원."
+        ]
+      },
+      {
         "h": "다음",
         "items": [
-          ".env VLLM_BASE_URL 영구 정리 여부 결정 (host=localhost:8000, 컨테이너=host/Tailscale IP)",
-          "추천 아티팩트 → TTE placebo 분기 HITL 리뷰 패널 연결 → 승인 시 대조군 코호트 생성",
-          "DPP-4 톱픽 잔여 off-topic 인용(같은 클래스지만 microvascular/T1D) 정밀 필터는 필요시 강화"
+          "실제 HITL 리뷰 패널 연결 (mock 대체)",
+          "WebAPI로 3개 placebo comparator 코호트 실제 생성 → 아주대·계명대 CDM 카운트 재검증",
+          "구 ATC 발굴 경로(_discover_comparator_candidates·candidates 기반 recommend_comparator) 정리 여부 결정 — 문헌 우선으로 superseded",
+          "이번 세션 코드 커밋 (전부 미커밋 상태)"
         ]
       }
     ]

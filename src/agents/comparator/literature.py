@@ -20,43 +20,12 @@ from typing import Optional
 
 import requests
 
-from src.agents.agent1.pubmed_fetcher import fetch_pubmed_abstract
+from src.agents.agent1.pubmed_fetcher import fetch_pubmed_abstracts
 
 logger = logging.getLogger(__name__)
 
 PUBMED_ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 _NCBI_COURTESY_DELAY = 0.34  # ~3 req/s without an API key
-
-# Candidate active-comparator drug classes per indication (for CVOT emulation).
-# The treatment's own class is filtered out at query time.
-CANDIDATE_CLASSES: dict[str, list[str]] = {
-    "type 2 diabetes": [
-        "DPP-4 inhibitors", "Sulfonylureas", "Metformin",
-        "Thiazolidinediones", "GLP-1 receptor agonists", "SGLT2 inhibitors",
-    ],
-    "atrial fibrillation": ["Warfarin", "Direct oral anticoagulants"],
-    "acute coronary syndrome": ["Clopidogrel", "Prasugrel", "Ticagrelor"],
-}
-
-# Identifying terms per class (class-name variants + member ingredient names). A
-# retrieved paper must mention at least one to count as evidence FOR that class —
-# this drops wrong-class and off-topic hits that PubMed relevance-sort lets through.
-DRUG_CLASS_TERMS: dict[str, list[str]] = {
-    "DPP-4 inhibitors": ["dpp-4", "dpp4", "dipeptidyl peptidase", "gliptin",
-                         "sitagliptin", "saxagliptin", "linagliptin", "alogliptin", "vildagliptin"],
-    "Sulfonylureas": ["sulfonylurea", "sulphonylurea", "glimepiride", "glipizide",
-                      "gliclazide", "glyburide", "glibenclamide"],
-    "Metformin": ["metformin", "biguanide"],
-    "Thiazolidinediones": ["thiazolidinedione", "glitazone", "pioglitazone", "rosiglitazone"],
-    "GLP-1 receptor agonists": ["glp-1", "glp1", "glucagon-like peptide", "liraglutide",
-                                "semaglutide", "dulaglutide", "exenatide", "lixisenatide", "albiglutide"],
-    "Warfarin": ["warfarin", "vitamin k antagonist", "coumadin"],
-    "Direct oral anticoagulants": ["doac", "noac", "direct oral anticoagulant",
-                                   "apixaban", "rivaroxaban", "dabigatran", "edoxaban"],
-    "Clopidogrel": ["clopidogrel"],
-    "Prasugrel": ["prasugrel"],
-    "Ticagrelor": ["ticagrelor"],
-}
 
 # Cardiovascular-outcome terms; an on-topic CV paper mentions at least one.
 _CV_TERMS = ["cardiovascular", "mace", "myocardial", "stroke", "cardiovascular death",
@@ -66,43 +35,6 @@ _CV_TERMS = ["cardiovascular", "mace", "myocardial", "stroke", "cardiovascular d
 def _text_has_any(text: str, terms: list[str]) -> bool:
     low = text.lower()
     return any(t.lower() in low for t in terms)
-
-
-# Member ingredient names per drug class — used to (a) build a class-level comparator
-# concept set from an approved recommendation and (b) look up a treatment drug's class.
-CLASS_INGREDIENTS: dict[str, list[str]] = {
-    "DPP-4 inhibitors": ["sitagliptin", "saxagliptin", "linagliptin", "alogliptin", "vildagliptin"],
-    "Sulfonylureas": ["glimepiride", "glipizide", "gliclazide", "glyburide", "glibenclamide"],
-    "Metformin": ["metformin"],
-    "Thiazolidinediones": ["pioglitazone", "rosiglitazone"],
-    "GLP-1 receptor agonists": ["liraglutide", "semaglutide", "dulaglutide", "exenatide",
-                                "lixisenatide", "albiglutide"],
-    "SGLT2 inhibitors": ["empagliflozin", "dapagliflozin", "canagliflozin", "ertugliflozin"],
-    "Warfarin": ["warfarin"],
-    "Direct oral anticoagulants": ["apixaban", "rivaroxaban", "dabigatran", "edoxaban"],
-    "Clopidogrel": ["clopidogrel"],
-    "Prasugrel": ["prasugrel"],
-    "Ticagrelor": ["ticagrelor"],
-}
-
-
-def class_ingredients(drug_class: str) -> list[str]:
-    """Member ingredient names for a drug class (empty if unknown)."""
-    return list(CLASS_INGREDIENTS.get(drug_class, []))
-
-
-def class_of_drug(drug_name: str) -> Optional[str]:
-    """Which class contains this drug, by ingredient-name match (None if unknown).
-
-    Used to exclude the treatment's own class from comparator candidates.
-    """
-    d = _norm(drug_name).lower()
-    if not d:
-        return None
-    for cls, ings in CLASS_INGREDIENTS.items():
-        if any(ing == d or ing in d for ing in ings):
-            return cls
-    return None
 
 
 @dataclass
@@ -165,15 +97,17 @@ def _evidence_from_pmids(
     keywords: list[str],
     require_all: list[list[str]] | None = None,
 ) -> list[Evidence]:
-    """Fetch abstracts and keep only relevant ones.
+    """Batch-fetch abstracts and keep only relevant ones.
 
     require_all: list of term-groups; a paper is kept only if its title+abstract
     matches at least one term in EVERY group (e.g. [class_terms, cv_terms]).
     """
+    papers = fetch_pubmed_abstracts(pmids)  # one efetch request for all PMIDs
+    if pmids:
+        time.sleep(_NCBI_COURTESY_DELAY)  # one courtesy delay per batch, not per paper
     out: list[Evidence] = []
-    for pmid in pmids:
-        paper = fetch_pubmed_abstract(pmid)
-        time.sleep(_NCBI_COURTESY_DELAY)
+    for pmid in pmids:  # preserve PubMed relevance order
+        paper = papers.get(str(pmid))
         if not paper:
             continue
         text = f"{paper.title} {paper.abstract}"
@@ -184,34 +118,22 @@ def _evidence_from_pmids(
     return out
 
 
-def candidate_classes_for(indication: str,
-                          treatment_class: Optional[str] = None) -> list[str]:
-    """Active-comparator candidate classes for an indication, minus the treatment class."""
-    key = _norm(indication).lower()
-    cands: Optional[list[str]] = None
-    for known, classes in CANDIDATE_CLASSES.items():
-        if known in key:
-            cands = list(classes)
-            break
-    if cands is None:
-        return []
-    if treatment_class:
-        tc = treatment_class.lower()
-        cands = [c for c in cands if tc not in c.lower() and c.lower() not in tc]
-    return cands
-
-
 def acquire_evidence(
     treatment_drug: str,
     indication: str,
     outcome: str,
     *,
+    candidates: list[dict],
     trial_name: Optional[str] = None,
-    treatment_class: Optional[str] = None,
     per_query: int = 4,
-    candidate_limit: int = 6,
+    candidate_limit: int = 10,
 ) -> LiteratureBundle:
-    """Gather PubMed evidence for later comparator recommendation (ADR-028 1-3)."""
+    """Gather PubMed evidence for later comparator recommendation (ADR-028 1-3).
+
+    candidates: the data-driven candidate classes to evaluate, each
+    {"drug_class": str, "ingredients": [str, ...]} — e.g. the treatment drug's ATC
+    siblings discovered from the CDM vocabulary. Required; there is no built-in list.
+    """
     treatment_drug = _norm(treatment_drug)
     indication = _norm(indication)
     outcome = _norm(outcome)
@@ -231,14 +153,20 @@ def acquire_evidence(
     )
 
     # (2)+(3) Per candidate class: CV-effect evidence + refuting evidence.
-    # Every kept citation must mention the class AND a cardiovascular term — the
-    # relevance gate that stops wrong-class / off-topic PMIDs from being attributed.
-    for cls in candidate_classes_for(indication, treatment_class)[:candidate_limit]:
+    # Every kept citation must mention the class (or a member ingredient) AND a
+    # cardiovascular term — the relevance gate that stops wrong-class/off-topic PMIDs.
+    cand_specs = [(c["drug_class"], list(c.get("ingredients") or []))
+                  for c in (candidates or [])][:candidate_limit]
+
+    for cls, ingredients in cand_specs:
         cand = CandidateEvidence(drug_class=cls)
-        class_terms = DRUG_CLASS_TERMS.get(cls, [cls])
+        # Drug clause = class name OR member ingredients — maximises PubMed recall for
+        # verbose ATC class names (e.g. "Dipeptidyl peptidase 4 (DPP-4) inhibitors").
+        drug_clause = " OR ".join(f'"{t}"' for t in ([cls] + ingredients[:8]))
+        class_terms = ingredients + [cls]
         cv_gate = [class_terms, _CV_TERMS + [outcome]]
         cv_term = (
-            f'("{cls}"[Title/Abstract]) '
+            f'({drug_clause}) '
             f'AND ("{outcome}" OR "cardiovascular outcomes" OR MACE OR "cardiovascular safety") '
             f'AND ({indication}) AND (trial OR "meta-analysis" OR placebo)'
         )
@@ -248,7 +176,7 @@ def acquire_evidence(
             require_all=cv_gate,
         )
         refute_term = (
-            f'("{cls}"[Title/Abstract]) '
+            f'({drug_clause}) '
             f'AND (cardiovascular OR "heart failure") AND (increase OR risk OR harm OR adverse)'
         )
         cand.refutation_evidence = _evidence_from_pmids(
@@ -268,28 +196,25 @@ def to_dict(bundle: LiteratureBundle) -> dict:
 if __name__ == "__main__":  # live self-check (needs network)
     # relevance gate (offline, deterministic): wrong-class paper must be rejected.
     assert not _text_has_any("oral semaglutide cardiovascular outcomes SOUL trial",
-                             DRUG_CLASS_TERMS["Metformin"]), "gate lets wrong-class through"
+                             ["metformin", "biguanide"]), "gate lets wrong-class through"
     assert _text_has_any("sitagliptin cardiovascular safety TECOS",
-                         DRUG_CLASS_TERMS["DPP-4 inhibitors"]), "gate rejects correct class"
+                         ["sitagliptin", "dpp-4"]), "gate rejects correct class"
 
-    # class <-> ingredient mapping (offline, deterministic)
-    assert class_of_drug("empagliflozin") == "SGLT2 inhibitors", "SGLT2 lookup"
-    assert class_of_drug("liraglutide") == "GLP-1 receptor agonists", "GLP-1 lookup"
-    assert "sitagliptin" in class_ingredients("DPP-4 inhibitors"), "class ingredients"
-
-    b = acquire_evidence(
-        "empagliflozin", "Type 2 Diabetes", "MACE",
-        trial_name="EMPA-REG OUTCOME", treatment_class="SGLT2 inhibitors",
-    )
+    # candidates are injected (normally CDM-discovered); a minimal explicit set here.
+    cands = [
+        {"drug_class": "DPP-4 inhibitors",
+         "ingredients": ["sitagliptin", "saxagliptin", "linagliptin", "alogliptin"]},
+        {"drug_class": "Sulfonylureas", "ingredients": ["glimepiride", "glipizide", "gliclazide"]},
+    ]
+    b = acquire_evidence("empagliflozin", "Type 2 Diabetes", "MACE",
+                         candidates=cands, trial_name="EMPA-REG OUTCOME")
     classes = [c.drug_class for c in b.candidates]
     print("candidates:", classes)
     print("precedent PMIDs:", [e.pmid for e in b.rwd_precedent])
     for c in b.candidates:
         print(f"  {c.drug_class}: cv={[e.pmid for e in c.cv_effect_evidence]} "
               f"refute={[e.pmid for e in c.refutation_evidence]}")
-    assert classes, "no candidate classes generated"
-    assert any("DPP-4" in c for c in classes), f"DPP-4 not a candidate: {classes}"
-    assert "SGLT2 inhibitors" not in classes, "treatment class not excluded"
+    assert classes == ["DPP-4 inhibitors", "Sulfonylureas"], f"unexpected: {classes}"
     got = sum(len(c.cv_effect_evidence) for c in b.candidates)
     assert got > 0, "no CV evidence retrieved (network/PubMed issue?)"
     print(f"self-check OK: {len(classes)} candidates, {got} CV-evidence papers")

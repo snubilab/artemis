@@ -1,0 +1,96 @@
+[
+  {
+    "date": "2026-07-23",
+    "title": "TROY v1.1 코호트 결함 — 문제별 기존 output → 새 output",
+    "sections": [
+      {
+        "h": "실제 발생한 문제 (Incident)",
+        "items": [
+          "AI 생성 코호트(Circe JSON)를 아주대·계명대 실 CDM에 CohortGenerator/CirceR로 적용 → 대부분 환자수 0 또는 왜곡: Carmelina 0/0, Empa-reg 0/0, Carolina 11/43·36/116(엉뚱한 약 기준이라 무효)",
+          "현장 관찰: 김청수(아주대) '진입에 index 약제 없이 당뇨진단만 들어있다'(→A) · 조재형(계명대) 'EMPA 11번·CARMELINA 9번 criteria가 전원 탈락'(→D)"
+        ],
+        "table": {
+          "head": ["코호트", "아주대 (김청수)", "계명대 (조재형)"],
+          "rows": [
+            ["Carmelina 치료 / 대조", "0 / 0", "0 / 0"],
+            ["Carolina 치료 / 대조", "11 / 43", "36 / 116"],
+            ["Empa-reg 치료 / 대조", "0 / 0", "0 / 0"]
+          ]
+        }
+      },
+      {
+        "h": "문제 A · 진입이 index 약물이 아니라 당뇨병  [수정 완료]",
+        "items": [
+          "발견: 6개 코호트 진입 이벤트가 DrugEra가 아니라 ConditionOccurrence(Type 2 Diabetes) → 치료·대조군 거의 동일해져 0/무효",
+          "근본원인: 약물 진입을 질환(당뇨) 진입으로 바꾸는 벤치마크 전용 편법이 미등록 스터디에도 적용됨",
+          "조치: 진입을 약물 시작 시점(DrugEra, 신규사용자)으로 복원 — 모드 플래그 (commit 7cf3fd5)",
+          "기존 output → 새 output: PrimaryCriteria = ConditionOccurrence(당뇨) → PrimaryCriteria = DrugEra(index 약물). 6개 코호트 전부 확인"
+        ]
+      },
+      {
+        "h": "문제 B · 약물 개념(concept) 오매핑  [부분 수정]",
+        "items": [
+          "발견: linagliptin→sitagliptin(1580747), warfarin→LOINC 랩(3024105), glimepiride→metformin 복합제, empagliflozin/'BI 10773'→대사물질(1254065)",
+          "근본원인: 임베딩 유사검색만 쓰고 정확 이름 대조가 없음 + 잘못된 결과가 캐시에 고착",
+          "조치: RxNorm 성분 exact-match를 캐시보다 먼저 조회 + 저장된 stale 개념셋 재매핑 (commit 16e8ee8)",
+          "기존 output → 새 output: linagliptin=sitagliptin(1580747) → linagliptin=40239216 · warfarin=LOINC(3024105) → warfarin=1310149 (8개 약물 정확)",
+          "미해결: 개발코드(BI 10773) · 조합명(Liotrix)"
+        ]
+      },
+      {
+        "h": "문제 C · 대조군이 실제 대조약이 아님  [부분 수정]",
+        "items": [
+          "발견: 대조군이 'No linagliptin'(치료약 배제)로 정의 → 실제 대조약 아님, A 수정 시 '치료약 진입+치료약 배제' 자기모순",
+          "조치① active-comparator(CAROLINA/PLATO/ARISTOTLE): 대조군을 실제 대조약 신규사용자로 재정의 (commit 2f1ca57, ADR-027)",
+          "기존 output → 새 output(active): 대조군 = Target−Treatment('No linagliptin', 약물 배제규칙) → 대조군 = DrugEra(실제 대조약 신규사용자), 'No X' 모순규칙 제거",
+          "조치② placebo(LEADER/CARMELINA/EMPA): 실데이터에 placebo 없음 → 문헌기반 CV-neutral 대조약 추천기(ADR-028). 치료약·질환·결과 입력 → PubMed 근거 수집 → 중립·선행 우선 랭킹 → HITL 제안(자동 아님)",
+          "기존 output → 새 output(placebo): 대조군 = 'No liraglutide'(약물 배제) → DrugEra(추천 CV-neutral 클래스, 예 DPP-4 5개 ingredient). artemis-api 컨테이너 실 CDM 실증 완료(mock HITL)"
+        ]
+      },
+      {
+        "h": "문제 C 심화 · 후보 발굴 데이터 기반화 (하드코딩 제거, 연구용)",
+        "items": [
+          "발견: 대조군 후보 클래스·성분이 코드에 하드코딩 — CDM 실재 여부와 무관",
+          "조치: 치료약의 ATC 형제 클래스를 CDM 어휘에서 발굴 (primary ATC 앵커 → own ATC-4th → ATC-3rd parent → 형제 ATC-4th → 각 클래스 CDM 내 RxNorm ingredient). 하드코딩 전부 삭제(fallback 없음)",
+          "기존 output → 새 output: 하드코딩 6클래스 → CDM 발굴 (LEADER 당뇨 7클래스 / PLATO·ARISTOTLE 항혈전 5클래스). 실제 ARISTOTLE 대조약 Vitamin K antagonists(warfarin)가 후보로 발굴됨 — 중립/유익 경계가 얇아 실행에 따라 1순위가 갈림(실험노트 5-C 참조)"
+        ]
+      },
+      {
+        "h": "문제 C 성능 · 추천 속도 최적화",
+        "items": [
+          "발견: 추천 1건 ~133s — PubMed efetch 80회 직렬+NCBI sleep 68s, vLLM 분류 7건 직렬 56s",
+          "조치: efetch 배치화(80→15회) + vLLM 분류 병렬 + 출력(supporting_pmids) 축소",
+          "기존 output → 새 output: 133s → 41s (3.3x). PubMed 77s→23s, vLLM 56s→18s. 랭킹은 동일(temperature=0 결정적, 연속 2회 동일 확인)"
+        ]
+      },
+      {
+        "h": "문제 D · 실현 불가능한 자격 기준 (전원 탈락)  [설계 완료]",
+        "items": [
+          "발견: 실 CDM에 없는 데이터를 필수 규칙화 → 전원 탈락. EMPA #11(식이/운동 Observation), CARMELINA #9(알부민뇨/UACR). 정답(gold)엔 이 규칙들이 없음",
+          "근본원인: 프로토콜 자격기준을 feasibility 검사 없이 전부 필수 코드 규칙화(사람은 코딩 불가라 뺐음)",
+          "조치(설계): CDM 실측 prevalence 게이팅 — ACHILLES 1차선별+직접카운트 확정, polarity(필수0%=제외후보 / 배제0%=정상 / 진입0%=치명), 결합검사, HITL (ADR-029)",
+          "기존 output → 새 output(예정): 필수 규칙 무조건 포함(전원 탈락) → 0% 필수조건은 제외/완화 제안. Synthea 실측 diet/exercise·UACR=0% 재현, ACHILLES 조회 199ms"
+        ]
+      },
+      {
+        "h": "추가 감사 · 개념 오매핑은 전 도메인 (31% 결함)",
+        "items": [
+          "246개 고유 개념셋 전수 감사 → 76개(31%) 결함. wrong-mapping 28 · over-narrow 22 · over-broad 22 · partial-combo 3 · wrong-domain 1 (high 13/medium 43/low 20)",
+          "예(현재→기대): SGLT2에 saxagliptin(DPP-4) 혼입→SGLT2만 · DPP-4가 sitagliptin 하나만→DPP-4 전체 · Ultra-long insulin에 GLP-1 혼입→인슐린만 · warfarin→LOINC→약물",
+          "조치: 약물 단일성분은 exact-match(문제 B) 완료. 확장 과제: 조건/검사 vocab 검증 + 클래스 ATC 확장 + 도메인 가드 + granularity 교정 (output/gold_vs_generated/concept_audit_findings.json)"
+        ],
+        "table": {
+          "head": ["개념셋", "현재 (틀림)", "기대"],
+          "rows": [
+            ["SGLT2 Inhibitors", "saxagliptin(DPP-4) 포함, empagliflozin 누락", "SGLT2 계열만"],
+            ["DPP-4 inhibitor", "sitagliptin 하나만", "DPP-4 성분 전체"],
+            ["Cardiovascular Risk Factors", "'Cardiovascular injury' 단일", "고혈압·이상지질·흡연·비만"],
+            ["Ultra-long-acting insulin", "liraglutide·lixisenatide(GLP-1) 포함", "degludec 등 인슐린만"],
+            ["Allergy to clopidogrel", "일반 약물알레르기 12개", "clopidogrel 특이 반응"],
+            ["Unstable Angina", "CABG 변형 + Stable angina 오포함", "일반 불안정협심증"]
+          ]
+        }
+      }
+    ]
+  }
+]

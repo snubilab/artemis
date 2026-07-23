@@ -1,4 +1,4 @@
-# ADR-019: Comparator = Active-Comparator New-User (gold 방식으로 복귀)
+# ADR-027: Comparator = Active-Comparator New-User (gold 방식으로 복귀)
 
 **상태**: 승인됨 (단계적 구현)
 **날짜**: 2026-07-22

@@ -17,8 +17,18 @@ OUT = Path(__file__).resolve().parents[1] / "output" / "gold_vs_generated"
 def main() -> None:
     # diagnosis.json is produced by build_diagnosis_data.py (rows + defects w/ code_cause)
     diag = json.loads((OUT / "diagnosis.json").read_text())
-    payload = json.dumps(diag, ensure_ascii=False)
-    html = TEMPLATE.replace("/*__DATA__*/", payload)
+    sim = json.loads((OUT / "simulation.json").read_text()) if (OUT / "simulation.json").exists() else {"rows": []}
+    notes_path = OUT.parents[1] / "docs" / "daily_notes" / "tte_dashboard_notes.json"
+    notes = json.loads(notes_path.read_text()) if notes_path.exists() else []
+    issues_path = OUT.parents[1] / "docs" / "daily_notes" / "tte_issue_log.json"
+    issues = json.loads(issues_path.read_text()) if issues_path.exists() else []
+    lab_path = OUT.parents[1] / "docs" / "daily_notes" / "tte_lab_notes.json"
+    lab = json.loads(lab_path.read_text()) if lab_path.exists() else []
+    html = TEMPLATE.replace("/*__DATA__*/", json.dumps(diag, ensure_ascii=False))
+    html = html.replace("/*__SIMDATA__*/", json.dumps(sim, ensure_ascii=False))
+    html = html.replace("/*__NOTES__*/", json.dumps(notes, ensure_ascii=False))
+    html = html.replace("/*__ISSUES__*/", json.dumps(issues, ensure_ascii=False))
+    html = html.replace("/*__LAB__*/", json.dumps(lab, ensure_ascii=False))
     (OUT / "dashboard.html").write_text(html)
     print("wrote", OUT / "dashboard.html", f"({len(html)} bytes)")
 
@@ -99,6 +109,11 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);margin:2px 0 12px}
 .legend span{display:flex;align-items:center;gap:7px}.swatch{display:inline-block;width:9px;height:9px;border-radius:2px}
 .tip{position:fixed;pointer-events:none;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 6px 20px #0003;opacity:0;transition:opacity .1s;z-index:20}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:26px}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-3);font:inherit;font-size:14px;font-weight:600;padding:9px 16px;cursor:pointer;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}.tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.tabpanel[hidden]{display:none}
+.log-inc td.zero,.log-inc .zero{color:var(--bad);font-weight:700}
 </style></head><body><div class="wrap">
 <header>
   <div><div class="eyebrow">OHDSI · Circe cohort QA</div>
@@ -106,9 +121,67 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
   <div class="sub">AI-generated TROY v1.1 study cohorts (CAROLINA / CARMELINA / EMPA-REG OUTCOME) run on real hospital CDM via CohortGenerator. Why the patient counts collapsed.</div></div>
   <button class="toggle" id="themeBtn">Theme</button>
 </header>
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-tab="diagnosis">Diagnosis</button>
+  <button class="tab" data-tab="log">Issue Log</button>
+  <button class="tab" data-tab="notes">Daily Notes</button>
+  <button class="tab" data-tab="lab">실험노트</button>
+</nav>
+<div id="tab-diagnosis" class="tabpanel">
 <div class="verdict"><div class="dot"></div><div>
   <h3>All 6 generated cohorts are invalid. The 0-patient counts are only the most visible symptom.</h3>
   <p id="verdictText"></p></div></div>
+
+<section><div class="sec-head"><h2>Defects &amp; solutions (in general terms)</h2>
+  <div class="chart-s" style="margin-top:4px">Plain-language summary of the four defects and how each was resolved, in portable OMOP-cohort terms — no code or file references.</div></div>
+  <div class="grid2">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <div class="chart-t" style="margin-bottom:0">Defect A · Wrong cohort entry event</div>
+        <span class="tag ok">Fixed</span></div>
+      <div class="kv" style="margin-top:8px">
+        <div class="k">What went wrong</div><div class="v">Cohorts entered patients at a disease diagnosis instead of at study-drug initiation, so the treatment and comparator arms became nearly identical and returned zero or invalid patients.</div>
+        <div class="k">Root cause</div><div class="v">A benchmark-only shortcut swapped the drug-based entry event for a disease anchor, and that shortcut was mistakenly applied to real studies.</div>
+        <div class="k">Solution</div><div class="v">Keep the drug-anchored, new-user entry event, matching the gold-standard cohort design.</div>
+        <div class="k">Status</div><div class="v">Fixed (behind a mode flag).</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <div class="chart-t" style="margin-bottom:0">Defect B · Wrong drug concept mapping</div>
+        <span class="tag warn">Partial</span></div>
+      <div class="kv" style="margin-top:8px">
+        <div class="k">What went wrong</div><div class="v">Drug names were mapped to the wrong OMOP concept — for example, a drug mapped to a different drug of the same class, or even to a lab test instead of the medication.</div>
+        <div class="k">Root cause</div><div class="v">Mapping relied on semantic/embedding nearest-neighbor search with no exact-name check, so similar-sounding drugs and investigational codes resolved incorrectly.</div>
+        <div class="k">Solution</div><div class="v">Match the exact standard RxNorm ingredient by name first, and fall back to search only when no exact match exists; also re-map stale drug concept sets already stored on the cohort.</div>
+        <div class="k">Status</div><div class="v">Fixed for named ingredients; investigational codes and combination names still pending.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <div class="chart-t" style="margin-bottom:0">Defect C · Comparator was not the real comparator</div>
+        <span class="tag warn">Partial</span></div>
+      <div class="kv" style="margin-top:8px">
+        <div class="k">What went wrong</div><div class="v">The comparator arm was defined as "patients not on the treatment drug" instead of new users of the actual comparator drug — an internally contradictory, confounded contrast.</div>
+        <div class="k">Root cause</div><div class="v">A "target minus treatment" (benchmark-era) design reused the treatment drug plus a drug-absence rule instead of the real comparator.</div>
+        <div class="k">Solution</div><div class="v">Build the comparator as a new-user cohort on the real active comparator drug. For placebo-controlled trials (no real-world placebo cohort), recommend a cardiovascular-neutral active comparator, grounded in the literature and confirmed by a human.</div>
+        <div class="k">Status</div><div class="v">Active-comparator trials fixed; placebo-trial recommender in progress.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <div class="chart-t" style="margin-bottom:0">Defect D · Infeasible eligibility criteria</div>
+        <span class="tag warn">Designed</span></div>
+      <div class="kv" style="margin-top:8px">
+        <div class="k">What went wrong</div><div class="v">Some inclusion rules required data that real-world databases don't capture (e.g. lifestyle "diet and exercise" records, specific urine lab ratios), so every patient was dropped.</div>
+        <div class="k">Root cause</div><div class="v">Every protocol eligibility phrase was turned into a mandatory coded rule with no check that the data actually exists in the target database — faithful extraction, but no feasibility judgment (which human gold-builders applied).</div>
+        <div class="k">Solution</div><div class="v">Measure each criterion's real prevalence on the target CDM — a fast precomputed summary (ACHILLES) triages "zero" candidates, then a direct patient count confirms them (precomputed counts suppress small numbers, so they can flag a zero but never prove adequacy). Verdicts are polarity-aware: a <b>required inclusion with no data drops everyone</b> (flag), but a <b>0-match exclusion ("No X") excludes nobody and is kept</b>; a missing index/entry concept is a hard blocker to remap, not a drop. The real 0-patient test runs the inclusion rules <b>together</b> (some collapse only in combination). Flagged rules are proposed to a human to exclude/relax — never auto-changed.</div>
+        <div class="k">Status</div><div class="v">Design hardened (adversarially reviewed — ADR-029); empirically validated on Synthea (diet/exercise/UACR = 0%); implementation pending.</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">Note: feasibility (Defect D) is CDM-specific — measured on every target database (Synthea &ne; Ajou &ne; Keimyung). Prevalence lookups reuse precomputed ACHILLES summaries where available (cost scales with the number of concepts, not the number of patients — ~0.2s vs tens of minutes of raw scanning); keeping those summaries current is each site's operational responsibility, and if they are absent the counts are measured directly.</div>
+</section>
 
 <section><div class="sec-head"><h2>Overview — 6 cohorts</h2></div>
   <div class="card" style="margin-bottom:16px;overflow-x:auto">
@@ -124,13 +197,114 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
 
 <section><div class="sec-head"><h2>Root-cause defects</h2></div><div id="defects"></div></section>
 
+<section><div class="sec-head"><h2>Defect A fix — simulation (definition level)</h2>
+  <div class="chart-s" style="margin-top:4px">What the A fix (disable disease-swap → drug-anchored entry, like gold) does to each study's TREATMENT cohort. No DB run; definition-level prediction across all 9 trials incl. LEADER/PLATO/ARISTOTLE.</div></div>
+  <div class="card" style="overflow-x:auto"><table id="simTbl"><thead></thead><tbody></tbody></table>
+    <div class="note" id="simNote"></div>
+  </div>
+</section>
+
 <section><div class="sec-head"><h2>Per-cohort detail</h2></div><div id="detail"></div></section>
+</div><!-- /tab-diagnosis -->
+
+<div id="tab-log" class="tabpanel" hidden>
+  <div class="sec-head" style="margin-bottom:10px">
+    <span class="eyebrow">Issue Log</span>
+    <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">발견된 문제점 · 조치사항</h2>
+    <div class="sub">데이터 기반 이슈 로그 — 각 문제의 <b>기존 output → 새 output</b>. 아래 캘린더에서 날짜(하이라이트)를 클릭하면 그 날만 볼 수 있고, <span class="mono">artemis/docs/daily_notes/tte_issue_log.json</span> 편집 후 리빌드하면 반영됩니다.</div>
+  </div>
+  <div class="notes-layout">
+    <div class="notes-main">
+      <div id="issFilter" class="notes-filter" hidden></div>
+      <div id="issues"></div>
+    </div>
+    <aside class="notes-side"><div id="ical" class="notecal"></div></aside>
+  </div>
+</div><!-- /tab-log -->
+
+<div id="tab-notes" class="tabpanel" hidden>
+  <div class="sec-head" style="margin-bottom:10px">
+    <span class="eyebrow">Daily Research Notes</span>
+    <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">데일리 연구노트</h2>
+    <div class="sub">날짜별 진행 기록. 아래 캘린더에서 노트가 있는 날짜(하이라이트)를 클릭하면 그 날 노트만 볼 수 있습니다. 새 날짜는 <span class="mono">artemis/docs/daily_notes/tte_dashboard_notes.json</span>에 항목을 추가하고 리빌드하면 반영됩니다.</div>
+  </div>
+  <style>
+    .notecal{max-width:344px;margin:0;user-select:none}
+    .notecal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .notecal-title{font-weight:700;font-size:14px}
+    .notecal-nav{background:none;border:1px solid var(--line);color:var(--ink-2);border-radius:6px;cursor:pointer;width:28px;height:28px;font:inherit;line-height:1}
+    .notecal-nav:hover{color:var(--ink);border-color:var(--accent)}
+    .notecal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+    .notecal-dow{text-align:center;font-size:10px;color:var(--ink-3);padding:2px 0}
+    .notecal-day{text-align:center;font-size:12px;padding:7px 0;border-radius:6px;color:var(--ink-3)}
+    .notecal-day.cur{color:var(--ink-2)}
+    .notecal-day.has{color:var(--ink);font-weight:800;background:var(--surface-2);cursor:pointer;position:relative}
+    .notecal-day.has:hover{background:var(--accent);color:#fff}
+    .notecal-day.has::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--accent)}
+    .notecal-day.has.sel{background:var(--accent);color:#fff}
+    .notecal-day.has.sel::after{background:#fff}
+    .notes-filter{margin:0 0 12px;font-size:13px;color:var(--ink-2)}
+    .notes-filter a{color:var(--accent);cursor:pointer;text-decoration:underline}
+    .notes-layout{display:flex;gap:28px;align-items:flex-start;justify-content:space-between}
+    .notes-main{flex:1 1 auto;min-width:0;max-width:900px}
+    .notes-side{flex:0 0 300px;position:sticky;top:20px}
+    .datatable{margin-top:8px}
+    .datatable th,.datatable td{text-align:left;white-space:normal}
+    .note-details{margin-top:11px;border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:var(--surface-2)}
+    .note-details>summary{cursor:pointer;color:var(--accent);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;list-style:none;outline:none}
+    .note-details>summary::-webkit-details-marker{display:none}
+    .note-details>summary::before{content:"▸ ";color:var(--ink-3)}
+    .note-details[open]>summary::before{content:"▾ "}
+    /* wide: progressively slide the sticky calendar into the right margin (no hard breakpoint jump) */
+    @media(min-width:1200px){.notes-layout{margin-right:min(0px,calc((1080px - 100vw)/2 + 24px))}}
+    @media(max-width:1000px){.notes-layout{flex-direction:column-reverse;justify-content:flex-start}.notes-main{max-width:none}.notes-side{flex-basis:auto;width:100%;position:static}}
+    #toTop{position:fixed;right:24px;bottom:24px;width:42px;height:42px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:18px;line-height:1;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.14)}
+    #toTop.show{opacity:1;pointer-events:auto}
+    #toTop:hover{border-color:var(--accent);color:var(--accent)}
+  </style>
+  <div class="notes-layout">
+    <div class="notes-main">
+      <div id="notesFilter" class="notes-filter" hidden></div>
+      <div id="notes"></div>
+    </div>
+    <aside class="notes-side"><div id="cal" class="notecal"></div></aside>
+  </div>
+  <div class="foot">추가 형식: <span class="mono">{ "date":"YYYY-MM-DD", "title":"...", "sections":[ {"h":"한 일","items":["..."]}, ... ] }</span></div>
+</div><!-- /tab-notes -->
+
+<div id="tab-lab" class="tabpanel" hidden>
+  <div class="sec-head" style="margin-bottom:10px">
+    <span class="eyebrow">Lab Notebook</span>
+    <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">실험노트</h2>
+    <div class="sub">그날 수행한 실험을 목적·방법·관찰·결과·결론으로 세부 기록. 아래 캘린더에서 날짜(하이라이트)를 클릭하면 그 날만 볼 수 있고, <span class="mono">artemis/docs/daily_notes/tte_lab_notes.json</span> 편집 후 리빌드하면 반영됩니다.</div>
+  </div>
+  <div class="notes-layout">
+    <div class="notes-main">
+      <div id="labFilter" class="notes-filter" hidden></div>
+      <div id="lab"></div>
+    </div>
+    <aside class="notes-side"><div id="lcal" class="notecal"></div></aside>
+  </div>
+</div><!-- /tab-lab -->
 
 </div><div class="tip" id="tip"></div>
+<button id="toTop" title="맨 위로" aria-label="맨 위로">↑</button>
 <script id="data" type="application/json">/*__DATA__*/</script>
+<script id="simdata" type="application/json">/*__SIMDATA__*/</script>
+<script id="notesdata" type="application/json">/*__NOTES__*/</script>
+<script id="issuesdata" type="application/json">/*__ISSUES__*/</script>
+<script id="labdata" type="application/json">/*__LAB__*/</script>
 <script>
 const D=JSON.parse(document.getElementById('data').textContent);
+const SIM=JSON.parse(document.getElementById('simdata').textContent);
+const NOTES=JSON.parse(document.getElementById('notesdata').textContent);
+const ISSUES=JSON.parse(document.getElementById('issuesdata').textContent);
+const LAB=JSON.parse(document.getElementById('labdata').textContent);
 const root=document.documentElement;
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
+  document.querySelectorAll('.tabpanel').forEach(p=>{p.hidden=(p.id!=='tab-'+t.dataset.tab);});
+}));
 const cssvar=v=>getComputedStyle(root).getPropertyValue(v).trim();
 const tip=document.getElementById('tip');
 function showTip(h,e){tip.innerHTML=h;tip.style.opacity=1;const p=12;let x=e.clientX+p,y=e.clientY+p;const r=tip.getBoundingClientRect();if(x+r.width>innerWidth)x=e.clientX-r.width-p;if(y+r.height>innerHeight)y=e.clientY-r.height-p;tip.style.left=x+'px';tip.style.top=y+'px';}
@@ -212,6 +386,34 @@ document.getElementById('defects').innerHTML=D.defects.map(d=>{
    <span class="tag" style="margin-left:8px;color:var(--ink-3)">affects: ${esc(d.affects)}</span></h4>
    <p>${esc(d.detail)}</p>${ccHtml}</div>`;}).join('');
 
+/* ---- Defect A fix simulation ---- */
+(function(){
+  const rows=SIM.rows||[];
+  if(!rows.length){document.querySelectorAll('section').forEach(s=>{if(s.querySelector('#simTbl'))s.style.display='none';});return;}
+  const th=document.querySelector('#simTbl thead');
+  th.innerHTML='<tr><th>Study</th><th style="text-align:left">Entry: current → fixed (gold)</th><th>Rules cur/fix/gold</th><th>Jaccard vs gold</th><th style="text-align:left">Drug concept (B)</th></tr>';
+  const body=rows.map(r=>{
+    const curBad=r.cur_entry.slice(0,4)!=='Drug';
+    const fixOk=r.fixed_entry.slice(0,4)==='Drug';
+    const jImp=r.fixed_jaccard>r.cur_jaccard;
+    return `<tr>
+      <td><b>${esc(r.study)}</b></td>
+      <td style="text-align:left">
+        <span class="tag ${curBad?'bad':'ok'}">${esc(r.cur_entry.slice(0,9))}</span>
+        <span class="arrow">→</span>
+        <span class="tag ${fixOk?'ok':'bad'}">${esc(r.fixed_entry.slice(0,7))}</span>
+        <span class="mono" style="color:var(--ink-3)">(${esc(r.gold_entry.slice(0,7))})</span></td>
+      <td class="num">${r.cur_rules} / ${r.fixed_rules} / ${r.gold_rules}</td>
+      <td class="num">${r.cur_jaccard.toFixed(2)} <span class="arrow">→</span> <span style="color:${jImp?'var(--good)':'var(--ink-3)'};font-weight:${jImp?'700':'400'}">${r.fixed_jaccard.toFixed(2)}</span></td>
+      <td style="text-align:left"><span class="tag ${r.drug_concept_ok?'ok':'bad'}">${r.drug_concept_ok?'OK':'WRONG'}</span> <span class="mono" style="color:var(--ink-3);font-size:11px">${esc((r.base_drug_concept||'').slice(0,22))}</span></td></tr>`;
+  }).join('');
+  document.querySelector('#simTbl tbody').innerHTML=body;
+  document.getElementById('simNote').innerHTML=
+    "<b>Reading the simulation.</b> (1) The A fix restores a <b>DrugEra (drug-anchored) entry for all 9 cohorts</b> — matching gold's paradigm. "+
+    "(2) For the CV trials (LEADER/PLATO/ARISTOTLE) the current disease-swap path had <b>stripped every eligibility rule (0)</b>; the fix restores them (→ gold-like rule counts) and raises Jaccard. "+
+    "(3) For the diabetes trials (CAROLINA/CARMELINA/EMPA) the entry is fixed but <b>Jaccard is flat</b> — that residual gap is driven by Defect B (wrong drug concept) and Defect D (over-restrictive / infeasible rules), so <b>A alone is not sufficient</b> for them; B and D must be fixed too.";
+})();
+
 /* ---- per-cohort detail ---- */
 document.getElementById('detail').innerHTML=D.rows.map(r=>{
   const drugBad=/sitagliptin|metabolite/i.test(r.gen_drug_concept);
@@ -246,6 +448,56 @@ function draw(){
 document.getElementById('themeBtn').onclick=()=>{const dark=!(root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme:dark)').matches));root.setAttribute('data-theme',dark?'dark':'light');draw();};
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(!root.getAttribute('data-theme'))draw();});
 draw();
+function noteView(listId, calId, filtId, data){
+  const el=document.getElementById(listId); if(!el||!Array.isArray(data)) return;
+  const cal=document.getElementById(calId), filt=document.getElementById(filtId);
+  const pad=n=>String(n).padStart(2,'0');
+  const days=[...data].sort((a,b)=>(String(a.date)<String(b.date)?1:-1));
+  const noteDates=new Set(days.map(d=>String(d.date)));
+  let selected=null;  // null = 전체
+  const tableHtml=t=>`<table class="datatable"><thead><tr>${(t.head||[]).map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${(t.rows||[]).map(r=>`<tr>${(r||[]).map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const secBody=s=>`${(s.items&&s.items.length)?`<ul style="margin:5px 0 0;padding-left:18px;font-size:13px;color:var(--ink-2)">${s.items.map(i=>`<li style="margin:3px 0">${esc(i)}</li>`).join('')}</ul>`:''}${s.table?tableHtml(s.table):''}`;
+  const cardHtml=d=>`<div class="card" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+      <div class="chart-t" style="margin:0">${esc(d.title||'')}</div>
+      <span class="tag" style="background:var(--surface-2);color:var(--ink-2)">${esc(d.date||'')}</span></div>
+    ${(d.sections||[]).map(s=>s.collapsed
+      ? `<details class="note-details"><summary>${esc(s.h||'')}</summary><div style="margin-top:6px">${secBody(s)}</div></details>`
+      : `<div style="margin-top:11px"><div style="color:var(--accent);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(s.h||'')}</div>${secBody(s)}</div>`).join('')}
+  </div>`;
+  function renderNotes(){
+    const list=selected?days.filter(d=>String(d.date)===selected):days;
+    filt.hidden=!selected;
+    if(selected) filt.innerHTML=`<b>${selected}</b> 노트 ${list.length}건 · <a id="showAll">전체 보기</a>`;
+    el.innerHTML=list.map(cardHtml).join('')||'<div class="chart-s">이 날짜엔 노트가 없습니다.</div>';
+    const sa=document.getElementById('showAll'); if(sa) sa.onclick=()=>{selected=null;drawCal();renderNotes();};
+  }
+  const DOW=['일','월','화','수','목','금','토'];
+  let ym;
+  if(days[0]){const p=String(days[0].date).split('-').map(Number);ym={y:p[0],m:p[1]-1};}
+  else ym={y:2026,m:6};
+  function drawCal(){
+    const {y,m}=ym;
+    const startDow=new Date(Date.UTC(y,m,1)).getUTCDay();
+    const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();
+    let cells=DOW.map(d=>`<div class="notecal-dow">${d}</div>`).join('');
+    for(let i=0;i<startDow;i++) cells+='<div class="notecal-day"></div>';
+    for(let day=1;day<=dim;day++){
+      const ds=`${y}-${pad(m+1)}-${pad(day)}`, has=noteDates.has(ds), sel=selected===ds;
+      cells+=`<div class="notecal-day cur${has?' has':''}${sel?' sel':''}"${has?` data-d="${ds}"`:''}>${day}</div>`;
+    }
+    cal.innerHTML=`<div class="notecal-head"><button class="notecal-nav" id="calPrev">‹</button><div class="notecal-title">${y}.${pad(m+1)}</div><button class="notecal-nav" id="calNext">›</button></div><div class="notecal-grid">${cells}</div>`;
+    document.getElementById('calPrev').onclick=()=>{if(--ym.m<0){ym.m=11;ym.y--;}drawCal();};
+    document.getElementById('calNext').onclick=()=>{if(++ym.m>11){ym.m=0;ym.y++;}drawCal();};
+    cal.querySelectorAll('.notecal-day.has').forEach(c=>c.onclick=()=>{selected=selected===c.dataset.d?null:c.dataset.d;drawCal();renderNotes();});
+  }
+  drawCal(); renderNotes();
+}
+noteView('notes','cal','notesFilter',NOTES);
+noteView('issues','ical','issFilter',ISSUES);
+noteView('lab','lcal','labFilter',LAB);
+const _toTop=document.getElementById('toTop');
+if(_toTop){addEventListener('scroll',()=>_toTop.classList.toggle('show',scrollY>400),{passive:true});_toTop.onclick=()=>scrollTo({top:0,behavior:'smooth'});}
 </script></body></html>
 """
 
