@@ -3801,6 +3801,13 @@ class TTEService:
                 and bool(arm_name)
                 and not self._is_placebo_arm(arm_name)
             )
+            # ADR-028: placebo arm has no real-world cohort. Recommend a CV-neutral
+            # active comparator (mock-approved HITL) instead of the legacy drug-ABSENCE.
+            is_placebo_comparator = (
+                is_derived_comparator
+                and self._drug_anchored_entry()
+                and self._is_placebo_arm(arm_name)
+            )
 
             arm_key = f"arm_{index}"
 
@@ -3810,6 +3817,7 @@ class TTEService:
                 _idx: int = index,
                 _is_derived_comp: bool = is_derived_comparator,
                 _is_active_comp: bool = is_active_comparator,
+                _is_placebo_comp: bool = is_placebo_comparator,
                 _treatment_name: str = treatment_arm_name,
             ) -> dict[str, Any]:
                 # Active comparator (ADR-019): new-user cohort on the real comparator drug
@@ -3819,6 +3827,14 @@ class TTEService:
                         _arm_name,
                         time_params=study.get("timeParams") or {},
                         study=study,
+                    )
+                # Placebo arm (ADR-028): recommend + mock-approve a CV-neutral comparator
+                if _is_placebo_comp:
+                    return self._build_recommended_placebo_comparator_circe(
+                        _elig,
+                        _treatment_name,
+                        study=study,
+                        time_params=study.get("timeParams") or {},
                     )
                 # Derived comparator: disease-based primary + drug ABSENCE (legacy / placebo)
                 if _is_derived_comp:
@@ -3840,6 +3856,7 @@ class TTEService:
             # Label: active comparator uses its own drug; derived uses "No <treatment>"
             comparator_label = (
                 arm_name if is_active_comparator
+                else f"CV-neutral comparator (vs {treatment_arm_name})" if is_placebo_comparator
                 else f"No {treatment_arm_name}" if is_derived_comparator
                 else (arm_name or f"Treatment arm {index + 1}")
             )
@@ -4969,6 +4986,7 @@ class TTEService:
         *,
         time_params: dict[str, Any] | None = None,
         study: dict[str, Any] | None = None,
+        prebuilt_concept_set: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Active-comparator cohort (ADR-019 Phase 1): DrugEra new-user entry on the
         REAL comparator drug + shared eligibility rules, matching the gold design.
@@ -5003,7 +5021,8 @@ class TTEService:
             return self._build_disease_based_comparator_circe(
                 eligibility, comparator_drug_name, time_params=time_params, study=study)
 
-        mapped_drug = self._recommend_seeded_concept_set(
+        # A prebuilt concept set (e.g. a recommended class union) wins over name mapping.
+        mapped_drug = prebuilt_concept_set or self._recommend_seeded_concept_set(
             comparator_drug_name.strip(), expected_domain="Drug")
 
         # Add the comparator drug as a new concept set and repoint the entry to it
@@ -5022,6 +5041,151 @@ class TTEService:
 
         self._repair_stale_drug_concept_sets(base)
         return base
+
+    # ------------------------------------------------------------------
+    # ADR-028: placebo -> recommended CV-neutral active comparator
+    # ------------------------------------------------------------------
+
+    def _recommender_indication(self, study: dict[str, Any] | None) -> str:
+        """Indication string for the comparator recommender (disease anchor preferred)."""
+        nct = ((study or {}).get("trialMetadata") or {}).get("nctId", "")
+        anchors = self.DISEASE_ANCHOR_CONCEPTS.get(nct or "")
+        if anchors:
+            return anchors[0][1]
+        for key in ("condition", "disease", "indication"):
+            val = (study or {}).get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+        return ""
+
+    def _recommender_outcome(self, study: dict[str, Any] | None) -> str:
+        """Primary-outcome label for the comparator recommender."""
+        primary = ((study or {}).get("outcomes") or {}).get("primary") or {}
+        return (primary.get("cohortName") or primary.get("description")
+                or "cardiovascular outcomes").strip()
+
+    def _mock_hitl_approve_comparator(self, artifact: Any) -> str | None:
+        """MOCK human-in-the-loop approval.
+
+        The real HITL review panel is not wired yet — this stub auto-approves the
+        recommender's top CV-neutral class so the rest of the pipeline can run.
+        Replace with a real approval channel when the review UI lands.
+        """
+        rec = getattr(artifact, "recommendation", None) if artifact else None
+        approved = rec.get("class") if isinstance(rec, dict) else None
+        if approved:
+            logging.info("[TTE] MOCK HITL auto-approved comparator class: %s", approved)
+        return approved
+
+    def _resolve_class_drug_concept_set(
+        self, class_name: str, ingredients: list[str]
+    ) -> dict[str, Any] | None:
+        """Build one Drug concept set (with descendants) from a class's ingredient names.
+
+        Resolves each ingredient to its standard RxNorm Ingredient concept and unions
+        them, reusing the same expression builder as the exact-ingredient path.
+        """
+        names = [i.strip().lower() for i in (ingredients or []) if i and i.strip()]
+        if not names:
+            return None
+        try:
+            import psycopg2
+
+            from src.settings import settings
+
+            conn = psycopg2.connect(settings.DATABASE_URL)
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""
+                        SELECT concept_id FROM {settings.CDM_SCHEMA}.concept
+                        WHERE LOWER(concept_name) = ANY(%s)
+                          AND standard_concept = 'S'
+                          AND concept_class_id = 'Ingredient'
+                          AND vocabulary_id = 'RxNorm'
+                          AND invalid_reason IS NULL
+                        """,
+                        (names,),
+                    )
+                    ids = [int(r[0]) for r in cur.fetchall()]
+            finally:
+                conn.close()
+        except Exception as exc:
+            logging.debug("[TTE] class concept lookup failed for '%s': %s", class_name, exc)
+            return None
+        if not ids:
+            return None
+        candidates = self._fetch_concept_candidates(ids)
+        if not candidates:
+            return None
+        from src.agents.conceptset.expression_builder import get_expression_builder
+
+        # roll_up=False: DrugEra is ingredient-level, so no descendant expansion is
+        # needed — and roll_up's overbroad filter would otherwise drop high-descendant
+        # ingredients like sitagliptin (the most-used DPP-4i) from the comparator set.
+        expr = get_expression_builder().build_expression(
+            candidates, roll_up=False, criterion_name=class_name
+        ).expression.to_atlas_json()
+        if not expr.get("items"):
+            return None
+        return {"name": f"{class_name} (recommended comparator)", "expression": expr}
+
+    def _build_recommended_placebo_comparator_circe(
+        self,
+        eligibility: dict[str, Any],
+        treatment_arm_name: str,
+        *,
+        study: dict[str, Any] | None = None,
+        time_params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """A placebo arm has no real-world cohort, so recommend a CV-neutral active
+        comparator (ADR-028), MOCK-approve it (HITL not wired), and build a new-user
+        cohort on that class. Falls back to the derived (disease + drug ABSENCE)
+        comparator whenever a recommendation cannot be produced or mapped."""
+
+        def _fallback() -> dict[str, Any]:
+            return self._build_disease_based_comparator_circe(
+                eligibility, treatment_arm_name, time_params=time_params, study=study)
+
+        try:
+            from src.agents.comparator.literature import class_ingredients, class_of_drug
+            from src.agents.comparator.recommender import recommend_comparator
+        except Exception as exc:
+            logging.warning("[TTE] comparator recommender unavailable (%s); derived comparator", exc)
+            return _fallback()
+
+        indication = self._recommender_indication(study)
+        if not indication:
+            logging.warning("[TTE] placebo comparator: unknown indication; derived comparator")
+            return _fallback()
+
+        try:
+            artifact = recommend_comparator(
+                treatment_arm_name,
+                indication,
+                self._recommender_outcome(study),
+                trial_name=(study or {}).get("name"),
+                treatment_class=class_of_drug(treatment_arm_name),
+            )
+        except Exception as exc:
+            logging.warning("[TTE] comparator recommendation failed (%s); derived comparator", exc)
+            return _fallback()
+
+        approved = self._mock_hitl_approve_comparator(artifact)
+        if not approved:
+            logging.warning("[TTE] placebo comparator: no class approved; derived comparator")
+            return _fallback()
+
+        concept_set = self._resolve_class_drug_concept_set(approved, class_ingredients(approved))
+        if not concept_set:
+            logging.warning(
+                "[TTE] placebo comparator: could not map class '%s'; derived comparator", approved)
+            return _fallback()
+
+        logging.info("[TTE] placebo comparator: active-comparator cohort on '%s'", approved)
+        return self._build_drug_anchored_comparator_circe(
+            eligibility, approved, time_params=time_params, study=study,
+            prebuilt_concept_set=concept_set)
 
     # ------------------------------------------------------------------
     # SPEC-UI-008: CIRCE preview helpers

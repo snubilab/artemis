@@ -68,6 +68,43 @@ def _text_has_any(text: str, terms: list[str]) -> bool:
     return any(t.lower() in low for t in terms)
 
 
+# Member ingredient names per drug class — used to (a) build a class-level comparator
+# concept set from an approved recommendation and (b) look up a treatment drug's class.
+CLASS_INGREDIENTS: dict[str, list[str]] = {
+    "DPP-4 inhibitors": ["sitagliptin", "saxagliptin", "linagliptin", "alogliptin", "vildagliptin"],
+    "Sulfonylureas": ["glimepiride", "glipizide", "gliclazide", "glyburide", "glibenclamide"],
+    "Metformin": ["metformin"],
+    "Thiazolidinediones": ["pioglitazone", "rosiglitazone"],
+    "GLP-1 receptor agonists": ["liraglutide", "semaglutide", "dulaglutide", "exenatide",
+                                "lixisenatide", "albiglutide"],
+    "SGLT2 inhibitors": ["empagliflozin", "dapagliflozin", "canagliflozin", "ertugliflozin"],
+    "Warfarin": ["warfarin"],
+    "Direct oral anticoagulants": ["apixaban", "rivaroxaban", "dabigatran", "edoxaban"],
+    "Clopidogrel": ["clopidogrel"],
+    "Prasugrel": ["prasugrel"],
+    "Ticagrelor": ["ticagrelor"],
+}
+
+
+def class_ingredients(drug_class: str) -> list[str]:
+    """Member ingredient names for a drug class (empty if unknown)."""
+    return list(CLASS_INGREDIENTS.get(drug_class, []))
+
+
+def class_of_drug(drug_name: str) -> Optional[str]:
+    """Which class contains this drug, by ingredient-name match (None if unknown).
+
+    Used to exclude the treatment's own class from comparator candidates.
+    """
+    d = _norm(drug_name).lower()
+    if not d:
+        return None
+    for cls, ings in CLASS_INGREDIENTS.items():
+        if any(ing == d or ing in d for ing in ings):
+            return cls
+    return None
+
+
 @dataclass
 class Evidence:
     pmid: str
@@ -234,6 +271,11 @@ if __name__ == "__main__":  # live self-check (needs network)
                              DRUG_CLASS_TERMS["Metformin"]), "gate lets wrong-class through"
     assert _text_has_any("sitagliptin cardiovascular safety TECOS",
                          DRUG_CLASS_TERMS["DPP-4 inhibitors"]), "gate rejects correct class"
+
+    # class <-> ingredient mapping (offline, deterministic)
+    assert class_of_drug("empagliflozin") == "SGLT2 inhibitors", "SGLT2 lookup"
+    assert class_of_drug("liraglutide") == "GLP-1 receptor agonists", "GLP-1 lookup"
+    assert "sitagliptin" in class_ingredients("DPP-4 inhibitors"), "class ingredients"
 
     b = acquire_evidence(
         "empagliflozin", "Type 2 Diabetes", "MACE",
