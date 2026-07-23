@@ -1,0 +1,98 @@
+[
+  {
+    "date": "2026-07-23",
+    "title": "C placebo 추천기 — 로컬 vLLM(Qwen3)에서 문헌→추천 실동작",
+    "sections": [
+      {
+        "h": "한 일",
+        "items": [
+          "문헌 획득 모듈(comparator/literature.py) + 추천기 본체(comparator/recommender.py) 구현",
+          "로컬 vLLM에서 end-to-end 실행 성공 — empagliflozin/EMPA-REG의 없는 placebo 대조군을 CV-neutral active comparator로 추천",
+          "추천 결과: DPP-4 inhibitors 1순위(neutral, conf 0.75, 선행 emulation 사용) / Sulfonylurea·TZD·Metformin 중립 후순위 / GLP-1은 beneficial로 올바르게 제외",
+          "reasoning 모델 대응: /no_think + <think> strip으로 JSON 분류 안정화",
+          "추천은 status=proposed HITL 제안 — 절대 자동 적용 안 함"
+        ]
+      },
+      {
+        "h": "근본원인·해결 (vLLM)",
+        "items": [
+          "vLLM은 이미 이 GB10에 떠 있었음 — :8000 snuh/hari-q3-8b(Qwen3-8B), :8002 google/medgemma-1.5-4b",
+          ".env의 VLLM_BASE_URL이 죽은 원격(61.107.200.12:8000)을 가리켜 못 쓴 것뿐 → localhost:8000로 연결해 해결",
+          "host 직접 실행 시 .env의 미선언 키(bedrock/vertex)로 Settings(extra=forbid) 크래시 → clean CWD + env override로 우회"
+        ]
+      },
+      {
+        "h": "검증·개선",
+        "items": [
+          "adversarial 검증(3 렌즈: 임상근거·랭킹·PMID 진위, 서브에이전트) → verdict=sound-with-caveats, DPP-4 확정 / GLP-1 제외 정확",
+          "결함 발견: 문헌 모듈이 엉뚱한 클래스 논문까지 인용(Metformin←세마글루타이드, TZD←CAROLINA)",
+          "조치: 클래스+CV 관련성 게이트 추가 → 오분류 인용 제거. 재실행 시 TZD가 neutral→harmful로 올바르게 재분류(HF 위험), DPP-4 conf 0.75→0.80",
+          "HITL 필수 경고: saxagliptin HF 신호(HR 1.27) → HF/CV사망 분석 시 sitagliptin+linagliptin으로 제한 권고"
+        ]
+      },
+      {
+        "h": "다음",
+        "items": [
+          ".env VLLM_BASE_URL 영구 정리 여부 결정 (host=localhost:8000, 컨테이너=host/Tailscale IP)",
+          "추천 아티팩트 → TTE placebo 분기 HITL 리뷰 패널 연결 → 승인 시 대조군 코호트 생성",
+          "DPP-4 톱픽 잔여 off-topic 인용(같은 클래스지만 microvascular/T1D) 정밀 필터는 필요시 강화"
+        ]
+      }
+    ]
+  },
+  {
+    "date": "2026-07-23",
+    "title": "TTE 코호트 A~D 결함 진단·수정 + 전 도메인 개념매핑 감사",
+    "sections": [
+      {
+        "h": "한 일",
+        "items": [
+          "gold(TROY v1.1 12개) · 생성물(6개)을 artemis/data/{gold,generated}/로 정리, 정의 비교 대시보드 구축",
+          "아주대·계명대 실 CDM에서 발생한 0-patient/왜곡을 진단 → 독립 결함 4개(A/B/C/D) 규명",
+          "A(진입=당뇨) 수정: drug-anchored 진입 복원 — 6개 스터디 실코드 검증",
+          "C(대조군=치료약 아님) 수정: active-comparator new-user 설계 (CAROLINA/PLATO/ARISTOTLE 완료) + placebo 추천기 설계",
+          "B(약 개념 오매핑) 수정: exact RxNorm ingredient 매칭 + stale 개념셋 repair pass — 8개 약물 정확 검증",
+          "D(실현불가 기준) 설계: CDM 유병률 feasibility 게이팅(ACHILLES+직접카운트+polarity+joint+HITL)",
+          "전 도메인 개념매핑 전수 감사(246개 고유셋) → 76개(31%) 결함 확정, JSON 저장",
+          "대시보드 3탭 구성(Diagnosis / Issue Log / Daily Notes), Tailscale 상시 서빙"
+        ]
+      },
+      {
+        "h": "결정 (ADR)",
+        "items": [
+          "ADR-027 · comparator = active-comparator new-user (벤치마크용 target−treatment 폐기)",
+          "ADR-028 · placebo 대조군 = 문헌 근거(PubMed) CV-neutral 추천기 + HITL",
+          "ADR-029 · criterion feasibility gating (ACHILLES 선별 + 직접카운트 확정 + polarity + joint oracle)"
+        ]
+      },
+      {
+        "h": "커밋 (branch fix/tte-a-drug-anchored-entry)",
+        "items": [
+          "6ffd07c · chore: baseline artemis snapshot",
+          "7cf3fd5 · fix(tte): drug-anchored cohort entry (Defect A)",
+          "2f1ca57 · fix(tte): active-comparator new-user cohort (Defect C)",
+          "16e8ee8 · fix(tte): exact RxNorm Ingredient drug mapping (Defect B)"
+        ]
+      },
+      {
+        "h": "핵심 발견",
+        "items": [
+          "정답(gold)엔 killer 규칙(식이/운동, UACR)이 없음 → AI가 프로토콜 원문을 feasibility 검사 없이 과잉 포함(D)",
+          "개념 오매핑은 약물에 국한되지 않음 — 조건/검사/도메인 전반 31% 결함(SGLT2에 DPP-4 혼입, DPP-4는 sitagliptin 하나만 등)",
+          "ACHILLES 미리계산 유병률 조회 199ms로 '수십 분 스캔' 회피 검증(Synthea: 식이/운동/UACR=0%)",
+          "B가 약물 entry뿐 아니라 base에 저장된 stale 개념셋에도 남아있어 repair pass 필요"
+        ]
+      },
+      {
+        "h": "다음",
+        "items": [
+          "B 확장: 비-약물 개념 vocab 검증 + 약물 클래스 ATC 확장 + 도메인 가드 + granularity 교정 (76건)",
+          "C placebo 추천기 구현: 문헌 획득 모듈(서브에이전트 개발중) 통합 → PubMed 파싱 → HITL",
+          "D feasibility 게이트 구현 (ADR-029)",
+          "수정본으로 스터디 재생성 → 아주대·계명대 실 CDM 재검증(WebAPI 카운트)",
+          "투약 개발코드(BI 10773)·조합명(Liotrix) 정규화"
+        ]
+      }
+    ]
+  }
+]

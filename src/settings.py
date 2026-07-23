@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseSettings):
-    model_config = ConfigDict(env_file=".env")
+    # extra="ignore": .env legitimately holds keys other SDKs read from os.environ
+    # (google_cloud_project, aws_bearer_token_bedrock, ...); don't crash on them.
+    model_config = ConfigDict(env_file=".env", extra="ignore")
 
     # App
     APP_NAME: str = "ARTEMIS 3.1"
