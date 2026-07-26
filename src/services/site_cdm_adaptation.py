@@ -224,23 +224,30 @@ def load_vocabulary_descendants(
 ) -> dict[int, set[int]]:
     if not vocabulary_schema:
         raise ValueError("vocabulary_schema is required")
-    descendants = {ancestor_id: set() for ancestor_id in ancestor_ids}
     if not ancestor_ids:
-        return descendants
+        return {}
 
     import psycopg2
     from psycopg2 import sql
 
     query = sql.SQL(
-        "SELECT ancestor_concept_id, descendant_concept_id "
-        "FROM {}.concept_ancestor "
-        "WHERE ancestor_concept_id = ANY(%s)"
-    ).format(sql.Identifier(vocabulary_schema))
+        "SELECT c.concept_id, ca.descendant_concept_id "
+        "FROM {}.concept c "
+        "LEFT JOIN {}.concept_ancestor ca "
+        "ON ca.ancestor_concept_id = c.concept_id "
+        "WHERE c.concept_id = ANY(%s)"
+    ).format(
+        sql.Identifier(vocabulary_schema),
+        sql.Identifier(vocabulary_schema),
+    )
+    descendants: dict[int, set[int]] = {}
     with psycopg2.connect(database_url) as connection:
         with connection.cursor() as cursor:
             cursor.execute(query, (sorted(ancestor_ids),))
             for ancestor_id, descendant_id in cursor.fetchall():
-                descendants[int(ancestor_id)].add(int(descendant_id))
+                values = descendants.setdefault(int(ancestor_id), set())
+                if descendant_id is not None:
+                    values.add(int(descendant_id))
     return descendants
 
 

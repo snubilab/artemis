@@ -1,0 +1,169 @@
+{
+  "ConceptSets": [
+    {
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1127433
+            },
+            "includeDescendants": false,
+            "isExcluded": false
+          }
+        ]
+      },
+      "id": 1,
+      "name": "entry drug"
+    },
+    {
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201826
+            },
+            "includeDescendants": true,
+            "isExcluded": false
+          }
+        ]
+      },
+      "id": 2,
+      "name": "Type 2 diabetes"
+    },
+    {
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3001802
+            },
+            "includeDescendants": false,
+            "isExcluded": false
+          }
+        ]
+      },
+      "id": 3,
+      "name": "UACR"
+    },
+    {
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3044370
+            },
+            "includeDescendants": false,
+            "isExcluded": false
+          }
+        ]
+      },
+      "id": 4,
+      "name": "dietary intervention"
+    }
+  ],
+  "InclusionRules": [
+    {
+      "expression": {
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 2
+              }
+            },
+            "Occurrence": {
+              "Count": 1,
+              "Type": 2
+            },
+            "StartWindow": {
+              "End": {
+                "Coeff": 1,
+                "Days": 0
+              },
+              "Start": {
+                "Coeff": -1,
+                "Days": 365
+              }
+            }
+          }
+        ],
+        "Groups": [],
+        "Type": "ALL"
+      },
+      "name": "Type 2 diabetes"
+    },
+    {
+      "expression": {
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 3,
+                "ValueAsNumber": {
+                  "Op": "gte",
+                  "Value": 30
+                }
+              }
+            },
+            "Occurrence": {
+              "Count": 1,
+              "Type": 2
+            },
+            "StartWindow": {
+              "End": {
+                "Coeff": 1,
+                "Days": 0
+              },
+              "Start": {
+                "Coeff": -1,
+                "Days": 365
+              }
+            }
+          }
+        ],
+        "Groups": [],
+        "Type": "ALL"
+      },
+      "name": "UACR"
+    },
+    {
+      "expression": {
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Observation": {
+                "CodesetId": 4
+              }
+            },
+            "Occurrence": {
+              "Count": 1,
+              "Type": 2
+            },
+            "StartWindow": {
+              "End": {
+                "Coeff": 1,
+                "Days": 0
+              },
+              "Start": {
+                "Coeff": -1,
+                "Days": 365
+              }
+            }
+          }
+        ],
+        "Groups": [],
+        "Type": "ALL"
+      },
+      "name": "dietary intervention"
+    }
+  ],
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "DrugExposure": {
+          "CodesetId": 1
+        }
+      }
+    ]
+  }
+}

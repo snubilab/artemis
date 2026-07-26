@@ -18,6 +18,8 @@ from src.services.site_cdm_adaptation import (
     load_achilles_snapshot,
 )
 
+FIXTURE_DIR = Path(__file__).parent / "fixtures" / "site_adaptation"
+
 
 def _manifest(**overrides: object) -> dict[str, object]:
     value: dict[str, object] = {
@@ -360,3 +362,58 @@ def test_suppressed_missing_stays_site_query_required(tmp_path: Path) -> None:
     report = compile_site_adaptation(circe, snapshot, {123: {123}})
 
     assert report.proposed_changes[0].action == "SITE_QUERY_REQUIRED"
+
+
+@pytest.mark.parametrize("site", ["hospital_a", "hospital_b", "hospital_c"])
+def test_simulated_site_bundles_are_complete_and_have_no_zero_rows(
+    site: str,
+) -> None:
+    snapshot = load_achilles_snapshot(FIXTURE_DIR / f"{site}.zip")
+
+    assert snapshot.manifest.small_cell_count == 0
+    assert set(snapshot.manifest.analysis_ids) == REQUIRED_ANALYSIS_IDS
+    assert all(count > 0 for count in snapshot.counts.values())
+
+
+def test_simulated_sites_produce_distinct_expected_proposals() -> None:
+    circe = json.loads((FIXTURE_DIR / "circe.json").read_text())
+    descendants = {
+        int(key): set(values)
+        for key, values in json.loads(
+            (FIXTURE_DIR / "vocabulary_map.json").read_text()
+        ).items()
+    }
+    comparator = json.loads(
+        (FIXTURE_DIR / "comparator_candidates.json").read_text()
+    )
+
+    reports = {
+        site: compile_site_adaptation(
+            circe,
+            load_achilles_snapshot(FIXTURE_DIR / f"{site}.zip"),
+            descendants,
+            comparator_artifact=comparator,
+        ).model_dump(by_alias=True)
+        for site in ("hospital_a", "hospital_b", "hospital_c")
+    }
+
+    assert any(
+        change["action"] == "VERIFY_THEN_DROP"
+        and change["conceptId"] == 3044370
+        for change in reports["hospital_a"]["proposedChanges"]
+    )
+    assert reports["hospital_a"]["comparatorGrounding"][0]["status"] == "populated"
+    assert any(
+        change["action"] == "USE_POPULATED_DESCENDANTS"
+        and change["conceptId"] == 201826
+        for change in reports["hospital_b"]["proposedChanges"]
+    )
+    assert any(
+        change["action"] == "VERIFY_THEN_DROP"
+        and change["conceptId"] == 3001802
+        for change in reports["hospital_b"]["proposedChanges"]
+    )
+    assert [
+        item["status"]
+        for item in reports["hospital_c"]["comparatorGrounding"]
+    ] == ["absent", "populated"]
