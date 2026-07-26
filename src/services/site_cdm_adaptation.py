@@ -382,14 +382,18 @@ def compile_site_adaptation(
                         descendant.model_dump(by_alias=True)
                         | {"path": path, "role": role}
                     )
-                    proposals.append(
-                        ProposedChange(
-                            action="USE_POPULATED_DESCENDANTS",
-                            path=path,
-                            conceptId=concept_id,
-                            reason="descendant counts are a non-distinct upper bound",
+                    if exact.state == "exact_concept_zero":
+                        proposals.append(
+                            ProposedChange(
+                                action="USE_POPULATED_DESCENDANTS",
+                                path=path,
+                                conceptId=concept_id,
+                                reason=(
+                                    "exact concept is empty and populated descendants "
+                                    "exist"
+                                ),
+                            )
                         )
-                    )
 
         if any(key in body for key in ("ValueAsNumber", "ValueAsConcept", "Unit")):
             requests.append({"path": path, "reason": "value_or_unit_constraint"})
@@ -470,19 +474,32 @@ def _ground_comparators(
     grounded: list[dict[str, Any]] = []
     for candidate in (artifact or {}).get("candidates", []):
         concept_ids = candidate.get("conceptIds", candidate.get("concept_ids", []))
-        evidence = [
-            concept_evidence(
+        evidence: list[ConceptEvidence] = []
+        for concept_id in concept_ids:
+            concept_id = int(concept_id)
+            exact = concept_evidence(
                 snapshot,
                 analysis_id=700,
-                concept_id=int(concept_id),
-                concept_exists=int(concept_id) in descendants,
+                concept_id=concept_id,
+                concept_exists=concept_id in descendants,
             )
-            for concept_id in concept_ids
-        ]
+            evidence.append(exact)
+            descendant = descendant_evidence(
+                snapshot,
+                analysis_id=700,
+                ancestor_id=concept_id,
+                descendant_ids=descendants.get(concept_id, set()),
+            )
+            if descendant:
+                evidence.append(descendant)
         states = {item.state for item in evidence}
         status = (
             "populated"
-            if "populated_exact_concept" in states
+            if states
+            & {
+                "populated_exact_concept",
+                "populated_descendant_upper_bound",
+            }
             else "site_query_required"
             if "suppressed_or_absent" in states
             else "absent"

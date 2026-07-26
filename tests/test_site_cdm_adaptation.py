@@ -287,11 +287,11 @@ def test_compile_site_adaptation_is_recursive_and_does_not_mutate_circe(
             201826: {201826, 45769905},
             3001802: {3001802},
             999004: {999004},
-            19125041: {19125041},
+            999700: {999700, 19125041},
         },
         comparator_artifact={
             "candidates": [
-                {"name": "DPP-4 inhibitor", "conceptIds": [19125041]}
+                {"name": "DPP-4 inhibitor", "conceptIds": [999700]}
             ]
         },
     )
@@ -334,6 +334,10 @@ def test_compile_site_adaptation_is_recursive_and_does_not_mutate_circe(
         for request in payload["verificationRequests"]
     )
     assert payload["comparatorGrounding"][0]["status"] == "populated"
+    assert any(
+        evidence["state"] == "populated_descendant_upper_bound"
+        for evidence in payload["comparatorGrounding"][0]["evidence"]
+    )
 
 
 def test_suppressed_missing_stays_site_query_required(tmp_path: Path) -> None:
