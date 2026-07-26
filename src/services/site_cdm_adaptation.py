@@ -282,6 +282,28 @@ def concept_evidence(
     )
 
 
+def descendant_evidence(
+    snapshot: AchillesSiteSnapshot,
+    *,
+    analysis_id: int,
+    ancestor_id: int,
+    descendant_ids: set[int],
+) -> ConceptEvidence | None:
+    upper_bound = sum(
+        snapshot.counts.get((analysis_id, concept_id), 0)
+        for concept_id in descendant_ids
+        if concept_id != ancestor_id
+    )
+    if upper_bound == 0:
+        return None
+    return ConceptEvidence(
+        state="populated_descendant_upper_bound",
+        analysisId=analysis_id,
+        conceptId=ancestor_id,
+        upperBound=upper_bound,
+    )
+
+
 def compile_site_adaptation(
     circe: dict[str, Any],
     snapshot: AchillesSiteSnapshot,
@@ -349,24 +371,15 @@ def compile_site_adaptation(
                 )
 
             if include_descendants:
-                populated = [
-                    descendant_id
-                    for descendant_id in descendants.get(concept_id, set())
-                    if descendant_id != concept_id
-                    and snapshot.counts.get((analysis_id, descendant_id)) is not None
-                ]
-                if populated:
-                    upper_bound = sum(
-                        snapshot.counts[(analysis_id, descendant_id)]
-                        for descendant_id in populated
-                    )
+                descendant = descendant_evidence(
+                    snapshot,
+                    analysis_id=analysis_id,
+                    ancestor_id=concept_id,
+                    descendant_ids=descendants.get(concept_id, set()),
+                )
+                if descendant:
                     evidence_rows.append(
-                        ConceptEvidence(
-                            state="populated_descendant_upper_bound",
-                            analysisId=analysis_id,
-                            conceptId=concept_id,
-                            upperBound=upper_bound,
-                        ).model_dump(by_alias=True)
+                        descendant.model_dump(by_alias=True)
                         | {"path": path, "role": role}
                     )
                     proposals.append(

@@ -14,6 +14,7 @@ from src.services.site_cdm_adaptation import (
     SnapshotValidationError,
     compile_site_adaptation,
     concept_evidence,
+    descendant_evidence,
     load_achilles_snapshot,
 )
 
@@ -162,6 +163,29 @@ def test_concept_evidence_classifies_all_states(tmp_path: Path) -> None:
         concept_id=123,
         concept_exists=True,
     ).state == "exact_concept_zero"
+
+
+def test_descendant_evidence_is_only_a_non_distinct_upper_bound(
+    tmp_path: Path,
+) -> None:
+    snapshot = load_achilles_snapshot(
+        _snapshot_zip(
+            tmp_path,
+            rows=[(400, "201826", 9), (400, "45769905", 7), (400, "45769895", 5)],
+        )
+    )
+
+    evidence = descendant_evidence(
+        snapshot,
+        analysis_id=400,
+        ancestor_id=201826,
+        descendant_ids={201826, 45769905, 45769895},
+    )
+
+    assert evidence is not None
+    assert evidence.state == "populated_descendant_upper_bound"
+    assert evidence.count_value is None
+    assert evidence.upper_bound == 12
 
 
 def _concept_set(
