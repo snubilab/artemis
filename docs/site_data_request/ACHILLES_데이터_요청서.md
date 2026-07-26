@@ -9,8 +9,9 @@
 
 ## 1. 한 줄 요약
 
-**환자 데이터가 아니라, 이미 생성되어 있는 ACHILLES 집계 결과 테이블(`achilles_results`)의 사본을 요청드립니다.**
-개인정보(PHI)는 포함되지 않으며, "개념(concept)별로 몇 명인가"라는 집계 숫자만 필요합니다.
+**환자 데이터가 아니라, 이미 생성되어 있는 ACHILLES 집계 결과에서 필요한
+행만 추출한 `achilles_site_snapshot.zip`을 요청드립니다.** 환자 수준
+정보가 없는 집계 데이터이며, 반출 가능 여부는 사이트 거버넌스에 따릅니다.
 
 ---
 
@@ -39,21 +40,25 @@ AI가 생성한 임상시험 코호트를 각 병원 CDM에 적용했을 때 **�
 ACHILLES는 CDM 데이터와 **별도의 results 스키마**에 결과를 저장합니다.
 
 ```
-<cdm_schema>            ← 환자 데이터 (요청 대상 아님)
-<cdm_schema>_results    ← ACHILLES 집계 결과 (여기의 achilles_results 요청)
+<cdmDatabaseSchema>       ← 환자 데이터 (요청 대상 아님)
+<resultsDatabaseSchema>   ← ACHILLES 집계 결과
 ```
 
 ATLAS/Broadsea를 운영 중이시면 데이터소스 특성화를 위해 **이미 생성되어 있을 가능성이 높습니다.**
 
 ### 요청 테이블
-`<cdm_schema>_results.achilles_results` — 컬럼 구조는 다음과 같습니다.
+`<resultsDatabaseSchema>.achilles_results`에서 아래 6개 analysis만
+추출합니다.
 
 | 컬럼 | 내용 |
 |------|------|
 | `analysis_id` | 분석 종류 번호 |
-| `stratum_1` | 개념 ID (concept_id) |
-| `count_value` | 해당 개념을 가진 **환자 수(distinct person)** |
-| `stratum_2` ~ `stratum_5` | 추가 층화 값(연도·연령 등) |
+| `stratum_1` | 선택한 6개 analysis에서 십진수 `concept_id` 문자열 |
+| `count_value` | observation period 안에서 해당 이벤트가 한 번 이상 있는 distinct person 수 |
+
+위 의미는 analysis `200/400/600/700/800/1800`에만 적용됩니다. 이
+analysis에서는 `stratum_2`~`stratum_5`가 사용되지 않으므로 CSV에서
+제외합니다.
 
 ### 필요한 analysis_id (개념별 환자 수)
 
@@ -68,27 +73,54 @@ ATLAS/Broadsea를 운영 중이시면 데이터소스 특성화를 위해 **이�
 
 ---
 
-## 4. 추출 방법 (택 1)
+## 4. 추출 및 bundle 생성
 
-### 방법 A — 필요한 부분만 (권장, 약 1MB 이하)
+아래 `\copy`는 PostgreSQL 예시입니다. 다른 DBMS에서는 같은 세 컬럼을
+CSV로 export해 주십시오.
 
 ```sql
 \copy (
   SELECT analysis_id, stratum_1, count_value
-  FROM <cdm_schema>_results.achilles_results
+  FROM <resultsDatabaseSchema>.achilles_results
   WHERE analysis_id IN (200, 400, 600, 700, 800, 1800)
 ) TO 'achilles_prevalence.csv' CSV HEADER
 ```
 
-소규모 셀 보호가 필요하시면 조건을 추가해 주십시오(예: `AND count_value >= 10`).
+CSV 헤더와 예시는 다음과 같습니다.
 
-### 방법 B — 테이블 전체
-
-```bash
-pg_dump -t '<cdm_schema>_results.achilles_results' -Fc <db> > achilles_results.dump
+```csv
+analysis_id,stratum_1,count_value
+400,201826,819
+1800,3001802,820
 ```
 
-전체도 무방하나, 방법 A만으로 저희 분석에 충분합니다.
+함께 `manifest.json`을 작성해 주십시오.
+
+```json
+{
+  "siteKey": "hospital_a",
+  "resultsSchema": "hospital_a_results",
+  "cdmVersion": "5.4",
+  "vocabularyVersion": "2026-06-30",
+  "achillesVersion": "1.7.2",
+  "achillesRunDate": "2026-07-24",
+  "smallCellCount": 5,
+  "analysisIds": [200, 400, 600, 700, 800, 1800]
+}
+```
+
+두 파일을 하나의 ZIP으로 묶어 주십시오.
+
+```text
+achilles_site_snapshot.zip
+├── achilles_prevalence.csv
+└── manifest.json
+```
+
+`smallCellCount` 기본값은 5입니다. 값이 양수이면 ACHILLES는
+`count_value <= smallCellCount` 행을 삭제합니다. 따라서 누락 행은 0이
+아니라 `suppressed_or_absent`로 해석합니다. `smallCellCount=0`은
+suppression 해제를 뜻하며, 이 경우에도 0인 CSV 행을 만들지 않습니다.
 
 ### ACHILLES가 아직 생성되지 않은 경우
 
@@ -99,7 +131,7 @@ pg_dump -t '<cdm_schema>_results.achilles_results' -Fc <db> > achilles_results.d
 Achilles::achilles(
   connectionDetails  = connectionDetails,
   cdmDatabaseSchema  = "<cdm_schema>",
-  resultsDatabaseSchema = "<cdm_schema>_results",
+  resultsDatabaseSchema = "<resultsDatabaseSchema>",
   sourceName         = "<병원명>"
 )
 ```
@@ -112,24 +144,26 @@ Achilles::achilles(
 
 | 구분 | 행 수 | 용량 |
 |------|-------|------|
-| 방법 A (개념별 환자 수만) | 1,212행 | **약 19 KB** |
-| 방법 B (테이블 전체) | 704,090행 | 약 41 MB |
+| 요청 CSV (개념별 환자 수만) | 1,212행 | **약 19 KB** |
 
 **실제 병원 규모 추정**
 
-| CDM 규모 | 방법 A | 방법 B (압축 시) |
-|----------|--------|------------------|
-| 중형(10만~50만 명) | 약 0.3~0.6 MB | 약 0.5~2 GB (50~200 MB) |
-| 대형(100만 명 이상) | 약 0.6~1.2 MB | 약 2~8 GB (200~800 MB) |
+| CDM 규모 | 요청 CSV |
+|----------|----------|
+| 중형(10만~50만 명) | 약 0.3~0.6 MB |
+| 대형(100만 명 이상) | 약 0.6~1.2 MB |
 
-> 방법 A의 용량은 **환자 수가 아니라 개념 종류 수**에 비례합니다. 환자가 아무리 많아도 "당뇨병"이라는 개념은 한 행이므로, 대형 병원이라도 1MB 내외입니다.
+> 용량은 **환자 수가 아니라 개념 종류 수**에 비례합니다. 환자가 아무리
+> 많아도 "당뇨병"이라는 개념은 한 행이므로, 대형 병원이라도 1MB
+> 내외입니다.
 
 ---
 
 ## 6. 개인정보 관련
 
-- 요청 데이터는 **개념별 환자 수 집계**이며, 개인 식별정보·개별 환자 레코드는 **포함되지 않습니다.**
-- 소규모 셀은 ACHILLES가 자체적으로 억제하며, 추가 억제 기준이 필요하시면 위 SQL에 조건을 추가해 주십시오.
+- 요청 데이터는 환자 수준 정보가 없는 **개념별 distinct person 수 집계**입니다.
+- 반출 가능 여부와 전달 방식은 사이트 개인정보·데이터 거버넌스 절차에 따릅니다.
+- 적용한 `smallCellCount`는 반드시 manifest에 기록해 주십시오.
 - 저희는 이 집계값을 코호트 정의를 해당 병원 CDM에 맞게 조정하는 용도로만 사용합니다.
 
 ---
@@ -147,11 +181,10 @@ Achilles::achilles(
 
 ## 8. 회신 요청 사항
 
-1. `achilles_prevalence.csv` (방법 A) 또는 전체 덤프
-2. CDM 스키마명 / results 스키마명
-3. CDM 버전(예: v5.4) 및 vocabulary 버전
-4. ACHILLES 실행 시점(데이터 기준일)
-5. 소규모 셀 억제 기준을 적용하신 경우 그 임계값
+1. `achilles_site_snapshot.zip`
+2. ZIP 내부 `achilles_prevalence.csv`
+3. ZIP 내부 `manifest.json` (results 스키마, CDM/vocabulary/ACHILLES 버전,
+   실행일, `smallCellCount`, analysis 목록 포함)
 
 ---
 

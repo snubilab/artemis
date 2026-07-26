@@ -34,22 +34,59 @@ TROY v1.1 코호트를 아주대·계명대 실 CDM에 적용하자 대부분 0-
 
 ### D2. 사이트 인터페이스 = ACHILLES 집계 export (개정 핵심)
 
-사이트에 우리 엔진을 설치·실행시키지 않는다. 대신 **표준 집계 파일 한 장을 받는다.**
+사이트에 우리 엔진을 설치·실행시키지 않는다. 대신 **표준 집계 bundle 하나를 받는다.**
 
 ```
-사이트 → 우리:  <cdm>_results.achilles_results  (개념별 distinct person count)
+사이트 → 우리:  achilles_site_snapshot.zip
+                ├── achilles_prevalence.csv
+                └── manifest.json
 우리 → 사이트:  사이트-튜닝된 Circe + 적응 리포트 (담당자 검토·승인)
 ```
 
 | 항목 | 내용 |
 |------|------|
-| 파일 | `achilles_results` (analysis_id, stratum_1=concept_id, count_value=distinct persons) |
+| 파일 | `achilles_site_snapshot.zip` (`achilles_prevalence.csv` + `manifest.json`) |
+| 원본 | `<resultsDatabaseSchema>.achilles_results` |
 | 필요 analysis | 400(Condition) / 700(Drug) / 800(Observation) / 1800(Measurement) / 600(Procedure) / 200(Visit) |
-| 성격 | 집계·비식별 (PHI 아님), 소규모 셀은 억제됨 |
+| 성격 | 환자 수준 정보가 없는 집계 데이터. 반출 가능 여부는 사이트 거버넌스에 따름 |
 | 크기 | Synthea 실측 1,212행 ≈ **19KB** → 대형 병원도 **~1MB** (환자 수가 아니라 **개념 종류 수**에 비례) |
 | 가용성 | ATLAS/Broadsea 운영 사이트는 데이터소스 특성화 목적으로 **이미 보유**한 경우가 많음. 없으면 `Achilles::achilles()` 1회 실행 |
 
-**근거**: 사이트 마찰 최소(파일 1장), CDM 접근 불필요, 우리 쪽에서 반복 실험 가능, OHDSI 표준 산출물이라 신뢰·재현 용이.
+CSV 계약은 다음 세 컬럼으로 고정한다.
+
+```csv
+analysis_id,stratum_1,count_value
+400,201826,819
+1800,3001802,820
+```
+
+선택한 analysis `200/400/600/700/800/1800`에서만 `stratum_1`은 십진수
+`concept_id` 문자열이고, `count_value`는 observation period 안에서 해당
+이벤트가 한 번 이상 있는 distinct person 수다. 이 analysis들은
+`stratum_2..5`를 사용하지 않으므로 CSV에 포함하지 않는다.
+
+Manifest 계약:
+
+```json
+{
+  "siteKey": "hospital_a",
+  "resultsSchema": "hospital_a_results",
+  "cdmVersion": "5.4",
+  "vocabularyVersion": "2026-06-30",
+  "achillesVersion": "1.7.2",
+  "achillesRunDate": "2026-07-24",
+  "smallCellCount": 5,
+  "analysisIds": [200, 400, 600, 700, 800, 1800]
+}
+```
+
+ACHILLES 1.7.2의 `smallCellCount` 기본값은 5다. 값이 양수이면
+`count_value <= smallCellCount`인 행이 결과에서 삭제되므로 누락 행은 0이
+아니라 `suppressed_or_absent`다. `smallCellCount=0`이면 suppression을
+해제하지만 explicit zero 행을 만들지는 않는다.
+
+**근거**: 사이트 마찰 최소(bundle 1개), CDM 접근 불필요, 우리 쪽에서
+반복 실험 가능, OHDSI 표준 산출물이라 신뢰·재현 용이.
 
 ### D3. 2계층 측정 (ACHILLES의 한계를 명시적으로 보완)
 
@@ -114,10 +151,17 @@ fixture는 진짜 병원 CSV와 **동일 스키마**이므로, 실제 데이터�
 
 ## 스코프 (의도적 단순화)
 
-- 입력은 **사이트 ACHILLES export + OMOP vocabulary**. 환자 레코드·PHI는 다루지 않는다.
+- 입력은 **사이트 ACHILLES snapshot bundle + OMOP vocabulary**. 환자 수준 레코드는 다루지 않는다.
 - ACHILLES staleness(최신성) 유지는 **사이트 운영 책임**. 우리는 받은 스냅샷의 기준일을 기록·표시만 한다.
 - **CDM별 산출물**: Synthea ≠ 아주대 ≠ 계명대. 적응 결과·로그는 (사이트 + ACHILLES 기준일 + 개념/값/창 시그니처)로 키.
 - HITL: 엔진은 **제안만** 한다. 자동 적용 금지.
+
+### Foundation 구현 범위
+
+이 ADR의 foundation 단계는 ZIP bundle 검증, 개념별 evidence 판정,
+descendant 상한 판정, CIRCE 변경 제안, comparator grounding, CLI와 A/B/C
+fixture까지 구현한다. 정식 intent schema, domain rerouting, Tier-2 SQL
+실행기, API 저장, Atlas HITL UI는 후속 계획으로 분리한다.
 
 ## 미해결 리스크 (구현 시 유의)
 
