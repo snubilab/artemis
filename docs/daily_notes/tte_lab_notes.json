@@ -145,7 +145,9 @@
           "ADR-030 사이트별 CDM 적응 계층 (D1~D6: WHAT/HOW 분리, ACHILLES 인터페이스, 2계층 측정, 컴파일러 5단계, 결함 재정렬, A/B/C 검증 전략)",
           "docs/site_data_request/ACHILLES_데이터_요청서.md — 병원 담당자용(추출 SQL·용량·개인정보·용도)",
           "워크트리: src/services/site_cdm_adaptation.py, scripts/adapt_site_cdm.py, scripts/build_site_adaptation_fixtures.py, tests(24)",
-          "다음: 워크트리 머지, 실제 병원 ACHILLES export 수령 후 재컴파일, 2차 계층(joint/value/시간창) 사이트 쿼리 팩"
+          "docs/site_data_request/현재상태_및_재개가이드.md — 수령 대기 상태 고정(완료·차단·재개 절차·미해결). 문서의 CLI/필드는 fixture로 실행 검증함",
+          "워크트리 머지 후 제거·브랜치 삭제 완료. 커밋: fe9c5b6(primitive) → a700b2c(엔진 머지) → e0cc876(재개 가이드)",
+          "다음: 실 병원 ACHILLES 수령 시 재개 가이드 5절 절차대로 진행 (그 전까지 추가 개발 불필요)"
         ]
       }
     ]
