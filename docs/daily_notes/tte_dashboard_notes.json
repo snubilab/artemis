@@ -1,5 +1,39 @@
 [
   {
+    "date": "2026-07-27",
+    "title": "사이트별 CDM 적응 계층(ADR-030) — 설계·ACHILLES 인터페이스·구현 실증",
+    "sections": [
+      {
+        "h": "한 일",
+        "items": [
+          "문제 재정의: A~D 개별 수정으로는 안 되고, 코호트를 사이트마다 적응시켜야 함(vocab 매핑·granularity·도메인·데이터밀도 차이) → ADR-030 작성.",
+          "인터페이스 결정: 병원 CDM 접근 없이 ACHILLES 집계 export(개념별 person count) 한 장을 받는 방식 채택. 실측상 필요한 서브셋은 1,212행 ≈ 19KB(대형 병원도 ~1MB).",
+          "병원 담당자용 데이터 요청서 작성(추출 SQL·용량 추정·개인정보·용도·회신 항목).",
+          "feasibility polarity primitive 구현·검증: 필수 inclusion 0%=DROP 제안 / 배제 0%=KEEP / 진입 0%=REMAP 블로커.",
+          "워크트리에서 적응 엔진 구현 완료(5커밋, 2,815줄) — 테스트 24/24 통과, 가짜 병원 A/B/C에 동일 스펙 컴파일해 서로 다른 튜닝 결과 확인."
+        ]
+      },
+      {
+        "h": "핵심 결과",
+        "items": [
+          "A/B/C가 다르게 튜닝됨(ADR-030 D6 목표 달성): A 1건 flag / B 4건+granularity 적응(USE_POPULATED_DESCENDANTS) / C 1건.",
+          "comparator grounding이 ingredient exact=0이어도 descendant(제품) 확장으로 populated 판정 — 실 CDM이 제품 수준으로 코딩하는 현실 반영(A: DPP-4i populated, C: SU populated, B: 둘 다 없음).",
+          "리포트에 verificationRequests(시간창·값/단위)를 분리 출력 — ACHILLES로 판정 불가한 것을 뭉개지 않고 2차 계층으로 넘김.",
+          "액션 이름이 설계를 반영: VERIFY_THEN_DROP(0 후보 지명만, 하드 0은 2차 확정)."
+        ]
+      },
+      {
+        "h": "다음",
+        "items": [
+          "워크트리(feat/adr-030-site-cdm-adaptation) 머지",
+          "실제 병원 ACHILLES export 수령 → 재컴파일 및 리포트 검토",
+          "2차 계층(joint 0-patient·value/시간창) 사이트 쿼리 팩 작성",
+          "실제 HITL 리뷰 패널(현재 mock) 연결"
+        ]
+      }
+    ]
+  },
+  {
     "date": "2026-07-23",
     "title": "C placebo 추천기 — 로컬 vLLM(Qwen3)에서 문헌→추천 실동작",
     "sections": [

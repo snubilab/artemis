@@ -5292,6 +5292,81 @@ class TTEService:
         finally:
             conn.close()
 
+    # ------------------------------------------------------------------
+    # ADR-029: criterion feasibility gating (direct CDM prevalence counts;
+    # ACHILLES is only an optional fast-triage accelerator, not required)
+    # ------------------------------------------------------------------
+
+    _FEASIBILITY_DOMAIN_TABLE: dict[str, tuple[str, str]] = {
+        "Condition": ("condition_occurrence", "condition_concept_id"),
+        "Observation": ("observation", "observation_concept_id"),
+        "Measurement": ("measurement", "measurement_concept_id"),
+        "Drug": ("drug_exposure", "drug_concept_id"),
+        "Procedure": ("procedure_occurrence", "procedure_concept_id"),
+        "Device": ("device_exposure", "device_concept_id"),
+        "Visit": ("visit_occurrence", "visit_concept_id"),
+    }
+
+    def _concept_prevalence(self, concept_ids, domain, include_descendants: bool = True) -> int | None:
+        """Distinct person count in the domain table for a concept set — the GROUND-TRUTH
+        feasibility measure (direct CDM count). Returns None if the domain is unsupported,
+        the set is empty, or the query fails (caller treats None as 'measure manually')."""
+        tbl = self._FEASIBILITY_DOMAIN_TABLE.get(domain)
+        ids = [int(c) for c in (concept_ids or [])]
+        if not tbl or not ids:
+            return None
+        table, col = tbl
+        try:
+            import psycopg2
+
+            from src.settings import settings
+
+            conn = psycopg2.connect(settings.DATABASE_URL)
+        except Exception:
+            return None
+        S = settings.CDM_SCHEMA
+        try:
+            with conn.cursor() as cur:
+                if include_descendants:
+                    cur.execute(
+                        f"""SELECT count(DISTINCT d.person_id) FROM {S}.{table} d
+                            JOIN {S}.concept_ancestor ca ON ca.descendant_concept_id = d.{col}
+                            WHERE ca.ancestor_concept_id = ANY(%s)""",
+                        (ids,),
+                    )
+                else:
+                    cur.execute(
+                        f"SELECT count(DISTINCT person_id) FROM {S}.{table} WHERE {col} = ANY(%s)",
+                        (ids,),
+                    )
+                return int(cur.fetchone()[0])
+        except Exception as exc:
+            logging.debug("[TTE] prevalence count failed (%s): %s", domain, exc)
+            return None
+        finally:
+            conn.close()
+
+    def _feasibility_verdict(self, role: str, n_persons: int | None) -> dict[str, Any]:
+        """Polarity-aware feasibility verdict for a criterion (ADR-029).
+
+        role: 'entry' | 'inclusion' | 'exclusion'. A 0-prevalence criterion is only a
+        problem depending on polarity: a required inclusion (or the entry concept) with no
+        data drops everyone, whereas a 0-match exclusion excludes nobody and is harmless."""
+        if n_persons is None:
+            return {"verdict": "unknown", "persons": None, "action": "measure manually / unsupported domain"}
+        if n_persons > 0:
+            return {"verdict": "feasible", "persons": n_persons, "action": "keep"}
+        if role == "entry":
+            return {"verdict": "blocker", "persons": 0,
+                    "action": "entry/index concept absent in CDM — remap or replace (hard blocker)"}
+        if role == "inclusion":
+            return {"verdict": "infeasible", "persons": 0,
+                    "action": "required inclusion matches 0 patients — propose to DROP/relax (HITL)"}
+        if role == "exclusion":
+            return {"verdict": "benign", "persons": 0,
+                    "action": "exclusion matches nobody — KEEP (excludes no one)"}
+        return {"verdict": "unknown", "persons": 0, "action": "review"}
+
     def _build_recommended_placebo_comparator_circe(
         self,
         eligibility: dict[str, Any],
