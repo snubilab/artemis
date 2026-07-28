@@ -109,10 +109,16 @@ class CriteriaPlanner:
                     sub_criteria.append(sc)
                 
                 criterion.sub_criteria = sub_criteria
-                criterion.group_type = "ANY"
-                
+                # De Morgan: negating a disjunction distributes as a conjunction.
+                # "cardiovascular disease" (PRESENCE) → any sub-term qualifies → ANY.
+                # "no drug abuse" (ABSENCE) → alcohol AND opioid AND cannabis must all
+                # be absent → ALL. Using ANY here would let one absent sub-term pass the
+                # whole exclusion, silently admitting patients the protocol excludes.
+                criterion.group_type = "ALL" if criterion.logic_type == "ABSENCE" else "ANY"
+
                 print(f"  ✂ '{criterion.entity_text}' → "
-                      f"{len(sub_criteria)} sub-criteria: "
+                      f"{len(sub_criteria)} sub-criteria ({criterion.logic_type}"
+                      f"/{criterion.group_type}): "
                       f"{[sc.entity_text for sc in sub_criteria[:5]]}...")
             else:
                 print(f"  ✓ '{criterion.entity_text}' → atomic (no decomposition)")

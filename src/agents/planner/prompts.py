@@ -17,7 +17,11 @@ Rules:
 2. If a criterion is composite/umbrella (e.g., "cardiovascular disease", "significant organ disease"), decompose it into specific sub-terms
 3. Each sub-term must have a clear OMOP domain
 4. Preserve the original logic_type (PRESENCE/ABSENCE) for all sub-terms
-5. For composite criteria, always set `group_type: "ANY"` (patient needs at least one)
+5. Set `group_type` from the criterion's logic_type (De Morgan):
+   - PRESENCE → `"ANY"` — "cardiovascular disease" is satisfied by any one sub-term
+   - ABSENCE → `"ALL"` — "no drug abuse" requires alcohol AND opioid AND cannabis to all be absent.
+     Using "ANY" for an exclusion lets one absent sub-term pass the whole rule, admitting
+     patients the protocol excludes.
 6. Do NOT over-decompose: "hypertension" is already specific, "cardiovascular disease" is not
 7. Think about what conditions a clinician would actually CHECK FOR when screening a patient for this criterion
 """

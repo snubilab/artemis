@@ -1,5 +1,304 @@
 [
   {
+    "date": "2026-07-28",
+    "title": "0-patient 원인 실데이터 규명 — 3개 병원 ACHILLES 대조",
+    "key": "0명의 원인은 자격기준 개수나 AND 결합이 아니라, 잘못 매핑된 진입 약물(개발코드)과 CDM에 코딩되지 않는 필수 조건 2가지였다.",
+    "sections": [
+      {
+        "h": "확인된 오류 종합 (실데이터 검증 기준)",
+        "items": [
+          "0명의 직접 원인: #2 개발코드 오매핑 + #4 CDM 미코딩 항목 필수화 — 둘 다 EMPA-REG의 AND 경로에 있다.",
+          "의미 무효화: #1 진입 이벤트 오류 — 숫자는 나오지만(CAROLINA 11/43) 치료·대조군이 사실상 같은 집단이라 인과 추론이 성립하지 않는다.",
+          "조용한 위험: #5 배제 무력화, #6 매핑 실패 은폐 — 0명이 나오지 않아 발견이 늦다."
+        ],
+        "table": {
+          "head": [
+            "#",
+            "오류",
+            "위치",
+            "증상",
+            "근거",
+            "상태"
+          ],
+          "rows": [
+            [
+              "1",
+              "진입 이벤트가 약물이 아닌 질환",
+              "6개 코호트 전부",
+              "치료·대조군이 같은 집단. 모든 시간창이 진단일 기준이 되어 조건 간 모순",
+              "생성물 PrimaryCriteria=ConditionOccurrence, gold는 DrugEra",
+              "수정 완료 (7cf3fd5)"
+            ],
+            [
+              "2",
+              "개발코드 오매핑",
+              "EMPA-REG 진입 #20",
+              "BI 10773 → 1254065 CHF-6366 대사물질(무관 물질), descendants 1개 → 세 병원 모두 0명",
+              "정답 45774751 empagliflozin은 아주대 43,244 / 동아대 3,201 / 계명대 6,231",
+              "미해결"
+            ],
+            [
+              "3",
+              "이름-개념 불일치",
+              "CARMELINA #20 · #10",
+              "규칙 이름은 linagliptin인데 개념은 1580747 sitagliptin. DPP-4 set도 sitagliptin 하나뿐",
+              "정답 linagliptin = 40239216",
+              "부분 수정 (16e8ee8)"
+            ],
+            [
+              "4",
+              "CDM 미코딩 항목을 필수 포함으로",
+              "EMPA-REG #10",
+              "식이/운동요법 기록이 있어야 통과 → 세 병원 모두 0명",
+              "gold에는 이 규칙 자체가 없음(교수님이 제외)",
+              "설계만 (ADR-029)"
+            ],
+            [
+              "5",
+              "드모르간 오류 (배제 결합)",
+              "생성물 배제 규칙 다수",
+              "배제 여러 개를 Type=ANY로 묶음 → 하나만 없어도 통과, 배제가 무력화(환자를 더 통과시킴). decomposer가 logic_type과 무관하게 ANY를 하드코딩",
+              "gold는 동일 항목을 Type=ALL로 묶음(No drug exposure: GLP-1/DPP-4/SGLT-2, Stroke or TIA 등 전부 ALL + Occurrence{0,0})",
+              "수정 완료 (미검증)"
+            ],
+            [
+              "6",
+              "매핑 실패를 실패로 표시하지 않음",
+              "개념 매핑 전반",
+              "vocabulary에 없는 용어도 가장 비슷한 것을 반환 → 조용히 틀린 코호트. #2가 그 결과",
+              "BI 10773은 OMOP vocabulary에 부재(검색 시 무관한 LOINC/NDC만 반환)",
+              "미해결"
+            ],
+            [
+              "7",
+              "값 조건 → 존재 조건 변환 가능성",
+              "개념 매핑/규칙화",
+              "값 조건이 검사 존재 여부로 바뀌면 의미가 달라짐",
+              "생성물 EMPA #5는 값 조건 유지(정상). 다른 규칙 전수 확인 필요",
+              "확인 필요"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "무엇을 검증했나",
+        "items": [
+          "아주대·동아대·계명대 ACHILLES 스냅샷(18,695 / 16,992 / 10,319행)에 생성물 코호트의 모든 규칙을 개념 단위로 대조했다.",
+          "각 규칙의 concept set을 includeDescendants 반영해 확장(성분→제품)한 뒤, 해당 개념을 가진 환자 수를 사이트별로 집계했다.",
+          "규칙의 방향(포함/배제)은 Circe의 Occurrence(Type=0,Count=0 이면 배제)로 판정하고, Groups 트리를 재귀로 펼쳐 실제 결합 구조를 확인했다."
+        ]
+      },
+      {
+        "h": "EMPA-REG — 0명의 직접 원인 2가지",
+        "items": [
+          "진입 규칙 #20이 empagliflozin이 아니라 개발코드 'BI 10773'(1254065, 대사물질 개념)로 매핑되어 세 병원 모두 0명. 실제 empagliflozin(45774751)은 아주대 43,244 / 동아대 3,201 / 계명대 6,231명으로 정상 존재한다.",
+          "규칙 #10 '식이요법 또는 운동요법'이 필수 포함(AND 경로)으로 들어가 세 병원 모두 0명. 생활습관 중재는 실세계 CDM에 코딩되지 않는 항목이다 — 조재형 교수님이 지목한 11번 criteria가 이것이다.",
+          "나머지 포함 조건(T2DM, BMI, HbA1c, CV위험인자)은 모두 수만~수백만 명 규모로 정상."
+        ],
+        "table": {
+          "head": [
+            "EMPA-REG 포함조건",
+            "아주대",
+            "동아대",
+            "계명대",
+            "판정"
+          ],
+          "rows": [
+            [
+              "#20 진입 BI 10773 (1254065)",
+              "0",
+              "0",
+              "0",
+              "개발코드 오매핑"
+            ],
+            [
+              "#10 식이/운동요법 (필수)",
+              "0",
+              "0",
+              "0",
+              "CDM 미코딩"
+            ],
+            [
+              "(참고) 실제 empagliflozin",
+              "43,244",
+              "3,201",
+              "6,231",
+              "정상"
+            ],
+            [
+              "#1 T2DM",
+              "800,323",
+              "109,292",
+              "12,802",
+              "정상"
+            ],
+            [
+              "#3 HbA1c >= 7",
+              "1,334,949",
+              "211,233",
+              "104,569",
+              "정상"
+            ],
+            [
+              "#9 CV 위험인자",
+              "1,718,464",
+              "137,247",
+              "55,260",
+              "정상"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "CARMELINA — 개념 부재로는 설명되지 않음",
+        "items": [
+          "AND 경로에 있는 포함 조건 전부가 세 병원에서 충분한 환자 수를 가진다. 개념이 없어서 0명이 되는 규칙은 없었다.",
+          "진입이 당뇨 진단일(ConditionOccurrence)이라 모든 시간창(-56d/-180d/-365d)이 진단일 기준으로 계산된다. '당뇨를 처음 진단받은 날에 이미 특정 DPP-4를 6개월째 복용 중'이라는 조합을 요구하게 되어 조건 간 모순이 생긴다.",
+          "진입 규칙 #20의 이름은 linagliptin이지만 실제 개념은 sitagliptin(1580747)이다. DPP-4 concept set도 sitagliptin 하나뿐이다.",
+          "gold는 진입이 DrugEra(약 시작일)라 이 모순이 발생하지 않는다."
+        ],
+        "table": {
+          "head": [
+            "CARMELINA 포함조건(AND)",
+            "아주대",
+            "동아대",
+            "계명대"
+          ],
+          "rows": [
+            [
+              "T2DM",
+              "800,323",
+              "109,292",
+              "12,802"
+            ],
+            [
+              "BMI <= 45",
+              "1,676,956",
+              "87,807",
+              "218,605"
+            ],
+            [
+              "HbA1c >= 6.5",
+              "1,334,949",
+              "211,233",
+              "104,569"
+            ],
+            [
+              "albuminuria (ANY)",
+              "102,071",
+              "28,303",
+              "2,195"
+            ],
+            [
+              "당뇨약 복용 (ANY)",
+              "465,279",
+              "20,010",
+              "9,321"
+            ],
+            [
+              "진입 linagliptin→sitagliptin",
+              "112,202",
+              "4,941",
+              "2,668"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "gold와의 구조 차이",
+        "items": [
+          "gold CARMELINA는 규칙 15개, 생성물은 21개다. 차이는 대부분 CDM에 코딩되지 않는 항목(다른 임상시험 참여 등)을 교수님들이 의도적으로 제외한 결과다.",
+          "gold는 규칙 이름에 방향을 명시한다: 'No drug exposure : GLP-1, DPP-4, SGLT-2', 'No ACS', 'eGFR <15'. 배제 기준임이 이름에서 드러난다.",
+          "배제 조건을 여러 개 묶을 때 gold는 Type=ALL(전부 없어야 함)을 쓰지만 생성물은 Type=ANY를 쓴다. NOT(A OR B OR C) = NOT A AND NOT B AND NOT C 인데 원문의 '또는'을 그대로 ANY로 옮긴 드모르간 오류다. 다만 이 오류는 환자를 더 통과시키는 방향이라 0명의 원인은 아니다.",
+          "gold는 적응증 정의용 파일(규칙 0개)과 자격기준 파일을 분리하고, ATC 코드 버전도 병행 제공한다."
+        ],
+        "table": {
+          "head": [
+            "항목",
+            "gold (교수님)",
+            "생성물 (AI)"
+          ],
+          "rows": [
+            [
+              "진입 이벤트",
+              "DrugEra (약 시작일)",
+              "ConditionOccurrence (당뇨 진단일)"
+            ],
+            [
+              "규칙 수",
+              "15",
+              "21"
+            ],
+            [
+              "배제 조건 결합",
+              "Type=ALL",
+              "Type=ANY (드모르간 오류)"
+            ],
+            [
+              "코딩 불가 항목",
+              "제외함",
+              "그대로 포함"
+            ],
+            [
+              "규칙 이름",
+              "방향 명시(No ~)",
+              "방향 미표기"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "앞선 진단 정정",
+        "items": [
+          "'배제 기준의 polarity가 뒤집혔다' — 사실이 아니다. 배제 조건에는 Occurrence(Type=0, Count=0)로 NOT이 정확히 붙어 있다.",
+          "'자격기준 21개를 AND로 묶어서 전멸' — AND 결합 자체는 정상이다. 자격기준은 원래 모두 만족해야 한다.",
+          "'eGFR·다른 임상시험 참여 규칙이 0명 원인' — 두 규칙 모두 배제 조건이므로 해당 개념이 0명이면 오히려 전원 통과한다.",
+          "'성분 ID로 정의해서 병원 데이터와 매칭되지 않는다' — 사실이 아니다. gold는 성분 + includeDescendants=True로 정의했고, 확장하면 세 병원 제품 개념에 정상 매칭된다(예: Linagliptin → 아주대 제품 6개 177,891명)."
+        ]
+      },
+      {
+        "h": "확정된 조치 방향",
+        "items": [
+          "진입 약물 매핑 검증: 개발코드(BI 10773)·조합명이 성분 개념으로 정규화되는지 확인한다. 이름과 실제 개념의 일치 검사가 필요하다(linagliptin→sitagliptin 사례).",
+          "필수 포함 조건의 feasibility 게이팅: 사이트 ACHILLES로 0명인 필수 조건을 찾아 제외/완화를 제안한다(ADR-029). 식이/운동요법이 정확히 이 대상이다.",
+          "배제 조건 결합을 ANY에서 ALL로 교정한다.",
+          "진입을 DrugEra로 복원해 시간창 기준점을 약 시작일로 맞춘다(결함 A 수정, 이미 구현됨)."
+        ]
+      },
+      {
+        "h": "수정 내역 — #5 드모르간 오류 (수정 완료, 미검증)",
+        "items": [
+          "원인 지점: planner/decomposer.py에서 복합 기준을 분해할 때 logic_type과 무관하게 group_type을 항상 ANY로 하드코딩했다. planner/prompts.py의 LLM 지침도 'always ANY'였다.",
+          "수정: group_type을 logic_type에서 유도한다 — PRESENCE는 ANY(하위 하나만 해당해도 성립), ABSENCE는 ALL(하위 전부 부재해야 성립).",
+          "이중부정 없음 확인: 개별 criteria의 Occurrence{Type:0,Count:0}는 각 항목의 NOT이고, 그룹 Type=ALL은 그 NOT들의 AND다. 합치면 ¬A ∧ ¬B ∧ ¬C 로 드모르간 우변과 일치한다.",
+          "gold 구조 대조 완료: gold의 배제 규칙은 전부 Type=ALL + 각 항목 Occurrence{0,0} 형태다([5] No drug exposure, [7] eGFR, [14] Stroke or TIA).",
+          "자연어의 '또는'이 배제 문맥에서는 논리적 AND가 된다는 점이 이 버그의 본질이다. gold [14] 'Stroke or TIA'도 이름엔 or가 있지만 Type=ALL이다.",
+          "미검증 사유: 로직 단위 테스트(PRESENCE→ANY, ABSENCE→ALL)와 gold 구조 대조까지만 했다. 스터디를 재생성해 실제 산출 Circe가 Type=ALL로 나오는지, 그리고 환자 수가 어떻게 바뀌는지는 확인하지 않았다.",
+          "적용 범위: 재생성 시점부터 반영된다. 기존 data/generated/*.json은 그대로다."
+        ],
+        "table": {
+          "head": [
+            "파일",
+            "변경 전",
+            "변경 후"
+          ],
+          "rows": [
+            [
+              "planner/decomposer.py",
+              "criterion.group_type = \"ANY\" (하드코딩)",
+              "\"ALL\" if logic_type == \"ABSENCE\" else \"ANY\""
+            ],
+            [
+              "planner/prompts.py",
+              "always set group_type: \"ANY\"",
+              "PRESENCE → ANY / ABSENCE → ALL (이유 명시)"
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
     "date": "2026-07-23",
     "title": "TROY v1.1 코호트 결함 — 문제별 기존 output → 새 output",
     "key": "6개 코호트는 현재 결과를 신뢰할 수 없고, 약물 진입·개념 매핑·comparator·feasibility를 모두 바로잡아야 한다.",
@@ -11,11 +310,27 @@
           "현장 관찰: 김청수(아주대) '진입에 index 약제 없이 당뇨진단만 들어있다'(→A) · 조재형(계명대) 'EMPA 11번·CARMELINA 9번 criteria가 전원 탈락'(→D)"
         ],
         "table": {
-          "head": ["코호트", "아주대 (김청수)", "계명대 (조재형)"],
+          "head": [
+            "코호트",
+            "아주대 (김청수)",
+            "계명대 (조재형)"
+          ],
           "rows": [
-            ["Carmelina 치료 / 대조", "0 / 0", "0 / 0"],
-            ["Carolina 치료 / 대조", "11 / 43", "36 / 116"],
-            ["Empa-reg 치료 / 대조", "0 / 0", "0 / 0"]
+            [
+              "Carmelina 치료 / 대조",
+              "0 / 0",
+              "0 / 0"
+            ],
+            [
+              "Carolina 치료 / 대조",
+              "11 / 43",
+              "36 / 116"
+            ],
+            [
+              "Empa-reg 치료 / 대조",
+              "0 / 0",
+              "0 / 0"
+            ]
           ]
         }
       },
@@ -81,14 +396,42 @@
           "조치: 약물 단일성분은 exact-match(문제 B) 완료. 확장 과제: 조건/검사 vocab 검증 + 클래스 ATC 확장 + 도메인 가드 + granularity 교정 (output/gold_vs_generated/concept_audit_findings.json)"
         ],
         "table": {
-          "head": ["개념셋", "현재 (틀림)", "기대"],
+          "head": [
+            "개념셋",
+            "현재 (틀림)",
+            "기대"
+          ],
           "rows": [
-            ["SGLT2 Inhibitors", "saxagliptin(DPP-4) 포함, empagliflozin 누락", "SGLT2 계열만"],
-            ["DPP-4 inhibitor", "sitagliptin 하나만", "DPP-4 성분 전체"],
-            ["Cardiovascular Risk Factors", "'Cardiovascular injury' 단일", "고혈압·이상지질·흡연·비만"],
-            ["Ultra-long-acting insulin", "liraglutide·lixisenatide(GLP-1) 포함", "degludec 등 인슐린만"],
-            ["Allergy to clopidogrel", "일반 약물알레르기 12개", "clopidogrel 특이 반응"],
-            ["Unstable Angina", "CABG 변형 + Stable angina 오포함", "일반 불안정협심증"]
+            [
+              "SGLT2 Inhibitors",
+              "saxagliptin(DPP-4) 포함, empagliflozin 누락",
+              "SGLT2 계열만"
+            ],
+            [
+              "DPP-4 inhibitor",
+              "sitagliptin 하나만",
+              "DPP-4 성분 전체"
+            ],
+            [
+              "Cardiovascular Risk Factors",
+              "'Cardiovascular injury' 단일",
+              "고혈압·이상지질·흡연·비만"
+            ],
+            [
+              "Ultra-long-acting insulin",
+              "liraglutide·lixisenatide(GLP-1) 포함",
+              "degludec 등 인슐린만"
+            ],
+            [
+              "Allergy to clopidogrel",
+              "일반 약물알레르기 12개",
+              "clopidogrel 특이 반응"
+            ],
+            [
+              "Unstable Angina",
+              "CABG 변형 + Stable angina 오포함",
+              "일반 불안정협심증"
+            ]
           ]
         }
       }
