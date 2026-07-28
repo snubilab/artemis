@@ -1,5 +1,204 @@
 [
   {
+    "date": "2026-07-28",
+    "title": "실험노트 — 실 병원 ACHILLES(아주대·동아대·계명대) 수령·정규화와 ADR-030 전제 검증",
+    "key": "세 병원 export를 하나의 표준 스냅샷 포맷으로 정규화했고, 세 곳 모두 약을 제품 수준으로 코딩해 ingredient 기반 코호트가 구조적으로 0명이 된다는 사실이 실데이터로 확인됐다.",
+    "sections": [
+      {
+        "h": "실험 15 · 수령 포맷 정찰 — 요청한 것과 다른 것이 왔다",
+        "items": [
+          "목적: 세 병원(아주대·동아대·계명대)에서 도착한 ACHILLES export가 우리가 요청서에 적은 `achilles_results` 서브셋과 같은지 확인.",
+          "방법: 파일별로 헤더·행수·도메인 구분 방식을 직접 열어 비교.",
+          "관찰: 셋 다 raw `achilles_results` 테이블이 아니라 ATLAS `Data Sources` 화면 export였고, 세 병원 포맷이 서로 달랐음 — 아주대는 단일 xlsx(domain·concept_id·count), 동아대는 도메인별 CSV(영문 헤더), 계명대는 번호가 붙은 CSV `(1)~(4)`에 한글 헤더(`컨셉 아이디`, `환자수`).",
+          "관찰(공통점): 표현은 달라도 의미는 세 곳 모두 동일 — concept_id → distinct person count. 우리 스냅샷 계약과 정보량이 같음.",
+          "부수 발견(이득): 세 export 모두 concept Name과 Prevalence 컬럼을 포함. raw `achilles_results`에는 없는 정보라 값 검증과 사람 판독이 오히려 쉬워짐.",
+          "결론: 인터페이스를 다시 요청할 필요 없음. 받은 것을 우리 표준 스냅샷으로 정규화하는 어댑터 한 개면 충분 → 실험 16."
+        ]
+      },
+      {
+        "h": "실험 16 · 정규화 스크립트 구현 + NFC 파일명 버그  [3/3 성공]",
+        "items": [
+          "목적: 서로 다른 세 포맷을 `data/site_snapshots/{ajou,donga,keimyung}.zip`(achilles_prevalence.csv + manifest.json) 하나로 수렴.",
+          "방법: `scripts/normalize_site_achilles.py` 작성 — 헤더 별칭 테이블(한글/영문)로 컬럼 정규화, xlsx는 의존성 추가 없이 표준 `zipfile` + XML 파싱으로 읽음(openpyxl 미사용), UTF-8/CP949 혼재 인코딩 처리.",
+          "문제: 세 export 모두 analysis_id가 없음(ATLAS 화면 export라 도메인만 있음). → 도메인별 probe 개념으로 복원 — 예: 201826이 있으면 condition, `Ingredient` 열이 있으면 drug.",
+          "실행 중 발견한 버그: 한글 파일명이 NFD 분해 형태(macOS 유래)로 도착해 `'계명대' in name` 판정이 False. 결과적으로 사이트 키가 잘못 배정됨. → `unicodedata.normalize(\"NFC\", ...)`로 파일명을 정규화해 해결.",
+          "검증: 세 스냅샷 모두 `load_achilles_snapshot()`으로 정상 로드. 값 대조도 원본과 일치 — 동아대 Essential hypertension 137,247 · Type 2 diabetes 109,292 · Erythrocytes 782,018 · Outpatient Visit 1,196,549.",
+          "의도적으로 남긴 한계: (1) `smallCellCount=0` — 사이트별 실제 억제 임계값을 확인하기 전까지는 잠정값. 임의로 값을 넣으면 '행 부재'를 '환자 0명'으로 오독하게 됨. (2) 아주대 `device` 도메인 738행은 우리 6-analysis 계약 밖이라 제외.",
+          "결론: 병원마다 다른 화면 export도 어댑터 한 장으로 표준 스냅샷에 들어옴. 파일명 유니코드 정규화는 한글 환경 수령 파이프라인의 필수 전처리."
+        ],
+        "table": {
+          "head": [
+            "사이트",
+            "수령 포맷",
+            "헤더",
+            "정규화 행 수",
+            "로드"
+          ],
+          "rows": [
+            [
+              "아주대 (ajou)",
+              "단일 xlsx (domain·concept_id·count)",
+              "영문",
+              "18,695",
+              "성공"
+            ],
+            [
+              "동아대 (donga)",
+              "도메인별 CSV",
+              "영문",
+              "16,992",
+              "성공"
+            ],
+            [
+              "계명대 (keimyung)",
+              "번호 CSV (1)~(4)",
+              "한글 (컨셉 아이디·환자수)",
+              "10,319",
+              "성공"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "실험 17 · 약물 ingredient 개념 부재 — ADR-030 전제의 실데이터 확인  [가설 확정]",
+        "items": [
+          "목적: 실 병원 CDM이 약을 어느 granularity로 코딩하는지 확인. 가짜 병원 A/B/C 실험(실험 14)에서 세운 '제품 수준 코딩' 가정을 실데이터로 검증.",
+          "방법: 우리 스터디들이 실제로 쓰는 RxNorm Ingredient concept_id를 세 스냅샷에서 직접 조회.",
+          "관찰: 세 병원 모두 약이 PRODUCT 수준(RxNorm Extension, concept id >40M)으로 코딩돼 있고, Ingredient 개념은 사실상 부재. 아래 표의 개념이 세 사이트 전부에서 없음.",
+          "결과: ingredient ID로 정의한 코호트는 사이트에서 구조적으로 0명이 됨 — 그리고 실제 운영에서 나왔던 0-patient 현상이 정확히 이것이었음. 코호트 정의 오류가 아니라 granularity 불일치였다.",
+          "결론: ingredient→product descendant 확장은 최적화 옵션이 아니라 필수 경로. 실험 14에서 관찰한 `USE_POPULATED_DESCENDANTS` 적응이 실 사이트에서 세 곳 전부에 필요하다는 뜻."
+        ],
+        "table": {
+          "head": [
+            "Ingredient 개념 (concept_id)",
+            "아주대",
+            "동아대",
+            "계명대"
+          ],
+          "rows": [
+            [
+              "sitagliptin (1580747)",
+              "없음",
+              "없음",
+              "없음"
+            ],
+            [
+              "linagliptin (40239216)",
+              "없음",
+              "없음",
+              "없음"
+            ],
+            [
+              "glimepiride (1597756)",
+              "없음",
+              "없음",
+              "없음"
+            ],
+            [
+              "metformin (1503297)",
+              "없음",
+              "없음",
+              "없음"
+            ],
+            [
+              "empagliflozin (45774751)",
+              "없음",
+              "없음",
+              "없음"
+            ],
+            [
+              "warfarin",
+              "없음",
+              "없음",
+              "없음"
+            ],
+            [
+              "clopidogrel",
+              "없음",
+              "없음",
+              "없음"
+            ],
+            [
+              "apixaban",
+              "없음",
+              "없음",
+              "없음"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "실험 18 · 질환 개념의 사이트 편차와 Dietary regimen 반전  [feasibility는 사이트별]",
+        "items": [
+          "목적: 같은 질환 정의가 사이트마다 동일하게 작동하는지, 그리고 Synthea에서 0이던 killer 규칙이 실 병원에서도 0인지 확인.",
+          "방법: 세 스냅샷에서 우리 스터디가 쓰는 condition 개념의 존재 여부와 person count를 대조.",
+          "관찰 1(개념 선택 편차): Essential hypertension(320128)은 세 곳 다 존재하지만, Hypertensive disorder(316866)는 세 곳 다 부재. 같은 질환을 다른 개념으로 코딩한다는 뜻 — 어느 한 쪽만 쓴 코호트 정의는 사이트에 따라 통째로 비게 됨.",
+          "관찰 2(규모 편차): 존재하더라도 환자수 규모가 사이트별로 자릿수가 다름. Atrial fibrillation(313217)은 아주대 32,590 vs 동아대 177로 두 자릿수 이상 차이.",
+          "관찰 3(반전): `Dietary regimen`(4032243)이 세 곳 모두 존재 — Synthea에서 0이라 DROP 후보로 지명했던 것과 정반대. 다만 유병률 ~0.02% 수준이라, 필수 inclusion으로 쓰면 여전히 사실상 전원 탈락 필터로 작동.",
+          "결론: '우리 Synthea에서 0이니 실 병원에서도 0'이라는 추론이 실데이터로 반증됨. 반대로 '존재하니 쓸 수 있다'도 틀림 — 존재 여부와 실사용 가능성은 다른 축이다. feasibility는 반드시 사이트별로 측정해야 한다는 ADR-030 2계층 설계의 근거가 실데이터로 확보됨."
+        ],
+        "table": {
+          "head": [
+            "개념 (concept_id)",
+            "아주대",
+            "동아대",
+            "계명대",
+            "판정"
+          ],
+          "rows": [
+            [
+              "Essential hypertension (320128)",
+              "1,718,464",
+              "137,247",
+              "55,260",
+              "세 곳 존재"
+            ],
+            [
+              "Hypertensive disorder (316866)",
+              "없음",
+              "없음",
+              "없음",
+              "세 곳 부재"
+            ],
+            [
+              "Type 2 diabetes (201826)",
+              "800,323",
+              "109,292",
+              "12,802",
+              "세 곳 존재 (규모 편차)"
+            ],
+            [
+              "Atrial fibrillation (313217)",
+              "32,590",
+              "177",
+              "10,630",
+              "세 곳 존재 (규모 편차 큼)"
+            ],
+            [
+              "Dietary regimen (4032243)",
+              "2,574",
+              "234",
+              "199",
+              "존재하나 저유병(~0.02%)"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "산출물 / 다음",
+        "items": [
+          "코드: `scripts/normalize_site_achilles.py` (세 포맷 → 표준 스냅샷, 의존성 추가 없음).",
+          "데이터: `data/site_snapshots/ajou.zip`(18,695행) · `donga.zip`(16,992행) · `keimyung.zip`(10,319행) — 각각 achilles_prevalence.csv + manifest.json.",
+          "다음 1: ingredient→product descendant 확장을 적응 컴파일러 기본 경로로 확정.",
+          "다음 2: 사이트별 실제 `smallCellCount` 확인 후 manifest 갱신(현재 0은 잠정값).",
+          "다음 3: 가짜 병원 A/B/C 대신 실 스냅샷 3개로 ADR-030 적응 엔진 컴파일 → 실 사이트 리포트 생성·비교.",
+          "다음 4: 사이트 vocabulary 버전 기준 concept_ancestor 매핑 준비 — fixture 축약본(vocabulary_map.json) 교체 필요.",
+          "다음 5: 아주대 `device` 도메인 738행을 계약에 포함할지 결정."
+        ]
+      }
+    ]
+  },
+  {
     "date": "2026-07-27",
     "title": "실험노트 — 사이트별 CDM 적응 계층(ADR-030): 설계·ACHILLES 인터페이스·A/B/C 실증",
     "key": "ACHILLES snapshot만으로도 사이트별 차이를 안전한 제안으로 분리할 수 있지만, joint·값·시간 조건은 Tier-2 확인이 필요하다.",

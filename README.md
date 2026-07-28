@@ -101,6 +101,38 @@ docker-compose up -d
 - [Spec](./docs/spec.md) - Technical specification
 - [ADR](./docs/adr/) - Architecture Decision Records
 
+## Per-Site CDM Adaptation (사이트별 코호트 적응)
+
+같은 코호트 정의라도 병원마다 vocabulary 매핑·코딩 세분도·데이터 밀도가 달라
+그대로 배포할 수 없다. 병원 CDM에 접근하지 않고 **ACHILLES 집계 파일만 받아**
+코호트를 사이트별로 적응시킨다. 설계는 [ADR-030](./docs/adr/ADR-030_Per_Site_CDM_Adaptation_Layer.md).
+
+**문서**
+- [현재상태·재개 가이드](./docs/site_data_request/현재상태_및_재개가이드.md) — 무엇이 되어 있고 어디서 이어가는지 (여기부터 읽기)
+- [ACHILLES 데이터 요청서](./docs/site_data_request/ACHILLES_데이터_요청서.md) — 병원 담당자에게 보내는 문서
+- [수령 데이터 정규화](./docs/site_data_request/수령데이터_정규화.md) — 받은 파일 → 표준 스냅샷 변환 기록
+
+**수령 데이터 → 표준 스냅샷** (사이트마다 형식이 달라 정규화가 필요하다)
+
+```bash
+python3 scripts/normalize_site_achilles.py \
+  --input <수령 폴더> --output data/site_snapshots \
+  --run-date <ACHILLES 실행일> --small-cell-count <사이트 억제 임계값>
+```
+
+`data/site_snapshots/<site>.zip` = `achilles_prevalence.csv` + `manifest.json`
+(gitignore 대상 — 코드만 커밋되고 데이터는 위 명령으로 재생성한다)
+
+**적응 실행**
+
+```bash
+python3 scripts/adapt_site_cdm.py \
+  --snapshot data/site_snapshots/<site>.zip --circe <코호트>.json \
+  --vocabulary-map <site vocabulary map>.json --output site_report.json
+```
+
+리포트는 `status: "proposed"` — 자동 적용하지 않고 담당자 검토용 제안만 낸다.
+
 ## Project Structure
 
 ```

@@ -1,6 +1,108 @@
 [
   {
     "date": "2026-07-28",
+    "time": "15:24",
+    "title": "3개 병원(아주대·동아대·계명대) 실 ACHILLES 수령·정규화 — ADR-030 전제의 실데이터 확인",
+    "key": "세 병원 export를 표준 스냅샷으로 정규화했고, 세 곳 모두 약을 제품 수준으로 코딩해 ingredient ID로 정의한 코호트는 구조적으로 0명이 된다는 것이 실데이터로 확인됐다.",
+    "sections": [
+      {
+        "h": "한 일",
+        "items": [
+          "수령물이 raw `achilles_results` 테이블이 아니라 ATLAS `Data Sources` 화면 export였고, 세 병원 포맷이 전부 달랐음 — 아주대: 단일 xlsx(domain·concept_id·count) / 동아대: 도메인별 CSV(영문 헤더) / 계명대: 번호 CSV `(1)~(4)`(한글 헤더 `컨셉 아이디`·`환자수`). 의미는 세 곳 모두 동일: concept_id → distinct person count.",
+          "보너스: 세 export 모두 concept Name과 Prevalence를 포함 — raw 테이블에는 없는 정보라 검증·판독이 쉬워짐.",
+          "`scripts/normalize_site_achilles.py` 작성 — 세 포맷을 `data/site_snapshots/{ajou,donga,keimyung}.zip`(achilles_prevalence.csv + manifest.json)으로 변환.",
+          "처리한 것: 헤더 별칭(한글/영문), xlsx를 openpyxl 없이 표준 zipfile+XML로 파싱, 누락된 analysis_id를 probe 개념으로 복원(201826 존재 → condition, Ingredient 열 → drug), UTF-8/CP949 혼재 인코딩.",
+          "실행 중 발견한 버그: 한글 파일명이 NFD 분해 형태(macOS)로 도착해 `'계명대' in name`이 False → 사이트 키가 잘못 배정됨. `unicodedata.normalize(\"NFC\", ...)`로 수정.",
+          "세 스냅샷 모두 `load_achilles_snapshot()`으로 로드 확인. 값 대조도 원본과 일치 — 동아대 Essential hypertension 137,247 · Type 2 diabetes 109,292 · Erythrocytes 782,018 · Outpatient Visit 1,196,549.",
+          "의도적으로 남긴 한계: `smallCellCount=0`(사이트별 실제 값 확인 전까지 유지 — 아니면 '행 부재'를 0명으로 오독), 아주대 `device` 도메인 738행 제외(6-analysis 계약 밖)."
+        ],
+        "table": {
+          "head": [
+            "사이트",
+            "수령 포맷",
+            "정규화 행 수"
+          ],
+          "rows": [
+            [
+              "아주대 (ajou)",
+              "단일 xlsx (domain·concept_id·count)",
+              "18,695"
+            ],
+            [
+              "동아대 (donga)",
+              "도메인별 CSV (영문 헤더)",
+              "16,992"
+            ],
+            [
+              "계명대 (keimyung)",
+              "번호 CSV (1)~(4) (한글 헤더)",
+              "10,319"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "핵심 발견",
+        "items": [
+          "① 세 병원 모두 약을 PRODUCT 수준(RxNorm Extension, concept id >40M)으로 코딩. Ingredient 개념은 사실상 부재 — sitagliptin(1580747)·linagliptin(40239216)·glimepiride(1597756)·metformin(1503297)·empagliflozin(45774751)·warfarin·clopidogrel·apixaban 전부 세 사이트에서 없음. 즉 ingredient ID로 정의한 코호트는 구조적으로 0명이 되고, 실제 운영에서 나온 결과가 정확히 그것이었음. ingredient→product descendant 확장은 선택이 아니라 필수.",
+          "② 같은 질환이라도 사이트마다 쓰는 개념이 다름: Essential hypertension(320128)은 세 곳 다 존재하지만 Hypertensive disorder(316866)는 세 곳 다 부재. 환자수 규모도 사이트별로 자릿수가 다름(아래 표).",
+          "③ `Dietary regimen`(4032243)이 세 곳 모두 존재 — Synthea에서 0이던 것과 정반대. 다만 유병률 ~0.02% 수준이라 필수 inclusion으로 쓰면 여전히 전원 탈락 필터로 작동. feasibility는 우리 Synthea가 아니라 사이트마다 측정해야 한다는 것이 실증됨."
+        ],
+        "table": {
+          "head": [
+            "개념 (concept_id)",
+            "아주대",
+            "동아대",
+            "계명대"
+          ],
+          "rows": [
+            [
+              "Essential hypertension (320128)",
+              "1,718,464",
+              "137,247",
+              "55,260"
+            ],
+            [
+              "Hypertensive disorder (316866)",
+              "없음",
+              "없음",
+              "없음"
+            ],
+            [
+              "Type 2 diabetes (201826)",
+              "800,323",
+              "109,292",
+              "12,802"
+            ],
+            [
+              "Atrial fibrillation (313217)",
+              "32,590",
+              "177",
+              "10,630"
+            ],
+            [
+              "Dietary regimen (4032243)",
+              "2,574",
+              "234",
+              "199"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "다음",
+        "items": [
+          "ingredient→product descendant 확장을 적응 컴파일러의 기본 경로로 확정.",
+          "사이트별 실제 `smallCellCount` 값을 확인해 스냅샷 manifest 갱신(현재 0은 잠정값).",
+          "가짜 병원 A/B/C 대신 실 스냅샷 3개로 ADR-030 적응 엔진을 컴파일해 실 사이트 리포트 생성.",
+          "사이트 vocabulary 버전 기준 concept_ancestor 매핑 준비 — fixture 축약본(vocabulary_map.json) 교체 필요.",
+          "아주대 device 도메인 738행을 계약에 포함할지 결정."
+        ]
+      }
+    ]
+  },
+  {
+    "date": "2026-07-28",
     "time": "10:20",
     "title": "ADR-030 사이트 적응 결과를 dashboard의 독립 결과 탭으로 승격",
     "key": "A/B/C 적응 결과가 노트 속 문장이 아니라 site overview·evidence detail·후속 계획으로 직접 비교되며, 실 병원 결과가 아니라는 경계도 함께 보인다.",
