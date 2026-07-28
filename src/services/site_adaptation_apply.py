@@ -5,8 +5,14 @@ goal is an executable cohort, not a faithful transcription of the protocol — a
 matching zero patients at the target site drops everyone, so leaving it in place
 means no cohort at all.
 
-Three edits, in order of preference:
+Four edits, in order of preference:
 
+0. **Remap a mis-mapped drug concept.** Protocols name drugs by development code
+   ("BI 10773"), which OMOP does not carry, so the mapper returned an unrelated
+   compound (CHF-6366 metabolite) that matches nobody. Dropping such a rule would
+   delete the study drug itself — the cohort would keep everyone who failed only
+   that condition. Resolving the name through PubChem and repointing the concept
+   set preserves the study definition, so it runs before any removal.
 1. **Repoint to populated descendants.** The exact concept is empty but its children
    are not (316866 "Hypertensive disorder" is absent everywhere while sites code
    320128 "Essential hypertension"). Meaning is preserved, so this is applied first
@@ -32,7 +38,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 # Above this share of inclusion rules removed, the result is no longer an
 # adaptation of the original cohort and the caller must intervene.
@@ -124,11 +130,18 @@ def apply_adaptation(
     descendants: Mapping[int, Sequence[int]],
     *,
     max_drop_ratio: float = DEFAULT_MAX_DROP_RATIO,
+    remap_drug_concept: Callable[[str, int], dict[str, Any] | None] | None = None,
 ) -> ApplyResult:
     """Rewrite `circe` so it can return patients at the site the report describes.
 
     descendants maps a concept id to its populated descendants, as gathered when the
     report was compiled; it is what makes a repoint possible.
+
+    remap_drug_concept(concept_set_name, empty_concept_id) resolves a drug concept set
+    whose concept matches nobody — typically because the protocol used a development
+    code — and returns a replacement OMOP concept dict, or None to leave it alone.
+    Without it, such a rule is dropped and the study drug disappears from its own
+    cohort, so callers working with drug criteria should supply one.
     """
     adapted = deepcopy(dict(circe))
     rules = adapted.get("InclusionRules") or []
@@ -166,6 +179,54 @@ def apply_adaptation(
         )
 
     concept_sets = {cs["id"]: cs for cs in adapted.get("ConceptSets", [])}
+
+    # 0) Remap drug concepts that are empty because the name never resolved. A concept
+    #    set named after the drug ("BI 10773") whose single concept matches nobody is
+    #    a mapping failure, not a site-coverage fact — deleting it would remove the
+    #    study drug from its own cohort.
+    remapped: set[tuple[int, int]] = set()  # (rule_index, old_concept_id)
+    if remap_drug_concept is not None:
+        for p in proposals:
+            if p.get("action") != "VERIFY_THEN_DROP":
+                continue
+            idx = _rule_index(p["path"])
+            old_id = p.get("conceptId")
+            for codeset_id in _codeset_ids_in(rules[idx].get("expression", {})):
+                cs = concept_sets.get(codeset_id)
+                if not cs:
+                    continue
+                items = _concept_items(cs)
+                target = next(
+                    (
+                        i
+                        for i in items
+                        if i.get("concept", {}).get("CONCEPT_ID") == old_id
+                    ),
+                    None,
+                )
+                if target is None:
+                    continue
+                new_concept = remap_drug_concept(cs.get("name", ""), old_id)
+                if not new_concept:
+                    continue
+                new_id = int(new_concept["CONCEPT_ID"])
+                if new_id == old_id:
+                    continue
+                target["concept"] = new_concept
+                target["includeDescendants"] = True
+                remapped.add((idx, old_id))
+                result.edits.append(
+                    AppliedEdit(
+                        action="REMAP_DRUG_CONCEPT",
+                        path=p["path"],
+                        detail=(
+                            f"concept set '{cs.get('name', '')}' pointed at {old_id}, "
+                            f"which matches nobody; resolved the name to "
+                            f"{new_concept.get('CONCEPT_NAME')} ({new_id})"
+                        ),
+                        concept_ids=(old_id, new_id),
+                    )
+                )
 
     # 1) Repoint to populated descendants, and remember which concepts were rescued
     #    so the prune step below does not remove them.
@@ -208,7 +269,7 @@ def apply_adaptation(
             continue
         idx = _rule_index(p["path"])
         concept_id = p.get("conceptId")
-        if (idx, concept_id) in rescued:
+        if (idx, concept_id) in rescued or (idx, concept_id) in remapped:
             continue
         drop_targets.setdefault(idx, set()).add(concept_id)
 
