@@ -57,9 +57,9 @@
               "5",
               "드모르간 오류 (배제 결합)",
               "생성물 배제 규칙 다수",
-              "배제 여러 개를 Type=ANY로 묶음 → 하나만 없어도 통과, 배제가 무력화(환자를 더 통과시킴). decomposer가 logic_type과 무관하게 ANY를 하드코딩",
+              "배제 여러 개를 Type=ANY로 묶음 → 하나만 없어도 통과, 배제가 무력화. 저장된 6개 스터디 전수 조사 결과 ABSENCE+ANY 위반이 365건(배제 조건의 92%)",
               "gold는 동일 항목을 Type=ALL로 묶음(No drug exposure: GLP-1/DPP-4/SGLT-2, Stroke or TIA 등 전부 ALL + Occurrence{0,0})",
-              "수정 완료 (미검증)"
+              "수정 완료 (검증됨)"
             ],
             [
               "6",
@@ -266,32 +266,48 @@
         ]
       },
       {
-        "h": "수정 내역 — #5 드모르간 오류 (수정 완료, 미검증)",
+        "h": "수정 내역 — #5 드모르간 오류 (수정 완료, 검증됨)",
         "items": [
-          "원인 지점: planner/decomposer.py에서 복합 기준을 분해할 때 logic_type과 무관하게 group_type을 항상 ANY로 하드코딩했다. planner/prompts.py의 LLM 지침도 'always ANY'였다.",
+          "원인 지점: planner/decomposer.py가 복합 기준 분해 시 logic_type과 무관하게 group_type을 항상 ANY로 하드코딩했다. planner/prompts.py의 LLM 지침도 'always ANY'였다.",
           "수정: group_type을 logic_type에서 유도한다 — PRESENCE는 ANY(하위 하나만 해당해도 성립), ABSENCE는 ALL(하위 전부 부재해야 성립).",
-          "이중부정 없음 확인: 개별 criteria의 Occurrence{Type:0,Count:0}는 각 항목의 NOT이고, 그룹 Type=ALL은 그 NOT들의 AND다. 합치면 ¬A ∧ ¬B ∧ ¬C 로 드모르간 우변과 일치한다.",
-          "gold 구조 대조 완료: gold의 배제 규칙은 전부 Type=ALL + 각 항목 Occurrence{0,0} 형태다([5] No drug exposure, [7] eGFR, [14] Stroke or TIA).",
-          "자연어의 '또는'이 배제 문맥에서는 논리적 AND가 된다는 점이 이 버그의 본질이다. gold [14] 'Stroke or TIA'도 이름엔 or가 있지만 Type=ALL이다.",
-          "미검증 사유: 로직 단위 테스트(PRESENCE→ANY, ABSENCE→ALL)와 gold 구조 대조까지만 했다. 스터디를 재생성해 실제 산출 Circe가 Type=ALL로 나오는지, 그리고 환자 수가 어떻게 바뀌는지는 확인하지 않았다.",
-          "적용 범위: 재생성 시점부터 반영된다. 기존 data/generated/*.json은 그대로다."
+          "위반 규모: 저장된 6개 스터디를 전수 조사하니 ABSENCE+ANY 조합이 365건이었다. 정상 조합(ABSENCE+ALL)은 33건뿐으로, 배제 조건의 92%가 잘못돼 있었다.",
+          "실동작 검증: 수정된 decomposer를 실제 LLM 호출로 돌려 3/3 통과. '급성 관상동맥/뇌혈관 사건'(ABSENCE) → 5개 분해 → ALL, '약물 또는 알코올 남용'(ABSENCE) → 8개 분해 → ALL, '높은 심혈관 위험'(PRESENCE) → 6개 분해 → ANY.",
+          "이중부정 없음: 개별 criteria의 Occurrence{Type:0,Count:0}는 각 항목의 NOT이고 그룹 Type=ALL은 그 NOT들의 AND다. 합치면 ¬A ∧ ¬B ∧ ¬C로 드모르간 우변과 일치한다.",
+          "gold 구조 대조 완료: gold의 배제 규칙은 전부 Type=ALL + Occurrence{0,0} 형태다([5] No drug exposure, [7] eGFR, [14] Stroke or TIA). gold는 규칙 이름에 'or'가 있어도 ALL을 쓴다.",
+          "임상적 함의: '약물 또는 알코올 남용' 8개가 ANY였다면 코카인만 안 한 알코올 중독자가 통과한다. 이 오류는 환자를 0명이 아니라 더 많이 만들어서, CAROLINA가 11/43을 냈을 때 그 수에 부적격자가 섞였을 가능성이 크다.",
+          "적용 범위: 재생성 시점부터 반영된다. 기존 data/generated/*.json과 저장된 studies.json은 그대로다."
         ],
         "table": {
           "head": [
-            "파일",
-            "변경 전",
-            "변경 후"
+            "검증 항목",
+            "방법",
+            "결과"
           ],
           "rows": [
             [
-              "planner/decomposer.py",
-              "criterion.group_type = \"ANY\" (하드코딩)",
-              "\"ALL\" if logic_type == \"ABSENCE\" else \"ANY\""
+              "위반 규모",
+              "저장된 6개 스터디 전수 조사",
+              "ABSENCE+ANY 365건 / ABSENCE+ALL 33건 (92% 위반)"
             ],
             [
-              "planner/prompts.py",
-              "always set group_type: \"ANY\"",
-              "PRESENCE → ANY / ABSENCE → ALL (이유 명시)"
+              "ABSENCE 분해",
+              "실제 LLM 호출 — 급성 관상동맥/뇌혈관 사건",
+              "5개 분해 → group_type=ALL (PASS)"
+            ],
+            [
+              "ABSENCE 분해",
+              "실제 LLM 호출 — 약물 또는 알코올 남용",
+              "8개 분해 → group_type=ALL (PASS)"
+            ],
+            [
+              "PRESENCE 분해",
+              "실제 LLM 호출 — 높은 심혈관 위험",
+              "6개 분해 → group_type=ANY (PASS)"
+            ],
+            [
+              "구조 대조",
+              "gold CARMELINA 배제 규칙",
+              "전부 Type=ALL + Occurrence{0,0} — 일치"
             ]
           ]
         }
