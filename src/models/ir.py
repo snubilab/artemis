@@ -54,6 +54,12 @@ class ValueConstraint(BaseModel):
     """
     op: Literal["gt", "lt", "eq", "gte", "lte"]
     value: float
+    # What `value` is measured against. "ALT > 3x ULN" means three times this
+    # lab's own upper limit, not the number 3 — real ALT runs 10-40 U/L, so
+    # emitting it as an absolute matches every patient who had a liver panel.
+    # Without this field the builder cannot tell the two apart, which is why
+    # "x ULN" used to end up in unit_text: it was the only slot that fit.
+    reference_bound: Literal["absolute", "uln", "lln"] = "absolute"
     unit_text: Optional[str] = None
     unit_concept_id: Optional[int] = None
 

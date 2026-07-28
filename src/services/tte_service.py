@@ -69,6 +69,7 @@ from src.api.models.tte import (
 from src.models.ir import ProvisionalSectionSource, ProvisionalStudyIR
 from src.pipeline.webapi_client import CohortTableReference, WebAPIClient, WebAPIError
 from src.services.tte_store import TTEStore
+from src.services.value_constraint import build_measurement_value_filter
 from src.utils.exceptions import LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
 
@@ -5660,15 +5661,9 @@ class TTEService:
         criteria_key = self._seeded_criteria_key(criterion_domain or mapped_criterion["domain"])
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
-        # Carry valueConstraint into CIRCE ValueAsNumber
-        vc = criterion.get("valueConstraint")
-        if vc and vc.get("value") is not None:
-            op = (vc.get("op") or "").lower()
-            val = vc["value"]
-            op_map = {"gt": "gt", "gte": "gte", "lt": "lt", "lte": "lte", "eq": "eq"}
-            circe_op = op_map.get(op)
-            if circe_op:
-                criteria_attrs["ValueAsNumber"] = {"Value": val, "Op": circe_op}
+        # Flat merge, so Unit lands as a sibling of ValueAsNumber rather than
+        # nested inside it, where Circe ignores it.
+        criteria_attrs.update(build_measurement_value_filter(criterion.get("valueConstraint")))
 
         # Heuristic: derive minimum era length from the total temporal window span
         if criteria_key == "DrugEra" and criterion.get("window"):
@@ -9339,10 +9334,14 @@ class TTEService:
         vc = getattr(item, "value_constraint", None)
         value_constraint = None
         if vc is not None:
+            # referenceBound/unitConceptId must survive the model -> dict hop, or the
+            # builder downstream sees a bare 3.0 and emits ValueAsNumber for "3x ULN".
             value_constraint = {
                 "op": getattr(vc, "op", ""),
                 "value": getattr(vc, "value", None),
                 "unitText": getattr(vc, "unit_text", None) or "",
+                "referenceBound": getattr(vc, "reference_bound", None) or "absolute",
+                "unitConceptId": getattr(vc, "unit_concept_id", None),
             }
         window_obj = getattr(item, "window", None)
         window = {"start": window_obj.start, "end": window_obj.end} if window_obj is not None else None

@@ -5,6 +5,7 @@ import pytest
 from src.agents.agent3.assembler import CohortAssembler, AssemblyResult, HealAction
 from src.agents.agent3.mappings import DOMAIN_TO_CRITERIA_TYPE, GENDER_MAP, OPERATOR_MAP
 from src.registry.models import RegisteredConceptSet, RegisteredConcept
+from src.services.value_constraint import build_measurement_value_filter
 from src.models.ir import (
     ARTEMISRequest, CohortDefinition, PrimaryCriteria, Criteria, 
     CohortOutcome, TemporalWindow, ValueConstraint
@@ -136,16 +137,33 @@ class TestCohortAssembler:
         assert "expression" in rule
     
     def test_build_value_constraint(self):
-        """Test building value constraint for measurements."""
-        assembler = CohortAssembler()
-        vc = ValueConstraint(op="gt", value=7.0, unit_text="%")
-        
-        result = assembler._build_value_constraint(vc)
-        
-        assert result["Value"] == 7.0
-        assert result["Op"] == "gt"
-        assert "Unit" in result
-    
+        """Value filters come from the shared module, with Unit as a sibling.
+
+        This test previously asserted Value, Op and Unit on one dict, which only
+        holds when Unit is nested inside ValueAsNumber — the shape Circe ignores,
+        and the reason the unit filter never took effect. See ADR-031 D4.
+        """
+        fragment = build_measurement_value_filter(
+            ValueConstraint(op="gt", value=7.0, unit_text="%")
+        )
+
+        assert fragment["ValueAsNumber"] == {"Value": 7.0, "Op": "gt"}
+        assert fragment["Unit"][0]["CONCEPT_ID"] == 8554
+        assert "Unit" not in fragment["ValueAsNumber"]
+
+    def test_build_value_constraint_uln_uses_range_high_ratio(self):
+        """"3x ULN" must not survive as the absolute number 3.
+
+        Real ALT runs 10-40 U/L, so ValueAsNumber > 3 matches every patient with
+        a liver panel; as an exclusion that empties the cohort.
+        """
+        fragment = build_measurement_value_filter(
+            ValueConstraint(op="gt", value=3.0, reference_bound="uln")
+        )
+
+        assert fragment == {"RangeHighRatio": {"Value": 3.0, "Op": "gt"}}
+
+
     def test_assemble_reports_dropped_rules(self, sample_ir):
         """Test that rules with missing concepts are reported in heal_log."""
         # With empty concept_sets, all CodesetId will be 0

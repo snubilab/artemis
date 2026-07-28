@@ -6,14 +6,15 @@ from typing import List, Dict, Any, Optional, Tuple, Union
 from dataclasses import dataclass, field
 from src.models.ir import (
     ARTEMISRequest, CohortDefinition, Criteria, PrimaryCriteria, 
-    CohortOutcome, TemporalWindow, ValueConstraint,
+    CohortOutcome, TemporalWindow,
     ExitStrategy, CustomEraConfig
 )
 from src.registry.models import RegisteredConceptSet
 from src.agents.agent3.mappings import (
     DOMAIN_TO_CRITERIA_TYPE, DOMAIN_TO_PRIMARY_CRITERIA_TYPE,
-    OPERATOR_MAP, UNIT_MAP, OCCURRENCE_TYPE, DEMOGRAPHIC_KEYWORDS
+    OPERATOR_MAP, OCCURRENCE_TYPE, DEMOGRAPHIC_KEYWORDS
 )
+from src.services.value_constraint import build_measurement_value_filter
 import logging
 import copy
 
@@ -577,8 +578,8 @@ class CohortAssembler:
                     sc_cs_id = self._find_concept_set_id(sc.entity_text, concept_sets)
                     sc_criteria_type = DOMAIN_TO_CRITERIA_TYPE.get(sc.domain, "ConditionOccurrence")
                     sc_content: Dict[str, Any] = {"CodesetId": sc_cs_id}
-                    if sc.value_constraint:
-                        sc_content["ValueAsNumber"] = self._build_value_constraint(sc.value_constraint)
+                    # Flat merge: Unit is a sibling of ValueAsNumber in Circe.
+                    sc_content.update(build_measurement_value_filter(sc.value_constraint))
                     criteria_list.append({
                         "Criteria": {sc_criteria_type: sc_content},
                         "StartWindow": start_window,
@@ -613,12 +614,8 @@ class CohortAssembler:
         cs_id = self._find_concept_set_id(rule.entity_text, concept_sets)
         criteria_type = DOMAIN_TO_CRITERIA_TYPE.get(rule.domain, "ConditionOccurrence")
         criteria_content: Dict[str, Any] = {"CodesetId": cs_id}
-        
-        if rule.value_constraint:
-            criteria_content["ValueAsNumber"] = self._build_value_constraint(
-                rule.value_constraint
-            )
-        
+        criteria_content.update(build_measurement_value_filter(rule.value_constraint))
+
         return {
             "name": rule.name,
             "expression": {
@@ -636,18 +633,6 @@ class CohortAssembler:
                 "Groups": []
             }
         }
-    
-    def _build_value_constraint(self, vc: ValueConstraint) -> Dict[str, Any]:
-        """Build value constraint for measurements."""
-        result: Dict[str, Any] = {
-            "Value": vc.value,
-            "Op": OPERATOR_MAP.get(vc.op, "gt")
-        }
-        
-        if vc.unit_text and vc.unit_text in UNIT_MAP:
-            result["Unit"] = UNIT_MAP[vc.unit_text]
-        
-        return result
     
     def _build_end_strategy(
         self, strategy: Union[str, ExitStrategy]

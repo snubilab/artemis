@@ -70,7 +70,7 @@ UNIT_MAP = {
     "mmHg": 8876,    # Millimeter of mercury
     "year": 9448,    # Year
     "day": 8512,     # Day
-    "mg": 8587,      # Milligram
+    "mg": 8576,      # Milligram (8587 is millilitre — a dose threshold was getting a volume unit)
 }
 
 # Occurrence type mapping for logic
