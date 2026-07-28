@@ -9,9 +9,200 @@ Usage: python3 artemis/scripts/build_diagnosis_dashboard.py
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "output" / "gold_vs_generated"
+
+
+def build_adaptation_data() -> dict:
+    repository = str(OUT.parents[1])
+    if repository not in sys.path:
+        sys.path.insert(0, repository)
+    from src.services.site_cdm_adaptation import (
+        compile_site_adaptation,
+        load_achilles_snapshot,
+    )
+
+    fixture_dir = OUT.parents[1] / "tests" / "fixtures" / "site_adaptation"
+    circe = json.loads((fixture_dir / "circe.json").read_text())
+    comparator = json.loads((fixture_dir / "comparator_candidates.json").read_text())
+    descendants = {
+        int(key): {int(value) for value in values}
+        for key, values in json.loads(
+            (fixture_dir / "vocabulary_map.json").read_text()
+        ).items()
+    }
+    profiles = {
+        "hospital_a": "대학병원형",
+        "hospital_b": "하위형 코딩",
+        "hospital_c": "희소 약물 커버리지",
+    }
+    concept_names = {
+        1127433: "entry drug",
+        201826: "Type 2 diabetes",
+        3001802: "UACR",
+        3044370: "dietary intervention",
+        1580747: "DPP-4 inhibitor",
+        1597756: "Sulfonylurea",
+    }
+    sites = []
+    items = []
+    for site_key, profile in profiles.items():
+        snapshot = load_achilles_snapshot(fixture_dir / f"{site_key}.zip")
+        report = compile_site_adaptation(
+            circe,
+            snapshot,
+            descendants,
+            comparator_artifact=comparator,
+        ).model_dump(mode="json", by_alias=True)
+        changes = report["proposedChanges"]
+        change_map: dict[tuple[str, int], list[str]] = {}
+        for change in changes:
+            change_map.setdefault(
+                (change["path"], change["conceptId"]), []
+            ).append(change["action"])
+        request_map: dict[str, list[str]] = {}
+        for request in report["verificationRequests"]:
+            request_map.setdefault(request["path"], []).append(request["reason"])
+        grounding = {
+            row["candidate"]: row["status"]
+            for row in report["comparatorGrounding"]
+        }
+        exact_zero = sum(
+            row["state"] == "exact_concept_zero"
+            for row in report["criteriaEvidence"]
+        )
+        granularity = sum(
+            change["action"] == "USE_POPULATED_DESCENDANTS"
+            for change in changes
+        )
+        sites.append(
+            {
+                "site": site_key,
+                "profile": profile,
+                "snapshotRows": len(snapshot.counts),
+                "changes": len(changes),
+                "tier2": len(report["verificationRequests"]),
+                "exactZero": exact_zero,
+                "granularityChanges": granularity,
+                "dpp4": grounding.get("DPP-4 inhibitor", "absent"),
+                "sulfonylurea": grounding.get("Sulfonylurea", "absent"),
+                "signature": report["inputSignature"][:12],
+            }
+        )
+        for index, evidence in enumerate(report["criteriaEvidence"]):
+            concept_id = evidence["conceptId"]
+            path = evidence["path"]
+            items.append(
+                {
+                    "id": f"{site_key}-criterion-{index}",
+                    "site": site_key,
+                    "kind": "criterion",
+                    "label": concept_names.get(concept_id, str(concept_id)),
+                    "path": path,
+                    "role": evidence.get("role", ""),
+                    "polarity": evidence.get("polarity", ""),
+                    "conceptId": concept_id,
+                    "state": evidence["state"],
+                    "count": evidence.get("countValue"),
+                    "upperBound": evidence.get("upperBound"),
+                    "action": " + ".join(change_map.get((path, concept_id), []))
+                    or "KEEP",
+                    "tier2": ", ".join(request_map.get(path, [])) or "—",
+                }
+            )
+        for index, row in enumerate(report["comparatorGrounding"]):
+            concept_id = row["conceptIds"][0]
+            upper_bound = next(
+                (
+                    value.get("upperBound")
+                    for value in row["evidence"]
+                    if value["state"] == "populated_descendant_upper_bound"
+                ),
+                None,
+            )
+            items.append(
+                {
+                    "id": f"{site_key}-comparator-{index}",
+                    "site": site_key,
+                    "kind": "comparator",
+                    "label": row["candidate"],
+                    "path": "Comparator grounding",
+                    "role": "comparator",
+                    "polarity": "presence",
+                    "conceptId": concept_id,
+                    "state": row["status"],
+                    "count": None,
+                    "upperBound": upper_bound,
+                    "action": "GROUND" if row["status"] == "populated" else "NO_GROUNDING",
+                    "tier2": "—",
+                }
+            )
+    return {
+        "sites": sites,
+        "items": items,
+        "plan": [
+            {
+                "group": "Foundation contract",
+                "what": "ACHILLES ZIP loader and suppression-safe evidence",
+                "why": "사이트 원자료 없이도 concept evidence를 같은 계약으로 판정한다.",
+                "status": "done",
+                "date": "2026-07-27",
+                "cost": "implemented",
+                "priority": "P0",
+                "evidence": "사이트 비교",
+                "pane": "adaptation",
+            },
+            {
+                "group": "Foundation contract",
+                "what": "A/B/C deterministic simulation",
+                "why": "동일 CIRCE가 사이트별로 다른 제안을 내는지 검증한다.",
+                "status": "done",
+                "date": "2026-07-27",
+                "cost": "24 focused tests",
+                "priority": "P0",
+                "evidence": "실험노트",
+                "pane": "lab",
+            },
+            {
+                "group": "Real-site evidence",
+                "what": "아주대·계명대 snapshot 수령 및 재컴파일",
+                "why": "fixture 결과가 아니라 실제 사이트 feasibility를 확정한다.",
+                "status": "waiting",
+                "date": "—",
+                "cost": "site coordination",
+                "priority": "P0",
+            },
+            {
+                "group": "Real-site evidence",
+                "what": "사이트 vocabulary descendant map",
+                "why": "현장 vocabulary 버전에 맞는 granularity와 comparator grounding을 계산한다.",
+                "status": "planned",
+                "date": "—",
+                "cost": "small",
+                "priority": "P0",
+            },
+            {
+                "group": "Tier-2 and review",
+                "what": "joint/value/time-window query pack",
+                "why": "ACHILLES marginal count로 증명할 수 없는 조건을 현장에서 확인한다.",
+                "status": "planned",
+                "date": "—",
+                "cost": "medium",
+                "priority": "P1",
+            },
+            {
+                "group": "Tier-2 and review",
+                "what": "API persistence and Atlas HITL review",
+                "why": "제안을 자동 적용하지 않고 담당자가 근거와 함께 승인하도록 한다.",
+                "status": "planned",
+                "date": "—",
+                "cost": "large",
+                "priority": "P1",
+            },
+        ],
+    }
 
 
 def main() -> None:
@@ -24,35 +215,39 @@ def main() -> None:
     issues = json.loads(issues_path.read_text()) if issues_path.exists() else []
     lab_path = OUT.parents[1] / "docs" / "daily_notes" / "tte_lab_notes.json"
     lab = json.loads(lab_path.read_text()) if lab_path.exists() else []
+    adaptation = build_adaptation_data()
     html = TEMPLATE.replace("/*__DATA__*/", json.dumps(diag, ensure_ascii=False))
     html = html.replace("/*__SIMDATA__*/", json.dumps(sim, ensure_ascii=False))
     html = html.replace("/*__NOTES__*/", json.dumps(notes, ensure_ascii=False))
     html = html.replace("/*__ISSUES__*/", json.dumps(issues, ensure_ascii=False))
     html = html.replace("/*__LAB__*/", json.dumps(lab, ensure_ascii=False))
+    html = html.replace("/*__ADAPT__*/", json.dumps(adaptation, ensure_ascii=False))
     (OUT / "dashboard.html").write_text(html)
     print("wrote", OUT / "dashboard.html", f"({len(html)} bytes)")
 
 
 TEMPLATE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gold vs Generated — Circe Cohort Diagnosis</title>
+<meta name="description" content="TTE cohort defect diagnosis and ADR-030 per-site CDM adaptation evidence dashboard">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚕️</text></svg>">
+<title>TTE Cohort QA — Diagnosis &amp; Site Adaptation</title>
 <style>
 :root{
   --bg:#f4f5f7;--surface:#fcfcfb;--surface-2:#eef0f3;--ink:#1a1d21;--ink-2:#4a5058;--ink-3:#767d87;
   --line:#dfe3e8;--line-2:#c9ced6;
-  --c-0:#2563C4;--c-1:#E07A0F;--c-2:#0E9488;
+  --c-0:#0072B2;--c-1:#E69F00;--c-2:#CC79A7;
   --status:#B8791A;--status-bg:#f6ead5;--status-line:#e6c894;--good:#0E8A5F;--bad:#C0392B;--accent:#0E7490;
   --crit-bg:#fbe9e7;--crit-line:#e6b0a8;
   --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 :root[data-theme="dark"]{
   --bg:#111315;--surface:#1a1a19;--surface-2:#212427;--ink:#e9ecef;--ink-2:#a7aeb6;--ink-3:#727984;
-  --line:#2c3035;--line-2:#3a4046;--c-0:#5590D0;--c-1:#C9821F;--c-2:#35A89A;
+  --line:#2c3035;--line-2:#3a4046;--c-0:#56B4E9;--c-1:#E69F00;--c-2:#CC79A7;
   --status:#E0A94A;--status-bg:#2a2213;--status-line:#4d3d1c;--good:#3FB98A;--bad:#E4695C;--accent:#3FB3C9;
   --crit-bg:#2b1614;--crit-line:#5a2c26;}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#111315;--surface:#1a1a19;--surface-2:#212427;--ink:#e9ecef;--ink-2:#a7aeb6;--ink-3:#727984;
-  --line:#2c3035;--line-2:#3a4046;--c-0:#5590D0;--c-1:#C9821F;--c-2:#35A89A;
+  --line:#2c3035;--line-2:#3a4046;--c-0:#56B4E9;--c-1:#E69F00;--c-2:#CC79A7;
   --status:#E0A94A;--status-bg:#2a2213;--status-line:#4d3d1c;--good:#3FB98A;--bad:#E4695C;--accent:#3FB3C9;
   --crit-bg:#2b1614;--crit-line:#5a2c26;}}
 *{box-sizing:border-box}
@@ -72,7 +267,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:16p
 section{margin-bottom:34px}.sec-head{margin-bottom:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:720px){.grid2{grid-template-columns:1fr}}
-table{width:100%;border-collapse:collapse;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 th:first-child,td:first-child{text-align:left}
 thead th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
@@ -112,22 +307,43 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:26px}
 .tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-3);font:inherit;font-size:14px;font-weight:600;padding:9px 16px;cursor:pointer;margin-bottom:-1px}
 .tab:hover{color:var(--ink)}.tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.tab:focus-visible,.toggle:focus-visible,.chip:focus-visible,.sortbtn:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 38%,transparent);outline-offset:2px}
+.tabgroup{display:flex;align-items:stretch;position:relative;margin-right:14px}
+.tabgroup::before{content:attr(data-glabel);align-self:center;font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-right:4px}
+.tabgroup+.tabgroup{border-left:1px solid var(--line-2);padding-left:14px}
 .tabpanel[hidden]{display:none}
 .log-inc td.zero,.log-inc .zero{color:var(--bad);font-weight:700}
+.framing{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.frame-card{padding:15px}.frame-card .frame-k{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:700}.frame-card p{font-size:13.5px;color:var(--ink-2);margin:6px 0 0}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px}.tile .n{font-family:var(--mono);font-size:25px;font-weight:720;line-height:1.15;font-variant-numeric:tabular-nums}.tile .l{font-size:12px;color:var(--ink-3);margin-top:5px}
+.filterbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px}.filterbar input{min-width:220px;flex:1;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;padding:8px 10px}.chip{border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:5px 10px;font:inherit;font-size:12px;cursor:pointer}.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.scrolltbl{overflow:auto;max-height:min(78vh,1100px)}.sortbtn{border:0;background:none;color:inherit;font:inherit;font-size:inherit;font-weight:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;padding:0}
+.state{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10.5px;font-weight:650}.state::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ink-3)}.state.populated::before{background:var(--good)}.state.zero::before{background:var(--bad)}.state.query::before{background:var(--status)}.state.descendant::before{background:var(--c-0)}
+.matrix{display:grid;grid-template-columns:minmax(130px,1fr) repeat(2,minmax(110px,.8fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden}.matrix>*{background:var(--surface);padding:9px 11px;font-size:12px}.matrix .mh{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+.plan-group td{background:var(--surface-2);color:var(--accent);font-weight:700;text-align:left!important}.plan-status{font-family:var(--mono);font-size:10px;border-radius:999px;padding:2px 7px;background:var(--surface-2);white-space:nowrap}.plan-status.done{color:var(--good)}.plan-status.waiting{color:var(--status)}.plan-status.planned{color:var(--ink-3)}.evidence-link{color:var(--accent);font-weight:650;text-decoration:none}.evidence-link:hover{text-decoration:underline}
+@media(max-width:840px){.framing,.tiles{grid-template-columns:1fr 1fr}.tabs{overflow-x:auto}.tabgroup{flex:none}}
+@media(max-width:560px){.framing,.tiles{grid-template-columns:1fr}.tabgroup::before{display:none}.tab{padding:9px 11px}.matrix{grid-template-columns:minmax(110px,1fr) repeat(2,minmax(92px,.8fr))}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 </style></head><body><div class="wrap">
 <header>
   <div><div class="eyebrow">OHDSI · Circe cohort QA</div>
-  <h1>Gold vs Generated — Cohort Definition Diagnosis</h1>
-  <div class="sub">AI-generated TROY v1.1 study cohorts (CAROLINA / CARMELINA / EMPA-REG OUTCOME) run on real hospital CDM via CohortGenerator. Why the patient counts collapsed.</div></div>
+  <h1>TTE Cohort QA — Diagnosis &amp; Site Adaptation</h1>
+  <div class="sub">실 병원에서 드러난 코호트 결함과 ADR-030 사이트별 적응 foundation을 한 화면에서 추적합니다.</div></div>
   <button class="toggle" id="themeBtn">Theme</button>
 </header>
 <nav class="tabs" role="tablist">
-  <button class="tab active" data-tab="diagnosis">Diagnosis</button>
-  <button class="tab" data-tab="log">Issue Log</button>
-  <button class="tab" data-tab="notes">Daily Notes</button>
-  <button class="tab" data-tab="lab">실험노트</button>
+  <span class="tabgroup" role="presentation" data-glabel="Results">
+    <button class="tab active" id="tab-diagnosis-btn" role="tab" aria-selected="true" aria-controls="tab-diagnosis" data-tab="diagnosis">Diagnosis</button>
+    <button class="tab" id="tab-adaptation-btn" role="tab" aria-selected="false" aria-controls="tab-adaptation" data-tab="adaptation">사이트 적응</button>
+  </span>
+  <span class="tabgroup" role="presentation" data-glabel="Record">
+    <button class="tab" id="tab-log-btn" role="tab" aria-selected="false" aria-controls="tab-log" data-tab="log">Issue Log</button>
+    <button class="tab" id="tab-notes-btn" role="tab" aria-selected="false" aria-controls="tab-notes" data-tab="notes">Daily Notes</button>
+    <button class="tab" id="tab-lab-btn" role="tab" aria-selected="false" aria-controls="tab-lab" data-tab="lab">실험노트</button>
+  </span>
 </nav>
-<div id="tab-diagnosis" class="tabpanel">
+<div id="tab-diagnosis" class="tabpanel" role="tabpanel" aria-labelledby="tab-diagnosis-btn">
 <div class="verdict"><div class="dot"></div><div>
   <h3>All 6 generated cohorts are invalid. The 0-patient counts are only the most visible symptom.</h3>
   <p id="verdictText"></p></div></div>
@@ -207,7 +423,48 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
 <section><div class="sec-head"><h2>Per-cohort detail</h2></div><div id="detail"></div></section>
 </div><!-- /tab-diagnosis -->
 
-<div id="tab-log" class="tabpanel" hidden>
+<div id="tab-adaptation" class="tabpanel" role="tabpanel" aria-labelledby="tab-adaptation-btn" hidden>
+  <div class="verdict"><div class="dot" style="background:var(--status)"></div><div>
+    <h3>Foundation은 작동한다. 하지만 세 사이트 결과는 서로 다르고, 아직 실 병원 결과는 아니다.</h3>
+    <p>A/B/C fixture는 같은 CIRCE에서 다른 feasibility·granularity·comparator 제안을 생성했다. 모든 결과는 <b>proposed</b> 상태이며 CIRCE를 자동 변경하지 않는다.</p>
+  </div></div>
+
+  <section class="framing" data-component="framing">
+    <div class="card frame-card"><div class="frame-k">Goal</div><p>사이트 ACHILLES snapshot만으로 안전한 코호트 적응 제안과 확인 요청을 만든다.</p></div>
+    <div class="card frame-card"><div class="frame-k">Prior work</div><p>Defect A~D 진단, 문헌 우선 comparator 추천, polarity-aware feasibility 원칙이 이미 마련됐다.</p></div>
+    <div class="card frame-card"><div class="frame-k">Gap</div><p>병원별 vocabulary·granularity·데이터 밀도 차이를 같은 CIRCE 정의가 흡수하지 못했다.</p></div>
+    <div class="card frame-card"><div class="frame-k">Contribution</div><p>ZIP 계약, suppression-safe evidence, 비변경 제안 compiler와 A/B/C 검증을 제공한다. 실 사이트 유효성은 아직 주장하지 않는다.</p></div>
+  </section>
+
+  <div class="tiles" id="adaptTiles"></div>
+
+  <section id="adaptation-sites"><div class="sec-head"><h2>Site-level overview</h2>
+    <div class="chart-s">동일한 CIRCE와 vocabulary map을 세 snapshot에 적용한 결과. 색상은 사이트를 고정적으로 나타낸다.</div></div>
+    <div class="card scrolltbl" style="margin-bottom:16px"><table id="adaptSiteTbl"><thead></thead><tbody></tbody></table></div>
+    <div class="grid2">
+      <div class="card"><div class="chart-t">제안 변경 수</div><div class="chart-s">B는 exact-zero와 descendant evidence가 함께 있어 제안이 가장 많다.</div><svg id="adaptChangeChart" viewBox="0 0 440 240"></svg></div>
+      <div class="card"><div class="chart-t">Tier-2 확인 요청</div><div class="chart-s">세 fixture가 같은 value/time-window 구조를 써서 요청 수가 동일하다.</div><svg id="adaptTier2Chart" viewBox="0 0 440 240"></svg></div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="chart-t">Comparator grounding matrix</div><div class="chart-s">ingredient exact row가 없어도 populated descendant product가 있으면 grounded로 표시한다.</div><div class="matrix" id="adaptMatrix"></div></div>
+  </section>
+
+  <section id="adaptation-detail"><div class="sec-head"><h2>Criterion and comparator detail</h2>
+    <div class="chart-s">행 단위 evidence와 제안을 검색·필터·정렬한다. descendant 합은 distinct patient 수가 아니라 상한값이다.</div></div>
+    <div class="filterbar">
+      <input id="adaptSearch" type="search" placeholder="criterion, concept ID, action 검색" aria-label="사이트 적응 상세 검색">
+      <div id="adaptSiteChips"></div>
+      <div id="adaptStateChips"></div>
+    </div>
+    <div class="card scrolltbl"><table id="adaptDetailTbl"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section><div class="sec-head"><h2>Plan and evidence gaps</h2>
+    <div class="chart-s">완료 항목도 남겨 근거를 보존하고, 아직 실행하지 않은 현장·Tier-2 작업을 같은 표에서 보여준다.</div></div>
+    <div class="card scrolltbl"><table id="adaptPlanTbl"><thead></thead><tbody></tbody></table></div>
+  </section>
+</div><!-- /tab-adaptation -->
+
+<div id="tab-log" class="tabpanel" role="tabpanel" aria-labelledby="tab-log-btn" hidden>
   <div class="sec-head" style="margin-bottom:10px">
     <span class="eyebrow">Issue Log</span>
     <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">발견된 문제점 · 조치사항</h2>
@@ -222,7 +479,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
   </div>
 </div><!-- /tab-log -->
 
-<div id="tab-notes" class="tabpanel" hidden>
+<div id="tab-notes" class="tabpanel" role="tabpanel" aria-labelledby="tab-notes-btn" hidden>
   <div class="sec-head" style="margin-bottom:10px">
     <span class="eyebrow">Daily Research Notes</span>
     <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">데일리 연구노트</h2>
@@ -253,8 +510,10 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
     .note-details{margin-top:11px;border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:var(--surface-2)}
     .note-details>summary{cursor:pointer;color:var(--accent);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;list-style:none;outline:none}
     .note-details>summary::-webkit-details-marker{display:none}
-    .note-details>summary::before{content:"▸ ";color:var(--ink-3)}
-    .note-details[open]>summary::before{content:"▾ "}
+.note-details>summary::before{content:"▸ ";color:var(--ink-3)}
+.note-details[open]>summary::before{content:"▾ "}
+    .note-stamp{font-family:var(--mono);font-size:10.5px;color:var(--ink-2);background:var(--surface-2);border-radius:999px;padding:2px 8px;white-space:nowrap}
+    .note-key{font-size:14px;font-weight:650;color:var(--ink);border-left:3px solid var(--accent);padding:7px 10px;margin-top:11px;background:color-mix(in srgb,var(--accent) 7%,transparent)}
     /* wide: progressively slide the sticky calendar into the right margin (no hard breakpoint jump) */
     @media(min-width:1200px){.notes-layout{margin-right:min(0px,calc((1080px - 100vw)/2 + 24px))}}
     @media(max-width:1000px){.notes-layout{flex-direction:column-reverse;justify-content:flex-start}.notes-main{max-width:none}.notes-side{flex-basis:auto;width:100%;position:static}}
@@ -272,7 +531,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
   <div class="foot">추가 형식: <span class="mono">{ "date":"YYYY-MM-DD", "title":"...", "sections":[ {"h":"한 일","items":["..."]}, ... ] }</span></div>
 </div><!-- /tab-notes -->
 
-<div id="tab-lab" class="tabpanel" hidden>
+<div id="tab-lab" class="tabpanel" role="tabpanel" aria-labelledby="tab-lab-btn" hidden>
   <div class="sec-head" style="margin-bottom:10px">
     <span class="eyebrow">Lab Notebook</span>
     <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">실험노트</h2>
@@ -294,25 +553,139 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
 <script id="notesdata" type="application/json">/*__NOTES__*/</script>
 <script id="issuesdata" type="application/json">/*__ISSUES__*/</script>
 <script id="labdata" type="application/json">/*__LAB__*/</script>
+<script id="adaptdata" type="application/json">/*__ADAPT__*/</script>
 <script>
 const D=JSON.parse(document.getElementById('data').textContent);
 const SIM=JSON.parse(document.getElementById('simdata').textContent);
 const NOTES=JSON.parse(document.getElementById('notesdata').textContent);
 const ISSUES=JSON.parse(document.getElementById('issuesdata').textContent);
 const LAB=JSON.parse(document.getElementById('labdata').textContent);
+const ADAPT=JSON.parse(document.getElementById('adaptdata').textContent);
 const root=document.documentElement;
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
-  document.querySelectorAll('.tabpanel').forEach(p=>{p.hidden=(p.id!=='tab-'+t.dataset.tab);});
-}));
+const tabNames=new Set([...document.querySelectorAll('.tab')].map(t=>t.dataset.tab));
+function activateTab(name,updateHash=true){
+  if(!tabNames.has(name))name='diagnosis';
+  const y=scrollY;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===name));
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===name)));
+  document.querySelectorAll('.tabpanel').forEach(p=>{p.hidden=(p.id!=='tab-'+name);});
+  if(updateHash)history.replaceState(null,'','#'+name);
+  scrollTo(0,y);
+}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>activateTab(t.dataset.tab)));
+document.addEventListener('click',event=>{const link=event.target.closest('[data-pane-link]');if(link){event.preventDefault();activateTab(link.dataset.paneLink);}});
 const cssvar=v=>getComputedStyle(root).getPropertyValue(v).trim();
 const tip=document.getElementById('tip');
 function showTip(h,e){tip.innerHTML=h;tip.style.opacity=1;const p=12;let x=e.clientX+p,y=e.clientY+p;const r=tip.getBoundingClientRect();if(x+r.width>innerWidth)x=e.clientX-r.width-p;if(y+r.height>innerHeight)y=e.clientY-r.height-p;tip.style.left=x+'px';tip.style.top=y+'px';}
 const hideTip=()=>tip.style.opacity=0;
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const mdN=s=>esc(s??'')
+  .replace(/`([^`]+)`/g,'<code>$1</code>')
+  .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+  .replace(/\*([^*]+)\*/g,'<em>$1</em>');
 
 document.getElementById('verdictText').textContent=
  "Four independent defects: (A) every cohort enters on Type 2 Diabetes instead of the index drug; (B) the study-drug ConceptSets contain the WRONG drug (linagliptin->sitagliptin, empagliflozin->an unrelated metabolite); (C) each comparator is defined as 'NOT the treatment drug' rather than the real active comparator; (D) uncodeable inclusion rules (EMPA #11 diet/exercise regimen, CARMELINA #9 albuminuria/UACR) drop every patient. Even CAROLINA's non-zero counts are on the wrong drug, so no cohort is usable.";
+
+const adaptSiteColors=['--c-0','--c-1','--c-2'];
+const adaptFilters={site:'all',state:'all',query:'',sort:'site',asc:true};
+const stateClass=s=>s==='populated'||s==='populated_exact_concept'?'populated':s==='exact_concept_zero'||s==='absent'?'zero':s==='populated_descendant_upper_bound'?'descendant':'query';
+const stateLabel=s=>({
+  populated_exact_concept:'exact populated',
+  exact_concept_zero:'exact zero',
+  populated_descendant_upper_bound:'descendant upper bound',
+  suppressed_or_absent:'suppressed / absent',
+  unknown_vocabulary:'unknown vocabulary',
+  populated:'populated',
+  absent:'absent',
+  site_query_required:'site query required'
+}[s]||s);
+const stateHtml=s=>`<span class="state ${stateClass(s)}">${esc(stateLabel(s))}</span>`;
+function renderAdaptation(){
+  const sites=ADAPT.sites||[],items=ADAPT.items||[];
+  const totalChanges=sites.reduce((sum,row)=>sum+row.changes,0);
+  document.getElementById('adaptTiles').innerHTML=[
+    ['3','simulated sites'],['1,212','source ACHILLES rows'],[String(totalChanges),'review proposals'],['0','automatic CIRCE changes']
+  ].map(([n,l])=>`<div class="tile"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  document.querySelector('#adaptSiteTbl thead').innerHTML='<tr><th>Site profile</th><th>Snapshot rows</th><th>Proposals</th><th>Tier-2</th><th>Exact zero</th><th>Granularity</th><th>DPP-4i</th><th>SU</th><th>Signature</th></tr>';
+  document.querySelector('#adaptSiteTbl tbody').innerHTML=sites.map(row=>`<tr>
+    <td><b>${esc(row.site)}</b><br><span style="color:var(--ink-3)">${esc(row.profile)}</span></td>
+    <td class="num">${row.snapshotRows}</td><td class="num">${row.changes}</td><td class="num">${row.tier2}</td><td class="num">${row.exactZero}</td>
+    <td>${row.granularityChanges?'<span class="tag ok">descendant</span>':'<span style="color:var(--ink-3)">—</span>'}</td>
+    <td>${stateHtml(row.dpp4)}</td><td>${stateHtml(row.sulfonylurea)}</td><td class="mono">${esc(row.signature)}</td></tr>`).join('');
+  document.getElementById('adaptMatrix').innerHTML=[
+    '<div class="mh">Site</div><div class="mh">DPP-4 inhibitor</div><div class="mh">Sulfonylurea</div>',
+    ...sites.flatMap(row=>[
+      `<div><b>${esc(row.site)}</b></div>`,
+      `<div>${stateHtml(row.dpp4)}</div>`,
+      `<div>${stateHtml(row.sulfonylurea)}</div>`
+    ])
+  ].join('');
+  const siteNames=['all',...sites.map(row=>row.site)];
+  document.getElementById('adaptSiteChips').innerHTML=siteNames.map(site=>`<button class="chip${adaptFilters.site===site?' on':''}" data-adapt-site="${site}">${site==='all'?'모든 사이트':esc(site)}</button>`).join('');
+  const states=['all',...new Set(items.map(row=>row.state))];
+  document.getElementById('adaptStateChips').innerHTML=states.map(state=>`<button class="chip${adaptFilters.state===state?' on':''}" data-adapt-state="${state}">${state==='all'?'모든 상태':esc(stateLabel(state))}</button>`).join('');
+  document.querySelectorAll('[data-adapt-site]').forEach(button=>button.onclick=()=>{adaptFilters.site=button.dataset.adaptSite;renderAdaptation();});
+  document.querySelectorAll('[data-adapt-state]').forEach(button=>button.onclick=()=>{adaptFilters.state=button.dataset.adaptState;renderAdaptation();});
+  const search=document.getElementById('adaptSearch');
+  search.value=adaptFilters.query;
+  search.oninput=()=>{adaptFilters.query=search.value.toLowerCase();renderAdaptDetail();};
+  renderAdaptDetail();
+  renderAdaptPlan();
+}
+function renderAdaptDetail(){
+  const cols=[
+    ['site','Site'],['kind','Kind'],['label','Criterion / comparator'],['conceptId','Concept ID'],
+    ['state','Evidence state'],['count','Count'],['upperBound','Upper bound'],['action','Proposal'],['tier2','Tier-2']
+  ];
+  document.querySelector('#adaptDetailTbl thead').innerHTML='<tr>'+cols.map(([key,label])=>`<th><button class="sortbtn" data-adapt-sort="${key}">${label}${adaptFilters.sort===key?(adaptFilters.asc?' ↑':' ↓'):''}</button></th>`).join('')+'</tr>';
+  document.querySelectorAll('[data-adapt-sort]').forEach(button=>button.onclick=()=>{
+    const key=button.dataset.adaptSort;
+    adaptFilters.asc=adaptFilters.sort===key?!adaptFilters.asc:true;
+    adaptFilters.sort=key;
+    renderAdaptDetail();
+  });
+  const query=adaptFilters.query;
+  const rows=(ADAPT.items||[]).filter(row=>
+    (adaptFilters.site==='all'||row.site===adaptFilters.site)&&
+    (adaptFilters.state==='all'||row.state===adaptFilters.state)&&
+    (!query||Object.values(row).join(' ').toLowerCase().includes(query))
+  ).sort((a,b)=>{
+    const av=a[adaptFilters.sort]??'',bv=b[adaptFilters.sort]??'';
+    const result=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv));
+    return adaptFilters.asc?result:-result;
+  });
+  document.querySelector('#adaptDetailTbl tbody').innerHTML=rows.map(row=>`<tr>
+    <td><b>${esc(row.site)}</b></td><td>${esc(row.kind)}</td><td style="text-align:left"><b>${esc(row.label)}</b><br><span class="mono" style="color:var(--ink-3)">${esc(row.role)} ${esc(row.polarity)}</span></td>
+    <td class="num">${row.conceptId}</td><td>${stateHtml(row.state)}</td><td class="num">${row.count??'—'}</td><td class="num">${row.upperBound??'—'}</td>
+    <td style="text-align:left"><span class="tag ${/DROP|REMAP|NO_GROUNDING/.test(row.action)?'warn':'ok'}">${esc(row.action)}</span></td><td style="text-align:left">${esc(row.tier2)}</td></tr>`).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--ink-3)">조건에 맞는 evidence가 없습니다.</td></tr>';
+}
+function renderAdaptPlan(){
+  const rows=ADAPT.plan||[];
+  document.querySelector('#adaptPlanTbl thead').innerHTML='<tr><th>What</th><th style="text-align:left">Why</th><th>Status / date</th><th>Cost</th><th>Priority</th><th>Evidence</th></tr>';
+  let group='';
+  document.querySelector('#adaptPlanTbl tbody').innerHTML=rows.map(row=>{
+    if(['done','running'].includes(row.status)&&!row.evidence)throw new Error(`plan evidence missing: ${row.what}`);
+    const header=row.group!==group?`<tr class="plan-group"><td colspan="6">${esc(row.group)}</td></tr>`:'';
+    group=row.group;
+    const evidence=row.evidence?`<a class="evidence-link" href="#${row.pane}" data-pane-link="${row.pane}">${esc(row.evidence)}</a>`:'—';
+    return header+`<tr><td><b>${esc(row.what)}</b></td><td style="text-align:left">${esc(row.why)}</td><td><span class="plan-status ${row.status}">${esc(row.status)}</span><br><span class="mono">${esc(row.date)}</span></td><td>${esc(row.cost)}</td><td><b>${esc(row.priority)}</b></td><td>${evidence}</td></tr>`;
+  }).join('');
+}
+function drawAdaptBars(id,key,label){
+  const rows=ADAPT.sites||[],svg=document.getElementById(id),W=440,H=240,ml=44,mr=14,mt=18,mb=52;
+  const hi=Math.max(1,...rows.map(row=>row[key])),gw=(W-ml-mr)/rows.length,y=value=>mt+(H-mt-mb)*(1-value/(hi*1.2));
+  let html='';
+  for(let tick=0;tick<=4;tick++){const value=hi*tick/4,yy=y(value);html+=`<line class="gridline" x1="${ml}" y1="${yy}" x2="${W-mr}" y2="${yy}"/><text class="axis" x="${ml-7}" y="${yy+3}" text-anchor="end">${value.toFixed(value%1?1:0)}</text>`;}
+  rows.forEach((row,index)=>{
+    const value=row[key],bw=Math.min(58,gw*.48),x=ml+index*gw+(gw-bw)/2,yy=y(value),color=cssvar(adaptSiteColors[index]);
+    html+=`<rect x="${x}" y="${yy}" width="${bw}" height="${H-mb-yy}" rx="5" fill="${color}" data-site="${esc(row.site)}" data-label="${esc(label)}" data-value="${value}"/>`;
+    html+=`<text class="axis" x="${x+bw/2}" y="${yy-6}" text-anchor="middle" style="fill:var(--ink);font-weight:700">${value}</text><text class="axis" x="${x+bw/2}" y="${H-mb+20}" text-anchor="middle" style="fill:var(--ink-2)">${esc(row.site.replace('hospital_','site '))}</text>`;
+  });
+  svg.innerHTML=html;
+  svg.querySelectorAll('rect[data-site]').forEach(mark=>{mark.style.cursor='pointer';mark.onmousemove=e=>showTip(`<b>${mark.dataset.site}</b><br>${mark.dataset.label}: <b>${mark.dataset.value}</b>`,e);mark.onmouseleave=hideTip;});
+}
+renderAdaptation();
 
 /* ---- overview table ---- */
 (function(){
@@ -444,6 +817,8 @@ function draw(){
   groupedBar('barPt',[{i:0,c:'--c-0',label:'Ajou'},{i:1,c:'--c-1',label:'Keimyung'}],
     [r=>r.patients_ajou,r=>r.patients_keimyung],v=>Math.round(v));
   jacBar();
+  drawAdaptBars('adaptChangeChart','changes','proposed changes');
+  drawAdaptBars('adaptTier2Chart','tier2','Tier-2 requests');
 }
 document.getElementById('themeBtn').onclick=()=>{const dark=!(root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme:dark)').matches));root.setAttribute('data-theme',dark?'dark':'light');draw();};
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(!root.getAttribute('data-theme'))draw();});
@@ -451,19 +826,22 @@ draw();
 function noteView(listId, calId, filtId, data){
   const el=document.getElementById(listId); if(!el||!Array.isArray(data)) return;
   const cal=document.getElementById(calId), filt=document.getElementById(filtId);
+  if(!cal||!filt||!cal.closest('.notes-side'))throw new Error(`dated narrative shell missing: ${listId}`);
+  data.forEach(entry=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(entry.date||''))throw new Error(`invalid note date: ${entry.date}`);if(!entry.key)throw new Error(`note key missing: ${entry.title}`);});
   const pad=n=>String(n).padStart(2,'0');
-  const days=[...data].sort((a,b)=>(String(a.date)<String(b.date)?1:-1));
+  const days=[...data].sort((a,b)=>(String(a.date)+(a.time||'')<String(b.date)+(b.time||'')?1:-1));
   const noteDates=new Set(days.map(d=>String(d.date)));
   let selected=null;  // null = 전체
-  const tableHtml=t=>`<table class="datatable"><thead><tr>${(t.head||[]).map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${(t.rows||[]).map(r=>`<tr>${(r||[]).map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-  const secBody=s=>`${(s.items&&s.items.length)?`<ul style="margin:5px 0 0;padding-left:18px;font-size:13px;color:var(--ink-2)">${s.items.map(i=>`<li style="margin:3px 0">${esc(i)}</li>`).join('')}</ul>`:''}${s.table?tableHtml(s.table):''}`;
+  const tableHtml=t=>`<table class="datatable"><thead><tr>${(t.head||[]).map(h=>`<th>${mdN(h)}</th>`).join('')}</tr></thead><tbody>${(t.rows||[]).map(r=>`<tr>${(r||[]).map(c=>`<td>${mdN(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const secBody=s=>`${(s.items&&s.items.length)?`<ul style="margin:5px 0 0;padding-left:18px;font-size:14px;color:var(--ink-2)">${s.items.map(i=>`<li style="margin:3px 0">${mdN(i)}</li>`).join('')}</ul>`:''}${s.table?tableHtml(s.table):''}`;
   const cardHtml=d=>`<div class="card" style="margin-bottom:16px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-      <div class="chart-t" style="margin:0">${esc(d.title||'')}</div>
-      <span class="tag" style="background:var(--surface-2);color:var(--ink-2)">${esc(d.date||'')}</span></div>
+      <div class="chart-t" style="margin:0">${mdN(d.title||'')}</div>
+      <span class="note-stamp">${esc(d.date||'')}${d.time?' · '+esc(d.time):''}</span></div>
+    <div class="note-key">${mdN(d.key)}</div>
     ${(d.sections||[]).map(s=>s.collapsed
-      ? `<details class="note-details"><summary>${esc(s.h||'')}</summary><div style="margin-top:6px">${secBody(s)}</div></details>`
-      : `<div style="margin-top:11px"><div style="color:var(--accent);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(s.h||'')}</div>${secBody(s)}</div>`).join('')}
+      ? `<details class="note-details"><summary>${mdN(s.h||'')}</summary><div style="margin-top:6px">${secBody(s)}</div></details>`
+      : `<div style="margin-top:11px"><div style="color:var(--accent);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em">${mdN(s.h||'')}</div>${secBody(s)}</div>`).join('')}
   </div>`;
   function renderNotes(){
     const list=selected?days.filter(d=>String(d.date)===selected):days;
@@ -486,9 +864,9 @@ function noteView(listId, calId, filtId, data){
       const ds=`${y}-${pad(m+1)}-${pad(day)}`, has=noteDates.has(ds), sel=selected===ds;
       cells+=`<div class="notecal-day cur${has?' has':''}${sel?' sel':''}"${has?` data-d="${ds}"`:''}>${day}</div>`;
     }
-    cal.innerHTML=`<div class="notecal-head"><button class="notecal-nav" id="calPrev">‹</button><div class="notecal-title">${y}.${pad(m+1)}</div><button class="notecal-nav" id="calNext">›</button></div><div class="notecal-grid">${cells}</div>`;
-    document.getElementById('calPrev').onclick=()=>{if(--ym.m<0){ym.m=11;ym.y--;}drawCal();};
-    document.getElementById('calNext').onclick=()=>{if(++ym.m>11){ym.m=0;ym.y++;}drawCal();};
+    cal.innerHTML=`<div class="notecal-head"><button class="notecal-nav" data-cal-prev aria-label="이전 달">‹</button><div class="notecal-title">${y}.${pad(m+1)}</div><button class="notecal-nav" data-cal-next aria-label="다음 달">›</button></div><div class="notecal-grid">${cells}</div>`;
+    cal.querySelector('[data-cal-prev]').onclick=()=>{if(--ym.m<0){ym.m=11;ym.y--;}drawCal();};
+    cal.querySelector('[data-cal-next]').onclick=()=>{if(++ym.m>11){ym.m=0;ym.y++;}drawCal();};
     cal.querySelectorAll('.notecal-day.has').forEach(c=>c.onclick=()=>{selected=selected===c.dataset.d?null:c.dataset.d;drawCal();renderNotes();});
   }
   drawCal(); renderNotes();
@@ -496,6 +874,8 @@ function noteView(listId, calId, filtId, data){
 noteView('notes','cal','notesFilter',NOTES);
 noteView('issues','ical','issFilter',ISSUES);
 noteView('lab','lcal','labFilter',LAB);
+activateTab(location.hash.slice(1),false);
+scrollTo(0,0);
 const _toTop=document.getElementById('toTop');
 if(_toTop){addEventListener('scroll',()=>_toTop.classList.toggle('show',scrollY>400),{passive:true});_toTop.onclick=()=>scrollTo({top:0,behavior:'smooth'});}
 </script></body></html>

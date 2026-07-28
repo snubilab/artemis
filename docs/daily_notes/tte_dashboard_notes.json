@@ -1,7 +1,34 @@
 [
   {
+    "date": "2026-07-28",
+    "time": "10:20",
+    "title": "ADR-030 사이트 적응 결과를 dashboard의 독립 결과 탭으로 승격",
+    "key": "A/B/C 적응 결과가 노트 속 문장이 아니라 site overview·evidence detail·후속 계획으로 직접 비교되며, 실 병원 결과가 아니라는 경계도 함께 보인다.",
+    "sections": [
+      {
+        "h": "업데이트",
+        "items": [
+          "`사이트 적응` 탭에 goal / prior work / gap / contribution framing과 KPI 4개를 추가.",
+          "세 사이트의 snapshot 행 수, 제안 수, Tier-2 요청, exact zero, 실제 granularity 변경, DPP-4i/SU grounding을 한 표와 두 chart로 표시.",
+          "criterion·comparator evidence 21행을 사이트·상태·검색으로 필터하고 모든 열을 정렬할 수 있게 구현.",
+          "완료·대기·예정 작업을 근거 링크가 있는 plan 표로 추가."
+        ]
+      },
+      {
+        "h": "검증",
+        "items": [
+          "fixture compiler 결과를 dashboard 생성기가 직접 읽어 A/B/C `1/4/1` 제안과 comparator grounding을 재계산.",
+          "headless Chromium에서 hash 복원, hospital B 필터, UACR 검색, 정렬, theme 전환, plan evidence link를 실제 클릭.",
+          "browser console error 0건, light/dark screenshot 확인.",
+          "범주색을 blue–orange–reddish-purple로 교체하고 정상·protan·deutan·tritan 시뮬레이션의 최소 색차를 확인."
+        ]
+      }
+    ]
+  },
+  {
     "date": "2026-07-27",
     "title": "사이트별 CDM 적응 계층(ADR-030) — 설계·ACHILLES 인터페이스·구현 실증",
+    "key": "가짜 병원 A/B/C에서 서로 다른 안전 제안이 생성됐고, 실 병원 ACHILLES 수령 전까지는 foundation 검증 완료·현장 데이터 대기 상태다.",
     "sections": [
       {
         "h": "한 일",
@@ -47,6 +74,7 @@
   {
     "date": "2026-07-23",
     "title": "C placebo 추천기 — 로컬 vLLM(Qwen3)에서 문헌→추천 실동작",
+    "key": "문헌 우선 comparator 추천은 로컬 Qwen3에서 재현됐고, DPP-4 후보를 CDM에 grounding하는 경로까지 작동한다.",
     "sections": [
       {
         "h": "한 일",
@@ -138,6 +166,7 @@
   {
     "date": "2026-07-23",
     "title": "TTE 코호트 A~D 결함 진단·수정 + 전 도메인 개념매핑 감사",
+    "key": "환자 수 붕괴의 원인은 A~D 네 결함으로 분리됐으며, 사이트별 feasibility와 사람 검토 없이는 코호트를 자동 적용할 수 없다.",
     "sections": [
       {
         "h": "한 일",

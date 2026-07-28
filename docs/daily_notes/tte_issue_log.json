@@ -2,6 +2,7 @@
   {
     "date": "2026-07-23",
     "title": "TROY v1.1 코호트 결함 — 문제별 기존 output → 새 output",
+    "key": "6개 코호트는 현재 결과를 신뢰할 수 없고, 약물 진입·개념 매핑·comparator·feasibility를 모두 바로잡아야 한다.",
     "sections": [
       {
         "h": "실제 발생한 문제 (Incident)",
