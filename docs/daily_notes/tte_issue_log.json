@@ -580,6 +580,54 @@
             ]
           ]
         }
+      },
+      {
+        "h": "ADR-030 적응 엔진 실전 투입 — 손으로 찾은 오류를 엔진이 자동 지목",
+        "items": [
+          "3개 병원 실제 ACHILLES 스냅샷 + 실제 생성 코호트(EMPA-REG treatment)로 adapt_site_cdm.py를 처음 돌렸다. 지금까지는 가짜 병원 fixture로만 검증했었다.",
+          "vocabulary_map은 fixture 축약본 대신 --vocab-schema로 로컬 vocabulary(concept_ancestor 75,689,500행)에서 실제 descendant를 조회했다. DB는 호스트 5432로 노출돼 있어 컨테이너 없이 실행 가능하다.",
+          "결과: 세 사이트 모두 리포트 생성 성공(criteriaEvidence 141~143, proposedChanges 91~95, verificationRequests 75).",
+          "핵심: 우리가 수작업으로 찾아낸 오류를 엔진이 전부 자동으로 지목했다 — BI 10773(1254065), 식이요법(3044370/4027003), 운동요법(604229) 모두 exact_concept_zero + VERIFY_THEN_DROP.",
+          "고혈압(316866)에서는 두 액션을 동시에 냈다: VERIFY_THEN_DROP(정확 개념 0명) + USE_POPULATED_DESCENDANTS(하위 개념에는 환자 존재). 우리가 손으로 발견한 '316866은 없고 320128만 있다'를 엔진이 스스로 지목하고 대안까지 제시한 것이다.",
+          "BENIGN_KEEP 57건은 배제 조건이라 0명이어도 유지하라는 판정으로, polarity 로직이 실제 데이터에서 작동함을 보여준다.",
+          "role 구분도 정상이다(entry 2 / inclusion 141). BI 10773이 VERIFY_THEN_DROP으로 나온 것은 이 생성물의 진입이 당뇨라 약물 규칙이 InclusionRules[20]에 있기 때문이며, 결함 A를 고쳐 재생성하면 entry로 분류돼 하드 블로커 판정을 받게 된다."
+        ],
+        "table": {
+          "head": [
+            "사이트",
+            "criteriaEvidence",
+            "VERIFY_THEN_DROP",
+            "BENIGN_KEEP",
+            "USE_POPULATED_DESCENDANTS",
+            "verificationRequests"
+          ],
+          "rows": [
+            [
+              "아주대",
+              "143",
+              "17",
+              "57",
+              "20",
+              "75"
+            ],
+            [
+              "동아대",
+              "142",
+              "17",
+              "58",
+              "20",
+              "75"
+            ],
+            [
+              "계명대",
+              "141",
+              "17",
+              "57",
+              "17",
+              "75"
+            ]
+          ]
+        }
       }
     ]
   },
