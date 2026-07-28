@@ -84,6 +84,14 @@
               "treatment와 규칙 1개만 다르다 — 'linagliptin' vs 'No linagliptin'. 실제 대조약(glimepiride)이 코호트 정의에 없고, 배제만 걸린 T2DM 환자 전체가 대조군이 된다",
               "gold는 대조약으로 진입하는 별도 코호트(Glimepiride (CAROLINA).json). EMPA 대조군은 존재하지 않는 개념(BI 10773)을 배제해 배제가 아예 작동하지 않는다",
               "설계 완료 (ADR-027/028), 재생성 필요"
+            ],
+            [
+              "9",
+              "희소 개념에 얹힌 규칙 (잠재 위험)",
+              "PLATO #2, LEADER #1",
+              "전 사이트 0명 조건 9건이 ANY 형제 덕에 통과하지만, PLATO #2는 '좌각차단' 하나, LEADER #1은 5개 중 2개만 생존한다",
+              "임상적으로 뽑아야 할 ST분절 상승 심전도 소견이 CDM에 없어 좌각차단으로 대체된 상태. 형제 개념도 희소한 사이트에서는 코호트가 무너진다",
+              "미해결 (사이트 확인 대상)"
             ]
           ]
         }
@@ -93,8 +101,62 @@
         "items": [
           "아주대·동아대·계명대 ACHILLES 스냅샷(18,695 / 16,992 / 10,319행)에 생성물 코호트의 모든 규칙을 개념 단위로 대조했다.",
           "각 규칙의 concept set을 includeDescendants 반영해 확장(성분→제품)한 뒤, 해당 개념을 가진 환자 수를 사이트별로 집계했다.",
-          "규칙의 방향(포함/배제)은 Circe의 Occurrence(Type=0,Count=0 이면 배제)로 판정하고, Groups 트리를 재귀로 펼쳐 실제 결합 구조를 확인했다."
-        ]
+          "규칙의 방향(포함/배제)은 Circe의 Occurrence(Type=0,Count=0 이면 배제)로 판정하고, Groups 트리를 재귀로 펼쳐 실제 결합 구조를 확인했다.",
+          "검증 범위(최종): 6개 트라이얼 전부를 규칙 단위로 확인했다. CARMELINA·CAROLINA·EMPA-REG는 data/generated/의 treatment·comparator 6개 파일, PLATO·ARISTOTLE·LEADER는 저장된 스터디의 structuredExpression이다. 후자를 '생성물 없음'으로 본 것은 디렉터리 하나만 확인한 오판이었다."
+        ],
+        "table": {
+          "head": [
+            "트라이얼",
+            "진입 방식",
+            "결함 A",
+            "0명 조건",
+            "코호트 결과"
+          ],
+          "rows": [
+            [
+              "CARMELINA",
+              "ConditionOccurrence (당뇨)",
+              "있음",
+              "없음",
+              "0/0 — 조건 간 모순"
+            ],
+            [
+              "CAROLINA",
+              "ConditionOccurrence (당뇨)",
+              "있음",
+              "없음",
+              "11/43·36/116 — 틀린 환자"
+            ],
+            [
+              "EMPA-REG",
+              "ConditionOccurrence (당뇨)",
+              "있음",
+              "2건 (BI 10773, 식이/운동)",
+              "0/0 — 직접 원인"
+            ],
+            [
+              "PLATO",
+              "DrugEra (ticagrelor)",
+              "없음",
+              "2건 (ANY 흡수)",
+              "통과, 단 #2가 취약"
+            ],
+            [
+              "ARISTOTLE",
+              "DrugEra (apixaban)",
+              "없음",
+              "0건",
+              "정상"
+            ],
+            [
+              "LEADER",
+              "DrugEra (liraglutide)",
+              "없음",
+              "7건 (ANY 흡수)",
+              "통과, 단 #1이 취약"
+            ]
+          ]
+        }
       },
       {
         "h": "EMPA-REG — 0명의 직접 원인 2가지",
