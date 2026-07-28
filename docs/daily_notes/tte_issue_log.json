@@ -628,6 +628,59 @@
             ]
           ]
         }
+      },
+      {
+        "h": "PubChem 로컬 DB 구축 — #2·#6 해결 경로 확보",
+        "items": [
+          "OMOP vocabulary에는 개발코드가 없다(concept_synonym에 BI 10773·AZD6140·LY2189265 전부 부재, empagliflozin은 동의어 자체가 0건). 로컬 CDM만으로는 해결 불가라 외부 소스가 필요했다.",
+          "PubChem 전체 동의어를 로컬 SQLite로 구축했다 — titles 124,004,867행 / synonyms 112,974,911행 / distinct key 110,300,627. 빌드 616초, peak RSS 1.1GiB, 조회 11~89µs(인덱스 사용 확인). DB 21GiB, 원본 덤프 5.3GB는 정리했다.",
+          "필수 8건 + 실패 예상 1건 = 9/9 독립 검증 통과. BI 10773→Empagliflozin, AZD6140→Ticagrelor, NN2211→Liraglutide, BMS-562247→Apixaban, BI 1356→Linagliptin, Jardiance→Empagliflozin.",
+          "3단계 파이프라인이 실제로 동작함을 확인했다 — ① OMOP exact match → ② 실패 시 PubChem 정규화 후 OMOP 재검색 → ③ 그래도 실패면 명시적 매핑 불가.",
+          "핵심 결과: BI 10773 → PubChem Empagliflozin → OMOP 45774751. 기존 오매핑(1254065, 3사 모두 0명)이 세 병원에서 43,244/3,201/6,231명을 잡는 정확한 개념으로 바뀐다.",
+          "단계 순서가 중요하다는 증거: glimepiride를 PubChem에 먼저 물으면 canonical title이 IUPAC 화학명(1H-Pyrrole-1-carboxamide...)이라 OMOP 매칭이 깨진다. OMOP exact를 먼저 두면 원천 차단된다.",
+          "Liotrix는 PubChem엔 있으나 OMOP RxNorm Ingredient엔 없어 깨끗한 실패로 떨어진다 — #6이 의도한 동작이다.",
+          "한계(서브에이전트 보고, 확인함): LY2189265(dulaglutide)·adalimumab 등 대형 생물학제제는 PubChem Compound 공간에 없다(소스 커버리지 문제이지 매칭 실패가 아니다). placeholder title('CID 163285897' 형태) 1,077,778건은 필터링했다. canonical title이 염/수화물 형태인 경우가 있어 OMOP ingredient 매칭 전 rollup이 필요할 수 있다. 동의어 0.34%가 복수 CID를 가리키며 is_ambiguous로 노출된다."
+        ],
+        "table": {
+          "head": [
+            "입력",
+            "경로",
+            "결과",
+            "해결 항목"
+          ],
+          "rows": [
+            [
+              "BI 10773",
+              "② PubChem → OMOP",
+              "empagliflozin (45774751)",
+              "#2"
+            ],
+            [
+              "AZD6140",
+              "② PubChem → OMOP",
+              "ticagrelor (40241186)",
+              "#2 유형"
+            ],
+            [
+              "glimepiride",
+              "① OMOP exact",
+              "1597756",
+              "IUPAC 회피"
+            ],
+            [
+              "Liotrix",
+              "② PubChem → OMOP 실패",
+              "명시적 매핑 불가",
+              "#6"
+            ],
+            [
+              "LY2189265",
+              "③ 실패",
+              "NOT FOUND (생물학제제)",
+              "소스 한계"
+            ]
+          ]
+        }
       }
     ]
   },
