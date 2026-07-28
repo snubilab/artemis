@@ -44,8 +44,8 @@
               "",
               "10",
               "상대 기준을 절대값으로 박음",
-              "EMPA-REG #16 (ALT/AST/ALP)",
-              "원문 'ALT > 정상상한의 3배'가 ValueAsNumber > 3.0 으로 생성됨. 실제 ALT는 10~40 U/L이라 간기능 검사를 받은 환자가 전원 배제된다. 배제 조건이므로 병원에서 코호트가 0명이 된다 — 근거: Synthea 실측: 간기능 검사 이력 2,841명 중 2,841명(100%) 배제. 올바른 3×ULN(ALT 165 / AST 144 / ALP 441 U/L)이면 24명(0.84%) — 118배 과다 배제. 세 병원 모두 ALT/AST/ALP 보유(아주대 1,004만 / 동아대 66.7만 / 계명대 30.8만 기록) || 해결 경로 확정: Circe에 RangeHighRatio 필드가 있고 gold가 이 조건에 바로 그것을 쓴다 — gold {\"RangeHighRatio\":{\"Value\":3,\"Op\":\"gt\"}} vs 생성물 {\"ValueAsNumber\":{\"Value\":3.0,\"Op\":\"gt\"}}. value_as_number / range_high 를 계산하므로 검사실별 ULN을 우리가 알 필요가 없다",
+              "EMPA-REG #16 / tte_service.py:5671",
+              "원문 'ALT > 정상상한의 3배'가 ValueAsNumber > 3.0 으로 생성됨. 실제 ALT는 10~40 U/L이라 간기능 검사를 받은 환자가 전원 배제된다. 배제 조건이므로 병원에서 코호트가 0명이 된다 — 근거: Synthea 실측: 간기능 검사 이력 2,841명 중 2,841명(100%) 배제. 올바른 3×ULN(ALT 165 / AST 144 / ALP 441 U/L)이면 24명(0.84%) — 118배 과다 배제. 세 병원 모두 ALT/AST/ALP 보유(아주대 1,004만 / 동아대 66.7만 / 계명대 30.8만 기록) || 해결 경로 확정: Circe에 RangeHighRatio 필드가 있고 gold가 이 조건에 바로 그것을 쓴다 — gold {\"RangeHighRatio\":{\"Value\":3,\"Op\":\"gt\"}} vs 생성물 {\"ValueAsNumber\":{\"Value\":3.0,\"Op\":\"gt\"}}. value_as_number / range_high 를 계산하므로 검사실별 ULN을 우리가 알 필요가 없다 || 손실 지점 특정: Agent1은 unit_text='x ULN'을 정확히 추출한다(저장된 IR에 6건). 빌더 tte_service.py:5671이 valueConstraint에서 value와 op만 읽고 unitText를 보지 않아 그 자리에서 증발한다",
               "미해결 (해결 경로 확정)"
             ],
             [
@@ -100,8 +100,8 @@
               "",
               "11",
               "단위가 섞인 개념셋에 단일 임계값",
-              "EMPA-REG #9 (Glucose)",
-              "Glucose > 240 은 mg/dL 기준인데 개념셋에 Glucose [Moles/volume](3020491, mmol/L)이 함께 들어 있다. mmol/L로 240은 존재할 수 없는 값이라 그 개념은 영원히 발동하지 않는다. SI 단위로 기록하는 사이트에서는 배제가 통째로 무효 — 근거: Synthea: mg/dL 중앙값 84.7 (임계값 타당), mmol/L 개념은 행 0건. 세 병원은 두 개념 모두 부재라 이번 사례에서는 영향 없음 — 결함은 코드에 있으나 현장 영향은 미검증 || 해결 경로 확정: Circe Measurement에 Unit 필터가 있고 gold가 CAROLINA에서 사용한다 — {\"ValueAsNumber\":{\"Value\":135,\"Op\":\"gte\"},\"Unit\":[{\"CONCEPT_ID\":8840,\"CONCEPT_CODE\":\"mg/dL\"}]}",
+              "EMPA-REG #9 / tte_service.py:5671, assembler.py:647",
+              "Glucose > 240 은 mg/dL 기준인데 개념셋에 Glucose [Moles/volume](3020491, mmol/L)이 함께 들어 있다. mmol/L로 240은 존재할 수 없는 값이라 그 개념은 영원히 발동하지 않는다. SI 단위로 기록하는 사이트에서는 배제가 통째로 무효 — 근거: Synthea: mg/dL 중앙값 84.7 (임계값 타당), mmol/L 개념은 행 0건. 세 병원은 두 개념 모두 부재라 이번 사례에서는 영향 없음 — 결함은 코드에 있으나 현장 영향은 미검증 || 해결 경로 확정: Circe Measurement에 Unit 필터가 있고 gold가 CAROLINA에서 사용한다 — {\"ValueAsNumber\":{\"Value\":135,\"Op\":\"gte\"},\"Unit\":[{\"CONCEPT_ID\":8840,\"CONCEPT_CODE\":\"mg/dL\"}]} || 손실 지점 특정: 생성 경로(tte_service)는 Unit을 아예 내보내지 않고, 대체 경로(assembler)는 UNIT_MAP 문자열 완전일치 조회라 41건 중 14건(34%)만 적중하며 적중해도 ValueAsNumber 안쪽에 넣는다(gold는 Measurement의 형제 위치)",
               "미해결 (해결 경로 확정)"
             ],
             [
@@ -988,6 +988,141 @@
               "0건",
               "0건",
               "Synthea 미채움 → 여기서는 검증 불가"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "#10·#11 정보 손실 지점 — 추출은 성공했고 빌더가 버렸다",
+        "items": [
+          "'LLM이 3배라는 걸 못 알아봤다'가 아니다. Agent1은 unit_text='x ULN'을 정확히 추출했고, 저장된 IR에 6건 남아 있다. 프롬프트도 이미 'ALL Measurement criteria MUST include value_constraint with op/value/unit_text'를 요구한다.",
+          "손실은 마지막 한 줄에서 일어난다. tte_service.py:5671 이 criteria_attrs['ValueAsNumber'] = {'Value': val, 'Op': circe_op} 로 끝나고, 같은 valueConstraint에 들어 있는 unitText를 읽지 않는다. 'x ULN'이 여기서 사라지고 3만 남는다.",
+          "그래서 이 결함은 추출 정확도 문제가 아니라 배관 문제다. 모델을 바꾸거나 프롬프트를 고쳐도 해결되지 않는다.",
+          "대체 경로인 agent3/assembler.py 는 Unit을 다루긴 하지만 세 가지가 어긋나 있다 — ① UNIT_MAP 문자열 완전일치라 추출된 41건 중 14건(34%)만 적중한다('years'는 맵에 'year'로 있고, 'kg/m²'는 위첨자라 'kg/m2'와 다르며, 'x ULN'·'mV'·'mL/min'·'ml/min/1.73 m2'·'ng/L'는 아예 없다) ② 적중해도 Unit을 ValueAsNumber 딕셔너리 안쪽에 넣는데 gold는 Measurement의 형제 위치에 둔다 ③ RangeHighRatio 분기 자체가 없다.",
+          "실제 생성물에서 Unit은 ValueAsNumber 안쪽 0건, 형제 위치 0건이다. 생산 경로가 tte_service이므로 assembler의 부분 지원은 출력에 도달하지도 못한다.",
+          "요약하면 고칠 곳은 세 군데다 — ValueConstraint 모델이 '상대 기준'을 표현할 수 있어야 하고(현재 op/value/unit_text만 있어 'x ULN'이 단위인지 기준인지 구분 불가), 빌더가 그 경우 RangeHighRatio로 분기해야 하며, 단위는 문자열 완전일치가 아니라 정규화 후 UCUM 개념으로 해소해야 한다."
+        ],
+        "table": {
+          "head": [
+            "단계",
+            "위치",
+            "무엇을 하나",
+            "판정"
+          ],
+          "rows": [
+            [
+              "① 추출 프롬프트",
+              "agent1/prompts.py:27",
+              "op/value/unit_text 를 필수로 요구",
+              "정상"
+            ],
+            [
+              "② LLM 추출",
+              "저장 IR",
+              "unit_text='x ULN' 6건 포함, 총 41건",
+              "정상"
+            ],
+            [
+              "③ 빌더 (생산 경로)",
+              "tte_service.py:5671",
+              "value·op 만 읽음. unitText 미참조",
+              "여기서 손실"
+            ],
+            [
+              "④ 빌더 (대체 경로)",
+              "assembler.py:640-650",
+              "UNIT_MAP 완전일치 34% 적중, 위치 오류, RangeHighRatio 없음",
+              "미도달 + 3중 결함"
+            ],
+            [
+              "결과",
+              "생성물 42건",
+              "RangeHighRatio 0건, Unit 0건",
+              "gold는 32건 / 2건"
+            ]
+          ]
+        }
+      },
+      {
+        "h": "unit_text 추출 실측 — UNIT_MAP 적중률 34%",
+        "items": [
+          "UNIT_MAP은 9개 키(%, mg/dL, mmol/L, kg, kg/m2, mmHg, year, day, mg)뿐이고 문자열 완전일치로 조회한다.",
+          "실제 프로토콜에서 나오는 표기는 그보다 다양하다. 복수형('years'), 위첨자('kg/m²'), 복합 단위('ml/min/1.73 m2'), 그리고 단위가 아니라 기준을 뜻하는 표기('x ULN')가 섞인다.",
+          "'x ULN'이 unit_text 필드에 담겨 있다는 것 자체가 모델 설계의 한계를 보여준다 — ValueConstraint에 '이 값이 절대값인가 상대 배수인가'를 담을 자리가 없어 단위 칸에 밀려들어갔다."
+        ],
+        "table": {
+          "head": [
+            "unit_text",
+            "건수",
+            "UNIT_MAP",
+            "비고"
+          ],
+          "rows": [
+            [
+              "%",
+              "10",
+              "적중",
+              "HbA1c 등"
+            ],
+            [
+              "years",
+              "8",
+              "누락",
+              "맵에는 'year' 단수형"
+            ],
+            [
+              "x ULN",
+              "6",
+              "누락",
+              "단위가 아니라 기준 배수 — #10의 원인"
+            ],
+            [
+              "mV",
+              "5",
+              "누락",
+              "심전도"
+            ],
+            [
+              "mL/min",
+              "4",
+              "누락",
+              "신기능"
+            ],
+            [
+              "mg/dL",
+              "2",
+              "적중",
+              "—"
+            ],
+            [
+              "ml/min/1.73 m2",
+              "2",
+              "누락",
+              "체표면적 보정 eGFR"
+            ],
+            [
+              "kg/m2",
+              "2",
+              "적중",
+              "BMI"
+            ],
+            [
+              "kg/m²",
+              "1",
+              "누락",
+              "위첨자 — 같은 단위인데 다른 문자열"
+            ],
+            [
+              "ng/L",
+              "1",
+              "누락",
+              "—"
+            ],
+            [
+              "합계",
+              "41",
+              "14 (34%)",
+              "—"
             ]
           ]
         }
