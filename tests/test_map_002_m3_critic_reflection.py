@@ -96,9 +96,16 @@ class TestCriticSelfReflection:
             return c
 
     def _run_evaluate(self, critic, mock_result, query, seed_ids, kg, domain_hint="Condition"):
-        """Helper to run evaluate with mocked chain and cache."""
+        """Helper to run evaluate with mocked chain and cache.
+
+        select_critic_model returns None to mean "follow LLM_MODEL", which is what
+        _default_chain already holds — so None is what routes evaluate() through the
+        mocked chain below. This used to patch in "gpt-4o", which was the old
+        sentinel for the same thing; any other value makes evaluate() build a fresh
+        model and chain and the mock never runs.
+        """
         with patch.object(critic, "_cache") as mock_cache, \
-             patch("src.agents.agent2.critic.select_critic_model", return_value="gpt-4o"):
+             patch("src.agents.agent2.critic.select_critic_model", return_value=None):
             mock_cache.make_key.return_value = "key"
             mock_cache.get.return_value = None
 
