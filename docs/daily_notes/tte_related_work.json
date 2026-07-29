@@ -1,0 +1,199 @@
+[
+  {
+    "id": "synthesis",
+    "name": "종합 — 문헌은 이 문제를 해결해주지 않는다",
+    "full": "TrialGenie·Chia·Criteria2Query·EliIE·TimeML·SUTime·HeidelTime·i2b2 2012 조사 결과",
+    "url": "",
+    "venue": "2026-07-29 조사",
+    "verdict": "partial",
+    "verdict_label": "부분 채택",
+    "summary": "숫자가 값 조건인지 시간창인지 가르는 문제에 대해, 문헌에 정식 해법은 없다. 가장 원리적인 것은 Chia의 정의이고, 그마저 has_temporal에서 13.3% 샌다. 시간 표준(TIMEX2·SUTime)은 오히려 나이를 시간 쪽으로 보내 우리와 반대 방향이다.",
+    "sections": [
+      {
+        "h": "왜 조사했나",
+        "items": [
+          "임계값 하나가 Circe에서 두 갈래로 갈린다 — 값 조건은 `ValueAsNumber`/`RangeHighRatio`, 시간창은 `StartWindow`. 잘못 보내면 조용히 틀린다(측정값 필터가 아무와도 안 맞아 환자가 사라지는데 에러가 없다).",
+          "코퍼스에 구문만으로는 못 가르는 쌍이 있었다 — `within 30 days`(시간창) vs `within 48 hours`(시간창) vs `\\>= 18 years`(값, 나이) vs `\\> 470 msec`(값, ECG 간격).",
+          "시간 **단위**로는 안 갈린다. `msec`는 측정량이고, `years`는 나이일 땐 환자 속성이고 'prior to randomization'일 땐 창이며, `\\>5 years` 질환 이환 기간은 또 다른 것이다."
+        ]
+      },
+      {
+        "h": "결론 — head 우선, 앵커는 두 번째",
+        "items": [
+          "Chia의 규칙은 **단위가 아니라 그 숫자가 무엇을 수식하는가(head)** 로 가른다. `Men with age ≥ 18 years` → head가 `age`라서 시간 단위가 있어도 **Value**.",
+          "우리가 세운 앵커 가설(`prior to` 등 상대시점어)은 **틀리지 않았지만 순서가 뒤였다** — 2번 검사다. `Age ≥ 18 years at screening`처럼 앵커가 같이 나와도 head 검사가 먼저 값으로 확정해야 한다.",
+          "코퍼스 실측: 시간 단위가 든 9건 중 앵커 인접성 규칙이 8건 일치. `within 30 days`만 놓치는데, 문장이 시간창 셋을 나열해 앵커가 열거 끝에 있어서다.",
+          "head 검사를 코퍼스에 적용해보려 했으나 **평가 자체가 실패**했다 — `ALT, AST, or alkaline phosphatase \\> 3x ULN`에서 정규식이 `or`로 쪼개 head를 날렸다. head 식별은 구문 규칙이 아니라 의미 판단이며, 이는 'LLM은 식별, 코드는 구조화' 분담과 일치한다."
+        ],
+        "table": {
+          "head": ["순서", "검사", "결과", "근거"],
+          "rows": [
+            ["1", "head가 Measurement/Observation 개념이거나 age·weight·height·BMI인가", "값 조건", "Chia — 단위가 아니라 수식 대상으로 분류. 단위보다 우선해야 한다"],
+            ["2", "head 없이 시간 단위만 있는가", "나이로 간주", "C2Q 3.0 def 8 — 'patients who are at least 18 years old'에 age를 보충 주석"],
+            ["3", "상대시점어 + 기준 사건이 있는가", "StartWindow", "Chia의 Reference_point / has_index. 우리 코퍼스에서 8/9 일치"],
+            ["4", "기준 사건 없는 질환 이환 기간인가", "제3의 슬롯", "문헌에 미해결. Chia의 Temporal은 Reference_point를 필수로 요구해 여기 해당 안 됨"],
+            ["5", "어느 것도 아님", "REVIEW 버킷", "기본값으로 밀지 말 것 — 실패 모드가 조용한 환자 손실이다"]
+          ]
+        }
+      },
+      {
+        "h": "이 설계가 실패할 지점 (미리 기록)",
+        "items": [
+          "**한 구문에 조건 둘** — `LVEF \\< 40% measured within 6 months`는 같은 Measurement에 `ValueAsNumber`와 `StartWindow`가 **둘 다** 필요하다. 단일 라벨 라우터는 하나를 버린다. 출력을 enum이 아니라 집합으로 설계해야 한다.",
+          "**불릿 간 head 생략** — ClinicalTrials.gov는 부모 불릿에 검사명, 자식 불릿에 임계값만 두는 중첩을 흔히 쓴다. 1번 검사가 부모를 못 보면 2번(나이)으로 오분류된다.",
+          "**암묵 앵커** — 배제 기준은 'prior to randomization'을 생략하는 일이 잦다. 3번 검사가 놓치고 REVIEW로 간다.",
+          "**기준 사건 어휘는 닫히지 않는다** — `since transplant`, `post-MI`, `from the time of diagnosis`. 늘어나는 사전으로 두고 미스를 로깅해야 한다."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "trialgenie",
+    "name": "TrialGenie (현 EmulatRx)",
+    "full": "Li H, Pan W, Rajendran S, Zang C, Wang F. TrialGenie: Empowering Clinical Trial Design with Agentic Intelligence and Real World Data. (v2에서 EmulatRx로 개명, 같은 DOI)",
+    "url": "https://doi.org/10.1101/2025.04.17.25326033",
+    "venue": "medRxiv 프리프린트 · 미심사 · v1 2025-04-20, v2 2026-03-03",
+    "verdict": "reject",
+    "verdict_label": "출처 못 됨",
+    "summary": "다중 에이전트 시험 설계 보조 도구이지 기준 파서 논문이 아니다. 프롬프트에 Temporal 태그를 나열만 하고 정의하지 않으면서, Value는 '약물 투여 기간'과 비교연산자를 자기 영역으로 정의한다. 우리 7개 사례 중 2건을 자기 문구로 오분류한다.",
+    "sections": [
+      {
+        "h": "확인 사항",
+        "items": [
+          "PubMed·Europe PMC·Crossref·arXiv·DBLP·OpenAlex 제목 검색 **전부 0건** — EmulatRx로 개명됐고 학술지 게재된 적 없다. medRxiv API가 `\"published\": \"NA\"`를 반환한다.",
+          "저자: Weill Cornell Medicine 인구건강과학 + Cornell Tri-I CBM. MIMIC-IV / INSIGHT 기반 Supervisor·Trialist·Informatician·Clinician·Statistician 에이전트 구성.",
+          "기준 파싱은 Trialist 에이전트의 하위 기능 하나일 뿐이다."
+        ]
+      },
+      {
+        "h": "결정적 결함 — Temporal은 정의되지 않는다",
+        "items": [
+          "Supplementary Table 1이 도메인 12종을 나열하면서 `Temporal`과 `Quantity`를 포함한다. 그다음 '각 도메인 설명'으로 10개를 정의하는데 **`Temporal`과 `Quantity`는 정의가 없다**(v1·v2 동일).",
+          "`Temporal`에 주어지는 유일한 단서는 few-shot 예시 하나이고, 그마저 창이 아니라 **빈도**다 — `<Drug>Metformin</Drug> <Value>500 mg</Value> <Temporal>daily</Temporal>`.",
+          "반면 `Value`는 정의되어 있고, 우리가 시간 쪽으로 보내야 할 영역을 적극적으로 흡수한다 — \"the duration of drugs\", \"numeric criteria of age\", 그리고 \"The relational operator such as '<', '>', '>=', '<=' should be recognized as part of the VALUE information.\"",
+          "태그 집합이 **열려 있다**('you can name a new one') — 출력 타입 안정성이 보장되지 않는다."
+        ]
+      },
+      {
+        "h": "인용 오류",
+        "items": [
+          "Methods에 \"the temporal and value normalization modules from the **Criteria2Query 3.0** framework\"를 쓴다고 적혀 있다.",
+          "C2Q 3.0 전문(Park J, et al. JBI 2024;154:104649, PMC11129920)을 확인한 결과 **'temporal normalization'·'SUTime'·'anchor' 출현 0건**. C2Q 3.0은 2.0의 규칙 파이프라인을 GPT-4 프롬프팅으로 대체했다.",
+          "SUTime 기반 시간 정규화는 C2Q **2.0**(Fang Y, et al. JAMIA 2022;29(7):1161-1171, PMC9196697) 소관이며, 거기서 시간 정규화 정확도 0.916 / 값 정규화 0.966으로 보고된다.",
+          "즉 존재하지 않는 구성요소를 인용하고 있다."
+        ]
+      },
+      {
+        "h": "우리 7개 사례 적용",
+        "items": [
+          "**1건 해결 / 1건 아마도 / 2건 자기 문구로 오분류 / 3건 무언급.**",
+          "평가는 ClinicalTrials.gov 5건, 주석자 2명, Cohen's kappa \"targeting ≥0.7\" — **실제 달성 kappa는 두 버전 어디에도 보고되지 않는다.** Temporal vs Value 유형별 분해도 없다.",
+          "자기 논문의 'logic error' 정의가 우리 실패 모드를 그대로 지목한다 — \"relational, temporal, or numerical expressions were misinterpreted (e.g., incorrect handling of age restrictions).\""
+        ],
+        "table": {
+          "head": ["사례", "정답", "TrialGenie 처리"],
+          "rows": [
+            ["within 30 days (헌혈, first dose 이전)", "시간창", "무언급 — Temporal 정의 없음. GPT가 맞히면 맞는 것"],
+            ["within 48 hours (음료, dosing 이전)", "시간창", "예시는 있으나 **다른 위치** — Clinician 메시지 규격이지 추출 프롬프트가 아님"],
+            ["=\\< 3 months (뇌졸중, ICF 이전)", "시간창", "**오분류 유도** — '비교연산자는 VALUE의 일부'라는 문구가 값으로 밀어냄"],
+            ["at least 8 weeks (안정 투약 기간)", "시간창", "**오분류** — Value 정의가 'duration of drugs'를 포함"],
+            ["\\>= 18 years (나이)", "값", "**해결** — def 7·8 + few-shot 3, 세 겹으로 명시"],
+            ["\\> 470 msec (QTc)", "값", "아마도 — 정의 연쇄로. 단 평가 코퍼스가 ICU 5건이라 미검증"],
+            ["(\\>5 years) HIV 이환 기간", "제3의 것", "**해당 범주 없음** — Value는 약물 기간만 다루고 Temporal은 미정의. 열린 태그로 빠짐"]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "chia",
+    "name": "Chia",
+    "full": "Kury F, Butler A, Yuan C, Fu LH, Sun Y, Liu H, Sim I, Carini S, Weng C. Chia, a large annotated corpus of clinical trial eligibility criteria. Sci Data 2020;7:281.",
+    "url": "https://doi.org/10.1038/s41597-020-00620-0",
+    "venue": "Scientific Data 2020 · 피어리뷰 · PMC7452886",
+    "verdict": "adopt",
+    "verdict_label": "채택",
+    "summary": "문헌에서 유일하게 실제 정의 규칙을 제시한다. Temporal은 Reference_point(기준 사건)를 has_index로 요구하고, Value는 단위가 아니라 수식 대상으로 분류한다. 다만 has_temporal에서 13.3%가 샌다.",
+    "sections": [
+      {
+        "h": "정의 (CAM 주석 모델 부록에서 확인)",
+        "items": [
+          "**Temporal** — \"represents a point in the line of time. Most often, a Temporal overlaps a **Reference_point** entity, and is linked to it via a **has_index**-type relationship.\"",
+          "**Reference_point** — \"Always comes downstream (usually directly) from a parent Temporal, and specifies a concept whose timestamp anchors that Temporal. For example, in 'within two weeks of a blood transfusion' this entire text string is one Temporal, and it contains (overlaps) the Reference_point 'blood transfusion.'\"",
+          "**Value** — \"a structured value, either as a number... the only components accepted inside its free text are... logical operator (<), numeral (140/90), unit of measure (mmHg).\"",
+          "우리 사례 5를 직접 해결하는 예시 — `Men with age ≥ 18 years` → `age`(Person 도메인) `has_value` `≥ 18 years`. **시간 단위가 있어도 Temporal이 아니라 Value.**"
+        ]
+      },
+      {
+        "h": "한계 (논문이 스스로 밝힌 것)",
+        "items": [
+          "\"All type-specific relationships contained the respective target entity type... except for `has_temporal` (86.7% Temporal, **13.3% Observation**).\" — 규칙이 있어도 경계가 13% 샌다.",
+          "주석자 일치도는 **통합값만** 보고된다(구문 수준 kappa 0.8043, 토큰 수준 0.8489). Temporal 유형별 IAA는 논문·부록 어디에도 없다(양쪽 확인).",
+          "질환 이환 기간(우리 사례 7)은 다루지 않는다. Chia의 Temporal은 Reference_point를 필수로 요구하는데 맨 이환 기간에는 그것이 없고, 부록에 해당 예시도 없다."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "c2q",
+    "name": "Criteria2Query 1.0 / 2.0 / 3.0",
+    "full": "1.0: Yuan C, Ryan PB, et al. JAMIA 2019. · 2.0: Fang Y, Idnay B, Sun Y, et al. JAMIA 2022;29(7):1161-1171. · 3.0: Park J, Fang Y, Ta C, et al. JBI 2024;154:104649.",
+    "url": "https://doi.org/10.1016/j.jbi.2024.104649",
+    "venue": "JAMIA / JBI · 피어리뷰",
+    "verdict": "partial",
+    "verdict_label": "부분",
+    "summary": "Temporal과 Value를 별도 속성 타입으로 두고 has_temp/has_value 타입 호환 제약을 걸지만, 태그 할당 자체는 CRF(1.0) 또는 GPT 프롬프트(3.0)다. 규칙이 아니다.",
+    "sections": [
+      {
+        "h": "버전별",
+        "items": [
+          "**1.0** — Temporal/Value 분리 + `has_value`는 Demographic|Measurement만 받는 타입 제약. 다만 태깅은 CoreNLP CRF의 generic 자질(Word/NGram/wordShape). Table 1의 Value 예시가 `30 to 75 years old` — 여기서도 시간 단위인데 Value.",
+          "**2.0** — SUTime 기반 시간 정규화 도입. 시간 정규화 0.916 / 값 정규화 0.966.",
+          "**3.0** — 2.0의 규칙 파이프라인을 GPT-4 프롬프팅으로 대체. 시간 정규화 모듈 자체가 없다.",
+          "우리가 쓸 만한 것: **3.0 def 8** — \"'patients who are at least 18 years old'... the factor 'age' should be additional annotated\". head 생략 + 맨 시간 단위 → 나이로 보는 규칙."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "timex",
+    "name": "TimeML · TIMEX2 · SUTime · HeidelTime",
+    "full": "TIDES TIMEX2 Annotation Guidelines v1.2.1 · Strötgen & Gertz, SemEval-2010 (HeidelTime) · Chang & Manning, LREC 2012 (SUTime)",
+    "url": "https://timeml.github.io/site/publications/timeMLdocs/annguide_1.2.1.pdf",
+    "verdict": "reject",
+    "verdict_label": "반대 방향",
+    "venue": "시간 표현 표준 · 피어리뷰",
+    "summary": "시간 표현 표준들은 나이를 시간 쪽으로 보낸다 — 우리가 필요한 것과 정반대다. Value 범주가 아예 없다.",
+    "sections": [
+      {
+        "h": "왜 못 쓰나",
+        "items": [
+          "**TIMEX2에는 Value 범주가 아예 없다.** 그리고 TIDES §4.3.2가 `31-year-old`를 `TIMEX2 type=duration VAL=\"P31Y\"`로 태깅한다 — 표준이 나이를 **시간 쪽**에 둔다.",
+          "`beginPoint`/`endPoint`/`anchorTimeID`/TLINK는 `type=DURATION`이 **이미 정해진 뒤에** 동작한다. 앵커 기구이지 판별 기구가 아니다.",
+          "**HeidelTime**에 유일한 결정적 나이 제외 규칙이 있다 — `duration_r1a_negation`: `(%reUnit|minutes?|hours?) (older|younger|old|young)` → `NORM_VALUE=\"REMOVE\"`. 그러나 형용사형 `N-year-old`에만 발동하고 `Age ≥ 18 years`에는 안 걸린다. 후자는 `DURATION P18Y`로 태깅한다.",
+          "**SUTime은 반대로 간다** — `-old`를 선택적 비판별 그룹으로 처리해 `45-year-old` → 무조건 `DURATION`. 논문도 인정한다: \"Handling of ambiguous phrases is poor... Probabilistic models could help resolve such ambiguities.\"",
+          "그리고 **C2Q 2.0이 SUTime을 내부에 쓴다** — 이 맹점이 실사용 임상 도구로 그대로 들어가 있다."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "others",
+    "name": "EliIE · i2b2 2012",
+    "full": "EliIE: Kang T, et al. JAMIA 2017;24(6):1062-1071. · i2b2 2012: Sun W, Rumshisky A, Uzuner Ö. JAMIA 2013;20(5):806-813.",
+    "url": "https://doi.org/10.1093/jamia/ocx019",
+    "venue": "JAMIA · 피어리뷰",
+    "verdict": "reject",
+    "verdict_label": "해당 없음",
+    "summary": "둘 다 이 경계를 다루지 않는다.",
+    "sections": [
+      {
+        "h": "확인 결과",
+        "items": [
+          "**EliIE** — CRF++ 기반, 규칙 없음. **인구통계/나이 엔티티 클래스 자체가 없다.** `Has_TempMea` 관계 F1 0.76 vs `Has_Measurement` 0.92.",
+          "**i2b2 2012 temporal challenge** — TIMEX3을 date/time/duration/frequency로 제한하고 type/value/modifier 속성만 둔다. SECTIME이 사건을 입퇴원에 앵커한다. **값 vs 시간 경계는 전혀 논의하지 않는다.**"
+        ]
+      }
+    ]
+  }
+]

@@ -215,12 +215,17 @@ def main() -> None:
     issues = json.loads(issues_path.read_text()) if issues_path.exists() else []
     lab_path = OUT.parents[1] / "docs" / "daily_notes" / "tte_lab_notes.json"
     lab = json.loads(lab_path.read_text()) if lab_path.exists() else []
+    # Related work is reference material, not a journal — no date, so it gets its own
+    # renderer rather than the dated calendar shell the other three share.
+    refs_path = OUT.parents[1] / "docs" / "daily_notes" / "tte_related_work.json"
+    refs = json.loads(refs_path.read_text()) if refs_path.exists() else []
     adaptation = build_adaptation_data()
     html = TEMPLATE.replace("/*__DATA__*/", json.dumps(diag, ensure_ascii=False))
     html = html.replace("/*__SIMDATA__*/", json.dumps(sim, ensure_ascii=False))
     html = html.replace("/*__NOTES__*/", json.dumps(notes, ensure_ascii=False))
     html = html.replace("/*__ISSUES__*/", json.dumps(issues, ensure_ascii=False))
     html = html.replace("/*__LAB__*/", json.dumps(lab, ensure_ascii=False))
+    html = html.replace("/*__REFS__*/", json.dumps(refs, ensure_ascii=False))
     html = html.replace("/*__ADAPT__*/", json.dumps(adaptation, ensure_ascii=False))
     (OUT / "dashboard.html").write_text(html)
     print("wrote", OUT / "dashboard.html", f"({len(html)} bytes)")
@@ -273,6 +278,13 @@ th:first-child,td:first-child{text-align:left}
 thead th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
 tbody tr:last-child td{border-bottom:none}
 .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:1px 6px;border-radius:5px;font-weight:600}
+.refverdict{flex:none;font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:5px;font-weight:700;border:1px solid var(--line-2);color:var(--ink-3)}
+.refverdict.ok{background:color-mix(in srgb,var(--good) 14%,transparent);color:var(--good);border-color:color-mix(in srgb,var(--good) 34%,transparent)}
+.refverdict.warn{background:var(--status-bg);color:var(--status);border-color:var(--status-line)}
+.refverdict.bad{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 34%,transparent)}
+.refcite{font-size:12px;color:var(--ink-3);margin-top:6px;line-height:1.5}
+.refcite a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 34%,transparent)}
+.refcite a:hover{border-bottom-color:var(--accent)}
 .tag.bad{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
 .tag.ok{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
 .tag.warn{background:var(--status-bg);color:var(--status);border:1px solid var(--status-line)}
@@ -341,6 +353,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
     <button class="tab" id="tab-log-btn" role="tab" aria-selected="false" aria-controls="tab-log" data-tab="log">Issue Log</button>
     <button class="tab" id="tab-notes-btn" role="tab" aria-selected="false" aria-controls="tab-notes" data-tab="notes">Daily Notes</button>
     <button class="tab" id="tab-lab-btn" role="tab" aria-selected="false" aria-controls="tab-lab" data-tab="lab">실험노트</button>
+    <button class="tab" id="tab-refs-btn" role="tab" aria-selected="false" aria-controls="tab-refs" data-tab="refs">관련 연구</button>
   </span>
 </nav>
 <div id="tab-diagnosis" class="tabpanel" role="tabpanel" aria-labelledby="tab-diagnosis-btn">
@@ -546,6 +559,15 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
   </div>
 </div><!-- /tab-lab -->
 
+<div id="tab-refs" class="tabpanel" role="tabpanel" aria-labelledby="tab-refs-btn" hidden>
+  <div class="sec-head" style="margin-bottom:10px">
+    <span class="eyebrow">Related Work</span>
+    <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">관련 연구</h2>
+    <div class="sub">임계값이 <b>값 조건인지 시간창인지</b> 가르는 문제에 대한 문헌 조사. 인용은 전부 원문을 받아 확인했고, 확인 못 한 부분은 그렇게 적어뒀습니다. <span class="mono">artemis/docs/daily_notes/tte_related_work.json</span> 편집 후 리빌드하면 반영됩니다.</div>
+  </div>
+  <div id="refs"></div>
+</div><!-- /tab-refs -->
+
 </div><div class="tip" id="tip"></div>
 <button id="toTop" title="맨 위로" aria-label="맨 위로">↑</button>
 <script id="data" type="application/json">/*__DATA__*/</script>
@@ -553,6 +575,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
 <script id="notesdata" type="application/json">/*__NOTES__*/</script>
 <script id="issuesdata" type="application/json">/*__ISSUES__*/</script>
 <script id="labdata" type="application/json">/*__LAB__*/</script>
+<script id="refsdata" type="application/json">/*__REFS__*/</script>
 <script id="adaptdata" type="application/json">/*__ADAPT__*/</script>
 <script>
 const D=JSON.parse(document.getElementById('data').textContent);
@@ -560,6 +583,7 @@ const SIM=JSON.parse(document.getElementById('simdata').textContent);
 const NOTES=JSON.parse(document.getElementById('notesdata').textContent);
 const ISSUES=JSON.parse(document.getElementById('issuesdata').textContent);
 const LAB=JSON.parse(document.getElementById('labdata').textContent);
+const REFS=JSON.parse(document.getElementById('refsdata').textContent);
 const ADAPT=JSON.parse(document.getElementById('adaptdata').textContent);
 const root=document.documentElement;
 const tabNames=new Set([...document.querySelectorAll('.tab')].map(t=>t.dataset.tab));
@@ -871,9 +895,31 @@ function noteView(listId, calId, filtId, data){
   }
   drawCal(); renderNotes();
 }
+// Related work has no date, so it reuses the section body shape (h / items / table)
+// without the calendar shell. A verdict badge carries the only thing a reader needs
+// up front: whether we took the source, and if not, why it does not settle the question.
+function refView(listId, data){
+  const el=document.getElementById(listId); if(!el||!Array.isArray(data)) return;
+  const VERDICT={adopt:['채택','ok'],partial:['부분','warn'],reject:['불채택','bad']};
+  const tableHtml=t=>`<table class="datatable"><thead><tr>${(t.head||[]).map(h=>`<th>${mdN(h)}</th>`).join('')}</tr></thead><tbody>${(t.rows||[]).map(r=>`<tr>${(r||[]).map(c=>`<td>${mdN(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const secBody=s=>`${(s.items&&s.items.length)?`<ul style="margin:5px 0 0;padding-left:18px;font-size:14px;color:var(--ink-2)">${s.items.map(i=>`<li style="margin:3px 0">${mdN(i)}</li>`).join('')}</ul>`:''}${s.table?tableHtml(s.table):''}`;
+  el.innerHTML=data.map(r=>{
+    const [vlabel,vcls]=VERDICT[r.verdict]||[r.verdict_label||'',''];
+    return `<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <div class="chart-t" style="margin:0">${mdN(r.name||'')}</div>
+        <span class="refverdict ${vcls}">${esc(r.verdict_label||vlabel)}</span></div>
+      <div class="note-key">${mdN(r.summary||'')}</div>
+      <div class="refcite">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${mdN(r.full||'')}</a>`:mdN(r.full||'')}${r.venue?` · <span class="mono">${esc(r.venue)}</span>`:''}</div>
+      ${(r.sections||[]).map(s=>`<div style="margin-top:11px"><div style="color:var(--accent);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em">${mdN(s.h||'')}</div>${secBody(s)}</div>`).join('')}
+    </div>`;
+  }).join('')||'<div class="chart-s">관련 연구 항목이 없습니다.</div>';
+}
+
 noteView('notes','cal','notesFilter',NOTES);
 noteView('issues','ical','issFilter',ISSUES);
 noteView('lab','lcal','labFilter',LAB);
+refView('refs',REFS);
 activateTab(location.hash.slice(1),false);
 scrollTo(0,0);
 const _toTop=document.getElementById('toTop');
