@@ -4457,12 +4457,17 @@ class TTEService:
                     progress_cb({"mapped": completed_count, "total": total_mappable, "phase": "mapping"})
             return result
 
-        # 16 left the server idle: num_requests_waiting stayed at 0 across ~400
-        # samples, KV cache sat at 2-4%, and per-stream decode was flat from
-        # batch 9.5 to 23.6 (5.18 -> 5.14 tok/s) for +7% step time. Raising the
-        # cap packs the same total thread-seconds into fewer wall-clock seconds;
-        # it cannot change the result, only when each criterion finishes.
-        with ThreadPoolExecutor(max_workers=total_mappable or 1) as pool:
+        # The binding constraint is the database, not the LLM server. vLLM was
+        # idle at 16 workers -- num_requests_waiting held at 0.0 across ~400
+        # samples, KV cache at 2-4%, per-stream decode flat from batch 9.5 to
+        # 23.6 -- but src/utils/db.py sizes the engine at pool_size=20 +
+        # max_overflow=40, and the Logician takes a connection per criterion for
+        # ingredient rollup. Removing the cap entirely put 67 threads against 60
+        # connections and produced 80 "rollup skipped" warnings on one study,
+        # where connect_timeout=3 expires and the unrolled concept ids are used
+        # instead. That is a silent change to the concept set, not a slowdown.
+        db_pool_ceiling = 48  # 80% of pool_size + max_overflow
+        with ThreadPoolExecutor(max_workers=min(db_pool_ceiling, total_mappable or 1)) as pool:
             futures = {
                 pool.submit(_map_criterion, i, crit, excl): i
                 for i, (crit, excl) in enumerate(mappable_items)
