@@ -20,7 +20,7 @@ class CriteriaPlanner:
     """
     
     def __init__(self, model_name: Optional[str] = None):
-        self.llm = get_llm(model_name=model_name, temperature=0.0)
+        self.llm = get_llm(model_name=model_name, temperature=0.0, json_mode=True)
     
     def plan(self, ir: ARTEMISRequest) -> ARTEMISRequest:
         """

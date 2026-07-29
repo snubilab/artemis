@@ -92,7 +92,7 @@ def _vllm_reachable(timeout: float = 2.0) -> bool:
 
 def _get_llm():
     from src.utils.llm import get_llm
-    return get_llm(model_name=DEFAULT_LLM_MODEL, temperature=0.0)
+    return get_llm(model_name=DEFAULT_LLM_MODEL, temperature=0.0, json_mode=True)
 
 
 def _classify(cand: CandidateEvidence, indication: str, outcome: str, llm) -> ClassVerdict:

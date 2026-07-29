@@ -91,7 +91,7 @@ Candidates:
 Select the best matching concept.""")
             ])
             
-            llm = get_llm(temperature=0.0)
+            llm = get_llm(temperature=0.0, json_mode=True)
             self._llm_chain = prompt | llm | JsonOutputParser()
             print("[Reranker] LLM Fallback ready")
             return True

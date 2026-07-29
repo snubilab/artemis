@@ -474,7 +474,7 @@ def _get_criteria_llm():
     global _criteria_llm
     if _criteria_llm is None:
         from src.utils.llm import get_llm
-        _criteria_llm = get_llm(temperature=0.0)
+        _criteria_llm = get_llm(temperature=0.0, json_mode=True)
         logger.info("[PubMed Fetcher] Initialized LLM for criteria parsing validation")
     return _criteria_llm
 

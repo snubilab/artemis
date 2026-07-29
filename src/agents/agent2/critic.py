@@ -262,7 +262,7 @@ class ConceptCritic:
     """
 
     def __init__(self):
-        self._default_llm = get_llm(temperature=0.0)
+        self._default_llm = get_llm(temperature=0.0, json_mode=True)
         self._cache = CriticCache()
         self._self_reflect = os.environ.get(
             "AGENT2_CRITIC_SELF_REFLECT", "true"
@@ -432,7 +432,7 @@ class ConceptCritic:
         # rebuilt the model and the chain on every single call.
         model_name = select_critic_model(domain_hint)
         if model_name is not None:
-            llm = get_llm(model_name=model_name, temperature=0.0)
+            llm = get_llm(model_name=model_name, temperature=0.0, json_mode=True)
             chain = self.prompt | llm | self.parser
         else:
             chain = self._default_chain

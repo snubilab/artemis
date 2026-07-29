@@ -439,7 +439,7 @@ def classify_criterion(
     resolved = resolve_model(model)
     return apply_gates(
         criterion,
-        _complete(criterion, llm or get_llm(resolved), resolved, every_numeral, cache_dir),
+        _complete(criterion, llm or get_llm(resolved, json_mode=True), resolved, every_numeral, cache_dir),
     )
 
 
@@ -460,7 +460,7 @@ def classify_criteria(
     # Resolve once so every worker keys its cache on the same name, even if
     # LLM_MODEL were to change mid-batch.
     resolved = resolve_model(model)
-    shared = llm or get_llm(resolved)
+    shared = llm or get_llm(resolved, json_mode=True)
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         return list(pool.map(
             lambda text: classify_criterion(

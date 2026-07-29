@@ -1635,7 +1635,7 @@ class TTEService:
         }
         try:
             parser = JsonOutputParser(pydantic_object=_AnalysisStrategyFinalizerDecision)
-            llm = get_llm(temperature=0.0)
+            llm = get_llm(temperature=0.0, json_mode=True)
             candidates_payload = [
                 {
                     "method": candidate.method,

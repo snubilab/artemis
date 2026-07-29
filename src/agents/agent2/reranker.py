@@ -36,7 +36,7 @@ class ConceptReranker:
     """
     
     def __init__(self):
-        self.llm = get_llm(temperature=0.0)
+        self.llm = get_llm(temperature=0.0, json_mode=True)
         self.parser = JsonOutputParser(pydantic_object=RerankResult)
 
         domain_aware = os.environ.get("AGENT2_RERANKER_DOMAIN_AWARE", "true").lower() == "true"

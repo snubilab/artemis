@@ -298,12 +298,31 @@ def get_llm(
     model_name: str | None = None,
     temperature: float | None = None,
     response_format: dict | None = None,
+    json_mode: bool = False,
 ) -> BaseChatModel:
     """
     Returns a configured Chat Model instance.
 
     Temperature and seed are controlled via LLM_TEMPERATURE and LLM_SEED env vars.
     response_format: optional, e.g. {"type": "json_object"} to enforce JSON output.
+
+    json_mode: constrain a *local* model to emit a JSON object. Reasoning models
+    narrate before answering, and unbounded narration is not a parsing problem —
+    it is a throughput one. Measured on Qwen3.5-4B against one concept-selection
+    prompt:
+
+        unconstrained          did not finish inside 900s
+        max_tokens=200         37.2s, truncated mid-narration, no JSON at all
+        response_format json    8.8s, 44 tokens, exactly the schema
+
+    ``extract_answer`` recovers the answer when narration happens; this stops it
+    happening. Both are needed: the strip covers calls that cannot constrain
+    (prose), the constraint covers the ones that would otherwise cost minutes.
+
+    Local-only on purpose. OpenAI rejects json_object unless the prompt itself
+    mentions JSON, and three call sites here parse JSON from prompts that never
+    say the word — enabling it for remote providers would turn those into 400s.
+    vLLM has no such rule (verified against the running server).
 
     Priority:
     0. vLLM (model has a 'vllm/' prefix) — always wins on prefix match; raises if
@@ -331,8 +350,9 @@ def get_llm(
             )
         actual_model = _strip_vllm_prefix(model)
         seed_kwargs: dict = {"seed": seed} if seed is not None else {}
-        if response_format:
-            seed_kwargs["response_format"] = response_format
+        effective_format = response_format or ({"type": "json_object"} if json_mode else None)
+        if effective_format:
+            seed_kwargs["response_format"] = effective_format
         return ReasoningStrippedChatModel(
             inner=ChatOpenAI(
                 model=actual_model,

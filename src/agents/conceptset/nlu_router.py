@@ -87,7 +87,7 @@ IMPORTANT:
 Extract the include and exclude criteria as JSON."""
 
     def __init__(self):
-        self.llm = get_llm(temperature=0.0)
+        self.llm = get_llm(temperature=0.0, json_mode=True)
         self.parser = JsonOutputParser(pydantic_object=IntentResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
