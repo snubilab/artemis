@@ -46,8 +46,13 @@ def _build_critic(self_reflect: bool) -> ConceptCritic:
 def _run_evaluate(critic: ConceptCritic, mock_result: dict, query: str,
                   seed_ids: list, kg_list: list, kg_concept_ids=None):
     """Run evaluate() with a mocked LLM chain and empty cache."""
+    # None means "follow LLM_MODEL", which routes evaluate() through _default_chain —
+    # the chain this helper replaces with a mock. "gpt-4o" was the old sentinel for the
+    # same thing; after the default flipped it became a real request for a specific
+    # model, so evaluate() built a live OpenAI client and these tests made billed calls
+    # whose responses decided the assertions.
     with patch.object(critic, "_cache") as mock_cache, \
-         patch("src.agents.agent2.critic.select_critic_model", return_value="gpt-4o"):
+         patch("src.agents.agent2.critic.select_critic_model", return_value=None):
         mock_cache.make_key.return_value = "test-key"
         mock_cache.get.return_value = None  # Force fresh evaluation
 
