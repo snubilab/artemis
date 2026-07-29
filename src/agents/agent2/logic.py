@@ -199,52 +199,59 @@ class ConceptLogician:
                                     resolved,
                                 )
 
-            rolled_up: List[int] = []
-            for concept_id in deduped:
-                replacements = ingredient_map.get(concept_id)
-                if replacements:
-                    rolled_up.extend(replacements)
-                else:
-                    rolled_up.append(concept_id)
+            # Everything below stays inside the session. The safety-net query used
+            # to sit outside it: Session.__exit__ had already returned the
+            # connection, so execute() checked out a fresh one that nothing ever
+            # returned. Measured, checkedout climbed 1, 2, 3... per call until the
+            # pool hit "QueuePool limit of size 20 overflow 40 reached" and every
+            # rollup from then on was skipped -- silently keeping product-level
+            # concept ids that match no drug_exposure rows.
+                rolled_up: List[int] = []
+                for concept_id in deduped:
+                    replacements = ingredient_map.get(concept_id)
+                    if replacements:
+                        rolled_up.extend(replacements)
+                    else:
+                        rolled_up.append(concept_id)
 
-            result = self._dedupe_preserve_order(rolled_up)
+                result = self._dedupe_preserve_order(rolled_up)
 
-            # Safety net: if no Ingredient-class concept ended up in the
-            # result, extract ingredient names from the product-level
-            # concept names and resolve them directly.  Synthea CDMs store
-            # drug_exposure at the RxNorm Ingredient level, so a concept
-            # set without the Ingredient will match 0 patients.
-            ingredient_check = text(f"""
-                SELECT concept_id
-                FROM {self.schema}.concept
-                WHERE concept_id = ANY(:cids)
-                  AND concept_class_id = 'Ingredient'
-                  AND vocabulary_id = 'RxNorm'
-            """)
-            ing_rows = db.execute(ingredient_check, {"cids": result}).fetchall()
-            if not ing_rows:
-                # No ingredient in result — try name-based resolution
-                # for ALL concepts, not just specific product classes
-                all_meta = db.execute(meta_query, {"cids": result}).fetchall()
-                for _, cname, vocab, cclass in all_meta:
-                    resolved = self._resolve_ingredient_by_name(cname, db)
-                    if resolved:
-                        result.extend(resolved)
-                        logger.info(
-                            "[Logician] Ingredient safety-net: '%s' → %s",
-                            cname[:50],
-                            resolved,
-                        )
-                        break  # one ingredient match is enough
-                result = self._dedupe_preserve_order(result)
+                # Safety net: if no Ingredient-class concept ended up in the
+                # result, extract ingredient names from the product-level
+                # concept names and resolve them directly.  Synthea CDMs store
+                # drug_exposure at the RxNorm Ingredient level, so a concept
+                # set without the Ingredient will match 0 patients.
+                ingredient_check = text(f"""
+                    SELECT concept_id
+                    FROM {self.schema}.concept
+                    WHERE concept_id = ANY(:cids)
+                      AND concept_class_id = 'Ingredient'
+                      AND vocabulary_id = 'RxNorm'
+                """)
+                ing_rows = db.execute(ingredient_check, {"cids": result}).fetchall()
+                if not ing_rows:
+                    # No ingredient in result — try name-based resolution
+                    # for ALL concepts, not just specific product classes
+                    all_meta = db.execute(meta_query, {"cids": result}).fetchall()
+                    for _, cname, vocab, cclass in all_meta:
+                        resolved = self._resolve_ingredient_by_name(cname, db)
+                        if resolved:
+                            result.extend(resolved)
+                            logger.info(
+                                "[Logician] Ingredient safety-net: '%s' → %s",
+                                cname[:50],
+                                resolved,
+                            )
+                            break  # one ingredient match is enough
+                    result = self._dedupe_preserve_order(result)
 
-            if result != deduped:
-                logger.info(
-                    "[Logician] Rolled up drug concepts to RxNorm ingredients: %s -> %s",
-                    deduped,
-                    result,
-                )
-            return result
+                if result != deduped:
+                    logger.info(
+                        "[Logician] Rolled up drug concepts to RxNorm ingredients: %s -> %s",
+                        deduped,
+                        result,
+                    )
+                return result
         except Exception as e:
             logger.warning(
                 "[Logician] Ingredient rollup skipped; using original concept IDs. "
