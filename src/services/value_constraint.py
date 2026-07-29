@@ -22,6 +22,8 @@ import unicodedata
 from collections.abc import Mapping
 from typing import Any, Literal
 
+from src.models.ir import ValueConstraint
+
 ReferenceBound = Literal["absolute", "uln", "lln"]
 
 # Circe accepts these operator tokens verbatim; the IR Literal already matches.
@@ -280,26 +282,238 @@ def build_measurement_value_filter(vc: Any) -> dict[str, Any]:
     return fragment
 
 
-def parse_value_constraint(text: str) -> Any:
-    """Phase 2 — not implemented. See ADR-031 D2/D6/D7/D8."""
-    raise NotImplementedError(
-        "ADR-031 phase 2 (D2/D6/D7/D8): the deterministic phrase parser, implicit "
-        "multiplier 1, multi-constraint output and negative-case rejection are not "
-        "built yet. Phase 1 covers D3/D4/D5 only."
-    )
+# --------------------------------------------------------------------------
+# ADR-031 phase 2 (D2/D6/D7/D8): protocol phrase -> ValueConstraint
+# --------------------------------------------------------------------------
+
+# Statistical decision rules are the corpus's most dangerous false positives:
+# "upper boundary of the two-sided 95% confidence interval was less than 1.3"
+# carries a comparator, a number and the words "upper ... of" — one word away
+# from "upper limit of normal". A reference bound is always a *limit*, never a
+# *boundary*, so the two vocabularies are checked before anything else.
+_STATISTICAL_MARKER_RE = re.compile(
+    r"confidence\s+interval|boundar(?:y|ies)|(?:one|two)[-\s]?sided"
+    r"|alpha\s+level|\bmargins?\b|hazard\s+ratio|non[-\s]?inferiority",
+    re.IGNORECASE,
+)
+
+# ULN/LLN in every spelling the corpus contains. The negative lookarounds are
+# load-bearing: "≤ 5ULN" glues the multiplier onto the abbreviation, so \b does
+# not fire between "5" and "U".
+_BOUND_RE = re.compile(
+    r"(?P<upper>upper\s+limits?\s+of\s+normal|(?<![A-Za-z])ULN(?![A-Za-z]))"
+    r"|(?P<lower>lower\s+limits?\s+of\s+normal|(?<![A-Za-z])LLN(?![A-Za-z]))",
+    re.IGNORECASE,
+)
+
+# Ordered so that at a given position the longer spelling wins ("less than or
+# equal" before "less than", "no more than" before "more than").
+_COMPARATOR_SPELLINGS: tuple[tuple[str, str], ...] = (
+    (r">=|=>|≥", "gte"),
+    (r"<=|=<|≤", "lte"),
+    (r">", "gt"),
+    (r"<", "lt"),
+    (r"greater\s+than\s+or\s+equal(?:\s+to)?", "gte"),
+    (r"less\s+than\s+or\s+equal(?:\s+to)?", "lte"),
+    (r"(?:equal(?:\s+to)?|at)\s+or\s+(?:above|greater|higher)", "gte"),
+    (r"(?:equal(?:\s+to)?|at)\s+or\s+(?:below|less|lower)", "lte"),
+    (r"at\s+least|no\s+less\s+than", "gte"),
+    (r"at\s+most|no\s+more\s+than|no\s+greater\s+than|up\s+to", "lte"),
+    (r"greater\s+than|higher\s+than|more\s+than|above", "gt"),
+    (r"less\s+than|lower\s+than|below", "lt"),
+)
+_COMPARATOR_RE = re.compile(
+    "|".join(f"(?P<c{i}>{p})" for i, (p, _) in enumerate(_COMPARATOR_SPELLINGS)),
+    re.IGNORECASE,
+)
+_COMPARATOR_OPS = {f"c{i}": op for i, (_, op) in enumerate(_COMPARATOR_SPELLINGS)}
+
+# The comma in "100,000/mm3" is a thousands separator; the first alternative has
+# to be tried before the plain one or the value parses as 100.
+_NUMBER_RE = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
+
+# What may stand between a multiplier and the bound it multiplies. Anything else
+# means the number belongs to a different clause, so the multiplier is implicit 1
+# ("...platelet count <90x10^9/L; hemoglobin below the lower limit of normal").
+_MULTIPLIER_FILLER = frozenset(
+    {"x", "×", "*", "times", "time", "fold", "of", "the", "a",
+     "institutional", "local", "central", "site", "higher", "greater",
+     "lower", "than", "above", "below"}
+)
+
+# Durations at these scales are index-relative windows, not measured values.
+# "year" is absent on purpose: "age >= 18 years" is a patient attribute, and
+# "ms" likewise measures an ECG interval.
+_WINDOW_UNITS = frozenset(
+    {"second", "sec", "minute", "min", "hour", "hr", "h", "day", "week", "wk", "month", "mo"}
+)
+_TIME_UNITS = _WINDOW_UNITS | {"year", "yr"}
+_RELATIVE_TIME_ANCHOR_RE = re.compile(
+    r"\bwithin\b|\bprior\s+to\b|\bpreceding\b|\bbefore\b|\bafter\b|\bsince\b|\bago\b",
+    re.IGNORECASE,
+)
+
+# ClinicalTrials.gov strips the caret upstream, so "1.5 x 10^9/L" can arrive as
+# "1.5 x 109/L". Reading 109 as the magnitude is off by nine orders.
+_GIGA_PER_LITRE_RE = re.compile(r"^[x×*]?\s*10\s*[\^*]?\s*9\s*/\s*l$", re.IGNORECASE)
+
+_PHRASE_SPLIT_RE = re.compile(r";|\s+(?:and/or|or|and)\s+|,(?!\d)", re.IGNORECASE)
 
 
-def parse_value_constraints(text: str) -> list[Any]:
-    """Phase 2 — not implemented. See ADR-031 D2/D6/D7/D8.
+def _canonical_unit(text: str) -> str:
+    return "x 10^9/L" if _GIGA_PER_LITRE_RE.match(text) else text
 
-    Plural because one criterion can yield several constraints
-    ("TSH >1.2 ULN or <0.8 LLN"), which ADR-031 D7 requires.
+
+def _resolve_unit(tail: str) -> tuple[str | None, int | None]:
+    """Longest leading run of `tail` that names a unit, plus its concept_id.
+
+    A threshold phrase can be handed over with prose still attached
+    ("mg prednisolone or equivalent"), so the whole tail is rarely the unit;
+    conversely "ml/min/1.73 m2" is two whitespace-separated tokens that are one
+    unit. When nothing resolves the tail is returned verbatim and unresolved —
+    ADR-031 D5 forbids substituting a nearest concept.
     """
-    raise NotImplementedError(
-        "ADR-031 phase 2 (D2/D6/D7/D8): the deterministic phrase parser, implicit "
-        "multiplier 1, multi-constraint output and negative-case rejection are not "
-        "built yet. Phase 1 covers D3/D4/D5 only."
+    tail = tail.strip()
+    if not tail:
+        return None, None
+    tokens = tail.split()
+    for size in range(len(tokens), 0, -1):
+        candidate = _canonical_unit(" ".join(tokens[:size]).rstrip(".,;:)"))
+        concept_id = normalize_unit(candidate)
+        if concept_id is not None:
+            return candidate, concept_id
+    return tail, None
+
+
+def _is_temporal(unit_text: str | None, phrase: str) -> bool:
+    """True when the quantity is a time window rather than a measured value (D8)."""
+    if not unit_text:
+        return False
+    token = "".join(unit_text.split()).lower().rstrip(".")
+    token = token[:-1] if token.endswith("s") else token
+    if token in _WINDOW_UNITS:
+        return True
+    # A year is an age until something anchors it to the index event.
+    return token in _TIME_UNITS and _RELATIVE_TIME_ANCHOR_RE.search(phrase) is not None
+
+
+def _comparator_before(text: str, limit: int) -> tuple[str, int] | None:
+    """Last comparator starting before `limit`, as (op, end offset)."""
+    found: tuple[str, int] | None = None
+    for match in _COMPARATOR_RE.finditer(text):
+        if match.start() >= limit:
+            break
+        found = (_COMPARATOR_OPS[match.lastgroup or ""], match.end())
+    return found
+
+
+def _multiplier_before(text: str, bound_start: int) -> float:
+    """The multiplier attached to a reference bound, or the implicit 1.0 (D6).
+
+    This is where the overloaded "x" is decided. It is never read as a token:
+    "3x ULN" attaches because only filler separates 3 from the bound, while
+    "3x10^9/L" has no bound at all and never reaches here.
+    """
+    numbers = list(_NUMBER_RE.finditer(text, 0, bound_start))
+    if not numbers:
+        return 1.0
+    last = numbers[-1]
+    between = text[last.end() : bound_start]
+    if all(token.strip("().,-").lower() in _MULTIPLIER_FILLER for token in between.split()):
+        return float(last.group().replace(",", ""))
+    return 1.0
+
+
+def parse_value_constraint(phrase: str) -> ValueConstraint | None:
+    """Structure one already-isolated threshold phrase, or reject it (ADR-031 D2).
+
+    Returns None for the eight negative families in the corpus: statistical
+    decision rules, inclusive ranges, unit-conversion restatements, definitional
+    equalities, protocol names, spelled-out counts, carve-out clauses and
+    non-numeric grades. A false positive here is silent — it produces a
+    valid-looking cohort holding the wrong patients — so every branch that
+    cannot justify a number declines to invent one.
+    """
+    if not phrase:
+        return None
+    text = phrase.replace("\\", "").strip()  # CT.gov escapes: \> =\< \[ALT\]
+    if _STATISTICAL_MARKER_RE.search(text):
+        return None
+    # A wholly parenthesised threshold is an aside, not the operative one: the
+    # corpus's two cases are a unit restatement of the threshold just stated
+    # (">240 mg/dl (>13.3 mmol/L)" — emitting both ANDs mutually exclusive
+    # filters) and a duration gloss ("long-standing (>5 years)").
+    if text.startswith("(") and text.endswith(")"):
+        return None
+
+    bound_match = _BOUND_RE.search(text)
+    if bound_match is not None:
+        comparator = _comparator_before(text, bound_match.start())
+        if comparator is None:
+            return None  # a bound with no direction is not a constraint
+        return ValueConstraint(
+            op=comparator[0],
+            value=_multiplier_before(text, bound_match.start()),
+            reference_bound="uln" if bound_match.group("upper") else "lln",
+        )
+
+    # First comparator, not last: ">240 mg/dl (>13.3 mmol/L)" states one
+    # threshold twice, and the operative one is the first. Reading the last
+    # would emit the parenthetical restatement and silently drop the mg/dL.
+    comparator = _COMPARATOR_RE.search(text)
+    if comparator is None:
+        return _bare_value(text)
+    number = _NUMBER_RE.search(text, comparator.end())
+    if number is None:
+        return None
+    unit_text, unit_concept_id = _resolve_unit(text[number.end() :])
+    if _is_temporal(unit_text, text):
+        return None
+    return ValueConstraint(
+        op=_COMPARATOR_OPS[comparator.lastgroup or ""],
+        value=float(number.group().replace(",", "")),
+        unit_text=unit_text,
+        unit_concept_id=unit_concept_id,
     )
+
+
+def _bare_value(text: str) -> ValueConstraint | None:
+    """A comparator-less phrase counts only as "<number> <unit>", nothing more.
+
+    Protocols elide the comparator when restating a threshold in a second unit
+    ("ANC >= 1,000/mm3 (1 G/l)"), which reads as at-least. Requiring the phrase
+    to be *exactly* a number and a resolvable unit is what keeps "margin of 1.3",
+    "24-hour urine collection", "1 cup = 250 mL" and "6.5 - 8.5%" out.
+    """
+    match = _NUMBER_RE.match(text)
+    if match is None:
+        return None
+    unit_text = _canonical_unit(text[match.end() :].strip())
+    unit_concept_id = normalize_unit(unit_text)
+    if unit_concept_id is None or _is_temporal(unit_text, text):
+        return None
+    return ValueConstraint(
+        op="gte",
+        value=float(match.group().replace(",", "")),
+        unit_text=unit_text,
+        unit_concept_id=unit_concept_id,
+    )
+
+
+def parse_value_constraints(line: str) -> list[ValueConstraint]:
+    """Every constraint on one criterion line (ADR-031 D7).
+
+    "TSH >1.2 ULN or <0.8 LLN" is two constraints; a return type of
+    ``ValueConstraint | None`` cannot express it. Splitting on clause boundaries
+    is deliberately blunt — a segment that is not a threshold parses to None and
+    is dropped, so over-splitting costs nothing while under-splitting loses a
+    constraint.
+    """
+    return [
+        constraint
+        for segment in _PHRASE_SPLIT_RE.split(line)
+        if (constraint := parse_value_constraint(segment)) is not None
+    ]
 
 
 def verify_unit_table_against_database() -> list[str]:
@@ -380,6 +594,31 @@ def demo() -> None:
     assert normalize_unit("µmol/L") == normalize_unit("μmol/L") == 8749
     assert normalize_unit("G/l") == 9444 and normalize_unit("g/l") == 8636
     assert normalize_unit("bpm") is None and normalize_unit("cups per day") is None
+
+    # Phase 2: one row per trap the corpus sets for a number-first parser.
+    phrases = [
+        ("uln ratio", "\\> 3 x upper limit of normal (ULN)", ("gt", 3.0, "uln")),
+        ("lln ratio", "\\<0.8 LLN", ("lt", 0.8, "lln")),
+        ("implicit x1", "≤ institutional ULN", ("lte", 1.0, "uln")),
+        ("x is a magnitude", "\\> 3x109/L", ("gt", 3.0, "absolute")),
+        ("statistical rule", "upper boundary of the 95% confidence interval [CI], <1.30", None),
+    ]
+    for label, phrase, expected in phrases:
+        parsed = parse_value_constraint(phrase)
+        print(f"{label:32} {phrase!r}\n{'':32} -> {parsed}")
+        if expected is None:
+            assert parsed is None, f"{label}: parsed a non-constraint"
+        else:
+            assert parsed is not None, f"{label}: parsed nothing"
+            assert (parsed.op, parsed.value, parsed.reference_bound) == expected
+
+    assert parse_value_constraint("\\> 3x109/L").unit_concept_id == 9444
+    two = parse_value_constraints("Thyroid stimulating hormone (TSH) \\>1.2 ULN or \\<0.8 LLN;")
+    print(f"{'two constraints on one line':32} -> {two}")
+    assert [(c.op, c.value, c.reference_bound) for c in two] == [
+        ("gt", 1.2, "uln"),
+        ("lt", 0.8, "lln"),
+    ]
     print("\nself-check ok")
 
 
