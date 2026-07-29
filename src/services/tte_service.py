@@ -4457,7 +4457,12 @@ class TTEService:
                     progress_cb({"mapped": completed_count, "total": total_mappable, "phase": "mapping"})
             return result
 
-        with ThreadPoolExecutor(max_workers=min(16, total_mappable or 1)) as pool:
+        # 16 left the server idle: num_requests_waiting stayed at 0 across ~400
+        # samples, KV cache sat at 2-4%, and per-stream decode was flat from
+        # batch 9.5 to 23.6 (5.18 -> 5.14 tok/s) for +7% step time. Raising the
+        # cap packs the same total thread-seconds into fewer wall-clock seconds;
+        # it cannot change the result, only when each criterion finishes.
+        with ThreadPoolExecutor(max_workers=total_mappable or 1) as pool:
             futures = {
                 pool.submit(_map_criterion, i, crit, excl): i
                 for i, (crit, excl) in enumerate(mappable_items)
