@@ -193,6 +193,36 @@ class TestEmbeddingModelKey:
         assert result is None
 
 
+class TestDisabledFlag:
+    """CRITERION_CACHE_ENABLED must be honoured inside get/put, not only by callers."""
+
+    def test_disabled_cache_never_stores_or_returns(
+        self,
+        cache: CriterionResultCache,
+        sample_entry: CriterionCacheEntry,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("EMBEDDING_MODEL", "minilm")
+        monkeypatch.setenv("CRITERION_CACHE_ENABLED", "false")
+
+        cache.put("diabetes", "Condition", sample_entry)
+
+        assert cache.get("diabetes", "Condition") is None
+        assert cache.stats()["current_size"] == 0
+
+    def test_disabled_cache_hides_entries_written_while_enabled(
+        self,
+        cache: CriterionResultCache,
+        sample_entry: CriterionCacheEntry,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("EMBEDDING_MODEL", "minilm")
+        cache.put("diabetes", "Condition", sample_entry)
+
+        monkeypatch.setenv("CRITERION_CACHE_ENABLED", "false")
+        assert cache.get("diabetes", "Condition") is None
+
+
 class TestStats:
     """T3.6: stats() returns correct hit/miss counts."""
 

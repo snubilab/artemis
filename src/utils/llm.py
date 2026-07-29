@@ -10,8 +10,8 @@ from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
-from langchain_core.outputs import ChatResult, ChatGeneration
-from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.outputs import ChatResult, ChatGeneration, LLMResult
+from langchain_core.callbacks import BaseCallbackHandler, CallbackManagerForLLMRun
 from src.settings import settings
 from src.utils.exceptions import LLMConfigurationError
 
@@ -33,8 +33,12 @@ class LLMCostTracker:
         self.cost_usd: float = 0.0
 
     def record(self, model: str, input_tokens: int, output_tokens: int) -> None:
-        costs = _MODEL_COSTS.get(model, _MODEL_COSTS["gpt-4o"])
-        cost = input_tokens * costs["input"] + output_tokens * costs["output"]
+        # An unpriced model contributes nothing, rather than being billed at gpt-4o
+        # rates. Defaulting priced a local run at 12.50 USD per 2M tokens — a
+        # fabricated figure that reads as plausible in a cost column. score_run.py
+        # already skips unknown models; this now matches it.
+        costs = _MODEL_COSTS.get(model)
+        cost = input_tokens * costs["input"] + output_tokens * costs["output"] if costs else 0.0
         with self._lock:
             self.calls += 1
             self.input_tokens += input_tokens
@@ -65,6 +69,30 @@ _cost_tracker = LLMCostTracker()
 def get_cost_tracker() -> LLMCostTracker:
     """Return the global LLM cost tracker singleton."""
     return _cost_tracker
+
+
+class _UsageCallback(BaseCallbackHandler):
+    """Feed every OpenAI-compatible completion into the cost tracker.
+
+    record() used to be reachable only from AzureAIFoundryChatModel, so the
+    llmCost block in every TTE report was a structural zero — one artifact on
+    disk shows $0.00 and 0 calls against 137 real billed OpenRouter calls. The
+    model recorded is the one the provider says it *served* (llm_output's
+    model_name comes from the response body), not the one that was requested;
+    those two disagree in exactly the cases worth catching.
+    """
+
+    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+        output = response.llm_output or {}
+        usage = output.get("token_usage") or {}
+        get_cost_tracker().record(
+            output.get("model_name") or "unknown",
+            usage.get("prompt_tokens") or 0,
+            usage.get("completion_tokens") or 0,
+        )
+
+
+_USAGE_CALLBACK = _UsageCallback()
 
 
 class AzureAIFoundryChatModel(BaseChatModel):
@@ -169,19 +197,63 @@ def _strip_vllm_prefix(model: str) -> str:
 
 _THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
+# Plain-text preambles, for models that reason without tagging it. Measured on
+# Qwen/Qwen3.5-4B, which answers "Return ONLY: {"a":1}" with 1232 characters
+# beginning "Thinking Process:\n\n1.  **Analyze the Request:**". There is no
+# <think> tag to strip, so the tag regex leaves the whole thing intact.
+_PREAMBLE_MARKER = re.compile(
+    r"^\s*(?:thinking process|reasoning|let me think|thought process|analysis)\s*[:\n]",
+    re.IGNORECASE,
+)
+
+# Innermost {...} / [...] runs. Deliberately non-recursive: it is a detector for
+# "is there JSON in here", and the last match is what matters, not the parse.
+_JSON_RUN = re.compile(r"\{[^{}]*\}|\[[^\[\]]*\]", re.DOTALL)
+
+
+def extract_answer(content: str) -> tuple[str, str]:
+    """Return (cleaned, strategy) for one model response.
+
+    Three strategies, tried in order, with the name returned so a caller can log
+    which one fired. Knowing that matters: if a benchmark records a model as
+    unable to hold an output schema, the reader has to be able to tell that from
+    "our preprocessing did not know that model's reasoning format".
+
+    - ``think_tag``  — a <think>…</think> block was removed. Qwen3-8B/hari.
+    - ``last_json``  — no tag, but the text opens with a prose reasoning preamble
+      and contains JSON. The **last** run is taken, not the first: the reasoning
+      quotes the prompt, so an answer of ``{"a":1}`` arrives with nine balanced
+      JSON runs ahead of it and "first brace wins" picks the echoed input.
+    - ``none``       — returned unchanged. Free-text callers must not be touched.
+
+    Detection rather than a per-model table on purpose. A table would need an
+    entry for every model, and the entries for models nobody has measured would
+    be guesses — which is how a tooling gap gets recorded as a model defect.
+    """
+    if _THINK_BLOCK.search(content):
+        return _THINK_BLOCK.sub("", content).strip(), "think_tag"
+
+    if _PREAMBLE_MARKER.match(content):
+        runs = _JSON_RUN.findall(content)
+        if runs:
+            return runs[-1].strip(), "last_json"
+
+    return content, "none"
+
 
 class ReasoningStrippedChatModel(BaseChatModel):
-    """Wraps a chat model whose output may carry a <think>…</think> preamble.
+    """Wraps a chat model that may narrate its reasoning before answering.
 
-    Qwen3-class models emit chain-of-thought before the answer. Every caller in
-    this codebase feeds the response straight into a JSON parser — four of them
-    through LangChain's JsonOutputParser in a `prompt | llm | parser` chain,
-    where there is no seam to clean the text. Stripping per call site means one
-    of them is always missed; stripping here means switching LLM_MODEL to a
-    reasoning model cannot silently break parsing downstream.
+    Every caller in this codebase feeds the response straight into a JSON parser —
+    four of them through LangChain's JsonOutputParser in a `prompt | llm | parser`
+    chain, where there is no seam to clean the text. Stripping per call site means
+    one is always missed; stripping here means switching LLM_MODEL to a reasoning
+    model cannot silently break parsing downstream.
 
-    `/no_think` asks the model to skip the block; the regex handles the case
-    where it emits one anyway.
+    Reasoning arrives in at least two shapes, and the difference is not cosmetic:
+    Qwen3-8B tags it, Qwen3.5-4B does not. `/no_think` asks for neither; both
+    models emit one anyway. See ``extract_answer`` for how each is handled and why
+    detection is preferred to a per-model table.
     """
 
     inner: BaseChatModel
@@ -201,7 +273,12 @@ class ReasoningStrippedChatModel(BaseChatModel):
         for generation in result.generations:
             content = generation.message.content
             if isinstance(content, str):
-                generation.message.content = _THINK_BLOCK.sub("", content).strip()
+                cleaned, strategy = extract_answer(content)
+                generation.message.content = cleaned
+                if strategy != "none":
+                    generation.message.response_metadata.setdefault(
+                        "reasoning_strategy", strategy
+                    )
         return result
 
     @staticmethod
@@ -229,7 +306,8 @@ def get_llm(
     response_format: optional, e.g. {"type": "json_object"} to enforce JSON output.
 
     Priority:
-    0. vLLM (if model has 'vllm/' prefix and VLLM_BASE_URL is set) — always wins on prefix match
+    0. vLLM (model has a 'vllm/' prefix) — always wins on prefix match; raises if
+       VLLM_BASE_URL is unset rather than falling through to a remote provider
     1. Azure AI Foundry (if AZURE_API_KEY and AZURE_ENDPOINT are set)
     2. OpenRouter (if OPENROUTER_API_KEY is set)
     3. Google Gemini (if GOOGLE_API_KEY is set and model contains 'gemini')
@@ -240,7 +318,17 @@ def get_llm(
     seed = settings.LLM_SEED
 
     # Option 0: vLLM — prefix-based routing always wins (before any credential-based provider)
-    if _is_vllm_model(model) and settings.VLLM_BASE_URL:
+    if _is_vllm_model(model):
+        # Never fall through. Without this the prefix is a request that gets
+        # quietly declined: `vllm/x` reaches OpenRouter as the literal string
+        # "vllm/x", or is rewritten to gpt-4o-mini by Option 4. Both produce real
+        # completions from a remote provider under a local model's label.
+        if not settings.VLLM_BASE_URL:
+            raise LLMConfigurationError(
+                f"Model {model!r} is prefixed 'vllm/' but VLLM_BASE_URL is not set. "
+                "Set VLLM_BASE_URL, or use a model name without the prefix if a "
+                "remote provider is intended."
+            )
         actual_model = _strip_vllm_prefix(model)
         seed_kwargs: dict = {"seed": seed} if seed is not None else {}
         if response_format:
@@ -252,7 +340,8 @@ def get_llm(
                 base_url=settings.VLLM_BASE_URL,
                 temperature=temp,
                 model_kwargs=seed_kwargs,
-            )
+            ),
+            callbacks=[_USAGE_CALLBACK],
         )
 
     # Option 1: Azure AI Foundry (priority - using openai.OpenAI SDK with base_url)
@@ -278,6 +367,7 @@ def get_llm(
             base_url=settings.OPENROUTER_BASE_URL,
             temperature=temp,
             model_kwargs=seed_kwargs,
+            callbacks=[_USAGE_CALLBACK],
             default_headers={
                 "HTTP-Referer": "https://artemis.ai",
                 "X-Title": "ARTEMIS 3.1"
@@ -296,11 +386,15 @@ def get_llm(
     
     # Option 4: OpenAI (direct)
     if settings.OPENAI_API_KEY:
+        # No substitution: an unknown id gets the provider's 404. Rewriting it to
+        # gpt-4o-mini answered every request successfully with the wrong model and
+        # logged nothing.
         return ChatOpenAI(
-            model=model if "gpt" in model else "gpt-4o-mini",
+            model=model,
             api_key=settings.OPENAI_API_KEY,
             temperature=temp,
             model_kwargs=seed_kwargs,
+            callbacks=[_USAGE_CALLBACK],
         )
     
     # No API key configured

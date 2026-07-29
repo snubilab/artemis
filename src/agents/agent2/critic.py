@@ -17,11 +17,13 @@ import logging
 import os
 from typing import List, Optional, Dict, Any
 
+import openai
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
-from src.utils.llm import get_llm, resolve_model
+from src.utils.exceptions import LLMConfigurationError
+from src.utils.llm import _is_vllm_model, get_llm, resolve_model
 from src.agents.agent2.kg_expander import KGConcept
 from src.agents.agent2.critic_cache import CriticCache
 
@@ -29,6 +31,17 @@ logger = logging.getLogger(__name__)
 
 # Well-defined domains where gpt-4o-mini is sufficient for concept evaluation
 _WELL_DEFINED_DOMAINS = frozenset({"Condition", "Drug", "Measurement"})
+
+# What people type when they mean "turn the override off". Every one of these used
+# to be accepted as a literal model name and sent to OpenRouter, at real cost,
+# while LLM_MODEL said local. There is no model called "off".
+_NOT_A_MODEL_NAME = frozenset({
+    "none", "null", "off", "false", "true", "0", "1", "no", "yes", "disable", "disabled",
+})
+
+# Status codes that mean the model or credential is wrong for *every* call, not
+# just this one, so retrying or degrading gracefully is the wrong answer.
+_UNSERVABLE_STATUS = frozenset({401, 403, 404})
 
 
 def select_critic_model(domain_hint: str | None = None) -> str | None:
@@ -42,29 +55,63 @@ def select_critic_model(domain_hint: str | None = None) -> str | None:
     nothing in the output would have shown it.
 
     Tiering is still available, but it is now opt-in via AGENT2_CRITIC_MODEL_TIER:
-      - unset or "follow" (default): use LLM_MODEL, whatever it is
-      - "auto": the old domain-based split between gpt-4o and gpt-4o-mini
-      - any other value: that literal model name
+      - unset or "follow" (default, case-insensitive): use LLM_MODEL, whatever it is
+      - "auto" (case-insensitive): the old domain-based split between gpt-4o and gpt-4o-mini
+      - any other value: that literal model name, case preserved
+
+    The sentinels are matched case-insensitively because "Follow", "AUTO" and
+    "None" used to be read as literal model names and sent to OpenRouter, where
+    they 404 — and the 404 was swallowed one frame down, so the run completed
+    with Agent 2 degraded to plain vector search.
 
     Args:
         domain_hint: OMOP domain (e.g., "Condition", "Drug", "Observation").
 
     Returns:
         A model name, or None meaning "whatever LLM_MODEL is set to".
+
+    Raises:
+        LLMConfigurationError: the value is a boolean-ish word, not a model name.
     """
     tier = os.environ.get("AGENT2_CRITIC_MODEL_TIER", "follow").strip()
+    sentinel = tier.lower()
 
-    if tier in ("", "follow"):
+    if sentinel in ("", "follow"):
         return None
 
-    if tier == "auto":
+    if sentinel in _NOT_A_MODEL_NAME:
+        raise LLMConfigurationError(
+            f"AGENT2_CRITIC_MODEL_TIER={tier!r} is not a model name. Use 'follow' "
+            "(default — the critic follows LLM_MODEL), 'auto' (domain-based "
+            "tiering), or an actual model id."
+        )
+
+    if sentinel == "auto":
         # Cost tiering: gpt-4o-mini was judged sufficient on well-defined domains.
         # Only meaningful when LLM_MODEL is an OpenAI model in the first place.
-        if domain_hint and domain_hint in _WELL_DEFINED_DOMAINS:
-            return "gpt-4o-mini"
-        return "gpt-4o"
+        model = "gpt-4o-mini" if domain_hint and domain_hint in _WELL_DEFINED_DOMAINS else "gpt-4o"
+    else:
+        model = tier  # model ids are case-sensitive; keep exactly what was written
 
-    return tier
+    _warn_if_critic_leaves_local(model)
+    return model
+
+
+def _warn_if_critic_leaves_local(critic_model: str) -> None:
+    """One visible line when the critic and the rest of the pipeline split providers.
+
+    A tier override while LLM_MODEL is local is a legitimate opt-in, but it is
+    also how a benchmark ends up labelled with a local model and executed
+    remotely on the 90% domains. Make the divergence say so out loud.
+    """
+    pipeline_model = resolve_model(None)
+    if _is_vllm_model(critic_model) or not _is_vllm_model(pipeline_model):
+        return
+    logger.warning(
+        "[Critic] AGENT2_CRITIC_MODEL_TIER routes the critic to %r while LLM_MODEL "
+        "is %r — the critic will not run on the local server.",
+        critic_model, pipeline_model,
+    )
 
 
 # ── Output Schema ──────────────────────────────────────────
@@ -455,6 +502,16 @@ class ConceptCritic:
             return selected
             
         except Exception as e:
+            # A wrong model id or a dead credential fails identically on every
+            # item. Degrading to seed concepts there discards KG expansion and
+            # still produces a complete, plausible, lower-scoring result set —
+            # one ERROR line per item and nothing in the output. Transient
+            # failures keep the fallback; a misconfiguration must stop the run.
+            if isinstance(e, openai.APIStatusError) and e.status_code in _UNSERVABLE_STATUS:
+                raise LLMConfigurationError(
+                    f"Critic model {resolve_model(model_name)!r} is not servable by its "
+                    f"provider (HTTP {e.status_code}): {e}"
+                ) from e
             logger.error(f"[Critic] Evaluation failed: {e}")
             return seed_concept_ids  # Fallback to seed
 

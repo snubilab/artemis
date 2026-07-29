@@ -77,6 +77,8 @@ ALLOWED_RUNTIME_ENV = {
     "LLM_MODEL",
     "LLM_TEMPERATURE",
     "LLM_SEED",
+    "VLLM_BASE_URL",
+    "VLLM_API_KEY",
     "DATABASE_URL",
     "OMOP_DB_HOST",
     "OMOP_DB_PORT",
@@ -187,6 +189,13 @@ def bootstrap_runtime_env() -> None:
     Keep only env vars that ARTEMIS settings expect, then selectively load
     artemis/.env. This avoids pydantic-settings crashing on Broadsea's repo-wide
     .env keys while still giving the script the DB/LLM credentials it needs.
+
+    An allowlisted key already present in os.environ wins: it survives the clear
+    above and the fill below skips keys that are already set, and src.settings's
+    load_dotenv() does not override. Anything *not* allowlisted is destroyed
+    here and then silently restored by that load_dotenv(), which resolves .env
+    from src/settings.py's own directory rather than from cwd -- so this
+    function isolates the allowlist, not the environment.
     """
 
     dotenv_values = parse_dotenv(APP_DIR / ".env")
@@ -213,13 +222,6 @@ def bootstrap_runtime_env() -> None:
     os.environ.setdefault("PYTHONUNBUFFERED", "1")
     os.environ["DEBUG"] = "false"
     os.environ["JSON_LOGS"] = "false"
-
-    # python-dotenv in src.settings.py searches upward from cwd; running from a
-    # neutral directory avoids reloading Broadsea's top-level .env.
-    try:
-        os.chdir("/tmp")
-    except OSError:
-        pass
 
 
 bootstrap_runtime_env()
@@ -411,6 +413,19 @@ def serialize_results_raw(mapper_names: list[str], results: dict[str, list[dict[
     }
 
 
+PROVENANCE_ENV_KEYS = (
+    "LLM_MODEL",
+    "VLLM_BASE_URL",
+    "AGENT2_CRITIC_MODEL_TIER",
+    "EMBEDDING_MODEL",
+)
+
+
+def runtime_provenance() -> dict[str, Optional[str]]:
+    """The settings that decide which model answered. Read after bootstrap."""
+    return {key.lower(): os.environ.get(key) for key in PROVENANCE_ENV_KEYS}
+
+
 def save_progress(
     save_path: Path,
     args: argparse.Namespace,
@@ -421,6 +436,7 @@ def save_progress(
     payload = {
         "schema_version": 2,
         "status": "in_progress",
+        "runtime_config": runtime_provenance(),
         "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
         "dataset": str(args.dataset),
         "sample_size": len(sample),
@@ -453,6 +469,16 @@ def load_resume_rows(
     saved_sample_ids = payload.get("sample_ids")
     if isinstance(saved_sample_ids, list) and saved_sample_ids != expected_sample_ids:
         print("Resume disabled: save-path sample_ids do not match this run.")
+        return empty
+
+    # Missing means refuse: a file written before provenance existed is exactly
+    # the one that could merge two models' rows into one table.
+    current_config = runtime_provenance()
+    saved_config = payload.get("runtime_config")
+    if saved_config != current_config:
+        print("Resume disabled: save-path runtime_config does not match this run.")
+        print(f"  saved:   {saved_config}")
+        print(f"  current: {current_config}")
         return empty
 
     sample_by_id = {item["id"]: item for item in sample}
@@ -1050,6 +1076,7 @@ def save_results(
     payload = {
         "schema_version": 2,
         "status": "completed",
+        "runtime_config": runtime_provenance(),
         "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
         "dataset": str(args.dataset),
         "sample_size": len(sample),

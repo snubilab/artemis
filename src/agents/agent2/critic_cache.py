@@ -2,7 +2,7 @@
 Critic Result Cache — Thread-safe TTL+LRU cache for LLM Critic results.
 
 Avoids redundant LLM calls for identical (query_text, domain_hint) pairs.
-Cache key: sha256(query_text.lower().strip() + "|" + domain_hint)
+Cache key: sha256(query_text.lower().strip() + "|" + domain_hint + "|" + LLM_MODEL)
 
 Configuration:
     AGENT2_CRITIC_CACHE_TTL_HOURS: TTL in hours (default: 24)
@@ -18,6 +18,8 @@ import os
 import threading
 import time
 from typing import Optional
+
+from src.utils.llm import resolve_model
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +65,10 @@ class CriticCache:
 
     @staticmethod
     def make_key(query_text: str, domain_hint: str | None) -> str:
-        """Generate cache key from query text and domain hint.
+        """Generate cache key from query text, domain hint and resolved model.
 
-        Key = sha256(query_text.lower().strip() + "|" + domain_hint_or_empty)
+        Key = sha256(query_text.lower().strip() + "|" + domain_hint_or_empty
+                     + "|" + resolved LLM model)
 
         Args:
             query_text: Clinical query text.
@@ -76,7 +79,7 @@ class CriticCache:
         """
         normalized = query_text.lower().strip()
         domain = domain_hint or ""
-        raw = f"{normalized}|{domain}"
+        raw = f"{normalized}|{domain}|{resolve_model()}"
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def get(self, key: str) -> list[int] | None:

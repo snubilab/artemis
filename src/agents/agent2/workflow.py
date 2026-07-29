@@ -72,6 +72,7 @@ from src.agents.agent2.kg_expander import get_kg_expander
 from src.agents.agent2.critic import get_critic
 from src.agents.agent2.concept_set_refiner import get_concept_set_refiner
 from src.models.ir import MappingResult, GapReport
+from src.utils.exceptions import LLMConfigurationError
 
 logger = logging.getLogger(__name__)
 logger.info(f"[Agent 2] MAX_WORKERS={MAX_WORKERS} (from AGENT2_MAX_WORKERS env var)")
@@ -893,10 +894,15 @@ class Agent2Workflow:
                 final_ids = ref_result.kept_ids
                 return final_ids, ref_result.overbroad_ids, False
             return final_ids, [], False
+        except LLMConfigurationError:
+            # Misconfiguration is not a degradable failure: it fails every item
+            # identically and would otherwise produce a full results table built
+            # from seed concepts alone.
+            raise
         except Exception as e:
             logger.warning(f"[Agent 2] Critic failed: {e}")
             return seed_ids, [], False
-    
+
     def _slow_path_batch(
         self, 
         queries: List[tuple]  # List of (index, query, context)

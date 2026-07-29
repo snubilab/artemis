@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
-from src.utils.llm import get_llm
+from src.utils.llm import get_llm, resolve_model
 from src.models.ir import ARTEMISRequest, CohortDefinition, PrimaryCriteria, Criteria, CohortOutcome, TemporalWindow, ValueConstraint
 from src.agents.agent1.prompts import (
     SYSTEM_PROMPT, DECOMPOSITION_PROMPT,
@@ -85,7 +85,9 @@ class LogicDecomposer:
             temperature=0.0,
             response_format={"type": "json_object"},
         )
-        self.model_name = model_name or "default"
+        # The IR cache key is built from this; "default" collapsed every model
+        # into one file, so a second-arm run replayed arm one's cached IR.
+        self.model_name = model_name or resolve_model()
         self.parser = JsonOutputParser()
         # Paper enrichment status from the last parse_nct() call.
         # Callers may read this after parse_nct() returns.
@@ -285,6 +287,7 @@ class LogicDecomposer:
             cache_dir.mkdir(parents=True, exist_ok=True)
             meta = {
                 "enrichment_source": enrichment_source,
+                "model": self.model_name,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "inclusion_count": len(trial_data.inclusion_criteria),
                 "exclusion_count": len(trial_data.exclusion_criteria),

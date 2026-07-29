@@ -18,16 +18,17 @@ from unittest.mock import patch
 import pytest
 
 from src.agents.agent2.critic_cache import CriticCache
+from src.utils.llm import resolve_model
 
 
 class TestCacheKeyGeneration:
     """Verify cache key format."""
 
-    def test_key_is_sha256_of_query_and_domain(self):
-        """Cache key should be sha256(query.lower().strip() + '|' + domain)."""
+    def test_key_is_sha256_of_query_domain_and_model(self):
+        """Cache key should be sha256(query.lower().strip() + '|' + domain + '|' + model)."""
         cache = CriticCache(max_entries=10, ttl_hours=1)
         key = cache.make_key("  History of Stroke  ", "Condition")
-        expected_input = "history of stroke|Condition"
+        expected_input = f"history of stroke|Condition|{resolve_model()}"
         expected = hashlib.sha256(expected_input.encode()).hexdigest()
         assert key == expected
 
@@ -35,7 +36,7 @@ class TestCacheKeyGeneration:
         """None domain should be treated as empty string in key."""
         cache = CriticCache(max_entries=10, ttl_hours=1)
         key = cache.make_key("test query", None)
-        expected_input = "test query|"
+        expected_input = f"test query||{resolve_model()}"
         expected = hashlib.sha256(expected_input.encode()).hexdigest()
         assert key == expected
 

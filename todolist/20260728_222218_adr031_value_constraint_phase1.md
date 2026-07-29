@@ -89,14 +89,25 @@ A2 ─┴─→ B1 → B2 → B3 ─┬─→ C1 ─┬─→ D1 → D2 → D3
 
 재생성(D3-b)보다 먼저 한다. 2단계 후 한 번만 재생성하면 LLM 비용이 절반이다.
 
-- [ ] E1. `parse_value_constraint(phrase) -> ValueConstraint | None`
+- [x] E1. `parse_value_constraint(phrase) -> ValueConstraint | None`
       임계값 구문 하나 → 조건 하나. 연산자·값·`reference_bound`·단위 추출.
-      검증: 코퍼스 POSITIVES 전수의 `reference_bound`/`op`/`value`/단위 단언 통과
-- [ ] E2. 부정 케이스 거부 — 신뢰구간 상한·범위·기간·단위환산 재기술 → `None`
-      검증: `test_non_constraints_are_rejected` 14건 통과
-- [ ] E3. `parse_value_constraints(line) -> list` — 문장을 구문으로 분리 후 E1 매핑
-      검증: `TSH >1.2 ULN or <0.8 LLN`이 조건 2개(uln·lln)로 분해
-- [ ] E4. 전체 검증 — 코퍼스 268 실패 → 0, 기존 스위트 회귀 0
+      검증 완료(2026-07-29 통합 확인, 커밋 114af5a 고정): 코퍼스 파라미터 테스트
+      `test_parse_classifies_reference_bound`·`test_parse_extracts_operator_and_value`·
+      `test_unit_spelling_normalises_to_concept_id`·`test_unresolvable_unit_returns_none_rather_than_guessing`
+      합계 **144건 전수 통과**
+- [x] E2. 부정 케이스 거부 — 신뢰구간 상한·범위·기간·단위환산 재기술 → `None`
+      검증 완료: `test_non_constraints_are_rejected` **17건** 통과
+      (계획 시점 14건 → 코퍼스가 늘어 17건. 숫자를 실측으로 정정)
+- [x] E3. `parse_value_constraints(line) -> list` — 문장을 구문으로 분리 후 E1 매핑
+      검증 완료: `TSH >1.2 ULN or <0.8 LLN` → `[(gt,1.2,uln), (lt,0.8,lln)]`
+      (`python src/services/value_constraint.py` self-check 통과)
+      [주의] 이 함수는 **테스트 스위트에 테스트가 없고, 프로덕션 호출자도 없다.**
+      검증 근거는 모듈 자체의 `demo()` 뿐이다. 유일한 다른 언급은
+      `threshold_classifier.classify_criterion`의 **독스트링 예제**로, 실행되는 코드가 아니다
+- [x] E4. 전체 검증 — 코퍼스 **268 실패 → 2**, 기존 스위트 회귀 **0**
+      계획서의 "268 → 0"은 달성 불가한 목표였다. 남은 2건은 파서 결함이 아니라
+      D3-b(재생성) 미실행 때문이며, 아래 "잔여 2건" 절에 원인을 적었다.
+      회귀 0은 워크트리 대조로 확인 (bc33ccc vs d1747e0, 신규 실패 ID 0건)
 
 ### 설계 확정 — 단수/복수는 충돌이 아니다
 
@@ -135,8 +146,100 @@ head 식별은 구문 규칙으로 안 된다(정규식 시도 실패: 값 조�
       `ConditionOccurrence` + 과거로 열린 `StartWindow`. gold가 같은 형태를 28회 사용(독립 확인)
       실측: 정답형 17명 vs 방향 반대인 순진한 형태 2명 — 오분류가 자릿수 차이이고 조용함
       `ConditionEra.EraLength`는 실측 기각(synthea HIV era 전원 1일 → 0명, 사이트 3/4에 테이블 부재)
-- [ ] F5. 분류기 구현 (②) — 로컬 vLLM
+- [x] F5. 분류기 구현 (②) — 로컬 vLLM · 커밋 d1747e0
+      검증 완료: `src/agents/agent1/threshold_classifier.py` 454줄,
+      `tests/test_threshold_classifier.py` **60건 전수 통과**.
+      캐시에 남은 실제 모델 응답으로 G0~G7 게이트 동작 확인 —
+      `=> 3 x upper limit of normal (ULN)` → `MEASUREMENT_VALUE` →
+      `{"RangeHighRatio": {"Value": 3.0, "Op": "gte"}}`
+      [미검증] 아래 3가지는 이번 통합에서 **확인하지 못했다**
+      1. **배선 없음.** `classify_criterion`/`classify_criteria`의 호출자는
+         테스트와 `scripts/eval_threshold_classifier.py` 뿐이다. 프로덕션 경로 0곳.
+         ②→③ 연결은 독스트링에만 있고 실행되지 않는다
+      2. **라이브 실행 없음.** `VLLM_BASE_URL`이 connection refused.
+         이번 패스의 모든 ② 결과는 `data/cache/threshold_spans/`의 86건 캐시에서 나왔다
+      3. **다분석물 head 손실 (신규 실측).** 아래 절 참조
 - [ ] F6. `LLM_MODEL` 전환 + 파이프라인 전체 로컬 검증
+      커밋 6ed6a8d(`fix(llm): make LLM_MODEL move the whole pipeline`)가 12:34에 올라왔고
+      코퍼스·분류기 테스트는 영향 없음(2 실패 / 379 통과, d1747e0과 동일)을 확인했다.
+      그러나 "파이프라인 전체 로컬 검증"은 vLLM이 죽어 있어 **수행 불가** → 미완으로 둔다
+
+## 통합 확인 (2026-07-29 12:2x~12:4x) — 실행 기반
+
+측정은 워크트리 대조로 했다. `git stash`는 이미 한 번 사고를 냈고, 총계는
+무관한 이유로 움직이므로 **실패 ID 집합**만 비교했다.
+
+| | bc33ccc (전) | d1747e0 (후) |
+|---|---|---|
+| 실패 ID (FAILED+ERROR) | 458 | 196 |
+| 통과 | 899 | 1221 |
+| skip / collection error | 28 / 19 | 28 / 19 |
+
+- **신규 실패 0건.** 해소 262건, 전부 `tests/test_value_constraint.py`
+- 통과 증가 322 = 해소 262 + 신규 테스트 60(`test_threshold_classifier.py`). 산술 일치
+- collection error 19건은 전후 동일 — `langgraph`·`pandas`·`python-multipart` 미설치
+
+### 잔여 2건 — 코퍼스 (319 통과 / 2 실패 / 1 skip)
+
+둘 다 코드가 아니라 **커밋된 산출물**을 읽는 테스트다. D3-b 재생성 전까지 붉다.
+
+- `test_generated_cohorts_use_range_high_ratio_like_gold` — gold 32/81 vs 생성 0/40
+- `test_generated_cohorts_set_unit_on_measurement_criteria` — 생성 40건 중 Unit 0건
+
+`data/generated/empa_reg/empa_reg_treatment.circe.json`은 지금도
+`RangeHighRatio` 0회 / `ValueAsNumber` 8회이고, 그 중 `{"Value": 3.0, "Op": "gt"}`가
+3개다. 즉 **결함은 코드에서 고쳐졌고 데이터에는 그대로 남아 있다.**
+
+저장된 IR의 고유 값 조건 23건을 수정된 빌더에 통과시킨 결과(독립 재측정):
+`Unit`+`ValueAsNumber` 18 · `ValueAsNumber` 단독 3(단위 미해소, 정당) ·
+`RangeHighRatio` 2. RHR과 VAN이 함께 나온 건 0건.
+
+### 신규 실측 — ②의 다분석물 head 손실 (G7이 구조적으로 못 잡는다)
+
+한 임계값이 여러 분석물을 덮는 문장에서 모델이 head를 하나만 반환한다.
+숫자는 살아남은 span이 이미 claim했으므로 **G7 숫자 리콜망에 걸리지 않는다.**
+
+캐시된 실제 응답 중 ALT와 AST를 **둘 다** 명시한 기준선:
+기본 프롬프트(`every_numeral=False`) **15건 중 4건이 한쪽을 잃었다.**
+
+```
+LOST  heads='ALT'   3. Active liver disease ... ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP) => 3 x ULN
+LOST  heads='AST'   Aspartate aminotransferase (AST) or alanine aminotransferase (ALT) in conjunction with GGT
+LOST  heads='AST'   Serum aspartate aminotransferase (AST) / alanine aminotransferase (ALT) >5 x ULN
+LOST  heads='aspartate aminotransferase (AST) | total bilirubin'   Presence of liver disease (... ALT / AST ...)
+```
+
+첫 줄은 CARMELINA의 간 기준선으로, **EMPA-REG 간 기준선과 같은 모양**이다.
+모델 원문은 span 하나뿐이었고 게이트는 아무것도 버리지 않았다 — 손실은 모델에서 났다.
+
+대조적으로 ①(Agent 1)은 같은 EMPA-REG 문장을 ALT·AST·ALP **세 개**의
+sub_criteria로 정확히 분해한다. 즉 지금 ③을 ②에 배선하면 다분석물 기준선에서는
+**현재 ① 경로보다 나빠진다.** 배선 전에 해결해야 한다.
+
+부수 확인: `every_numeral=True`는 `1. ALT or AST > 1.5 × ULN`에서 head를 `ALT`로
+줄였다(기본값은 `ALT or AST`로 정상). 플래그가 느리기만 한 게 아니라 해로울 수 있다.
+
+### ③은 되는데 ②를 EMPA-REG 문장으로 직접 확인하지 못했다
+
+해당 문장은 span 캐시에 없고 vLLM은 죽어 있다. 게이트는 설계대로
+`REVIEW / "model returned no span list (gate 0)"` 하나로 안전하게 떨어졌지만,
+그건 모델이 맞았다는 증거가 아니다. 같은 모양의 캐시된 문장 3건으로 대신 확인했다.
+
+또한 저장된 EMPA-REG IR에는 `source_text`가 **없다**(b536b1e 이전 캐시).
+재추출 전까지 저장된 스터디는 ②에 넣을 수 없다.
+
+### 측정 중 트리가 움직였다
+
+다른 에이전트가 작업 중 `threshold_classifier.py`·`utils/llm.py`·`critic.py`를
+고치고 12:34에 6ed6a8d를 커밋했다. 그래서 위 수치는 전부 **워크트리에 고정**했다.
+라이브 트리(6ed6a8d + 미커밋 `critic.py`)는 124 실패 / 1306 통과이고,
+d1747e0 대비 추가 실패 4건은 이 작업과 무관하다:
+
+- `test_criterion_cache.py::TestSingleton` 2건 — `tmp/tte/criterion_cache.sqlite`가
+  root 소유 644라 테스트 프로세스가 못 쓴다. 코드는 bc33ccc와 **동일**하고,
+  기준선 코드로도 같은 에러가 난다. 환경 문제
+- `test_map_002_m3_critic_reflection.py` 2건 — 미커밋 `src/agents/agent2/critic.py`.
+  깨끗한 6ed6a8d 워크트리에서는 25건 전부 통과
 
 ## 범위 밖 (3단계)
 
@@ -146,8 +249,13 @@ head 식별은 구문 규칙으로 안 된다(정규식 시도 실패: 값 조�
 ## 진행 기록
 
 - 시작: 22:22
-- 현재 상태: 1단계 완료 + 2단계 재설계 F1~F4 완료. 남은 것은 F5(분류기)·F6(전환)·D3-b(재생성)
-- 블로커: 없음
+- 현재 상태(2026-07-29 통합 확인 후): 1단계 완료. 2단계는 **③ 완료 / ② 구현됐으나 미배선**.
+  E1~E4·F5 실행으로 확인. 남은 것은 ②→③ 배선·F6 라이브 검증·D3-b 재생성
+- 블로커 2건
+  1. **vLLM 다운** (`VLLM_BASE_URL` connection refused) — ② 라이브 실행과 F6 전체 검증 불가
+  2. **② 다분석물 head 손실 4/15** — 배선하면 다분석물 기준선이 현재 ① 경로보다 나빠진다
+- 배선 전 미해결: `parse_value_constraints`에 테스트가 없다(E3). ②→③을 붙이는 순간
+  이 함수가 프로덕션 경로가 되므로, 배선 커밋과 같은 단위로 테스트를 넣을 것
 
 ### 병렬 에이전트 충돌 (2026-07-29)
 

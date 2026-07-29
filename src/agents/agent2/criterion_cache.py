@@ -4,7 +4,7 @@ Criterion Result Cache -- Thread-safe TTL+LRU cache for Agent2 mapping results.
 Caches the full output of Agent2 mapping per criterion text so re-runs of
 process_eligibility can skip Agent2 for unchanged criteria.
 
-Cache key: SHA256(normalize(text) + "|" + domain + "|" + EMBEDDING_MODEL)
+Cache key: SHA256(normalize(text) + "|" + domain + "|" + EMBEDDING_MODEL + "|" + LLM_MODEL)
 
 Configuration (env vars):
     CRITERION_CACHE_TTL_HOURS:   TTL in hours (default: 24)
@@ -25,7 +25,13 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from src.utils.llm import resolve_model
+
 logger = logging.getLogger(__name__)
+
+
+def _cache_enabled() -> bool:
+    return os.environ.get("CRITERION_CACHE_ENABLED", "true").lower() == "true"
 
 try:
     from cachetools import TTLCache as _TTLCache
@@ -119,18 +125,25 @@ class CriterionResultCache:
         conn.execute("DELETE FROM criterion_cache WHERE expires_at <= ?", (now,))
 
     @staticmethod
-    def _make_key(text: str, domain: str | None, embedding_model: str) -> str:
-        """SHA256 hash of normalized(text) + domain + embedding_model."""
+    def _make_key(
+        text: str, domain: str | None, embedding_model: str, llm_model: str
+    ) -> str:
+        """SHA256 hash of normalized(text) + domain + embedding_model + llm_model."""
         normalized = _normalize(text)
-        raw = f"{normalized}|{domain or ''}|{embedding_model}"
+        raw = f"{normalized}|{domain or ''}|{embedding_model}|{llm_model}"
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def _embedding_model(self) -> str:
         return os.environ.get("EMBEDDING_MODEL", "minilm")
 
+    def _llm_model(self) -> str:
+        return resolve_model()
+
     def get(self, text: str, domain: str | None = None) -> CriterionCacheEntry | None:
-        """Return cached entry or None. Auto-reads EMBEDDING_MODEL from env."""
-        key = self._make_key(text, domain, self._embedding_model())
+        """Return cached entry or None. Auto-reads EMBEDDING_MODEL/LLM_MODEL."""
+        if not _cache_enabled():
+            return None
+        key = self._make_key(text, domain, self._embedding_model(), self._llm_model())
         with self._lock:
             if self._db_path is not None:
                 now = time.time()
@@ -174,8 +187,10 @@ class CriterionResultCache:
             return entry
 
     def put(self, text: str, domain: str | None, entry: CriterionCacheEntry) -> None:
-        """Store entry. Auto-reads EMBEDDING_MODEL from env."""
-        key = self._make_key(text, domain, self._embedding_model())
+        """Store entry. Auto-reads EMBEDDING_MODEL/LLM_MODEL."""
+        if not _cache_enabled():
+            return
+        key = self._make_key(text, domain, self._embedding_model(), self._llm_model())
         with self._lock:
             if self._db_path is not None:
                 now = time.time()
@@ -251,7 +266,7 @@ class CriterionResultCache:
                 "current_size": current_size,
                 "max_entries": self.max_entries,
                 "ttl_hours": self.ttl_hours,
-                "enabled": os.environ.get("CRITERION_CACHE_ENABLED", "true").lower() == "true",
+                "enabled": _cache_enabled(),
             }
 
 
