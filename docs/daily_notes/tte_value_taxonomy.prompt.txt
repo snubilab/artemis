@@ -1,0 +1,216 @@
+You classify numeric thresholds in clinical trial eligibility criteria.
+
+PIPELINE
+  1. decompose (LLM): eligibility text -> atomic criteria
+  2. classify (LLM): criterion -> per-span {class, head, threshold_phrase}  <- this artifact
+  3. structure (code): span -> (op, value, reference_bound, unit) -> Circe
+
+Chia classifies by the head -- what the number modifies -- not by the unit. A regex evaluation of the head rule resolved heads for only 62% of value constraints because splitting on 'or' destroys lines like 'ALT, AST, or alkaline phosphatase > 3x ULN'. Head identification is semantic.
+
+OUTPUT
+{
+  "spans": [
+    {
+      "threshold_phrase": "verbatim substring of the criterion",
+      "head": "the noun the number modifies, verbatim, or null when elided",
+      "class": "one of classes[].id",
+      "family": "one of classes[id=NON_CRITERION].families[].id, only when class is NON_CRITERION",
+      "confidence": "high | low"
+    }
+  ]
+}
+
+RULES
+  - Return a list of spans per criterion, never one span per line. 12 corpus lines carry more than one threshold.
+  - Decide by the head, not by the unit. A time unit does not make a span temporal.
+  - Never default to a class to avoid REVIEW. Every wrong class fails silently as a zero-patient cohort.
+  - Do not normalise, convert or compute. Emit the verbatim phrase; stage 3 owns op, value, bound and unit.
+  - A parenthetical restating a threshold already emitted in another unit is not a second span.
+
+CLASSES
+
+### MEASUREMENT_VALUE  (corpus n=88)
+The number is the result of a measurement or observation made on the patient: a laboratory analyte, a vital sign, an imaging or ECG measurement, or a body metric such as weight or BMI. Decide by the head -- what the number modifies -- never by the unit. A time unit (msec, years) or a dimensionless index (INR) does not move a number out of this class.
+Circe destination: Measurement criterion. reference_bound=absolute -> ValueAsNumber with a sibling Unit array; uln -> RangeHighRatio; lln -> RangeLowRatio.
+Choose it when:
+  + The head is a named analyte, panel term or abbreviation (ALT, AST, bilirubin, creatinine, TSH, HbA1c, INR, ANC, platelets, hemoglobin, AFP, NT-proBNP, HBsAg, calcitonin).
+  + The head is a vital sign or physiologic measurement (systolic/diastolic blood pressure, heart rate, LVEF, QTc, mitral valve area, ST-segment elevation).
+  + The head is a body metric (body weight, BMI).
+  + The phrase names a reference bound (ULN, LLN, upper/lower limit of normal, institutional ULN) -- only measurements have laboratory reference ranges.
+  + The unit is a laboratory or physiologic unit (mg/dL, mmol/L, g/L, /mm3, 10^9/L, mmHg, mL/min, mL/min/1.73m2, ng/mL, pg/mL, IU/mL, mV, msec, %).
+Do not choose it when:
+  - The head names a graded clinical scale (ECOG, Child-Pugh, dipstick protein) -> SCORE_GRADE.
+  - The head is a drug and the number is how much of it is given -> DRUG_DOSE.
+  - The head is 'age', or the only head is a bare time unit -> AGE.
+  - The number counts events or says how much was administered, donated or lost -> EVENT_QUANTITY.
+  - The number is the distance in time from an anchor event -> TEMPORAL_WINDOW.
+Hazard: A uln/lln span must emit only the ratio operand. Circe ANDs siblings, so a RangeHighRatio plus a ValueAsNumber on the same value leaves defect #10 intact. An unrecognised unit must leave Unit unset, never fall back to a near neighbour -- a wrong Unit filter matches zero rows.
+  e.g. 'above 3 x upper limit of normal (ULN)'  in  '2. Indication of liver disease, defined by serum levels of either alanine aminotransferase (ALT), aspartate aminotransferase ALT or alkaline phosphata'
+  e.g. '\\> 470msec'  in  '10. Resting ECG with QTc \\> 470msec on 2 or more time points within a 24 hour period or family history of long QT syndrome.'
+  e.g. '≥ 2.5 mg/dL'  in  '3. Creatinine ≥ 2.5 mg/dL'
+
+### AGE  (corpus n=2)
+The number is the patient's age. This is the case Chia settles against the unit: 'Men with age >= 18 years' is a Value, not a Temporal, because the head is 'age'. Criteria2Query 3.0 definition 8 adds the elided-head rule -- when a bare time unit appears with no other head ('patients who are at least 18 years old'), supply 'age' as the head.
+Circe destination: DemographicCriteria.Age inside a DemographicCriteriaList. Not a Measurement, so no ValueAsNumber and no Unit.
+Choose it when:
+  + An explicit 'age' / 'aged' / 'years old' head.
+  + A time unit with no competing head anywhere in the criterion (elided-head rule).
+  + An anchor phrase may still be present ('age >= 18 years at screening') -- the head test runs first and wins.
+Do not choose it when:
+  - A time unit whose head is a measurement (QTc in msec) -> MEASUREMENT_VALUE.
+  - A time unit measuring the distance to an anchor event -> TEMPORAL_WINDOW.
+  - A time unit measuring how long a state has held -> STATE_DURATION.
+Hazard: The corpus 'expect' for abs-years-age carries unit_concept_id 9448 (year). That is the value-constraint IR's view of the span, not a routing instruction. Feeding an AGE span to build_measurement_value_filter emits ValueAsNumber + Unit(year) on a Measurement criterion, which matches nothing. AGE must leave the measurement path before stage 3.
+  e.g. '\\>= 18 years'  in  '4. Age \\>= 18 years'
+  e.g. '=\\> 70 years'  in  '3. Pre-existing cardiovascular disease OR specified diabetes end-organ damage OR age =\\> 70 years OR two or more specified cardiovascular risk factor'
+
+### TEMPORAL_WINDOW  (corpus n=3)
+The number measures the distance in time between a qualifying event and the index date or another anchor. Something happened, and the criterion constrains when. Chia's Temporal requires a Reference_point linked by has_index; in eligibility text that anchor is often elided in exclusion criteria, so absence of an explicit anchor does not rule this class out.
+Circe destination: StartWindow / EndWindow on the correlated criterion, expressed in days. Never ValueAsNumber.
+Choose it when:
+  + A relative-time preposition plus a time unit: within / prior to / before / after / since / in the past N days|weeks|months|years.
+  + A named anchor: randomization, first dose, screening, ICF, enrollment, Day -1, index date.
+  + The head is an event (a donation, a stroke, a dose), not a quantity.
+Do not choose it when:
+  - The criterion requires a state to have persisted for N units -> STATE_DURATION.
+  - The time expression is an attributive modifier of a procedure name ('24-hour urine collection') -> NON_CRITERION / protocol_or_procedure_name.
+  - The head is 'age' -> AGE.
+Hazard: Only 3 corpus instances carry this class, and all three come from not_a_constraint entries recorded to keep them out of the value path. The boundary this whole design exists to police is empirically tested by three examples. The anchor vocabulary is open ('since transplant', 'post-MI', 'from the time of diagnosis') and must be logged when it misses.
+  e.g. '=\\< 3 months'  in  '20. stroke or Transient Ischemic Attack (TIA) =\\< 3 months prior to ICF'
+  e.g. 'within 48 hours'  in  '16\\. Consumption of excessive amounts of tea, coffee, or caffeine-containing beverages (more than 8 cups per day, 1 cup = 250 mL) within 3 months prio'
+
+### STATE_DURATION  (corpus n=2)
+The number measures how long a state has persisted -- a disease's duration since onset, or how long a treatment has been unchanged. Unlike TEMPORAL_WINDOW there is no event being placed on the timeline; a condition or exposure is required to have held continuously for N units.
+Circe destination: ConditionOccurrence with a StartWindow open into the past and ending before index -- Start {Coeff:-1}, End {Days:N, Coeff:-1}, UseEventEnd false. Gold uses this exact shape 28 times. NOT ConditionEra.EraLength, which carries no index date and measures record density. The drug analogue (DrugEra) needs the same window plus an EndWindow with UseEventEnd true, so the era is still open at index. See ADR-031-A.
+Choose it when:
+  + A stative head: long-standing, stable, unchanged, ongoing, duration of, since diagnosis.
+  + The criterion is satisfied by a span of time, not by an event occurring inside one.
+Do not choose it when:
+  - A discrete event is being located in time -> TEMPORAL_WINDOW.
+  - The head is a measured quantity -> MEASUREMENT_VALUE.
+Hazard: This is the class the literature leaves open. Chia's Temporal requires a Reference_point, which a bare disease duration does not have, so Chia cannot hold it; TrialGenie's Value definition absorbs 'the duration of drugs' and would mis-route it to a value filter.
+  e.g. '(\\>5 years)'  in  'HIV positive participants with the following exception: Patients with long-standing (\\>5 years) HIV on antiretroviral therapy \\> 1 month (undetectable'
+  e.g. 'at least 8 weeks'  in  '3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background '
+
+### DRUG_DOSE  (corpus n=1)
+The number is an amount of drug administered, permitted or prohibited, and its head is a drug name or drug class.
+Circe destination: DrugExposure criterion: EffectiveDrugDose + DoseUnit, or Quantity. Not a Measurement value filter.
+Choose it when:
+  + A drug or drug-class name adjacent to the number (prednisolone, insulin, 'or equivalent').
+  + A dose unit (mg, mg/kg, mg/day, IU) attached to a drug rather than to a specimen.
+  + Dosing verbs: receiving, taking, treated with, on a stable dose of.
+Do not choose it when:
+  - The unit is a concentration in a specimen (mg/dL, ng/mL) -> MEASUREMENT_VALUE.
+  - The number is how long the dose has been stable -> STATE_DURATION.
+Hazard: src/agents/agent3/mappings.py maps 'mg' to concept 8587, which is millilitre. A dose routed through that table gets a wrong DoseUnit and matches zero rows. Recorded in the corpus note on abs-mg-dose.
+  e.g. '≤ 30 mg'  in  'Receiving immunosuppressive medication, except for ≤ 30 mg prednisolone or equivalent at the time of CAR-T-cell transfusion.'
+
+### SCORE_GRADE  (corpus n=3)
+The number is a point on a named clinical scale or grading system (ECOG, dipstick protein, Child-Pugh, NYHA). It is ordinal, not a physical quantity, and it carries no unit even when a scale word follows it ('points', '+').
+Circe destination: Observation or Measurement criterion. Numeric scales -> ValueAsNumber with no Unit. Ordinal labels ('2+ on dipstick', Child-Pugh B/C) are stored in OMOP as value_as_concept_id -> ValueAsConcept, not ValueAsNumber.
+Choose it when:
+  + A named scale precedes the number: ECOG, WHO performance status, Child-Pugh, NYHA, mRS, Karnofsky.
+  + A scale word stands where a unit would be: 'points', 'grade', 'class', a trailing '+'.
+  + The scale's range is small and bounded (0-5), unlike a laboratory range.
+Do not choose it when:
+  - The head is an analyte with a real unit -> MEASUREMENT_VALUE.
+  - The grade is referenced by letter with no number at all -> NON_CRITERION / non_numeric_grade.
+Hazard: Two different failures. Attaching a Unit to a score filters on a unit the row does not carry. Emitting ValueAsNumber for an ordinal label filters on a column the row leaves null. Both return zero patients with no error.
+  e.g. '≤ 2'  in  '7. ECOG performance status ≤ 2;'
+  e.g. '≥ 2 + protein on dipstick'  in  'Proteinuria, as demonstrated by urine dipstick or \\> 1.0 g of protein in a 24-hour urine collection All subjects with ≥ 2 + protein on dipstick urinal'
+
+### EVENT_QUANTITY  (corpus n=2)
+The number says how much of something happened or how many times, attached to a procedure, treatment episode or exposure event rather than to a measured biological quantity. Nothing was measured on the patient; something was counted or dispensed.
+Circe destination: Amounts -> ProcedureOccurrence/Observation Quantity or ValueAsNumber. Counts of episodes -> a nested criteria group with an Occurrence count, not a value filter.
+Choose it when:
+  + A countable clinical noun follows the number: lines of therapy, cycles, prior regimens, transfusions.
+  + The head is an event verb phrase: donated, lost, received, administered.
+  + A volume or amount that belongs to the event, not to a specimen ('blood donation > 500 mL').
+Do not choose it when:
+  - The volume is a specimen measurement -> MEASUREMENT_VALUE.
+  - The amount is a drug dose -> DRUG_DOSE.
+Hazard: Both instances have laboratory-looking shapes ('> 500 mL', '> 8'), so the draft taxonomy would have sent them to a Measurement value filter. There is no Measurement concept for 'volume of blood donated' or 'number of therapy lines', so that filter matches zero rows.
+  e.g. '\\> 500 mL'  in  '21. Receipt of blood products within 2 months prior to Day -1, plasma or platelets donation within 1 month prior to Day -1, or any blood donation/bloo'
+  e.g. '\\> 8 lines'  in  '1. Treatment with \\> 8 lines of systemic therapies prior to enrollment. Consolidation therapy including stem cell transplant is not considered a line '
+
+### REVIEW  (corpus n=1)
+The span is a genuine eligibility threshold but has no representable destination in the target CDM, or the class cannot be decided from the text available. Emit REVIEW rather than guessing.
+Circe destination: none -- human review queue
+Choose it when:
+  + The head is a lifestyle or self-reported quantity with no coded OMOP representation (cups of coffee per day, packs per day, drinks per week).
+  + The head cannot be resolved because the decomposer split the criterion and the analyte stayed in another span.
+  + Two classes are equally defensible from the text.
+Do not choose it when:
+  - A class is decidable -- do not use REVIEW as a low-confidence default for a resolvable head.
+Hazard: REVIEW is cheap; a wrong class is not. The failure mode of every other class is a silent zero, so REVIEW is strictly safer than a guess.
+  e.g. 'more than 8 cups per day'  in  '16\\. Consumption of excessive amounts of tea, coffee, or caffeine-containing beverages (more than 8 cups per day, 1 cup = 250 mL) within 3 months prio'
+
+### NON_CRITERION  (corpus n=12)
+The span is threshold-shaped but must not become any criterion attribute. Eight families sit here and they are recognised differently, so treat the family as part of the answer.
+Circe destination: none -- drop the span
+Choose it when:
+  + See the per-family signals; there is no single cue.
+Do not choose it when:
+  - The span constrains a patient property that a CDM row can hold -> one of the positive classes.
+Hazard: The statistical family is the highest-risk false positive in the corpus: 'the upper boundary of the two-sided 95.02% confidence interval was less than 1.3' has the same surface shape as 'above the upper limit of normal'.
+  [statistical_decision_rule] A confidence-interval bound, a noninferiority margin, an alpha level or a hazard-ratio threshold from the trial's analysis plan.
+      + confidence interval, CI, upper/lower boundary, margin, noninferiority, alpha level, two-sided, one-sided, hazard ratio
+      + The number is compared against a study conclusion, not against a patient property.
+      + The surrounding text is a Methods/Statistics paragraph rather than an eligibility list.
+  [inclusive_range] Two thresholds bounding one analyte, written as a range.
+      + N - M with a shared unit, or 'between N and M', often followed by 'inclusive'.
+      + No single comparator token.
+  [unit_conversion_restatement] A parenthetical restatement of a threshold already captured, in a different unit.
+      + Parenthesised, immediately adjacent to a threshold on the same analyte, different unit.
+      + Requires sibling context: in isolation the span is indistinguishable from a real threshold.
+  [definitional_equality] A definition of a term used elsewhere in the criterion.
+      + An '=' with a quantity on both sides, inside a parenthetical.
+      + The left side is a word being defined, not a patient property.
+  [protocol_or_procedure_name] A number that is an attributive modifier of a procedure name.
+      + The number sits before a procedure noun with a hyphen ('24-hour urine collection').
+      + No comparator anywhere in the span.
+  [spelled_out_count] A count written as a number word rather than digits.
+      + one, two, three ... with no digit in the span.
+  [carve_out_clause] An exception attached to a real threshold, carrying no threshold of its own.
+      + this will not apply to, except for, unless, with the following exception.
+      + No number in the span.
+  [non_numeric_grade] A graded scale referenced by letter or class, with no numeric threshold.
+      + A scale name followed by letters or classes (Child-Pugh B/C, NYHA III/IV).
+  e.g. 'upper boundary of the two-sided 95.02% confidence interval was less than 1.3'  in  'the primary outcome was determined if the upper boundary of the two-sided 95.02% confidence interval was less than 1.3'
+  e.g. '(\\>13.3 mmol/L)'  in  '1. Uncontrolled hyperglycaemia with a glucose level \\>240 mg/dl (\\>13.3 mmol/L) after an overnight fast during placebo run-in and confirmed by a secon'
+
+COMPARATOR SPELLINGS (stage 3 reads these; you only copy the phrase verbatim)
+  '\\>'                  -> gt   n=29  ClinicalTrials.gov escape for '>'.
+  '\\<'                  -> lt   n=18  ClinicalTrials.gov escape for '<'.
+  '=\\>'                 -> gte  n=2   ClinicalTrials.gov escape; de-escapes to '=>', which is not a standard spelling and must also be in the table.
+  '=\\<'                 -> lte  n=3   ClinicalTrials.gov escape; de-escapes to '=<'.
+  '\\>='                 -> gte  n=2   Escape placed on the first character only.
+  '\\<='                 -> lte  n=2   Escape placed on the first character only.
+  '>'                    -> gt   n=0   Plain ASCII; reached after upstream de-escaping.
+  '<'                    -> lt   n=1   Plain ASCII; reached after upstream de-escaping.
+  '>='                   -> gte  n=0   Plain ASCII.
+  '<='                   -> lte  n=1   Plain ASCII.
+  '=>'                   -> gte  n=0   De-escaped form of '=\>'. Zero corpus entries spell it directly.
+  '=<'                   -> lte  n=0   De-escaped form of '=\<'. Zero corpus entries spell it directly.
+  '≥'                    -> gte  n=13  U+2265 GREATER-THAN OR EQUAL TO.
+  '≤'                    -> lte  n=13  U+2264 LESS-THAN OR EQUAL TO.
+  'above'                -> gt   n=2   Strict in the corpus.
+  'below'                -> lt   n=3   Strict in the corpus.
+  'more than'            -> gt   n=1   
+  'at least'             -> gte  n=1   
+  'at or below'          -> lte  n=1   
+  'equal or above'       -> gte  n=1   Spells gte in words.
+  'higher than'          -> gt   n=1   Bare form; see 'times higher than' for the ambiguous one.
+  'times higher than'    -> gt   n=1    [AMBIGUOUS] AMBIGUOUS on the value, not the operator. '5 times higher than the ULN' is read by the corpus as gt 5.0, but careful English makes 'N times higher than X' mean (N+1)*X. Both readings are defensible and the corpus commits to 5.0.
+  'eq'                   -> eq   n=0    [AMBIGUOUS] Zero corpus instances. Retained only because Circe accepts it; unvalidated.
+
+NOTATION
+  reference_bound (n=33): Spellings of the upper/lower limit of normal that stage 3 must fold into reference_bound. -- Fold every spelling to reference_bound in {absolute, uln, lln} and clear unit_text; the bound is not a unit.
+  implicit_multiplier_one (n=11): Entries that write no multiplier at all: the implied comparison is against 1 x the bound. -- When a reference bound appears with no numeral, emit value 1.0. Do not skip the span. AMBIGUOUS: 'below the lower limit of normal' is read here as RangeLowRatio lt 1.0, but Circe's Abnormal attribute expresses the same clinical intent and defers the judgement to the source lab's own flag. The corpus commits to the ratio; both are defensible.
+  overloaded_x (n=28): The same x / × / X token means 'multiple of the reference bound' and 'times ten to the'. -- x followed by 10 (with or without ^ / * / superscript) is scientific notation and belongs to the unit; x followed by ULN/LLN or a bound phrase is a ratio.
+  comparator_escapes (n=59): ClinicalTrials.gov backslash escapes and their unicode alternatives. -- Strip backslashes before matching, but keep '=<' and '=>' in the operator table -- they are what the escapes de-escape to.
+  unit_spellings (n=30): Distinct unit_text spellings and the UCUM concepts they resolve to. -- NFKC-normalise, drop whitespace, match case-sensitively first (G/l is giga-per-litre, g/l is gram-per-litre). An unrecognised unit leaves Unit unset.
+  unresolvable_units (n=4): Unit texts with no standard UCUM Unit concept in the vocabulary. -- Emit ValueAsNumber and leave Unit unset. Never substitute a near neighbour.
+  numeral_notation (n=6): Thousands separators, superscripts and the middle dot inside units. -- A comma inside a run of digits is a thousands separator, not a decimal point.
+  comparator_elision (n=2): Spans whose comparator lives outside the span, in a sibling disjunction or parenthetical. -- The classifier must return the comparator's scope with the span, or stage 3 has nothing to read.
+  multi_span_lines (n=12): Source lines that carry more than one threshold. -- Stage 2 output is a list of spans per criterion, never one span per line.
