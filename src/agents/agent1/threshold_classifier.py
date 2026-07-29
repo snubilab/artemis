@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -34,7 +35,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
 from src.services.value_constraint import normalize_unit
-from src.utils.llm import get_llm
+from src.utils.llm import get_llm, resolve_model
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -44,7 +45,10 @@ ROOT = Path(__file__).resolve().parents[3]
 # asserts equality, which is what stops the two from drifting apart.
 PROMPT_PATH = ROOT / "docs" / "daily_notes" / "tte_value_taxonomy.prompt.txt"
 CACHE_DIR = ROOT / "data" / "cache" / "threshold_spans"
-DEFAULT_MODEL = "vllm/snuh/hari-q3-8b"
+# None means "follow LLM_MODEL". The cache key needs the resolved name, so callers
+# pass this through resolve_model() rather than using it directly — a cache keyed on
+# the literal None would serve one model's completions to another.
+DEFAULT_MODEL: str | None = None
 MAX_OUTPUT_TOKENS = 1024
 
 SpanClass = Literal[
@@ -396,9 +400,17 @@ def _complete(criterion: str, llm: BaseChatModel, model: str, every_numeral: boo
 
     if path is not None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(
+        body = json.dumps(
             {"model": model, "criterion": criterion, "raw": raw}, ensure_ascii=False, indent=2
-        ))
+        )
+        # Written via a temporary and renamed: two processes classifying the same
+        # criterion compute the same path, and os.replace is atomic on POSIX where
+        # write_text is not. Observed during the held-out run — a second process was
+        # writing this directory concurrently, and a torn read would surface as a
+        # JSONDecodeError from the cache rather than from the model.
+        scratch = path.with_suffix(f".{os.getpid()}.tmp")
+        scratch.write_text(body)
+        os.replace(scratch, path)
     return payload
 
 
@@ -406,7 +418,7 @@ def classify_criterion(
     text: str,
     llm: BaseChatModel | None = None,
     *,
-    model: str = DEFAULT_MODEL,
+    model: str | None = DEFAULT_MODEL,
     every_numeral: bool = False,
     cache_dir: Path | None = CACHE_DIR,
 ) -> list[ThresholdSpan]:
@@ -424,9 +436,10 @@ def classify_criterion(
     would have bought.
     """
     criterion = deescape(text)
+    resolved = resolve_model(model)
     return apply_gates(
         criterion,
-        _complete(criterion, llm or get_llm(model), model, every_numeral, cache_dir),
+        _complete(criterion, llm or get_llm(resolved), resolved, every_numeral, cache_dir),
     )
 
 
@@ -434,7 +447,7 @@ def classify_criteria(
     texts: Sequence[str],
     llm: BaseChatModel | None = None,
     *,
-    model: str = DEFAULT_MODEL,
+    model: str | None = DEFAULT_MODEL,
     every_numeral: bool = False,
     cache_dir: Path | None = CACHE_DIR,
     max_workers: int = 8,
@@ -444,11 +457,14 @@ def classify_criteria(
     A shared model object is reused across the pool; ``Executor.map`` is what makes
     the ordering deterministic regardless of completion order.
     """
-    shared = llm or get_llm(model)
+    # Resolve once so every worker keys its cache on the same name, even if
+    # LLM_MODEL were to change mid-batch.
+    resolved = resolve_model(model)
+    shared = llm or get_llm(resolved)
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         return list(pool.map(
             lambda text: classify_criterion(
-                text, shared, model=model, every_numeral=every_numeral, cache_dir=cache_dir
+                text, shared, model=resolved, every_numeral=every_numeral, cache_dir=cache_dir
             ),
             texts,
         ))

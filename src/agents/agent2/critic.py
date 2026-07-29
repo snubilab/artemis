@@ -31,34 +31,40 @@ logger = logging.getLogger(__name__)
 _WELL_DEFINED_DOMAINS = frozenset({"Condition", "Drug", "Measurement"})
 
 
-def select_critic_model(domain_hint: str | None = None) -> str:
-    """Select the LLM model for Critic evaluation based on domain.
+def select_critic_model(domain_hint: str | None = None) -> str | None:
+    """Which model the Critic should use, or None to follow LLM_MODEL.
 
-    Model tiering reduces cost for well-defined domains where
-    gpt-4o-mini performs comparably to gpt-4o.
+    Default is None so one setting moves the whole pipeline. This used to return
+    the literal "gpt-4o-mini" for Condition, Drug and Measurement — the three
+    domains carrying nearly every criterion — which has no vllm/ prefix and so
+    fell through to OpenRouter regardless of what LLM_MODEL said. A benchmark
+    labelled with a local model would have been mostly executed by OpenAI, and
+    nothing in the output would have shown it.
 
-    Configurable via AGENT2_CRITIC_MODEL_TIER env var:
-      - "auto" (default): domain-based selection
-      - "gpt-4o": always use gpt-4o
-      - "gpt-4o-mini": always use gpt-4o-mini
+    Tiering is still available, but it is now opt-in via AGENT2_CRITIC_MODEL_TIER:
+      - unset or "follow" (default): use LLM_MODEL, whatever it is
+      - "auto": the old domain-based split between gpt-4o and gpt-4o-mini
+      - any other value: that literal model name
 
     Args:
         domain_hint: OMOP domain (e.g., "Condition", "Drug", "Observation").
 
     Returns:
-        Model name string ("gpt-4o" or "gpt-4o-mini").
+        A model name, or None meaning "whatever LLM_MODEL is set to".
     """
-    tier = os.environ.get("AGENT2_CRITIC_MODEL_TIER", "auto").strip()
+    tier = os.environ.get("AGENT2_CRITIC_MODEL_TIER", "follow").strip()
 
-    if tier == "gpt-4o":
+    if tier in ("", "follow"):
+        return None
+
+    if tier == "auto":
+        # Cost tiering: gpt-4o-mini was judged sufficient on well-defined domains.
+        # Only meaningful when LLM_MODEL is an OpenAI model in the first place.
+        if domain_hint and domain_hint in _WELL_DEFINED_DOMAINS:
+            return "gpt-4o-mini"
         return "gpt-4o"
-    if tier == "gpt-4o-mini":
-        return "gpt-4o-mini"
 
-    # Auto mode: domain-based selection
-    if domain_hint and domain_hint in _WELL_DEFINED_DOMAINS:
-        return "gpt-4o-mini"
-    return "gpt-4o"
+    return tier
 
 
 # ── Output Schema ──────────────────────────────────────────

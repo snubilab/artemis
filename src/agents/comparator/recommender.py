@@ -31,9 +31,10 @@ from src.agents.comparator.literature import (
 logger = logging.getLogger(__name__)
 
 # vLLM-served Qwen model. Prefix 'vllm/' routes get_llm() to VLLM_BASE_URL.
-# Default matches the Qwen3-8B this host's vLLM serves on :8000; override with
-# COMPARATOR_LLM_MODEL to point at whatever model the target vLLM actually serves.
-DEFAULT_LLM_MODEL = os.getenv("COMPARATOR_LLM_MODEL", "vllm/snuh/hari-q3-8b")
+# Unset means "whatever LLM_MODEL says", so one setting moves the whole pipeline.
+# This used to pin vllm/snuh/hari-q3-8b, which meant the comparator silently ran a
+# different model from every other stage and no configuration change could align them.
+DEFAULT_LLM_MODEL = os.getenv("COMPARATOR_LLM_MODEL") or None
 
 _VERDICTS = ("beneficial", "neutral", "harmful", "unknown")
 

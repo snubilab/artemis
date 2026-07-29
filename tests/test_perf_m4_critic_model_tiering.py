@@ -19,7 +19,19 @@ from src.agents.agent2.critic import select_critic_model
 
 
 class TestAutoModeTiering:
-    """Verify domain-based model selection in 'auto' mode."""
+    """Verify domain-based model selection in 'auto' mode.
+
+    Auto mode became opt-in on 2026-07-29. It used to be the default, which meant
+    Condition, Drug and Measurement silently resolved to the literal "gpt-4o-mini"
+    — no vllm/ prefix, so it bypassed LLM_MODEL entirely and billed OpenAI even
+    when the pipeline was configured to run locally. The tiering itself is
+    unchanged and still worth having; only its default flipped, so these tests now
+    ask for it explicitly. See tests/test_model_selection_is_uniform.py.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _enable_auto_mode(self, monkeypatch):
+        monkeypatch.setenv("AGENT2_CRITIC_MODEL_TIER", "auto")
 
     def test_condition_uses_mini(self):
         """Condition domain should use gpt-4o-mini."""
@@ -48,6 +60,24 @@ class TestAutoModeTiering:
     def test_unknown_domain_uses_full(self):
         """Unknown domain should use gpt-4o."""
         assert select_critic_model("SomethingElse") == "gpt-4o"
+
+
+class TestFollowIsTheDefault:
+    """The default must be "whatever LLM_MODEL says", with no env var set.
+
+    This is the regression that matters: a returned literal has no vllm/ prefix,
+    so get_llm falls through to OpenRouter and the configured model is bypassed.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _no_tier_env(self, monkeypatch):
+        monkeypatch.delenv("AGENT2_CRITIC_MODEL_TIER", raising=False)
+
+    @pytest.mark.parametrize(
+        "domain", ["Condition", "Drug", "Measurement", "Observation", "Procedure", None]
+    )
+    def test_every_domain_follows_llm_model(self, domain):
+        assert select_critic_model(domain) is None
 
 
 class TestEnvVarOverride:

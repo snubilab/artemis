@@ -143,6 +143,22 @@ class AzureAIFoundryChatModel(BaseChatModel):
         return ChatResult(generations=[generation])
 
 
+def resolve_model(override: str | None = None) -> str:
+    """The model a call site will actually use.
+
+    Call sites that need the model *name* — for a cache key, a log line, a
+    provenance record — must ask here rather than hardcoding one, or changing
+    LLM_MODEL moves the pipeline while leaving them behind. That has already
+    happened three times in this codebase: the comparator pinned its own vLLM
+    model, the Agent 2 critic returned a literal "gpt-4o-mini" for the three
+    commonest OMOP domains, and the classifier defaulted to a specific 8B model.
+    Each looked local and harmless; together they meant no single setting could
+    move the pipeline, and a benchmark labelled with one model would have been
+    mostly executed by another.
+    """
+    return override or settings.LLM_MODEL
+
+
 def _is_vllm_model(model: str) -> bool:
     return model.startswith("vllm/")
 
