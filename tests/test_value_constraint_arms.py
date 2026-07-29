@@ -87,3 +87,42 @@ def test_unusable_constraint_yields_no_fragment(harness) -> None:
     """A malformed value must not become a filter that matches nothing."""
     assert harness.legacy_value_filter(None) == {}
     assert build_measurement_value_filter(None) == {}
+
+
+def test_the_bound_is_read_from_the_constraint_not_the_prose(harness) -> None:
+    """Stored criteria park the bound in unitText, and the prose never says "ULN".
+
+    All 34 valueConstraints across the six Gold studies have reference_bound=None;
+    six carry unitText="x ULN". Scoring only sourceText reports zero reference
+    bounds for EMPA-REG and CARMELINA -- the only two studies that have any.
+    """
+    eligibility = {
+        "inclusionCriteria": [],
+        "exclusionCriteria": [
+            {
+                "sourceText": "Alanine aminotransferase",
+                "valueConstraint": {"op": "gt", "value": 3.0, "unitText": "x ULN"},
+            },
+            {
+                "sourceText": "Hemoglobin A1c",
+                "valueConstraint": {"op": "gte", "value": 7.0, "unitText": "%"},
+            },
+        ],
+    }
+    score = harness.score_criteria(eligibility, {})
+
+    assert score["criteria_naming_a_reference_bound"] == 1
+    assert score["examples"][0]["unit_text"] == "x ULN"
+    assert score["examples"][0]["expected"] == "uln"
+
+
+def test_the_arms_diverge_on_the_real_stored_shape(harness) -> None:
+    """The exact dict shape found in tmp/tte/studies.json, not a constructed model."""
+    stored = {"op": "gt", "value": 3.0, "unitText": "x ULN"}
+
+    assert build_measurement_value_filter(stored) == {
+        "RangeHighRatio": {"Value": 3.0, "Op": "gt"}
+    }
+    assert harness.legacy_value_filter(stored) == {
+        "ValueAsNumber": {"Value": 3.0, "Op": "gt"}
+    }

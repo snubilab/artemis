@@ -197,9 +197,23 @@ def score_criteria(eligibility: dict[str, Any], circe: Any) -> dict[str, Any]:
             str(criterion.get(field) or "")
             for field in ("sourceText", "description")
         ).strip()
-        bound = expected_bound(text)
+        # The bound lives in the constraint, not the prose. Stored criteria predate
+        # ADR-031's reference_bound field and park it in unitText as "x ULN"; all 34
+        # constraints across the six studies have reference_bound=None, so reading
+        # only sourceText reports zero reference bounds for EMPA-REG and CARMELINA,
+        # which are the two studies that actually carry them.
+        constraint = criterion.get("valueConstraint") or {}
+        unit_text = constraint.get("unitText") or constraint.get("unit_text") or ""
+        declared = constraint.get("referenceBound") or constraint.get("reference_bound")
+        bound = (
+            (declared if declared in ("uln", "lln") else None)
+            or expected_bound(unit_text)
+            or expected_bound(text)
+        )
         if bound:
-            ratio_texts.append({"text": text[:160], "expected": bound})
+            ratio_texts.append(
+                {"text": text[:120], "unit_text": unit_text, "expected": bound}
+            )
 
     counts = count_value_keys(circe)
     emitted_ratio = counts["RangeHighRatio"] + counts["RangeLowRatio"]
