@@ -73,9 +73,19 @@ class Criteria(BaseModel):
     
     # The entity key is the text term (e.g., "T2DM") initially.
     # After Agent 2, it is mapped to a concept_set_id.
-    entity_text: Optional[str] = None 
+    entity_text: Optional[str] = None
     concept_set_id: Optional[int] = None
-    
+
+    # The protocol line this criterion came from, verbatim. The ADR-032 classifier
+    # reads it and returns spans it asserts are substrings of it, so a paraphrase
+    # cannot stand in: entity_text is normalised ("Stenosis >50% in coronary ..." is
+    # stored as "Stenosis of coronary, carotid, or lower extremity arteries" — the
+    # threshold is simply gone), and one protocol line can fan out into several
+    # Criteria, so no single entity_text is the line either.
+    # Optional because stored IR predates the field; those studies load unchanged
+    # but cannot be classified until they are re-extracted.
+    source_text: Optional[str] = None
+
     # Logic details
     logic_type: Literal["PRESENCE", "ABSENCE"] = "PRESENCE"
     window: Optional[TemporalWindow] = None

@@ -18,13 +18,27 @@ For each criterion, identify:
 - **window**: Time window relative to index date (in days). MANDATORY for every criterion.
   If the protocol states an explicit temporal constraint (e.g., "within 3 months"), convert it to days.
   Otherwise apply domain defaults: Condition → {start: -9999, end: 0}, Drug → {start: -365, end: 0}, Measurement → {start: -180, end: 0}, Procedure → {start: -9999, end: 0}.
-- **value_constraint**: For Measurement criteria, the operator, value, and unit (MANDATORY)
+- **source_text**: The criterion line as the protocol writes it, copied verbatim (MANDATORY).
+  Keep every threshold, unit, and comparator exactly as written — do not paraphrase,
+  expand abbreviations, or convert units. A later stage locates the threshold by
+  substring match against this string, so a tidied-up copy loses the threshold
+  silently and the criterion reaches the cohort with no value filter at all.
+  If one protocol line becomes several rules, every one of them repeats that whole line.
+- **value_constraint**: OPTIONAL, and never invented. Emit it when the protocol states a
+  threshold outright (e.g. "HbA1c >= 7%", "eGFR >= 30"); leave it out when you are not
+  copying a number the text actually gives. `source_text` is the record of what the
+  protocol said, so nothing is lost by omitting it.
+  When the threshold is a multiple of a reference range rather than the measured value
+  ("ALT > 3x ULN", "bilirubin above 2 times the upper limit of normal"), put the
+  reference marker in `unit_text` verbatim — `"x ULN"` or `"x LLN"` — and never replace
+  it with the lab's real unit. "3x ULN" sent as {op: "gt", value: 3.0, unit_text: "U/L"}
+  reads as "ALT above 3 U/L"; real ALT runs 10-40 U/L, so as an exclusion it removes
+  every patient who ever had a liver panel.
 
 ## OMOP Domain Reference
 - **Condition**: condition_occurrence → diagnoses
 - **Drug**: drug_exposure → medications
 - **Measurement**: measurement → value_as_number, unit_concept_id.
-  → ALL Measurement criteria MUST include `value_constraint` with op/value/unit_text.
 - **Procedure**: procedure_occurrence → surgeries, interventions
 - **Demographics**: person → age, sex
 
@@ -36,7 +50,8 @@ For each criterion, identify:
 
 ## Clinical Criteria Patterns
 Pattern A — Lab test range (e.g., "HbA1c 7% to 10%"):
-  Split into TWO rules: PRESENCE >= lower bound + ABSENCE >= upper bound
+  Split into TWO rules: PRESENCE >= lower bound + ABSENCE >= upper bound.
+  Both rules carry the same verbatim `source_text`.
 Pattern B — Simple threshold (e.g., "eGFR >= 30"):
   Single PRESENCE rule with value_constraint
 Pattern C — "No prior X" / "Without X":
@@ -65,6 +80,7 @@ DECOMPOSITION_PROMPT = """Parse the following clinical question into the ARTEMIS
         "name": "<rule name>",
         "domain": "<Condition|Drug|Measurement|...>",
         "entity_text": "<term>",
+        "source_text": "<the protocol's own line, verbatim>",
         "logic_type": "PRESENCE",
         "window": {{"start": -365, "end": 0}},
         "value_constraint": {{"op": "gte", "value": 7.0, "unit_text": "%"}}
@@ -90,13 +106,14 @@ DECOMPOSITION_PROMPT = """Parse the following clinical question into the ARTEMIS
 }}
 ```
 
-**One-shot Example** — "HbA1c 7% to 10%" criteria:
+**One-shot Example** — protocol line "HbA1c 7% to 10% at screening":
 ```json
 [
   {{
     "name": "HbA1c lower bound (>=7%)",
     "domain": "Measurement",
     "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "source_text": "HbA1c 7% to 10% at screening",
     "logic_type": "PRESENCE",
     "value_constraint": {{"op": "gte", "value": 7.0, "unit_text": "%"}},
     "window": {{"start": -180, "end": 0}}
@@ -105,6 +122,7 @@ DECOMPOSITION_PROMPT = """Parse the following clinical question into the ARTEMIS
     "name": "HbA1c upper bound (no >=10%)",
     "domain": "Measurement",
     "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "source_text": "HbA1c 7% to 10% at screening",
     "logic_type": "ABSENCE",
     "value_constraint": {{"op": "gte", "value": 10.0, "unit_text": "%"}},
     "window": {{"start": -180, "end": 0}}
@@ -112,12 +130,45 @@ DECOMPOSITION_PROMPT = """Parse the following clinical question into the ARTEMIS
 ]
 ```
 
+**One-shot Example** — protocol line "ALT or AST > 3x upper limit of normal".
+The 3 is a multiple of the lab's reference range, not a value in the lab's own unit,
+so the marker stays in `unit_text` and both rules repeat the whole line verbatim:
+```json
+[
+  {{
+    "name": "ALT above 3x ULN",
+    "domain": "Measurement",
+    "entity_text": "Alanine aminotransferase",
+    "source_text": "ALT or AST > 3x upper limit of normal",
+    "logic_type": "ABSENCE",
+    "value_constraint": {{"op": "gt", "value": 3.0, "unit_text": "x ULN"}},
+    "window": {{"start": -180, "end": 0}}
+  }},
+  {{
+    "name": "AST above 3x ULN",
+    "domain": "Measurement",
+    "entity_text": "Aspartate aminotransferase",
+    "source_text": "ALT or AST > 3x upper limit of normal",
+    "logic_type": "ABSENCE",
+    "value_constraint": {{"op": "gt", "value": 3.0, "unit_text": "x ULN"}},
+    "window": {{"start": -180, "end": 0}}
+  }}
+]
+```
+
 Important Rules:
 1. For "No prior X" or "without X", use `logic_type: "ABSENCE"`
-2. For measurements with thresholds (e.g., "HbA1c > 7%"), include `value_constraint`
+2. `source_text` is MANDATORY on every rule and must be the protocol's own line, verbatim.
+   Never put the cleaned-up `name` or `entity_text` there. A later stage finds the
+   threshold by substring match against `source_text`, and a paraphrase drops the
+   threshold without any error — the criterion then matches far more patients than
+   the protocol allows.
 3. Use negative days for "prior to" time windows (e.g., -365 for 1 year before)
 4. Always include the outcome's time_at_risk window
-5. For ALL Measurement criteria, you MUST include `value_constraint`.
+5. `value_constraint` is OPTIONAL — copy a threshold the protocol states, never invent one.
+   For a multiple of a reference range ("3x ULN", "below the lower limit of normal"),
+   keep the marker in `unit_text` as `"x ULN"` / `"x LLN"`; substituting the lab's real
+   unit turns the multiplier into an absolute value and the rule stops meaning anything.
    If the criterion specifies a range (e.g., "7-10%"), split into two rules:
    lower bound with PRESENCE + upper bound with ABSENCE.
 6. `window` is MANDATORY on every rule. Never omit it.
@@ -168,14 +219,29 @@ For each criterion, identify:
 - **window**: Time window relative to index date (in days). MANDATORY for every criterion.
   If the protocol states an explicit temporal constraint (e.g., "within 3 months prior to screening"), convert it to days (e.g., {start: -90, end: 0}).
   Otherwise apply domain defaults: Condition → {start: -9999, end: 0}, Drug → {start: -365, end: 0}, Measurement → {start: -180, end: 0}, Procedure → {start: -9999, end: 0}.
-- **value_constraint**: For Measurement criteria, the operator, value, and unit (MANDATORY)
+- **source_text**: The numbered criterion line below, copied verbatim (MANDATORY).
+  Keep every threshold, unit, and comparator exactly as written — do not paraphrase,
+  expand abbreviations, or convert units, and drop the "  1. " numbering only. A later
+  stage locates the threshold by substring match against this string, so a tidied-up
+  copy loses the threshold silently and the criterion reaches the cohort with no value
+  filter at all. If one criterion line becomes several rules (a range, or "ALT, AST, or
+  ALP"), every one of them repeats that whole line.
+- **value_constraint**: OPTIONAL, and never invented. Emit it when the protocol states a
+  threshold outright (e.g. "HbA1c >= 7%", "creatinine > 354 mmol/l"); leave it out when
+  you are not copying a number the text actually gives. `source_text` is the record of
+  what the protocol said, so nothing is lost by omitting it.
+  When the threshold is a multiple of a reference range rather than the measured value
+  ("ALT > 3x ULN", "bilirubin above 2 times the upper limit of normal"), put the
+  reference marker in `unit_text` verbatim — `"x ULN"` or `"x LLN"` — and never replace
+  it with the lab's real unit. "3x ULN" sent as {op: "gt", value: 3.0, unit_text: "U/L"}
+  reads as "ALT above 3 U/L"; real ALT runs 10-40 U/L, so as an exclusion it removes
+  every patient who ever had a liver panel.
 
 ## OMOP Domain Reference (Criteria2Query-informed)
 When choosing a domain and structuring rules, consider the OMOP CDM tables:
 - **Condition**: condition_occurrence → condition_concept_id. Use for diagnoses.
 - **Drug**: drug_exposure → drug_concept_id. Use for medications.
 - **Measurement**: measurement → measurement_concept_id, value_as_number, unit_concept_id.
-  → ALL Measurement criteria MUST include `value_constraint` with op/value/unit_text.
   → Lab tests (HbA1c, creatinine, eGFR, etc.) are in this domain.
 - **Procedure**: procedure_occurrence → procedure_concept_id. Use for surgeries, interventions.
 - **Observation**: observation → observation_concept_id. Use for clinical observations.
@@ -189,7 +255,7 @@ When choosing a domain and structuring rules, consider the OMOP CDM tables:
 
 ## Clinical Criteria Patterns
 Pattern A — Lab test range (e.g., "HbA1c 7% to 10%"):
-  Split into TWO rules:
+  Split into TWO rules, both carrying the same verbatim `source_text`:
   Rule 1: PRESENCE of Measurement >= lower bound (inclusion: patient has the value)
   Rule 2: ABSENCE of Measurement >= upper bound (exclusion: no dangerously high values)
 
@@ -254,6 +320,7 @@ NCT_DECOMPOSITION_PROMPT = """Convert this clinical trial protocol into the ARTE
         "name": "<rule name>",
         "domain": "<Condition|Drug|Measurement|Procedure|Observation|Demographics>",
         "entity_text": "<clinical term>",
+        "source_text": "<the criterion line above, verbatim>",
         "logic_type": "PRESENCE",
         "window": {{"start": -365, "end": 0}},
         "value_constraint": {{"op": "gte", "value": 7.0, "unit_text": "%"}}
@@ -262,11 +329,12 @@ NCT_DECOMPOSITION_PROMPT = """Convert this clinical trial protocol into the ARTE
         "name": "<composite OR rule name>",
         "domain": "Condition",
         "entity_text": null,
+        "source_text": "<the criterion line above, verbatim>",
         "logic_type": "PRESENCE",
         "group_type": "ANY",
         "sub_criteria": [
-          {{"name": "sub A", "domain": "Condition", "entity_text": "<term A>", "logic_type": "PRESENCE"}},
-          {{"name": "sub B", "domain": "Condition", "entity_text": "<term B>", "logic_type": "PRESENCE"}}
+          {{"name": "sub A", "domain": "Condition", "entity_text": "<term A>", "source_text": "<same line, verbatim>", "logic_type": "PRESENCE"}},
+          {{"name": "sub B", "domain": "Condition", "entity_text": "<term B>", "source_text": "<same line, verbatim>", "logic_type": "PRESENCE"}}
         ]
       }}
     ],
@@ -275,6 +343,7 @@ NCT_DECOMPOSITION_PROMPT = """Convert this clinical trial protocol into the ARTE
         "name": "<rule name>",
         "domain": "<domain>",
         "entity_text": "<clinical term>",
+        "source_text": "<the criterion line above, verbatim>",
         "logic_type": "ABSENCE",
         "window": {{"start": -9999, "end": 0}}
       }}
@@ -298,13 +367,14 @@ NCT_DECOMPOSITION_PROMPT = """Convert this clinical trial protocol into the ARTE
 }}
 ```
 
-**One-shot Example** — "HbA1c 7% to 10%" criteria:
+**One-shot Example** — protocol line "HbA1c 7% to 10% at screening":
 ```json
 [
   {{
     "name": "HbA1c lower bound (>=7%)",
     "domain": "Measurement",
     "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "source_text": "HbA1c 7% to 10% at screening",
     "logic_type": "PRESENCE",
     "value_constraint": {{"op": "gte", "value": 7.0, "unit_text": "%"}},
     "window": {{"start": -180, "end": 0}}
@@ -313,8 +383,35 @@ NCT_DECOMPOSITION_PROMPT = """Convert this clinical trial protocol into the ARTE
     "name": "HbA1c upper bound (no >=10%)",
     "domain": "Measurement",
     "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "source_text": "HbA1c 7% to 10% at screening",
     "logic_type": "ABSENCE",
     "value_constraint": {{"op": "gte", "value": 10.0, "unit_text": "%"}},
+    "window": {{"start": -180, "end": 0}}
+  }}
+]
+```
+
+**One-shot Example** — protocol line "ALT or AST > 3x upper limit of normal".
+The 3 is a multiple of the lab's reference range, not a value in the lab's own unit,
+so the marker stays in `unit_text` and both rules repeat the whole line verbatim:
+```json
+[
+  {{
+    "name": "ALT above 3x ULN",
+    "domain": "Measurement",
+    "entity_text": "Alanine aminotransferase",
+    "source_text": "ALT or AST > 3x upper limit of normal",
+    "logic_type": "ABSENCE",
+    "value_constraint": {{"op": "gt", "value": 3.0, "unit_text": "x ULN"}},
+    "window": {{"start": -180, "end": 0}}
+  }},
+  {{
+    "name": "AST above 3x ULN",
+    "domain": "Measurement",
+    "entity_text": "Aspartate aminotransferase",
+    "source_text": "ALT or AST > 3x upper limit of normal",
+    "logic_type": "ABSENCE",
+    "value_constraint": {{"op": "gt", "value": 3.0, "unit_text": "x ULN"}},
     "window": {{"start": -180, "end": 0}}
   }}
 ]
@@ -337,10 +434,17 @@ Important Rules:
    - "≥1 of", "at least one", "or", "with or without" → OR (sub_criteria)
 4. The comparator cohort shares the same inclusion/exclusion rules (they differ only by primary_criteria)
 5. For "No prior X" or "without X", use `logic_type: "ABSENCE"`
-6. For measurements with thresholds (e.g., "creatinine > 354 mmol/l"), include `value_constraint`
+6. `source_text` is MANDATORY on every rule, including sub_criteria, and must be the
+   criterion line above copied verbatim. Never put the cleaned-up `name` or
+   `entity_text` there. A later stage finds the threshold by substring match against
+   `source_text`, and a paraphrase drops the threshold without any error — the criterion
+   then matches far more patients than the protocol allows.
 7. Use negative days for "prior to" time windows (e.g., -365 for 1 year before)
 8. If a criterion is purely administrative (e.g., "informed consent"), skip it
-9. For ALL Measurement criteria, you MUST include `value_constraint`.
+9. `value_constraint` is OPTIONAL — copy a threshold the protocol states, never invent one.
+   For a multiple of a reference range ("3x ULN", "below the lower limit of normal"),
+   keep the marker in `unit_text` as `"x ULN"` / `"x LLN"`; substituting the lab's real
+   unit turns the multiplier into an absolute value and the rule stops meaning anything.
    If the criterion specifies a range (e.g., "7-10%"), split into two rules:
    lower bound with PRESENCE + upper bound with ABSENCE.
 10. `window` is MANDATORY on every rule. Never omit it.
