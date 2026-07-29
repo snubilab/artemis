@@ -85,10 +85,57 @@ A2 ─┴─→ B1 → B2 → B3 ─┬─→ C1 ─┬─→ D1 → D2 → D3
 - C1·C2 병렬 가능 (다른 파일, 둘 다 B에 의존)
 - D는 순차
 
-## 범위 밖 (2·3단계)
+## 2단계 — 결정적 파서 (D2·D6·D7·D8)
 
-- 2단계: D2(결정적 파서)·D6(암묵적 배수 1)·D7(한 줄 두 조건)·D8(부정 케이스)
+재생성(D3-b)보다 먼저 한다. 2단계 후 한 번만 재생성하면 LLM 비용이 절반이다.
+
+- [ ] E1. `parse_value_constraint(phrase) -> ValueConstraint | None`
+      임계값 구문 하나 → 조건 하나. 연산자·값·`reference_bound`·단위 추출.
+      검증: 코퍼스 POSITIVES 전수의 `reference_bound`/`op`/`value`/단위 단언 통과
+- [ ] E2. 부정 케이스 거부 — 신뢰구간 상한·범위·기간·단위환산 재기술 → `None`
+      검증: `test_non_constraints_are_rejected` 14건 통과
+- [ ] E3. `parse_value_constraints(line) -> list` — 문장을 구문으로 분리 후 E1 매핑
+      검증: `TSH >1.2 ULN or <0.8 LLN`이 조건 2개(uln·lln)로 분해
+- [ ] E4. 전체 검증 — 코퍼스 268 실패 → 0, 기존 스위트 회귀 0
+
+### 설계 확정 — 단수/복수는 충돌이 아니다
+
+서브에이전트가 "테스트는 단수, ADR D7은 복수"를 모순으로 보고했으나, 입도가 다른 두 함수다.
+코퍼스도 `threshold_phrase`(구문)와 `source_text`(문장)를 따로 저장한다.
+단수는 구문 하나를 파싱하고, 복수는 문장을 구문으로 쪼개 단수를 매핑한다.
+테스트 재작성 불필요.
+
+## 2단계 재설계 (2026-07-29) — 파서를 별도 LLM 기능으로
+
+문헌 조사(TrialGenie·Chia) 결과 판별 기준이 **단위가 아니라 head(수식 대상)** 이고,
+head 식별은 구문 규칙으로 안 된다(정규식 시도 실패: 값 조건 97건 중 62%만 해소).
+→ **분해·분류는 LLM, 구조화는 코드.** 3단 구조로 재설계한다.
+
+```
+① 분해 (LLM)     eligibility 전문 → 원자 criterion 목록
+② 분류 (LLM)     criterion → span별 { class, head, threshold_phrase }
+③ 구조화 (코드)   span → (op, value, reference_bound, unit) → Circe
+```
+
+확정 사항: ②는 **별도 단계로 신설**(Agent 1에 합치지 않음) · 모델은 **로컬 vLLM
+(snuh/hari-q3-8b)** · `CONDITION_DURATION`은 **지금 Circe 표현을 설계**.
+
+[HARD] ②의 출력은 criterion당 class 하나가 아니라 **span별 class**여야 한다.
+`LVEF \< 40% measured within 6 months`는 값 조건과 시간창이 동시에 필요하고,
+코퍼스에 한 문장 두 조건 사례가 12건 있다. enum이 아니라 집합으로 설계할 것.
+
+- [x] F1. 로컬 vLLM 전제 조건 — `<think>` 제거를 `get_llm` vLLM 분기 wrapper로
+      검증 완료: 테스트 5건 통과 + 실제 vLLM 호출에서 JSON 파싱 성공. 커밋 a5ae5d2
+- [ ] F2. 분류 체계 도출 (area / op / 표기) — 코퍼스 114건 근거, 프롬프트에 심을 데이터
+- [ ] F3. 대시보드 분류 체계 탭
+- [ ] F4. `CONDITION_DURATION` Circe 표현 설계
+- [ ] F5. 분류기 구현 (②) — 로컬 vLLM
+- [ ] F6. `LLM_MODEL` 전환 + 파이프라인 전체 로컬 검증
+
+## 범위 밖 (3단계)
+
 - 3단계: D9(합성 CDM에 range_high 채우기 → 규칙16 배제 인원 실행 대조)
+- D3-b: `process_eligibility` 재실행 — 2단계 완료 후 1회
 
 ## 진행 기록
 
