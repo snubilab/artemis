@@ -278,13 +278,12 @@ _add("abs-years-age", "NCT01131676", "4. Age \\>= 18 years",
      note="Year is concept 9448 but its concept_code is 'a', not 'year' - a code-keyed lookup misses it.")
 _add("abs-years-escaped", "NCT01243424", "OR age =\\> 70 years OR two or more specified cardiovascular risk factor",
      "=\\> 70 years", A, op="gte", value=70.0, bound="absolute", unit_text="years", unit_concept_id=YEAR)
-_add("abs-months", "NCT01243424", "20. stroke or Transient Ischemic Attack (TIA) =\\< 3 months prior to ICF",
-     "=\\< 3 months", A, op="lte", value=3.0, bound="absolute", unit_text="months", unit_concept_id=MONTH)
-_add("abs-weeks", "NCT01897532", "unchanged daily dose) for at least 8 weeks prior to randomization",
-     "at least 8 weeks", A, op="gte", value=8.0, bound="absolute", unit_text="weeks", unit_concept_id=WEEK,
-     note="'at least' spells out gte.")
-_add("abs-hours", "NCT07529600", "or consumption of any such beverages within 48 ho",
-     "within 48 hours", A, op="lte", value=48.0, bound="absolute", unit_text="hours", unit_concept_id=HOUR)
+# A time UNIT does not make something temporal, nor does it make it a value.
+# 'QTc \\> 470 msec' measures an ECG interval and is a value; 'age \\>= 18 years' is a
+# patient attribute and is a value. What makes the entries below temporal is the
+# relative-time anchor in the source line - 'prior to ICF', 'prior to randomization',
+# 'prior to dosing' - which fixes the number against the index event rather than
+# against anything measured in the patient. See the not_a_constraint section.
 
 # --------------------------------------------------------------------------
 # Absolute values with no meaningful unit.
@@ -346,6 +345,23 @@ _add("neg-cup-definition", "NCT07529600", "more than 8 cups per day, 1 cup = 250
 _add("neg-blood-donation-window", "NCT07691203", "loss of blood 50 ml to 100 ml within 30 days",
      "within 30 days", NOT,
      note="A temporal window, not a value constraint. Belongs in StartWindow.")
+# The three below were labelled absolute_with_unit until 2026-07-29. They are the same
+# construct as neg-blood-donation-window - a span anchored to the index event by
+# 'prior to' - and no parser can return a constraint for one and None for another when
+# they differ only in the time unit. Relabelling them is what makes the negative-rejection
+# requirement satisfiable at all; leaving them would have forced a corpus-fitted rule
+# ('reject days, accept hours') that means nothing outside this fixture.
+_add("neg-tia-window", "NCT01243424", "20. stroke or Transient Ischemic Attack (TIA) =\\< 3 months prior to ICF",
+     "=\\< 3 months", NOT,
+     note="Time from a qualifying event to the index date. StartWindow, not ValueAsNumber.")
+_add("neg-stable-dose-window", "NCT01897532", "unchanged daily dose) for at least 8 weeks prior to randomization",
+     "at least 8 weeks", NOT,
+     note="Required duration of stable therapy before index. A continuous-observation "
+          "requirement, not a measured quantity.")
+_add("neg-beverage-window", "NCT07529600", "or consumption of any such beverages within 48 ho",
+     "within 48 hours", NOT,
+     note="Washout window before dosing. Differs from neg-blood-donation-window only in "
+          "the time unit, which is why both must be negatives.")
 _add("neg-hiv-duration", "NCT04826341", "Patients with long-standing (\\>5 years) HIV on antiretroviral therapy",
      "(\\>5 years)", NOT,
      note="Duration of a condition, not a measured value.")

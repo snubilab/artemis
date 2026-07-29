@@ -968,40 +968,6 @@ entries:
       reference_bound: "absolute"
       unit_text: "years"
       unit_concept_id: 9448
-  - id: abs-months
-    source: NCT01243424
-    source_text: "20. stroke or Transient Ischemic Attack (TIA) =\\< 3 months prior to ICF"
-    threshold_phrase: "=\\< 3 months"
-    expect:
-      kind: "absolute_with_unit"
-      op: "lte"
-      value: 3.0
-      reference_bound: "absolute"
-      unit_text: "months"
-      unit_concept_id: 9580
-  - id: abs-weeks
-    source: NCT01897532
-    source_text: "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization."
-    threshold_phrase: "at least 8 weeks"
-    expect:
-      kind: "absolute_with_unit"
-      op: "gte"
-      value: 8.0
-      reference_bound: "absolute"
-      unit_text: "weeks"
-      unit_concept_id: 8511
-      note: "'at least' spells out gte."
-  - id: abs-hours
-    source: NCT07529600
-    source_text: "16\\. Consumption of excessive amounts of tea, coffee, or caffeine-containing beverages (more than 8 cups per day, 1 cup = 250 mL) within 3 months prior to the first dose, or consumption of any such beverages within 48 hours prior to dosing, or unwillingness to abstain from such beverages during the study period."
-    threshold_phrase: "within 48 hours"
-    expect:
-      kind: "absolute_with_unit"
-      op: "lte"
-      value: 48.0
-      reference_bound: "absolute"
-      unit_text: "hours"
-      unit_concept_id: 8505
   - id: no-unit-inr
     source: NCT04939662
     source_text: "Prophylactic anticoagulation for the patency of venous access devices is allowed, provided the activity of the agent results in an INR \\< 1.5 x ULN and aPTT is within normal limits within 14 days prior to randomization."
@@ -1155,6 +1121,27 @@ entries:
     expect:
       kind: "not_a_constraint"
       note: "A temporal window, not a value constraint. Belongs in StartWindow."
+  - id: neg-tia-window
+    source: NCT01243424
+    source_text: "20. stroke or Transient Ischemic Attack (TIA) =\\< 3 months prior to ICF"
+    threshold_phrase: "=\\< 3 months"
+    expect:
+      kind: "not_a_constraint"
+      note: "Time from a qualifying event to the index date. StartWindow, not ValueAsNumber."
+  - id: neg-stable-dose-window
+    source: NCT01897532
+    source_text: "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization."
+    threshold_phrase: "at least 8 weeks"
+    expect:
+      kind: "not_a_constraint"
+      note: "Required duration of stable therapy before index. A continuous-observation requirement, not a measured quantity."
+  - id: neg-beverage-window
+    source: NCT07529600
+    source_text: "16\\. Consumption of excessive amounts of tea, coffee, or caffeine-containing beverages (more than 8 cups per day, 1 cup = 250 mL) within 3 months prior to the first dose, or consumption of any such beverages within 48 hours prior to dosing, or unwillingness to abstain from such beverages during the study period."
+    threshold_phrase: "within 48 hours"
+    expect:
+      kind: "not_a_constraint"
+      note: "Washout window before dosing. Differs from neg-blood-donation-window only in the time unit, which is why both must be negatives."
   - id: neg-hiv-duration
     source: NCT04826341
     source_text: "HIV positive participants with the following exception: Patients with long-standing (\\>5 years) HIV on antiretroviral therapy \\> 1 month (undetectable HIV viral load and CD4 count \\> 150 cells/microL) may be eligible if the principal investigator determines no anticipated clinically significant drug-drug interactions."
