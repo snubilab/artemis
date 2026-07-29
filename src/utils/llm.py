@@ -2,6 +2,7 @@
 LLM utility for ARTEMIS 3.1.
 Supports Azure AI Foundry (priority), OpenRouter, Google Gemini, and OpenAI.
 """
+import re
 import threading
 from typing import Any, List, Optional
 
@@ -150,6 +151,56 @@ def _strip_vllm_prefix(model: str) -> str:
     return model[5:] if model.startswith("vllm/") else model
 
 
+_THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+class ReasoningStrippedChatModel(BaseChatModel):
+    """Wraps a chat model whose output may carry a <think>…</think> preamble.
+
+    Qwen3-class models emit chain-of-thought before the answer. Every caller in
+    this codebase feeds the response straight into a JSON parser — four of them
+    through LangChain's JsonOutputParser in a `prompt | llm | parser` chain,
+    where there is no seam to clean the text. Stripping per call site means one
+    of them is always missed; stripping here means switching LLM_MODEL to a
+    reasoning model cannot silently break parsing downstream.
+
+    `/no_think` asks the model to skip the block; the regex handles the case
+    where it emits one anyway.
+    """
+
+    inner: BaseChatModel
+
+    @property
+    def _llm_type(self) -> str:
+        return f"reasoning-stripped-{self.inner._llm_type}"
+
+    def _generate(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        result = self.inner._generate(self._with_no_think(messages), stop, run_manager, **kwargs)
+        for generation in result.generations:
+            content = generation.message.content
+            if isinstance(content, str):
+                generation.message.content = _THINK_BLOCK.sub("", content).strip()
+        return result
+
+    @staticmethod
+    def _with_no_think(messages: List[BaseMessage]) -> List[BaseMessage]:
+        """Append the directive to the last human turn, where the model reads it."""
+        if not messages:
+            return messages
+        last = messages[-1]
+        if not isinstance(last, HumanMessage) or not isinstance(last.content, str):
+            return messages
+        if last.content.rstrip().endswith("/no_think"):
+            return messages
+        return [*messages[:-1], HumanMessage(content=f"{last.content}\n/no_think")]
+
+
 def get_llm(
     model_name: str | None = None,
     temperature: float | None = None,
@@ -178,12 +229,14 @@ def get_llm(
         seed_kwargs: dict = {"seed": seed} if seed is not None else {}
         if response_format:
             seed_kwargs["response_format"] = response_format
-        return ChatOpenAI(
-            model=actual_model,
-            api_key=settings.VLLM_API_KEY or "EMPTY",
-            base_url=settings.VLLM_BASE_URL,
-            temperature=temp,
-            model_kwargs=seed_kwargs,
+        return ReasoningStrippedChatModel(
+            inner=ChatOpenAI(
+                model=actual_model,
+                api_key=settings.VLLM_API_KEY or "EMPTY",
+                base_url=settings.VLLM_BASE_URL,
+                temperature=temp,
+                model_kwargs=seed_kwargs,
+            )
         )
 
     # Option 1: Azure AI Foundry (priority - using openai.OpenAI SDK with base_url)
