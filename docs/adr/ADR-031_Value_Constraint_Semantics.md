@@ -160,13 +160,25 @@ build_measurement_value_filter(vc: ValueConstraint) -> dict
 | 지표 | 현재 | 목표 | 측정 방법 |
 |---|---|---|---|
 | 코퍼스 통과 | 6 통과 / 321 실패 / 1 skip | 327 통과 / 0 실패 (skip 1건은 LLM 필요) | `pytest tests/test_value_constraint.py` |
-| `RangeHighRatio` 사용 | 0 / 42 (0%) | gold와 동등 — 32 / 85 (38%) | 6개 코호트 재생성 후 계수 |
-| `Unit` 설정 | 0 / 42 | gold 이상 — 2 / 85 | 동일 |
+| ULN 조건 → `RangeHighRatio` | 0 / 2 | 2 / 2 | 저장된 값 조건 전수 통과 |
+| 값 조건 정확 처리 | 미측정 | 29 / 29 | `Unit` 설정 + 정당한 미설정 합산 |
 | 규칙16 배제 인원 | 2,841 / 2,841 | ~24 (0.84%) | 합성 CDM 실행 |
 | 부정 케이스 오탐 | 미측정 | 0/14 | 코퍼스 |
 | 기존 스위트 | 909 통과 | 회귀 없음 | `pytest tests/ -q` |
 
 규칙16 지표는 D9(합성 CDM에 `range_high` 채우기)가 선행되어야 측정 가능하다.
+
+### 지표 정정 (2026-07-29)
+
+초안의 "`RangeHighRatio` 사용 건수를 gold 32건과 맞춘다"는 성립하지 않는 비교였다.
+gold는 `No liver disease` 하나를 ALT·AST·ALP **별도 Measurement 객체 3개**로 표현하고,
+우리는 **개념셋 하나에 Measurement 객체 1개**로 표현한다. 둘 다 유효한 Circe이며 세는
+단위가 다르다. 개수를 맞추려 들면 표현 방식을 gold에 맞춰 바꾸게 되는데, 그것은 이 ADR이
+고치려는 결함과 무관하다.
+
+대체 지표는 **비율**이다 — 저장된 값 조건 중 ULN 유형이 전부 `RangeHighRatio`로 나오는가,
+그리고 해소 가능한 단위가 전부 `Unit`으로 고정되는가. 실측(6개 스터디 고유 29건):
+`RangeHighRatio` 2 + `Unit` 24 + 무단위 정당 미설정 3 = 29 (100%).
 
 ## 근거
 

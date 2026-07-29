@@ -52,8 +52,25 @@
       검증 완료: 변경 전후 실패 ID 집합 대조 — **신규 실패 0건**, 수정 53건.
       (전체 389 실패 / 969 통과 / 19 에러 — 실패·에러는 `langgraph`·`pandas`·
       `python-multipart` 미설치로 인한 기존 상태)
-- [ ] D3. 6개 코호트 재생성 후 계수 — RangeHighRatio 0/42 → gold 동등(32/85 = 38%)
-      ※ LLM 재추출 필요. 1단계 코드 변경만으로는 기존 산출물이 갱신되지 않는다
+- [x] D3-a. 재생성 시 산출물 확정 (비파괴 측정)
+      저장된 6개 스터디의 고유 값 조건 **29건 전수**를 수정된 빌더에 통과시킨 결과:
+      `RangeHighRatio` 0 → **2** (EMPA-REG·CARMELINA의 `x ULN` 전부),
+      `Unit` 0 → **24**, 무단위 3건은 정당하게 미설정 → **24+2+3 = 29, 100% 정확 처리**.
+      RHR+VAN 동반 0. 기존 `UNIT_MAP` 누락분 전부 해소:
+      `kg/m²`(위첨자)→9531, `ml/min/1.73 m2`→720870, `years`→9448, `mV`→720843
+- [ ] D3-b. `process_eligibility` 재실행으로 `structuredExpression` 갱신 (보류 — 사용자 판단 대기)
+      파괴적(스토어 덮어씀) + 개념 매핑이 openrouter gpt-4o 호출을 다수 발생시킴.
+      실행 전까지 `data/generated/`와 store의 산출물은 구버전 Circe를 유지한다
+
+### 지표 정정 — "gold 32건과 동등"은 성립하지 않는 비교였다
+
+gold는 `No liver disease` 규칙 하나에 ALT·AST·ALP를 **별도 Measurement 객체 3개**로 쓴다
+(EMPA-REG treatment 단독 RHR 3건). 우리는 **개념셋 하나 + Measurement 객체 1개**다.
+둘 다 유효한 Circe이고 세는 단위가 달라, 개수 대조는 의미가 없다.
+올바른 지표는 **"ULN 조건 중 RangeHighRatio로 나온 비율"** — 현재 2/2 (100%).
+
+PLATO 원문(NCT00391872)에는 ULN 언급이 0건이다. 추출 누락이 아니라 애초에 없는 조건이며,
+앞서 다른 시험의 문구를 PLATO 것으로 착각했다.
 
 ## 의존성
 
