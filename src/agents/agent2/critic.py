@@ -21,7 +21,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
-from src.utils.llm import get_llm
+from src.utils.llm import get_llm, resolve_model
 from src.agents.agent2.kg_expander import KGConcept
 from src.agents.agent2.critic_cache import CriticCache
 
@@ -379,15 +379,17 @@ class ConceptCritic:
         
         full_query = f"{context}: {query}" if context else query
 
-        # Domain-aware model tiering (REQ-02)
+        # Domain-aware model tiering (REQ-02), opt-in via AGENT2_CRITIC_MODEL_TIER.
+        # None means "follow LLM_MODEL", which is what _default_chain already holds —
+        # the test used to be `!= "gpt-4o"`, which after the default flipped to None
+        # rebuilt the model and the chain on every single call.
         model_name = select_critic_model(domain_hint)
-        if model_name != "gpt-4o":
-            # Use tiered model instead of default
+        if model_name is not None:
             llm = get_llm(model_name=model_name, temperature=0.0)
             chain = self.prompt | llm | self.parser
         else:
             chain = self._default_chain
-        logger.info(f"[Critic] Model: {model_name} (domain={domain_hint})")
+        logger.info(f"[Critic] Model: {resolve_model(model_name)} (domain={domain_hint})")
 
         try:
             result = chain.invoke({
