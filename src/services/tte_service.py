@@ -5103,16 +5103,21 @@ class TTEService:
         return (primary.get("cohortName") or primary.get("description")
                 or "cardiovascular outcomes").strip()
 
-    def _mock_hitl_approve_comparator(self, result: Any) -> dict[str, Any] | None:
-        """MOCK human-in-the-loop approval — auto-approve the top literature-first
-        recommendation {drug_class, ingredients} so the pipeline can run. The real HITL
-        review panel is not wired yet; replace this stub with a review channel later.
+    def _record_pending_comparator_recommendation(self, result: Any) -> None:
+        """Surface a literature-derived comparator recommendation for HITL review
+        (ADR-028) without ever auto-approving it. No review channel is wired yet,
+        so every recommendation degrades to the safe derived comparator
+        (_build_disease_based_comparator_circe) — logged loudly here so that
+        degradation is visible instead of silently swapping the estimand.
         """
         rec = result.get("recommendation") if isinstance(result, dict) else getattr(result, "recommendation", None)
         if isinstance(rec, dict) and rec.get("drug_class") and rec.get("ingredients"):
-            logging.info("[TTE] MOCK HITL auto-approved comparator: %s", rec["drug_class"])
-            return rec
-        return None
+            logging.warning(
+                "[TTE] comparator recommendation '%s' (ingredients=%s) needs human approval "
+                "before it can change the analysis estimand; no HITL channel is wired yet, "
+                "so using the derived comparator instead of auto-applying it.",
+                rec["drug_class"], rec["ingredients"],
+            )
 
     def _resolve_class_drug_concept_set(
         self, class_name: str, ingredients: list[str]
@@ -5449,23 +5454,13 @@ class TTEService:
             logging.warning("[TTE] literature-first recommendation failed (%s); derived comparator", exc)
             return _fallback()
 
-        approved = self._mock_hitl_approve_comparator(result)  # {drug_class, ingredients} or None
-        if not approved:
-            logging.warning("[TTE] placebo comparator: no recommendation approved; derived comparator")
-            return _fallback()
-
-        # CDM grounding (feasibility): keep only the recommended drugs that exist in the CDM.
-        concept_set = self._resolve_class_drug_concept_set(approved["drug_class"], approved["ingredients"])
-        if not concept_set:
-            logging.warning(
-                "[TTE] placebo comparator: '%s' not groundable in CDM; derived comparator",
-                approved["drug_class"])
-            return _fallback()
-
-        logging.info("[TTE] placebo comparator (literature-first): '%s'", approved["drug_class"])
-        return self._build_drug_anchored_comparator_circe(
-            eligibility, approved["drug_class"], time_params=time_params, study=study,
-            prebuilt_concept_set=concept_set)
+        # ADR-028 requires proposal + human approval before a recommendation can
+        # change the comparator (and therefore the estimand). No HITL review
+        # channel is wired yet, so the recommendation is never auto-applied here
+        # — it is only logged for visibility, and the safe derived comparator is
+        # always used instead.
+        self._record_pending_comparator_recommendation(result)
+        return _fallback()
 
     # ------------------------------------------------------------------
     # SPEC-UI-008: CIRCE preview helpers
@@ -6666,24 +6661,49 @@ class TTEService:
         comparator_ref = None
         is_derived_rest = (comparator_row or {}).get("derivation") == "target_minus_treatment"
         comparison_mode = self._get_comparison_mode(study)
+        # A real, distinct comparator cohort (active/CV-neutral/disease-based —
+        # ADR-027/ADR-028) was actually generated, as opposed to the synthetic
+        # "Rest of target" row _execute_via_webapi derives when no such cohort
+        # exists (marked via the "derivation" key).
+        has_generated_comparator = (
+            comparator_row is not None
+            and not is_derived_rest
+            and int(comparator_row.get("personCount") or 0) > 0
+        )
 
-        if comparison_mode == "target_minus_treatment" and eligibility_target_row is not None:
-            # Use eligibility target cohort as comparator; omop_connector will exclude
-            # treatment overlap, giving target-minus-treatment as the effective comparator.
-            comparator_ref = CohortTableReference(
-                cohort_definition_id=int(eligibility_target_row["cohortDefinitionId"]),
-                results_schema=(eligibility_target_row.get("resultsSchema") or results_schema),
-                person_count=int(eligibility_target_row.get("personCount") or 0),
-                source_key=(eligibility_target_row.get("sourceKey") or source_key),
-                name=eligibility_target_row.get("label") or "Target population cohort",
-            )
-        elif comparator_row is not None and not is_derived_rest and int(comparator_row.get("personCount") or 0) > 0:
+        if has_generated_comparator:
+            if comparison_mode == "target_minus_treatment":
+                # study["comparisonMode"] is stale (never updated after cohort
+                # generation — see _study_from_ir) and disagrees with the cohort
+                # that was actually materialized. Trust what was generated, not
+                # the stale label, but make the mismatch visible rather than
+                # silently guessing.
+                logging.warning(
+                    "[TTE] study %s: comparisonMode='target_minus_treatment' but a "
+                    "distinct comparator cohort (id=%s, role=comparator) was generated; "
+                    "using the generated comparator for the analysis dataset instead of "
+                    "target-minus-treatment.",
+                    study.get("id"),
+                    comparator_row.get("cohortDefinitionId"),
+                )
             comparator_ref = CohortTableReference(
                 cohort_definition_id=int(comparator_row["cohortDefinitionId"]),
                 results_schema=(comparator_row.get("resultsSchema") or results_schema),
                 person_count=int(comparator_row.get("personCount") or 0),
                 source_key=(comparator_row.get("sourceKey") or source_key),
                 name=comparator_row.get("label") or "Comparator cohort",
+            )
+        elif comparison_mode == "target_minus_treatment" and eligibility_target_row is not None:
+            # No real comparator cohort was generated (or it's the synthetic
+            # execution-time "Rest of target" derivation): use eligibility target
+            # cohort as comparator; omop_connector will exclude treatment overlap,
+            # giving target-minus-treatment as the effective comparator.
+            comparator_ref = CohortTableReference(
+                cohort_definition_id=int(eligibility_target_row["cohortDefinitionId"]),
+                results_schema=(eligibility_target_row.get("resultsSchema") or results_schema),
+                person_count=int(eligibility_target_row.get("personCount") or 0),
+                source_key=(eligibility_target_row.get("sourceKey") or source_key),
+                name=eligibility_target_row.get("label") or "Target population cohort",
             )
 
         return connector.build_analysis_dataset_from_generated_cohorts(
