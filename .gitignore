@@ -25,3 +25,12 @@ artifacts/
 # Logs & OS
 *.log
 .DS_Store
+
+# Secrets. .env held a live OPENROUTER_API_KEY, AWS_BEARER_TOKEN_BEDROCK,
+# VLLM_API_KEY and OMOP_DB_PASS while tracked. Committed once in 6ffd07c; those
+# values are still reachable in history, so rotate them before this repo gains a
+# remote. Keep the file on disk, out of the index.
+.env
+.env.runtime
+.env.local
+secrets/
