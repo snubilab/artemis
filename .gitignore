@@ -34,3 +34,7 @@ artifacts/
 .env.runtime
 .env.local
 secrets/
+# Per-session tool state, not project config. artemis/.moai holds only
+# state/session-memo.md keyed to a session id; the tracked SPECs live at the
+# Broadsea root, not here.
+.moai/
