@@ -170,17 +170,33 @@ run_benchmark() {
   local model="$1"
   local safe; safe=$(echo "$model" | tr '/:' '__')
   log "  benchmark start"
+  # Captured at launch and recorded in the artifact, because a commit landing
+  # mid-run cannot reach a process that already imported the module.
+  local rev; rev=$(git -C "$(dirname "$0")/.." rev-parse --short HEAD 2>/dev/null || echo unknown)
   docker exec \
     -e LLM_MODEL="vllm/${model}" \
     -e VLLM_BASE_URL="http://${HOST_IP}:${PORT}/v1" \
+    -e ARTEMIS_GIT_REV="$rev" \
     -e PYTHONUNBUFFERED=1 \
     artemis-api python /app/scripts/benchmark_value_constraint_arms.py \
     --studies "$STUDY_ORDER" \
     --output-root "$RESULT_ROOT" > "/tmp/bench_${safe}.log" 2>&1
   local rc=$?
-  local skips; skips=$(grep -c 'rollup skipped' "/tmp/bench_${safe}.log" 2>/dev/null || echo 0)
-  log "  benchmark exit=${rc} rollup_skips=${skips}"
-  echo "${model}|benchmark|rc=${rc}|rollup_skips=${skips}" >> "$STATE"
+  # Every defect this week produced a well-formed table from a broken stage, and
+  # each was caught by counting a log line rather than by an exit code. A run that
+  # exits 0 with non-zero counters here is not a result.
+  local lf="/tmp/bench_${safe}.log"
+  local skips typeerrs fallbacks forced qfail
+  skips=$(grep -c 'rollup skipped' "$lf" 2>/dev/null || echo 0)
+  typeerrs=$(grep -c 'unexpected keyword argument\|TypeError' "$lf" 2>/dev/null || echo 0)
+  fallbacks=$(grep -c 'falling back\|Reranking failed' "$lf" 2>/dev/null || echo 0)
+  forced=$(grep -c 'Force-included' "$lf" 2>/dev/null || echo 0)
+  qfail=$(grep -c 'query failed' "$lf" 2>/dev/null || echo 0)
+  log "  benchmark exit=${rc} rev=${rev} rollup_skips=${skips} typeerrors=${typeerrs} fallbacks=${fallbacks} forced_top1=${forced} query_failures=${qfail}"
+  echo "${model}|benchmark|rc=${rc}|rev=${rev}|rollup_skips=${skips}|typeerrors=${typeerrs}|fallbacks=${fallbacks}|forced_top1=${forced}|query_failures=${qfail}" >> "$STATE"
+  if [ "${typeerrs}" -gt 0 ] || [ "${fallbacks}" -gt 0 ] || [ "${skips}" -gt 0 ]; then
+    log "  WARNING: ${model} exited ${rc} but a stage was degraded — treat this row as unmeasured"
+  fi
 }
 
 # ── queue ────────────────────────────────────────────────────────────────────

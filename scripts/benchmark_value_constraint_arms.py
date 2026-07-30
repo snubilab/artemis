@@ -246,7 +246,24 @@ def gold_counts(study_name: str) -> dict[str, int]:
 # run
 # ---------------------------------------------------------------------------
 
-PROVENANCE_KEYS = ("LLM_MODEL", "VLLM_BASE_URL", "EMBEDDING_MODEL", "AGENT2_CRITIC_MODEL_TIER")
+PROVENANCE_KEYS = (
+    "LLM_MODEL",
+    "VLLM_BASE_URL",
+    "EMBEDDING_MODEL",
+    "AGENT2_CRITIC_MODEL_TIER",
+    # The revision the launcher saw when it started this process. Python imports a
+    # module once, so a commit landing mid-run never reaches a process already
+    # running -- and that boundary has now decided three results. Qwen2.5-7B was
+    # immune to a broken 9194ac5 because it imported llm.py before the file changed;
+    # the medgemma run started after it was corrupted and discarded; a later
+    # medgemma run predates the refiner fix in d520898 by five minutes. Each
+    # boundary had to be reconstructed from file mtimes afterwards.
+    #
+    # This is the revision at process start, not a guarantee: an edit during the run
+    # is still invisible. It is exact for the case that keeps happening, which is a
+    # commit landing between two models in the queue.
+    "ARTEMIS_GIT_REV",
+)
 
 
 def provenance() -> dict[str, str | None]:
