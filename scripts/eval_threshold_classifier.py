@@ -31,6 +31,7 @@ from src.agents.agent1.threshold_classifier import (  # noqa: E402
     classify_criteria,
     deescape,
 )
+from src.utils.llm import resolve_model  # noqa: E402
 
 
 def taxonomy_module() -> Any:
@@ -52,6 +53,10 @@ def locate(haystack: str, phrase: str) -> tuple[int, int] | None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--every-numeral", action="store_true")
+    # Lowered from 8 when the vLLM server is shared with someone else's benchmark:
+    # the correctness columns here are structural at temperature 0, but the batch
+    # pressure inflates a wall clock the other run reports.
+    parser.add_argument("--max-workers", type=int, default=8)
     args = parser.parse_args()
 
     tax = taxonomy_module()
@@ -68,9 +73,12 @@ def main() -> None:
           f"{len(held_out)} held out over {len(lines)} distinct source lines", flush=True)
 
     started = time.monotonic()
-    results = classify_criteria(lines, every_numeral=args.every_numeral, max_workers=8)
+    results = classify_criteria(
+        lines, every_numeral=args.every_numeral, max_workers=args.max_workers
+    )
     by_line = dict(zip(lines, results))
-    print(f"wall {time.monotonic() - started:.0f}s  every_numeral={args.every_numeral}\n")
+    print(f"wall {time.monotonic() - started:.0f}s  every_numeral={args.every_numeral}"
+          f"  model={resolve_model(None)}  workers={args.max_workers}\n")
 
     # A corpus phrase counts as recovered when some output span overlaps it in the
     # source line. Exact string equality would be the wrong test: the corpus records

@@ -36,6 +36,24 @@ class RefinementResult:
     rollback_used: bool = False
 
 
+def _close_quietly(conn) -> None:
+    """Return a raw connection whatever the query did.
+
+    These are psycopg2 connections opened outside SQLAlchemy's pool, so they count
+    against Postgres max_connections (100) rather than pool_size + max_overflow.
+    Two call sites closed inside the try, so a failing query leaked one -- and the
+    except above logs at warning and degrades to an empty result, so the leak is
+    invisible in the output. Same shape as the rollup leak fixed in 7fbeab2, where
+    the pool drained until every later call was skipped.
+    """
+    if conn is None:
+        return
+    try:
+        conn.close()
+    except Exception:
+        pass
+
+
 class ConceptSetRefiner:
     """
     Post-KG-expansion concept set refinement.
@@ -322,6 +340,7 @@ class ConceptSetRefiner:
         if not ancestor_ids or not descendant_ids:
             return set()
 
+        conn = None
         try:
             conn = self._get_db_connection()
             schema = self._get_schema()
@@ -339,17 +358,19 @@ class ConceptSetRefiner:
 
             subsumed = {row[0] for row in cur.fetchall()}
             cur.close()
-            conn.close()
             return subsumed
 
         except Exception as e:
             logger.warning(f"[Refiner] Ancestor subsumption query failed: {e}")
             return set()
+        finally:
+            _close_quietly(conn)
 
     def _batch_get_descendant_counts(self, concept_ids: List[int]) -> dict:
         """Batch get descendant counts from concept_ancestor."""
         if not concept_ids:
             return {}
+        conn = None
         try:
             conn = self._get_db_connection()
             schema = self._get_schema()
@@ -362,11 +383,12 @@ class ConceptSetRefiner:
             """, (concept_ids,))
             counts = {row[0]: row[1] for row in cur.fetchall()}
             cur.close()
-            conn.close()
             return counts
         except Exception as e:
             logger.warning(f"[Refiner] Descendant count query failed: {e}")
             return {}
+        finally:
+            _close_quietly(conn)
 
 
 # ── Lazy Singleton ──

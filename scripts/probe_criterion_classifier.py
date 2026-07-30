@@ -7,7 +7,8 @@ under ``src/``, touches no store and creates no cohort.
     python scripts/probe_criterion_classifier.py --budget      # context arithmetic
     python scripts/probe_criterion_classifier.py --run         # one call per probe case
     python scripts/probe_criterion_classifier.py --repeat 3    # determinism check
-    python scripts/probe_criterion_classifier.py --elided      # elided-head frequency
+    python scripts/probe_criterion_classifier.py --elided      # elided-head frequency (raw)
+    python scripts/probe_criterion_classifier.py --split       # ... after stage 1 splits
 
 The prompt is the taxonomy renderer's output verbatim (``build_value_taxonomy
 --prompt``) plus a fixed instruction tail, so this probe cannot drift from the
@@ -19,6 +20,7 @@ import argparse
 import glob
 import importlib.util
 import json
+import os
 import re
 import statistics
 import sys
@@ -446,13 +448,95 @@ def elided_head_frequency() -> None:
         print(f"  {example!r}")
 
 
+def split_head_frequency(store: Path) -> None:
+    """The same scan one stage later: elided heads in stage-1 *output*.
+
+    ``--elided`` measures the ClinicalTrials.gov channel and finds 0.1%. ADR-032
+    records that number as the raw channel's and says the real exposure appears once
+    stage 1 splits the sentence, where the frequency has never been measured -- it
+    makes measuring it the precondition for turning G1 on. This is that measurement,
+    over the stage-1 output that exists: the decomposed criteria in the TTE study
+    store. Same ``is_headless``, same comparator+numeral denominator, so the two
+    numbers are comparable line for line.
+
+    Two denominators are reported because the ADR quotes two. Comparator+numeral is
+    what ``--elided`` counts. A non-null ``valueConstraint`` is the population the
+    "62% of value conditions" regex figure was about, and it catches thresholds whose
+    text spells the comparator in a way the regex misses.
+    """
+    data = json.loads(store.read_text())
+    studies = data.get("studies") or {}
+    rows = studies.values() if isinstance(studies, dict) else studies
+
+    # sourceText-or-description is what tte_service._build_seeded_eligibility_rule
+    # feeds the mapper, so it is the fragment stage 2 would actually receive.
+    fields = {
+        "sourceText or description": lambda c: (c.get("sourceText") or c.get("description") or ""),
+        "description only": lambda c: (c.get("description") or ""),
+    }
+    tally = {name: [0, 0, 0, 0] for name in fields}   # thr, thr_headless, vc, vc_headless
+    examples: list[str] = []
+    total = 0
+    # Three of the ten stored studies are the same protocol under different ids, so
+    # the as-stored denominator triple-counts LEADER. The de-duplicated count is the
+    # one to quote.
+    distinct: dict[str, bool] = {}
+
+    for study in rows:
+        eligibility = study.get("eligibility") or {}
+        for key in ("inclusionCriteria", "exclusionCriteria"):
+            for criterion in eligibility.get(key) or []:
+                if not isinstance(criterion, dict) or criterion.get("isGroupLabel"):
+                    continue
+                total += 1
+                has_vc = criterion.get("valueConstraint") is not None
+                for name, pick in fields.items():
+                    line = deescape(" ".join(str(pick(criterion)).split()))
+                    if not line:
+                        continue
+                    bare = is_headless(line)
+                    if _COMPARATOR.search(line) and re.search(r"\d", line):
+                        tally[name][0] += 1
+                        tally[name][1] += bare
+                        if bare and name == "sourceText or description" and len(examples) < 15:
+                            examples.append(line[:110])
+                    if has_vc:
+                        tally[name][2] += 1
+                        tally[name][3] += bare
+                    if name == "description only" and (
+                        has_vc or (_COMPARATOR.search(line) and re.search(r"\d", line))
+                    ):
+                        distinct[line] = bare
+
+    print(f"store {store}")
+    print(f"stage-1 fragments (group labels excluded): {total}\n")
+    def share(bare: int, total_: int) -> str:
+        return f"{bare}/{total_} ({bare / total_:.1%})" if total_ else "0/0 (undefined)"
+
+    for name, (thr, thr_bare, vc, vc_bare) in tally.items():
+        print(f"{name}")
+        print(f"  comparator+numeral        {share(thr_bare, thr)}")
+        print(f"  non-null valueConstraint  {share(vc_bare, vc)}")
+    print(f"\ndistinct threshold-bearing fragments (the number to quote)"
+          f"  {share(sum(distinct.values()), len(distinct))}")
+    for example in examples:
+        print(f"  {example!r}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--budget", action="store_true", help="context arithmetic only")
     parser.add_argument("--run", action="store_true", help="one model call per probe case")
     parser.add_argument("--repeat", type=int, default=1, help="calls per case (determinism)")
     parser.add_argument("--limit", type=int, default=None, help="first N cases only")
-    parser.add_argument("--elided", action="store_true", help="elided-head frequency scan")
+    parser.add_argument("--elided", action="store_true", help="elided-head frequency scan (raw)")
+    parser.add_argument("--split", action="store_true", help="same scan on stage-1 output")
+    parser.add_argument(
+        "--store",
+        type=Path,
+        default=Path(os.environ.get("TTE_STORE_PATH") or ROOT / "tmp" / "tte" / "studies.json"),
+        help="study store to read stage-1 output from (--split)",
+    )
     parser.add_argument("--prompt", action="store_true", help="print the full prompt")
     parser.add_argument("--only", type=str, default=None, help="run a single case id")
     parser.add_argument(
@@ -470,6 +554,9 @@ def main() -> None:
         return
     if args.elided:
         elided_head_frequency()
+        return
+    if args.split:
+        split_head_frequency(args.store)
         return
     if args.run or args.repeat > 1 or args.only:
         run_cases(args.repeat, args.limit, not args.no_head_rules, args.only)

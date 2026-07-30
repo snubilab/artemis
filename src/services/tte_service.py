@@ -4457,16 +4457,44 @@ class TTEService:
                     progress_cb({"mapped": completed_count, "total": total_mappable, "phase": "mapping"})
             return result
 
-        # The binding constraint is the database, not the LLM server. vLLM was
-        # idle at 16 workers -- num_requests_waiting held at 0.0 across ~400
-        # samples, KV cache at 2-4%, per-stream decode flat from batch 9.5 to
-        # 23.6 -- but src/utils/db.py sizes the engine at pool_size=20 +
-        # max_overflow=40, and the Logician takes a connection per criterion for
-        # ingredient rollup. Removing the cap entirely put 67 threads against 60
-        # connections and produced 80 "rollup skipped" warnings on one study,
-        # where connect_timeout=3 expires and the unrolled concept ids are used
-        # instead. That is a silent change to the concept set, not a slowdown.
-        db_pool_ceiling = 48  # 80% of pool_size + max_overflow
+        # The binding constraint is the database, not the LLM server. vLLM was idle
+        # at 16 workers -- num_requests_waiting held at 0.0 across ~400 samples, KV
+        # cache at 2-4%, per-stream decode flat from batch 9.5 to 23.6.
+        #
+        # The original reason for this cap was wrong. The "rollup skipped" warnings
+        # it was sized against (39 at 16 workers, 209 uncapped) were not Postgres
+        # connect timeouts under contention; 7fbeab2 read the error text and found
+        # "QueuePool limit of size 20 overflow 40 reached, connection timed out,
+        # timeout 60.00" -- pool_timeout, not connect_timeout=3. The rollup's safety
+        # net was checking out a connection outside its session and never returning
+        # it, so the pool drained. Concurrency set how fast it drained, not whether.
+        #
+        # Re-measured after that fix, on EMPA-REG (scripts/measure_mapping_worker_cap.py),
+        # arms alternated 0,48,0,48 because whichever arm runs first pays ~7s of
+        # one-time warm-up and reads as a 3x win if you only run each arm once:
+        #
+        #   uncapped (512)   0 skips   10.2s  <- first arm, warm-up included
+        #   as shipped (48)  0 skips    3.1s
+        #   uncapped (512)   0 skips    3.1s
+        #   as shipped (48)  0 skips    3.2s      peak 16/100 backends throughout
+        #
+        # Zero skips either way and no wall-clock difference. The six-study benchmark
+        # queue also reports rollup_skips=0 for a whole run at this cap, with 147 real
+        # rollups. So the cap is neither preventing skips nor costing anything.
+        #
+        # It is kept anyway, for a reason the old comment had wrong rather than for
+        # the one it stated. All four rows ran with the criterion cache warm, which
+        # keeps instantaneous DB concurrency near 1; the cache-off arm, where every
+        # criterion takes the full Agent 2 path, is still unmeasured. And the ceiling
+        # that would actually bind is not this pool: _exact_ingredient_mapping and
+        # concept_set_refiner open raw psycopg2 connections *outside* it, against a
+        # server whose max_connections is 100 with 16-37 already held depending on
+        # what else is up, so "80% of pool_size + max_overflow" never bounded the
+        # real demand. Exceeding it is silent -- _exact_ingredient_mapping catches
+        # every exception, logs at DEBUG and falls back to embedding search.
+        #
+        # TTE_MAPPING_MAX_WORKERS re-runs the comparison without patching this line.
+        db_pool_ceiling = int(os.environ.get("TTE_MAPPING_MAX_WORKERS") or 48)
         with ThreadPoolExecutor(max_workers=min(db_pool_ceiling, total_mappable or 1)) as pool:
             futures = {
                 pool.submit(_map_criterion, i, crit, excl): i
