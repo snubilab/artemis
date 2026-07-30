@@ -18,6 +18,8 @@ import argparse
 import collections
 import importlib.util
 import sys
+import json
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -57,6 +59,13 @@ def main() -> None:
     # the correctness columns here are structural at temperature 0, but the batch
     # pressure inflates a wall clock the other run reports.
     parser.add_argument("--max-workers", type=int, default=8)
+    parser.add_argument(
+        "--save",
+        type=Path,
+        default=None,
+        help="Write the headline numbers as JSON. A run that only prints leaves "
+             "nothing to compare against later.",
+    )
     args = parser.parse_args()
 
     tax = taxonomy_module()
@@ -140,6 +149,38 @@ def main() -> None:
               f"\n  line   : {deescape(entry['source_text'])[:160]}"
               f"\n  corpus : {entry['threshold_phrase']!r}"
               f"\n  span   : {span.threshold_phrase!r} head={span.head!r}")
+
+    if args.save:
+        # A 52-minute GPU measurement that exists only in a terminal is a
+        # measurement nobody can check. This run's numbers were reported from a
+        # transcript once, with no artifact to verify them against, and that is the
+        # shape every silent defect in this codebase has taken.
+        args.save.parent.mkdir(parents=True, exist_ok=True)
+        args.save.write_text(
+            json.dumps(
+                {
+                    "model": resolve_model(),
+                    "every_numeral": args.every_numeral,
+                    "max_workers": args.max_workers,
+                    "git_rev": os.environ.get("ARTEMIS_GIT_REV"),
+                    "wall_s": round(time.monotonic() - started),
+                    "corpus_entries": len(entries),
+                    "prompt_embedded": len(leaked),
+                    "held_out": len(matched),
+                    "covered_by_any_span": len(recovered),
+                    "spans_emitted": len(spans),
+                    "review_spans": sum(1 for sp in spans if sp.span_class == "REVIEW"),
+                    "per_class_correct": {name: counts[name] for name in counts},
+                    "gate_demotions": dict(demotions),
+                    "misclassified": len(wrong),
+                    "uncovered": len(matched) - len(recovered),
+                },
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        print(f"\nsaved {args.save}")
 
     print(f"\n--- not covered by any span ({len(matched) - len(recovered)}) ---")
     for entry, span in matched:
