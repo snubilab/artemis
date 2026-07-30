@@ -161,11 +161,20 @@ class TestMixedFormat:
 
 
 class TestLeaderSupplementStyle:
-    """Realistic LEADER supplement text with nested bullet structure."""
+    """Realistic LEADER supplement text with nested bullet structure.
 
-    def test_leader_supplement_produces_many_items(self):
-        # Arrange
-        text = (
+    The regex parser returns 2 items for this text -- both OR-GROUP headers, with
+    all thirteen bullets swallowed into them. The gate at pubmed_fetcher.py:336
+    (`len(regex_items) < 5`) therefore always fires here, so any assertion of
+    ">= 12 items" is an assertion about the LLM, not about the parser.
+
+    That made the original test bill a live OpenAI call on every suite run and
+    fail nondeterministically. It is split here: the deterministic part asserts
+    what the parser does unaided and records the bullet-swallowing gap, and the
+    end-to-end claim is marked integration so it runs deliberately.
+    """
+
+    LEADER_TEXT = (
             "Prior cardiovascular disease cohort: age \u226550 and \u22651 of:\n"
             "\u25cb Prior MI\n"
             "\u25cb Prior stroke or TIA\n"
@@ -180,12 +189,42 @@ class TestLeaderSupplementStyle:
             "\u25cb Hypertension and LVH\n"
             "\u25cb LV systolic or diastolic dysfunction\n"
             "\u25cb ABI <0.9"
-        )
+    )
 
-        # Act
-        result = _parse_criteria_items(text)
+    def test_regex_alone_swallows_the_bullets_into_their_headers(self):
+        """The gap the LLM fallback is currently hiding."""
+        with patch(
+            "src.agents.agent1.pubmed_fetcher._llm_parse_criteria", return_value=[]
+        ) as mock_llm:
+            result = _parse_criteria_items(self.LEADER_TEXT)
 
-        # Assert -- should produce at least 12 distinct items from the bullets
+        mock_llm.assert_called_once()  # the < 5 gate fires, which is the point
+        assert len(result) == 2, f"regex-only should yield the two headers, got {result}"
+        assert all(item.startswith("[OR-GROUP]") for item in result)
+
+    def test_llm_items_are_merged_with_the_headers(self):
+        """Deterministic: a canned fallback must reach the caller, not be dropped."""
+        bullets = [
+            "Prior MI", "Prior stroke or TIA", "Coronary revascularization",
+            ">50% stenosis", "Symptomatic CHD", "Asymptomatic cardiac ischemia",
+            "CHF NYHA class II-III", "eGFR <60", "Microalbuminuria or proteinuria",
+            "Hypertension and LVH", "LV systolic or diastolic dysfunction",
+            "ABI <0.9",
+        ]
+        with patch(
+            "src.agents.agent1.pubmed_fetcher._llm_parse_criteria", return_value=bullets
+        ):
+            result = _parse_criteria_items(self.LEADER_TEXT)
+
+        assert len(result) >= 12, f"Expected >= 12 after merge, got {len(result)}"
+
+    @pytest.mark.billed
+    def test_leader_supplement_produces_many_items(self):
+        """End-to-end with a real LLM. Billed, and nondeterministic by nature.
+
+        Not marked "integration": it needs a paid model, not the Docker stack.
+        """
+        result = _parse_criteria_items(self.LEADER_TEXT)
         assert len(result) >= 12, f"Expected >= 12 items, got {len(result)}: {result}"
 
 

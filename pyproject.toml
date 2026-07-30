@@ -77,7 +77,14 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "integration: requires Docker infrastructure (WebAPI, PostgreSQL, Neo4j)",
+    "billed: issues a live paid LLM call; excluded by default, run with -m billed",
 ]
+# "integration" stays in the default run -- the Docker stack is normally up and
+# those tests are cheap. "billed" does not: one test in
+# test_parse_criteria_items.py was calling OpenAI on every suite run, both
+# spending money and failing nondeterministically because its assertion was
+# about the model's output rather than the parser's.
+addopts = "-m 'not billed'"
 
 [tool.black]
 line-length = 100

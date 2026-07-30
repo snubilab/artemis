@@ -11,8 +11,24 @@ from pathlib import Path
 
 import pytest
 
-from src.models.ir import ValueConstraint
 from src.services.value_constraint import build_measurement_value_filter
+
+
+def _value_constraint(**kwargs):
+    """Import inside the call, not at module scope.
+
+    tests/test_parser_paper_status.py installs module stubs at IMPORT time and
+    setattrs MagicMock over src.models.ir's real classes. pytest imports every test
+    module during collection, alphabetically, so that runs before this file is
+    imported and a module-level `from src.models.ir import ValueConstraint` binds
+    the mock. build_measurement_value_filter then sees a non-str `op` and returns
+    {} -- a failure that appears only in a full-suite run and never when this file
+    runs alone. Its teardown_module cannot help: the binding already happened at
+    collection.
+    """
+    from src.models.ir import ValueConstraint
+
+    return ValueConstraint(**kwargs)
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "benchmark_value_constraint_arms.py"
 
@@ -25,14 +41,14 @@ def harness():
     return module
 
 
-def _uln() -> ValueConstraint:
+def _uln():
     """ALT > 3x the upper limit of normal."""
-    return ValueConstraint(value=3.0, op="gt", reference_bound="uln", unit_text=None)
+    return _value_constraint(value=3.0, op="gt", reference_bound="uln", unit_text=None)
 
 
-def _absolute() -> ValueConstraint:
+def _absolute():
     """HbA1c > 7 %."""
-    return ValueConstraint(value=7.0, op="gt", reference_bound="absolute", unit_text="%")
+    return _value_constraint(value=7.0, op="gt", reference_bound="absolute", unit_text="%")
 
 
 def test_the_arms_disagree_on_a_uln_bound(harness) -> None:
