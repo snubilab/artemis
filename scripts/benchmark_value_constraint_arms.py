@@ -8,8 +8,24 @@ Two factors sit on two different stages, which is what makes this cheap:
 
 So the extraction runs once per (model, study) and both arms are assembled on top
 of that one criterion list. Running it twice would make the arms differ by
-extraction noise, which is not the thing under test. Assembly itself still calls
-Agent2 concept mapping, so results are model-dependent even without --extract.
+extraction noise, which is not the thing under test.
+
+WITHOUT ``--extract`` THIS SCRIPT DOES NOT COMPARE MODELS. An earlier version of
+this docstring claimed "assembly still calls Agent2 concept mapping, so results
+are model-dependent even without --extract". Half of that is true and the
+conclusion does not follow: mapping does run, and it does change the Circe, but it
+changes ``CodesetId`` contents. Everything this script *records* — the
+RangeHighRatio / RangeLowRatio / ValueAsNumber / Unit counts and the score block —
+is derived from the stored ``valueConstraint`` text by deterministic code.
+
+Measured 2026-07-31: seven models from medgemma-1.5-4b to medgemma-27b-text
+produced **byte-identical output files** (whole payload minus ``runtime_config``,
+zero differing studies), across wall clocks from 51 minutes to over two hours. The
+models genuinely ran; the recorded numbers cannot see them. Roughly 15 GPU-hours
+bought the same answer seven times.
+
+Use ``--extract`` to put the model on the stage this script scores. Without it,
+run it ONCE — it is a fixture test of ADR-031, not a model comparison.
 
 The ``legacy`` arm is a faithful reproduction of ``_build_value_constraint`` as it
 stood at 5379743 — the last commit before ``src/services/value_constraint.py``
@@ -357,9 +373,10 @@ def main() -> int:
     from src.services.tte_store import TTEStore
 
     service = TTEService(TTEStore(os.environ["TTE_STORE_PATH"]))
-    # Always model-labelled. Assembly re-maps every criterion through Agent2, so
-    # even without --extract the Circe depends on the model; a shared directory
-    # would let two models' runs merge into one apparent result.
+    # Always model-labelled, so two models' runs can never merge into one apparent
+    # result. Keep the label even under stored-criteria, where the recorded numbers
+    # turn out to be model-independent (see module docstring): a directory that
+    # names its model lets that be *discovered* by diffing, which is how it was.
     suffix = "extracted" if args.extract else "stored-criteria"
     out_dir = args.output_root / f'{model.replace("/", "__")}__{suffix}'
     out_dir.mkdir(parents=True, exist_ok=True)
