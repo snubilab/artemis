@@ -170,7 +170,12 @@ def main() -> None:
                     "covered_by_any_span": len(recovered),
                     "spans_emitted": len(spans),
                     "review_spans": sum(1 for sp in spans if sp.span_class == "REVIEW"),
-                    "per_class_correct": {name: counts[name] for name in counts},
+                    # Built from `confusion`, not from the `name`/`counts` left over
+                    # by the print loop above -- that leak recorded one arbitrary
+                    # confusion row and read as a per-class score. Six models were
+                    # saved under it before anyone compared the JSON to the table.
+                    "per_class_correct": {g: confusion[g][g] for g in confusion},
+                    "per_class_held_out": {g: sum(confusion[g].values()) for g in confusion},
                     "gate_demotions": dict(demotions),
                     "misclassified": len(wrong),
                     "uncovered": len(matched) - len(recovered),

@@ -39,14 +39,52 @@ on Condition, Drug and Measurement — roughly 90% of criteria — with nothing 
 output showing it. `select_critic_model` now defaults to "follow LLM_MODEL". Set
 this only to override deliberately; `auto` restores the old domain-based tiering.
 
-## Known gap: `/app/output` is not mounted
+## Closed 2026-07-31: `/app/output` is now mounted
 
-Anything a script writes to `/app/output` lives only inside the container and is
-lost when it is recreated. Six studies' benchmark results were nearly lost this
-way. Harnesses write to `/app/tmp/model_benchmarks` instead, which is mounted at
-`artemis/tmp/`.
+`- ../artemis/output:/app/output` is declared in `compose/artemis-api.yml`.
+Write to `/app/output` freely; it lands on the host.
 
-Adding an `output` mount would be the cleaner fix and needs a container recreate.
+**Pending apply.** The mount is declared but the running `artemis-api` predates
+it, so it is not live yet. It takes effect on the next recreate — which must not
+happen while a benchmark is running, because the queue drives the container over
+`docker exec` and recreating it kills the in-flight model. Until then a
+container-layer symlink bridges the gap:
+
+```
+/app/output/classifier_probe -> /app/tmp/classifier_probe   (mounted, so it escapes)
+```
+
+The host side is symlinked the same way, so both regimes resolve to one real
+directory and neither the queue's `[ -f "$out" ]` skip check nor the container's
+`--save` needs to know which is in force. The symlinks become redundant once the
+mount is live; leaving them costs nothing and removing them mid-run would split
+storage.
+
+Verify after the next recreate:
+
+```bash
+docker exec artemis-api sh -c 'echo ok > /app/output/.wc'
+cat artemis/output/.wc   # "ok" means mounted
+```
+
+### Why this was worth a mount rather than a convention
+
+The old guidance was "harnesses write to `/app/tmp/model_benchmarks` instead."
+That is a rule every *future* script has to already know, and twice it did not:
+
+| When | What wrote to `/app/output` | Cost |
+| --- | --- | --- |
+| 2026-07-29 | six-study benchmark harness | six studies' results nearly lost |
+| 2026-07-30 | `run_model_benchmark_queue.sh` probe step | ~50 GPU-minutes of probes stranded in the container layer |
+
+Both exited `0`. Both printed a path. Neither produced a host file. A convention
+cannot fail loudly; a missing mount can only be discovered by noticing an absence,
+which is the hardest kind of defect to see. Mounting the obvious path removes the
+class instead of re-teaching the rule.
+
+**Rule going forward:** a script writing results inside this container may use
+`/app/output` or `/app/tmp`. If a *new* container-side output path is ever
+introduced, add the mount in the same commit — never the path alone.
 
 ## Reapplying
 

@@ -235,7 +235,9 @@ log "queue start — ${#WORKING[@]} working + ${#HEAVY[@]} heavy"
 
 for model in "${WORKING[@]}"; do
   log "=== ${model} (working set) ==="
-  local rev; rev=$(git -C "$(dirname "$0")/.." rev-parse --short HEAD 2>/dev/null || echo unknown)
+  # Plain assignment: this is the loop body, not a function, and `local` is a
+  # function-only builtin -- it aborts the script here rather than warning.
+  rev=$(git -C "$(dirname "$0")/.." rev-parse --short HEAD 2>/dev/null || echo unknown)
   # A benchmarked model can still be missing its probe. Serve it once and do both.
   if already_done "$model" && [ -f "${PROBE_DIR}/$(echo "$model" | tr '/:' '__').json" ]; then
     log "SKIP ${model} — benchmark and probe both present"
