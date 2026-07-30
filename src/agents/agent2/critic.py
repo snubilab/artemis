@@ -262,7 +262,14 @@ class ConceptCritic:
     """
 
     def __init__(self):
-        self._default_llm = get_llm(temperature=0.0, json_mode=True)
+        # 4096 against a largest-legitimate-output of 2,161 tokens, measured on
+        # Qwen2.5-7B with the real prompt. Inert for a model that terminates; for
+        # one that does not it turns a 25-minute silent runaway into a fast visible
+        # parse failure. hari-q3-8b ran an entire benchmark truncating at the
+        # context ceiling, and the handler in evaluate() turned every one of those
+        # into a seed-only fallback that nothing in the output distinguished from
+        # success.
+        self._default_llm = get_llm(temperature=0.0, json_mode=True, max_tokens=4096)
         self._cache = CriticCache()
         self._self_reflect = os.environ.get(
             "AGENT2_CRITIC_SELF_REFLECT", "true"
@@ -432,7 +439,7 @@ class ConceptCritic:
         # rebuilt the model and the chain on every single call.
         model_name = select_critic_model(domain_hint)
         if model_name is not None:
-            llm = get_llm(model_name=model_name, temperature=0.0, json_mode=True)
+            llm = get_llm(model_name=model_name, temperature=0.0, json_mode=True, max_tokens=4096)
             chain = self.prompt | llm | self.parser
         else:
             chain = self._default_chain

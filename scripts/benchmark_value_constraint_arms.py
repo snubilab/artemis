@@ -323,10 +323,15 @@ def main() -> int:
     if args.model:
         os.environ["LLM_MODEL"] = args.model
 
+    # --studies is an ordered list, not a set. A model that takes 3 hours per study
+    # will be interrupted before it finishes all six, so the order decides whether
+    # a partial run carries information: EMPA-REG and CARMELINA hold all six ULN
+    # inputs, and the four controls have produced identical zeros in both arms for
+    # every model measured so far.
     selected = STUDIES
     if args.studies:
-        wanted = {int(part) for part in args.studies.split(",") if part.strip()}
-        selected = {sid: name for sid, name in STUDIES.items() if sid in wanted}
+        wanted = [int(part) for part in args.studies.split(",") if part.strip()]
+        selected = {sid: STUDIES[sid] for sid in wanted if sid in STUDIES}
 
     model = os.environ.get("LLM_MODEL", "unset")
     isolate_store(model)
@@ -343,6 +348,13 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for study_id, study_name in selected.items():
+        out_path = out_dir / f"{study_id:02d}_{study_name.replace(' ', '_')}.json"
+        # Study-level resume. One study took three hours on hari-q3-8b, so a run
+        # interrupted by a session limit or a server swap must not redo the studies
+        # it already wrote. Delete the file to force a re-measurement.
+        if out_path.exists():
+            print(f"[{model}] {study_name} (id={study_id}) — already written, skipping", flush=True)
+            continue
         print(f"[{model}] {study_name} (id={study_id}) ...", flush=True)
         try:
             payload = run_study(service, study_id, study_name, args.extract)
@@ -355,9 +367,7 @@ def main() -> int:
             }
             print(f"  FAILED: {payload['error'].splitlines()[-1]}", flush=True)
         payload["runtime_config"] = provenance()
-        (out_dir / f"{study_id:02d}_{study_name.replace(' ', '_')}.json").write_text(
-            json.dumps(payload, indent=2), encoding="utf-8"
-        )
+        out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         if "error" not in payload:
             for arm in ARMS:
                 counts = payload["arms"][arm]["counts"]

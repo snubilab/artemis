@@ -299,6 +299,7 @@ def get_llm(
     temperature: float | None = None,
     response_format: dict | None = None,
     json_mode: bool = False,
+    max_tokens: int | None = None,
 ) -> BaseChatModel:
     """
     Returns a configured Chat Model instance.
@@ -350,9 +351,31 @@ def get_llm(
             )
         actual_model = _strip_vllm_prefix(model)
         seed_kwargs: dict = {"seed": seed} if seed is not None else {}
+
+        # Suppress the reasoning block at the template level, which is the only
+        # channel that works. _with_no_think appends "/no_think" to the prompt;
+        # both models measured ignore it, because a prompt string is a request.
+        # A qwen3-family chat template carries
+        #     {%- if enable_thinking is defined and enable_thinking is false %}
+        #         {{- '<think>\n\n</think>\n\n' }}
+        # which pre-fills a CLOSED think block into the assistant turn -- forced
+        # prefix text rather than an instruction.
+        #
+        # This is not a cost optimisation. snuh/hari-q3-8b never emitted a stop
+        # token and vLLM cut it at the ceiling: 16,384 max_model_len minus a 1,450
+        # token prompt is exactly the 14,934 tokens it "produced", finish_reason
+        # "length". A truncated response cannot parse, so every critic call fell
+        # into critic.py's handler and returned seed_concept_ids -- a whole
+        # benchmark ran with Agent 2's KG expansion discarded, looking like a
+        # slow model rather than a disabled stage. Templates without the switch
+        # ignore the kwarg.
+        seed_kwargs["chat_template_kwargs"] = {"enable_thinking": False}
+
         effective_format = response_format or ({"type": "json_object"} if json_mode else None)
         if effective_format:
             seed_kwargs["response_format"] = effective_format
+        if max_tokens is not None:
+            seed_kwargs["max_tokens"] = max_tokens
         return ReasoningStrippedChatModel(
             inner=ChatOpenAI(
                 model=actual_model,
