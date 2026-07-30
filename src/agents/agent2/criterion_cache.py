@@ -30,6 +30,22 @@ from src.utils.llm import resolve_model
 logger = logging.getLogger(__name__)
 
 
+
+def _critic_signature() -> str:
+    """Imported lazily: critic imports this module, so a top-level import cycles.
+
+    Falls back to an empty part rather than raising, but an empty part is a real
+    risk here -- it would silently reunify keys that this exists to separate. The
+    import only fails if critic.py itself is broken, which is louder elsewhere.
+    """
+    try:
+        from src.agents.agent2.critic import critic_signature
+
+        return critic_signature()
+    except Exception:  # pragma: no cover - critic import failure surfaces elsewhere
+        return "critic-signature-unavailable"
+
+
 def _cache_enabled() -> bool:
     return os.environ.get("CRITERION_CACHE_ENABLED", "true").lower() == "true"
 
@@ -130,7 +146,7 @@ class CriterionResultCache:
     ) -> str:
         """SHA256 hash of normalized(text) + domain + embedding_model + llm_model."""
         normalized = _normalize(text)
-        raw = f"{normalized}|{domain or ''}|{embedding_model}|{llm_model}"
+        raw = f"{normalized}|{domain or ''}|{embedding_model}|{llm_model}|{_critic_signature()}"
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def _embedding_model(self) -> str:

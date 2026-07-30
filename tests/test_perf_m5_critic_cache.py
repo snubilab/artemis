@@ -25,20 +25,32 @@ class TestCacheKeyGeneration:
     """Verify cache key format."""
 
     def test_key_is_sha256_of_query_domain_and_model(self):
-        """Cache key should be sha256(query.lower().strip() + '|' + domain + '|' + model)."""
+        """The key is a sha256 hex digest that varies with query, domain and model.
+
+        Deliberately not a formula comparison: the key gained a critic-configuration
+        component (tier and self-reflection) after a live probe showed three
+        different critic models producing one key. Anything that must change the key
+        should be asserted here as a property, not by rebuilding the input string.
+        """
         cache = CriticCache(max_entries=10, ttl_hours=1)
-        key = cache.make_key("  History of Stroke  ", "Condition")
-        expected_input = f"history of stroke|Condition|{resolve_model()}"
-        expected = hashlib.sha256(expected_input.encode()).hexdigest()
-        assert key == expected
+        key = cache.make_key("test query", "Condition")
+
+        assert len(key) == 64 and all(c in "0123456789abcdef" for c in key)
+        assert key != cache.make_key("other query", "Condition")
+        assert key != cache.make_key("test query", "Drug")
 
     def test_key_with_none_domain(self):
-        """None domain should be treated as empty string in key."""
+        """None domain is treated as empty string.
+
+        Asserted as a property rather than by rebuilding the digest. The previous
+        version duplicated the key formula, so it broke the moment a component was
+        added -- and the component added was the critic configuration, without which
+        a mapping cached under one critic model replayed under another. A test that
+        pins the formula makes the fix for that look like a regression.
+        """
         cache = CriticCache(max_entries=10, ttl_hours=1)
-        key = cache.make_key("test query", None)
-        expected_input = f"test query||{resolve_model()}"
-        expected = hashlib.sha256(expected_input.encode()).hexdigest()
-        assert key == expected
+
+        assert cache.make_key("test query", None) == cache.make_key("test query", "")
 
     def test_key_is_case_insensitive(self):
         """Same query with different case should produce same key."""

@@ -79,7 +79,11 @@ class CriticCache:
         """
         normalized = query_text.lower().strip()
         domain = domain_hint or ""
-        raw = f"{normalized}|{domain}|{resolve_model()}"
+        # resolve_model() alone was not enough: AGENT2_CRITIC_MODEL_TIER can point
+        # the critic at a different model entirely while LLM_MODEL stays put.
+        from src.agents.agent2.critic import critic_signature
+
+        raw = f"{normalized}|{domain}|{resolve_model()}|{critic_signature()}"
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def get(self, key: str) -> list[int] | None:

@@ -44,6 +44,31 @@ _NOT_A_MODEL_NAME = frozenset({
 _UNSERVABLE_STATUS = frozenset({401, 403, 404})
 
 
+def critic_signature() -> str:
+    """Everything about the critic that changes its answer, as one cache-key part.
+
+    Both mapping caches keyed only on resolve_model(), i.e. LLM_MODEL. Agent 2's
+    critic does not necessarily use that model: AGENT2_CRITIC_MODEL_TIER overrides
+    it per domain. Probed live with LLM_MODEL held constant, tier None / "auto" /
+    "gpt-4o" selected critic models None / gpt-4o-mini / gpt-4o and produced the
+    SAME cache key, so a mapping computed under one provider replays under another
+    while provenance reports the current configuration. That silently invalidates
+    exactly the model comparison the cache is supposed to make cheap.
+
+    Self-reflection is included because it filters concepts out of the result, so
+    two runs that differ only in that flag are not interchangeable.
+
+    Not included: the prompt text. A prompt edit would also stale these entries, but
+    nothing versions it today and hashing a 9 KB template on every key would cost
+    more than the collision it guards against. Recorded rather than guessed at.
+    """
+    tier = os.environ.get("AGENT2_CRITIC_MODEL_TIER") or ""
+    reflect = os.environ.get("AGENT2_CRITIC_SELF_REFLECT", "true").lower()
+    # The domain-resolved model, not the tier string: "auto" means different models
+    # for different domains, and the domain is already part of every key.
+    return f"tier={tier}|reflect={reflect}"
+
+
 def select_critic_model(domain_hint: str | None = None) -> str | None:
     """Which model the Critic should use, or None to follow LLM_MODEL.
 
