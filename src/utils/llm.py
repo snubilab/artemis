@@ -2,6 +2,7 @@
 LLM utility for ARTEMIS 3.1.
 Supports Azure AI Foundry (priority), OpenRouter, Google Gemini, and OpenAI.
 """
+import json
 import re
 import threading
 from typing import Any, List, Optional
@@ -206,9 +207,38 @@ _PREAMBLE_MARKER = re.compile(
     re.IGNORECASE,
 )
 
-# Innermost {...} / [...] runs. Deliberately non-recursive: it is a detector for
-# "is there JSON in here", and the last match is what matters, not the parse.
-_JSON_RUN = re.compile(r"\{[^{}]*\}|\[[^\[\]]*\]", re.DOTALL)
+def _last_json_value(text: str) -> str | None:
+    """The last complete top-level JSON value in `text`, or None.
+
+    An earlier version used a non-recursive regex for innermost {...} / [...] runs,
+    reasoning that it only needed to detect "is there JSON here". That was wrong for
+    the shape this function exists to handle. The critic returns
+
+        {"selected_concepts": [ ... ], "overall_reasoning": "..."}
+
+    and the innermost match is the ARRAY, so the wrapper was discarded and the
+    caller got a list where it expected a dict. critic.py then failed the shape
+    check, fell back to seed_concept_ids, and could cache that -- the same silent
+    degradation this whole preprocessing path exists to prevent.
+
+    raw_decode parses from a position and reports where the value ended, so scanning
+    every `{`/`[` and keeping the last one that parses cleanly gives the real
+    top-level value regardless of nesting depth.
+    """
+    decoder = json.JSONDecoder()
+    best: str | None = None
+    for index, char in enumerate(text):
+        if char not in "{[":
+            continue
+        try:
+            _, end = decoder.raw_decode(text, index)
+        except ValueError:
+            continue
+        candidate = text[index:end]
+        # Longest wins on ties so a wrapper beats the array nested inside it.
+        if best is None or len(candidate) >= len(best):
+            best = candidate
+    return best
 
 
 def extract_answer(content: str) -> tuple[str, str]:
@@ -234,9 +264,9 @@ def extract_answer(content: str) -> tuple[str, str]:
         return _THINK_BLOCK.sub("", content).strip(), "think_tag"
 
     if _PREAMBLE_MARKER.match(content):
-        runs = _JSON_RUN.findall(content)
-        if runs:
-            return runs[-1].strip(), "last_json"
+        value = _last_json_value(content)
+        if value is not None:
+            return value.strip(), "last_json"
 
     return content, "none"
 

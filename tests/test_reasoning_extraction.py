@@ -12,6 +12,8 @@ preprocessing — the distinction this suite exists to protect.
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from src.utils.llm import extract_answer
@@ -87,3 +89,42 @@ def test_the_tag_path_wins_when_both_shapes_are_present() -> None:
     cleaned, strategy = extract_answer(f'<think>Thinking Process: {{"b":2}}</think>{ANSWER}')
     assert cleaned == ANSWER
     assert strategy == "think_tag"
+
+
+def test_a_nested_wrapper_survives_extraction() -> None:
+    """The critic's real shape, which an innermost-match regex destroyed.
+
+    `{"selected_concepts": [...], "overall_reasoning": "..."}` has an array nested
+    inside an object. Matching innermost runs returned the ARRAY, so critic.py got
+    a list where it expected a dict, failed its shape check, and fell back to
+    seed_concept_ids -- discarding KG expansion and possibly caching that.
+    """
+    payload = (
+        'Thinking Process:\n\n1. Weighing the candidates.\n\n'
+        '{"selected_concepts": [{"concept_id": 4099974, "relevant": true}], '
+        '"overall_reasoning": "stroke subtypes"}'
+    )
+    cleaned, strategy = extract_answer(payload)
+
+    assert strategy == "last_json"
+    parsed = json.loads(cleaned)
+    assert isinstance(parsed, dict), f"wrapper was discarded: {parsed!r}"
+    assert "selected_concepts" in parsed
+    assert parsed["selected_concepts"][0]["concept_id"] == 4099974
+
+
+def test_the_answer_wins_over_json_quoted_in_the_reasoning() -> None:
+    """Reasoning that echoes the prompt puts a decoy object before the answer."""
+    payload = (
+        'Thinking Process:\n'
+        'The input contained {"selected_ids": [1]} which I should not echo.\n'
+        '{"selected_ids": [7, 8, 9]}'
+    )
+    cleaned, _ = extract_answer(payload)
+    assert json.loads(cleaned)["selected_ids"] == [7, 8, 9]
+
+
+def test_deeply_nested_structures_are_returned_whole() -> None:
+    payload = 'Reasoning:\nx\n{"a": {"b": {"c": [1, {"d": 2}]}}}'
+    cleaned, _ = extract_answer(payload)
+    assert json.loads(cleaned) == {"a": {"b": {"c": [1, {"d": 2}]}}}
