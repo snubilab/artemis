@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from sqlalchemy import text
 from src.utils.db import SessionLocal
 from src.agents.conceptset.rag_search import ConceptCandidate
+from src.settings import settings
 
 
 @contextmanager
@@ -31,8 +32,13 @@ class PhoebeClient:
     Stage 1 결과의 Seed Concept을 기반으로 관련 Concept 추천.
     """
     
-    # 스키마 설정 (환경에 따라 변경 가능)
-    SCHEMA = "demo_cdm"
+    # Read from settings, not hardcoded. settings.PHOEBE_SCHEMA existed and had
+    # exactly one reference -- its own definition. The operator had set
+    # PHOEBE_SCHEMA=omop_vocab in .env and in the container, and every call queried
+    # demo_cdm anyway, with nothing logged. A configuration that is set, ignored, and
+    # silent is worse than one that is absent: the absent one fails loudly on the
+    # first call.
+    SCHEMA = settings.PHOEBE_SCHEMA
     
     # Circuit Breaker 설정 (RFC-001 부록 B.3)
     DEFAULT_TIMEOUT_MS = 500
