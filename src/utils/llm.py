@@ -369,13 +369,26 @@ def get_llm(
         # benchmark ran with Agent 2's KG expansion discarded, looking like a
         # slow model rather than a disabled stage. Templates without the switch
         # ignore the kwarg.
-        seed_kwargs["chat_template_kwargs"] = {"enable_thinking": False}
+        # extra_body, not a bare model_kwargs key. langchain-openai forwards
+        # model_kwargs verbatim into Completions.create(), which has no **kwargs, so
+        # a flat "chat_template_kwargs" raised
+        #     Completions.create() got an unexpected keyword argument
+        # on every reranker and critic call -- 106 of them in one benchmark run,
+        # each swallowed by a handler that fell back to top-1. extra_body is the
+        # documented channel for vLLM-only request fields.
+        seed_kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
 
         effective_format = response_format or ({"type": "json_object"} if json_mode else None)
         if effective_format:
             seed_kwargs["response_format"] = effective_format
+
+        # max_tokens is a DECLARED ChatOpenAI field, so routing it through
+        # model_kwargs raises ValidationError at construction rather than warning
+        # the way an undeclared key like `seed` does. ConceptCritic passes 4096, so
+        # that made the class impossible to instantiate on the vLLM path.
+        extra_model_args: dict = {}
         if max_tokens is not None:
-            seed_kwargs["max_tokens"] = max_tokens
+            extra_model_args["max_tokens"] = max_tokens
         return ReasoningStrippedChatModel(
             inner=ChatOpenAI(
                 model=actual_model,
@@ -383,6 +396,7 @@ def get_llm(
                 base_url=settings.VLLM_BASE_URL,
                 temperature=temp,
                 model_kwargs=seed_kwargs,
+                **extra_model_args,
             ),
             callbacks=[_USAGE_CALLBACK],
         )
