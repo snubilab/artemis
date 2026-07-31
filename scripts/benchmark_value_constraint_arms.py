@@ -243,18 +243,50 @@ def score_criteria(eligibility: dict[str, Any], circe: Any) -> dict[str, Any]:
 
 
 def gold_counts(study_name: str) -> dict[str, int]:
+    """Per-cohort gold counts for one study.
+
+    A study's gold directory holds one file per cohort -- treatment and comparator,
+    plus indication variants. The two arms of a trial share their exclusion
+    criteria, so the same constraint appears in every file.
+
+    This used to SUM across the files while the pipeline builds a single target
+    Circe, which doubled the target. EMPA-REG read as "3 of 6 emitted" when the
+    real figure was 3 of 3, and the six-study headline read 6 of 32 rather than
+    6 of 16. That inflated number drove a session of work aimed at a gap that was
+    half instrument.
+
+    Taking the per-key maximum compares one built cohort against one gold cohort.
+    Max rather than "the target file" because which file is the target is encoded
+    only in its name, and max is identical whenever the cohorts agree -- which is
+    asserted below, so a study where the choice would matter is not silently
+    resolved by picking the larger.
+
+    :param study_name: study directory name under ``GOLD_ROOT``.
+    :returns: per-key counts for a single cohort, zeros when the directory is absent.
+    """
     directory = GOLD_ROOT / study_name
     counts = {key: 0 for key in VALUE_KEYS}
     counts["Unit"] = 0
     if not directory.is_dir():
         return counts
+
+    per_cohort: list[dict[str, int]] = []
     for path in sorted(directory.glob("*.json")):
         try:
             doc = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
-        for key, value in count_value_keys(doc).items():
-            counts[key] += value
+        per_cohort.append(count_value_keys(doc))
+
+    for key in counts:
+        seen = {c.get(key, 0) for c in per_cohort if c.get(key, 0)}
+        counts[key] = max(seen) if seen else 0
+        if len(seen) > 1:
+            print(
+                f"[gold] {study_name}: cohorts disagree on {key} ({sorted(seen)});"
+                f" taking {counts[key]} — check which file is the target cohort",
+                flush=True,
+            )
     return counts
 
 
