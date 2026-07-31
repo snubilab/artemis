@@ -166,13 +166,16 @@ Important Rules:
 3. Use negative days for "prior to" time windows (e.g., -365 for 1 year before)
 4. Always include the outcome's time_at_risk window
 0. A criterion may be followed by one or more `[value_constraint] {{...}}` lines. Those are
-   parsed from the text deterministically, not by you. **Copy each one verbatim into the
-   `value_constraint` of the rule it belongs to, and do not re-derive the numbers.** When a
-   criterion carries several of them it names several thresholds and must become several
-   rules — one per constraint, each keeping the whole criterion in `source_text`.
-   "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" is annotated with two, so it is
-   two rules; collapsing it into one label with no constraint is the specific failure this
-   annotation exists to stop.
+   parsed from the text deterministically, not by you. **Copy each one verbatim and do not
+   re-derive the numbers.**
+   The annotations give you the *thresholds*. The criterion text gives you the *analytes*.
+   One rule per ANALYTE, not per annotation — a threshold that applies to several analytes
+   is repeated on each. Count the analytes yourself; the annotation count is not the answer.
+   "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" carries two annotations and names
+   THREE analytes, so it is a `group_type: "ANY"` group of three rules:
+     ALT >= 2X ULN, AST >= 2X ULN (both the first annotation), Total Bilirubin >= 1.5X ULN.
+   Emitting two rules and silently dropping AST is the specific failure this wording exists
+   to stop; so is collapsing the whole thing into one label with no constraint.
 5. `value_constraint` is OPTIONAL when unannotated — copy a threshold the protocol states,
    never invent one.
    For a multiple of a reference range ("3x ULN", "below the lower limit of normal"),
@@ -289,6 +292,15 @@ Pattern E — Composite OR condition ("≥1 of A, B, C ...", "at least one of", 
   One inclusion_rule with sub_criteria containing STEMI, NSTEMI, UA, group_type="ANY"
   Example: "STEMI patients requiring PCI OR NSTE-ACS patients" →
   One inclusion_rule with sub_criteria containing STEMI and NSTE-ACS, group_type="ANY"
+  This applies to Measurement lists too, which is where it has been missed. A lab criterion
+  naming several analytes is one ANY group with one sub_criterion PER ANALYTE, each carrying
+  its own value_constraint — a threshold shared by two analytes is written on both.
+  Example: "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" →
+  One exclusion_rule, group_type="ANY", sub_criteria = ALT (> 2X ULN), AST (> 2X ULN),
+  Total Bilirubin (>= 1.5X ULN). Three sub_criteria from two thresholds.
+  Example: "Troponin I or T or CK-MB greater than the upper limit of normal" →
+  One inclusion_rule, group_type="ANY", sub_criteria = Troponin I, Troponin T, CK-MB,
+  each with the same "> 1X ULN" constraint. Three sub_criteria from one threshold.
 
 Pattern F — Conditional criterion ("If [subgroup] → [requirement]"):
   CRITICAL: When a criterion only applies to a specific patient subgroup

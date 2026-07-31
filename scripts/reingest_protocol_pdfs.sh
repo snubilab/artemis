@@ -116,6 +116,7 @@ docker exec \
   -e TTE_STORE_PATH="${STORE_DIR}/studies.json" \
   -e ARTEMIS_GIT_REV="$rev" \
   -e PYTHONUNBUFFERED=1 \
+  -e REINGEST_STUDIES="${REINGEST_STUDIES:-}" \
   artemis-api python /app/scripts/reingest_protocol_pdfs.py > /tmp/reingest_run.log 2>&1
 rc=$?
 log "  re-ingest exit=${rc}"
