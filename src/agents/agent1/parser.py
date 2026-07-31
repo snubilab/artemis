@@ -248,11 +248,10 @@ class LogicDecomposer:
         ]
         
         # Step 3: Call LLM (with deterministic cache)
-        import hashlib
         from datetime import datetime, timezone
         cache_dir = Path(__file__).resolve().parents[3] / "data" / "cache" / "agent1_ir"
         model_key = self.model_name.replace("/", "_").replace(":", "_")
-        prompt_hash = hashlib.sha256(f"{model_key}:{prompt}".encode()).hexdigest()[:16]
+        prompt_hash = self._ir_cache_key(model_key, NCT_SYSTEM_PROMPT, prompt)
         cache_file = cache_dir / f"{nct_id}_{model_key}_{prompt_hash}.json"
         meta_file = cache_dir / f"{nct_id}_{model_key}_{prompt_hash}.meta.json"
 
@@ -317,6 +316,30 @@ class LogicDecomposer:
 
         return ir
     
+    @staticmethod
+    def _ir_cache_key(model_key: str, system_prompt: str, prompt: str) -> str:
+        """Deterministic cache key for one Agent 1 IR call.
+
+        The system prompt is part of the key because it decides the answer. Pattern E
+        lives there, and it is what makes an "A or B or C" criterion a single ANY
+        group rather than several flat rules. Keying only on the human message meant
+        a Pattern E edit produced ``Cache HIT``, replayed the previous IR, and
+        reported the number it was meant to change -- indistinguishable in the output
+        from the change simply not working.
+
+        Fields are joined with a separator that cannot occur in any of them, so
+        ("ab", "c") and ("a", "bc") cannot collide.
+
+        :param model_key: filename-safe model identifier.
+        :param system_prompt: the SystemMessage content for this call.
+        :param prompt: the HumanMessage content for this call.
+        :returns: 16 hex characters, safe to place straight into a filename.
+        """
+        import hashlib
+
+        material = "\x00".join((model_key, system_prompt, prompt))
+        return hashlib.sha256(material.encode()).hexdigest()[:16]
+
     @staticmethod
     def _format_criteria(criteria: list) -> str:
         """Number the criteria and attach each one's deterministically parsed constraints.

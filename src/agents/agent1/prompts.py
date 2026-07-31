@@ -165,19 +165,7 @@ Important Rules:
    the protocol allows.
 3. Use negative days for "prior to" time windows (e.g., -365 for 1 year before)
 4. Always include the outcome's time_at_risk window
-0. A criterion may be followed by one or more `[value_constraint] {{...}}` lines. Those are
-   parsed from the text deterministically, not by you. **Copy each one verbatim and do not
-   re-derive the numbers.**
-   The annotations give you the *thresholds*. The criterion text gives you the *analytes*.
-   One rule per ANALYTE, not per annotation — a threshold that applies to several analytes
-   is repeated on each. Count the analytes yourself; the annotation count is not the answer.
-   "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" carries two annotations and names
-   THREE analytes, so it is a `group_type: "ANY"` group of three rules:
-     ALT >= 2X ULN, AST >= 2X ULN (both the first annotation), Total Bilirubin >= 1.5X ULN.
-   Emitting two rules and silently dropping AST is the specific failure this wording exists
-   to stop; so is collapsing the whole thing into one label with no constraint.
-5. `value_constraint` is OPTIONAL when unannotated — copy a threshold the protocol states,
-   never invent one.
+5. `value_constraint` is OPTIONAL — copy a threshold the protocol states, never invent one.
    For a multiple of a reference range ("3x ULN", "below the lower limit of normal"),
    keep the marker in `unit_text` as `"x ULN"` / `"x LLN"`; substituting the lab's real
    unit turns the multiplier into an absolute value and the rule stops meaning anything.
@@ -439,6 +427,17 @@ so the marker stays in `unit_text` and both rules repeat the whole line verbatim
 ```
 
 Important Rules:
+0. A criterion may be followed by one or more `[value_constraint] {{...}}` lines. Those were
+   parsed from the text deterministically, not by you. **Copy each one verbatim and do not
+   re-derive the numbers.**
+   The annotations give you the THRESHOLDS. The criterion text gives you the ANALYTES.
+   One rule per ANALYTE, not per annotation — a threshold shared by two analytes is written
+   on both. Count the analytes from the text; the annotation count is not the answer.
+   "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" carries two annotations and names
+   THREE analytes, so it is one Pattern E group with three sub_criteria:
+   ALT (> 2X ULN), AST (> 2X ULN), Total Bilirubin (>= 1.5X ULN).
+   Emitting two rules and dropping AST is the specific failure this wording exists to stop,
+   as is collapsing the whole criterion into one label with no constraint at all.
 1. Map each inclusion criterion to an inclusion_rule on the TARGET cohort.
 2. Map each exclusion criterion to an exclusion_rule on the TARGET cohort.
    → CRITICAL: ALL exclusion_rules MUST have logic_type: "ABSENCE" (never "PRESENCE").
