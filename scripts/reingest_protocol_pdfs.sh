@@ -34,13 +34,28 @@ VLLM_PY=/home/bilab/work/projects/vllm/venv/bin/python
 HOST_IP=100.66.233.6
 PORT=8000
 MODEL="google/gemma-4-E4B-it"     # 74/85 on the capability probe; 350s, the best practical rate
-STORE_DIR=/app/tmp/tte_reingest
+
+# 16384 -- the value every other harness here uses -- truncated Agent 1's IR JSON
+# on the first run. agent1/parser.py calls get_llm() without max_tokens, so vLLM's
+# output budget is max_model_len minus the prompt; ARISTOTLE's protocol yields 52
+# criteria and the response died at ~39 KB with
+# "Expecting property name enclosed in double quotes ... (char 38835)".
+# PLATO's 45 criteria parsed at the same setting, so the ceiling sits between them
+# and 16384 is not a safe default for protocol-scale input. The checkpoint declares
+# max_position_embeddings=131072; 65536 stays well inside it and inside the 0.55
+# memory share on 119 GB unified memory.
+MAX_MODEL_LEN=65536
+# Overridable so a second attempt starts from a clean copy of the canonical store.
+# The first attempt left ARISTOTLE with zero criteria -- a heuristic placeholder
+# applied over real ones -- and `cp -n` below would preserve that wreckage as if it
+# were a resume.
+STORE_DIR="${REINGEST_STORE_DIR:-/app/tmp/tte_reingest}"
 CANONICAL=/app/tmp/tte/studies.json
 # A separate root on purpose. The harness resumes per study file, and
 # tmp/model_benchmarks/vllm__google__gemma-4-E4B-it__stored-criteria already holds
 # six results from the CT.gov-only run -- writing there would make every study
 # "already written, skipping" and the run would exit 0 having measured nothing.
-RESULT_ROOT=/app/tmp/model_benchmarks_reingest
+RESULT_ROOT="${REINGEST_RESULT_ROOT:-/app/tmp/model_benchmarks_reingest}"
 
 log() { echo "[$(TZ=Asia/Seoul date '+%m-%d %H:%M:%S KST')] $*"; }
 
@@ -73,7 +88,7 @@ start_server() {
   setsid "$VLLM_PY" -m vllm.entrypoints.openai.api_server \
     --model "$MODEL" --served-model-name "$MODEL" \
     --host 0.0.0.0 --port "$PORT" \
-    --max-model-len 16384 --dtype auto --enforce-eager \
+    --max-model-len "$MAX_MODEL_LEN" --dtype auto --enforce-eager \
     --gpu-memory-utilization 0.55 \
     > "/tmp/vllm_${safe}.log" 2>&1 < /dev/null &
   for i in $(seq 1 240); do

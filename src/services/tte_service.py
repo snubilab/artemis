@@ -329,6 +329,7 @@ class TTEService:
                 updated[section] = self._merge_eligibility_section(
                     study.get("eligibility"), proposed_changes[section]
                 )
+                self._reject_criteria_loss(study.get("eligibility"), updated[section], artifact)
             else:
                 updated[section] = deepcopy(proposed_changes[section])
 
@@ -2447,6 +2448,53 @@ class TTEService:
         if not structured_expression:
             return None
         return structured_expression
+
+    @staticmethod
+    def _criteria_count(eligibility: dict[str, Any] | None) -> int:
+        section = eligibility or {}
+        return sum(
+            len(section.get(key) or []) for key in ("inclusionCriteria", "exclusionCriteria")
+        )
+
+    @classmethod
+    def _reject_criteria_loss(
+        cls,
+        current: dict[str, Any] | None,
+        merged: dict[str, Any] | None,
+        artifact: dict[str, Any],
+    ) -> None:
+        """Refuse an apply that would leave a populated study with no criteria.
+
+        ``run_generate_from_nct`` falls back to ``_heuristic_draft`` on any exception
+        from the trial agent and still returns ``status="completed"``, and
+        ``_merge_eligibility_section`` replaces rather than merges. Together they turn
+        a truncated LLM response into a silent deletion: measured 2026-07-31,
+        ARISTOTLE went from 31 criteria to 0 while every status field read healthy.
+
+        Emptying is only ever refused when there was something to lose, so first
+        population of a new study and any genuinely richer draft are unaffected.
+
+        :param current: the study's eligibility section before the apply.
+        :param merged: what the apply would write.
+        :param artifact: the artifact being applied, read for its fallback reason.
+        :raises ValueError: when a populated section would be emptied.
+        """
+        before = cls._criteria_count(current)
+        if not before or cls._criteria_count(merged):
+            return
+
+        meta = (artifact.get("payload") or {}).get("meta") or {}
+        reason = meta.get("fallbackReason")
+        detail = (
+            f" The artifact was generated in {meta.get('generationMode')!r} mode after: {reason}"
+            if reason
+            else ""
+        )
+        raise ValueError(
+            f"Refusing to apply {artifact.get('id')}: it would replace {before} eligibility "
+            f"criteria with none. A draft that empties a populated study is a failed "
+            f"generation, not a proposal.{detail}"
+        )
 
     def _merge_eligibility_section(
         self, current: dict[str, Any] | None, proposed: dict[str, Any] | None
