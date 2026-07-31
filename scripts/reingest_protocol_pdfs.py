@@ -42,15 +42,43 @@ def criteria_of(study: dict) -> list[dict]:
 
 
 def report(label: str, study: dict) -> tuple[int, int]:
-    """Print the criteria that mention a reference bound. Returns (total, ratio-bearing)."""
+    """Print the criteria whose constraint reaches the builder as a ratio.
+
+    Counts what ``build_measurement_value_filter`` actually emits, not what the
+    description says. The first version of this grepped descriptions for "ULN" and
+    reported PLATO as a failure: ``process_eligibility`` had renamed the criterion
+    to "Troponin/CK-MB elevation" while leaving
+    ``unitText: "upper limit of normal"`` intact, so the constraint was correct and
+    the instrument could not see it. That false failure also set a non-zero exit
+    and suppressed the arms benchmark that would have caught it.
+
+    :param label: "before" or "after".
+    :param study: the study record to inspect.
+    :returns: (criteria count, ratio-emitting constraint count).
+    """
+    from src.services.value_constraint import build_measurement_value_filter
+
     rows = criteria_of(study)
-    hits = [c for c in rows if RATIO_TEXT.search(c.get("description") or "")]
-    print(f"  [{label}] criteria={len(rows)}  ULN-bearing={len(hits)}")
-    for c in hits:
-        vc = c.get("valueConstraint")
-        print(f"      · {' '.join((c.get('description') or '').split())[:130]}")
-        print(f"        valueConstraint = {vc}")
-    return len(rows), len(hits)
+    ratio = []
+    for c in rows:
+        fragment = build_measurement_value_filter(c.get("valueConstraint"))
+        if "RangeHighRatio" in fragment or "RangeLowRatio" in fragment:
+            ratio.append((c, fragment))
+
+    print(f"  [{label}] criteria={len(rows)}  ratio-emitting={len(ratio)}")
+    for c, fragment in ratio:
+        print(f"      · {' '.join((c.get('description') or '').split())[:100]}")
+        print(f"        unitText={(c.get('valueConstraint') or {}).get('unitText')!r} -> {fragment}")
+
+    # Named for a bound but carrying nothing is the interesting failure, so say it.
+    dropped = [
+        c for c in rows
+        if RATIO_TEXT.search(c.get("description") or "") and not c.get("valueConstraint")
+    ]
+    for c in dropped:
+        print(f"      ! no valueConstraint: {' '.join((c.get('description') or '').split())[:100]}")
+
+    return len(rows), len(ratio)
 
 
 def main() -> int:
