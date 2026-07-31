@@ -40,7 +40,13 @@ HEAVY=(
   "google/medgemma-27b-text-it"
   "google/gemma-4-31B-it"
   "google/medgemma-27b-it"
-  "Jiunsong/supergemma4-26b-abliterated-multimodal"
+  # Jiunsong/supergemma4-26b-abliterated-multimodal removed 2026-07-31. It is a
+  # third-party abliterated merge of gemma-4-26b, not a Google release, and this
+  # vLLM build cannot load it: the engine dies at weight load with
+  # KeyError 'layers.0.experts.switch_glu.down_proj.weight' -- its MoE expert
+  # parameters use names the loader does not know. Nothing in the task argues for
+  # a safety-stripped merge over the official checkpoint it was merged from, which
+  # is already measured at 58/85.
 )
 DEFAULT_MODEL="Qwen/Qwen3.5-4B"   # restored when the queue finishes
 
