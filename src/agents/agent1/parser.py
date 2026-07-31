@@ -238,12 +238,8 @@ class LogicDecomposer:
             conditions=", ".join(trial_data.conditions) or "Not specified",
             interventions=", ".join(trial_data.interventions) or "Not specified",
             outcomes=", ".join(trial_data.primary_outcomes) or "Not specified",
-            inclusion="\n".join(
-                f"  {i+1}. {c}" for i, c in enumerate(trial_data.inclusion_criteria)
-            ) or "  None specified",
-            exclusion="\n".join(
-                f"  {i+1}. {c}" for i, c in enumerate(trial_data.exclusion_criteria)
-            ) or "  None specified",
+            inclusion=self._format_criteria(trial_data.inclusion_criteria),
+            exclusion=self._format_criteria(trial_data.exclusion_criteria),
         )
         
         messages = [
@@ -321,6 +317,33 @@ class LogicDecomposer:
 
         return ir
     
+    @staticmethod
+    def _format_criteria(criteria: list) -> str:
+        """Number the criteria and attach each one's deterministically parsed constraints.
+
+        The model classifies; the parser owns the numbers. Agent 1 dropped
+        ARISTOTLE's "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" to a bare
+        "Liver Enzyme Elevation" label in the same run that read LVEF, haemoglobin,
+        platelets and creatinine correctly -- three analytes and two thresholds in one
+        sentence, not a harder number. ``parse_value_constraints`` reads it as 2.0 gt
+        uln and 1.5 gte uln, so annotating turns those into something to copy.
+
+        Lines with no threshold get no annotation, so the model never learns that one
+        is always expected.
+
+        :param criteria: criterion strings in prompt order.
+        :returns: the formatted block, or the placeholder when empty.
+        """
+        from src.services.value_constraint import annotate_value_constraints
+
+        lines = []
+        for index, criterion in enumerate(criteria):
+            lines.append(f"  {index + 1}. {criterion}")
+            annotation = annotate_value_constraints(str(criterion))
+            if annotation:
+                lines.append(annotation)
+        return "\n".join(lines) or "  None specified"
+
     @staticmethod
     def _discover_pdfs(papers_dir: str) -> list:
         """

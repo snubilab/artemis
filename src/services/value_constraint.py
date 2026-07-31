@@ -17,6 +17,7 @@ to a mmol/L concept in the same concept set.
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from collections.abc import Mapping
@@ -514,6 +515,41 @@ def parse_value_constraints(line: str) -> list[ValueConstraint]:
         for segment in _PHRASE_SPLIT_RE.split(line)
         if (constraint := parse_value_constraint(segment)) is not None
     ]
+
+
+def annotate_value_constraints(line: str) -> str:
+    """Render a criterion's parsed constraints for Agent 1's prompt (ADR-031 D7).
+
+    Agent 1 is asked to classify a criterion and extract its numbers in one pass.
+    It is reliable at the first and not at the second, and the failure is silent:
+    ARISTOTLE's exclusion 20) reached the LLM intact and came back as
+    ``{"description": "Liver Enzyme Elevation", "valueConstraint": null}`` in the
+    same run that extracted LVEF, haemoglobin, platelets and creatinine correctly.
+    Shape separated them -- three analytes and two thresholds in one sentence --
+    not difficulty, so a larger model is the wrong remedy.
+
+    ``parse_value_constraints`` reads that sentence as 2.0 gt uln and 1.5 gte uln,
+    which is what the gold Circe carries. Putting its answer next to the criterion
+    makes the numbers something the model copies rather than derives.
+
+    Returns an empty string when nothing parses. Annotating every line, including
+    the ones with no threshold, would teach the model that an annotation is always
+    expected and invite it to invent one.
+
+    :param line: a single criterion as it will appear in the prompt.
+    :returns: newline-separated ``[value_constraint] {...}`` lines, or "".
+    """
+    rendered = []
+    for constraint in parse_value_constraints(line):
+        payload: dict[str, Any] = {
+            "op": constraint.op,
+            "value": constraint.value,
+            "referenceBound": getattr(constraint, "reference_bound", None) or "absolute",
+        }
+        if constraint.unit_text:
+            payload["unitText"] = constraint.unit_text
+        rendered.append(f"      [value_constraint] {json.dumps(payload)}")
+    return "\n".join(rendered)
 
 
 def verify_unit_table_against_database() -> list[str]:

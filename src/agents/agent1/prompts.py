@@ -165,7 +165,16 @@ Important Rules:
    the protocol allows.
 3. Use negative days for "prior to" time windows (e.g., -365 for 1 year before)
 4. Always include the outcome's time_at_risk window
-5. `value_constraint` is OPTIONAL — copy a threshold the protocol states, never invent one.
+0. A criterion may be followed by one or more `[value_constraint] {{...}}` lines. Those are
+   parsed from the text deterministically, not by you. **Copy each one verbatim into the
+   `value_constraint` of the rule it belongs to, and do not re-derive the numbers.** When a
+   criterion carries several of them it names several thresholds and must become several
+   rules — one per constraint, each keeping the whole criterion in `source_text`.
+   "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" is annotated with two, so it is
+   two rules; collapsing it into one label with no constraint is the specific failure this
+   annotation exists to stop.
+5. `value_constraint` is OPTIONAL when unannotated — copy a threshold the protocol states,
+   never invent one.
    For a multiple of a reference range ("3x ULN", "below the lower limit of normal"),
    keep the marker in `unit_text` as `"x ULN"` / `"x LLN"`; substituting the lab's real
    unit turns the multiplier into an absolute value and the rule stops meaning anything.
