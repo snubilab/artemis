@@ -32,7 +32,13 @@ sys.path.insert(0, "/app")
 from src.services.tte_service import TTEService  # noqa: E402
 from src.services.tte_store import TTEStore  # noqa: E402
 
-TARGETS = [(3, "NCT00412984", "ARISTOTLE", 3), (2, "NCT00391872", "PLATO", 4)]
+_ALL_TARGETS = [(3, "NCT00412984", "ARISTOTLE", 3), (2, "NCT00391872", "PLATO", 4)]
+
+# REINGEST_STUDIES exists so a smoke run can reach the failure regime on one study
+# instead of paying for both. ARISTOTLE alone is the interesting case: it is where
+# the LLM dropped the constraint.
+_WANTED = {int(x) for x in (os.environ.get("REINGEST_STUDIES") or "").split(",") if x.strip()}
+TARGETS = [t for t in _ALL_TARGETS if not _WANTED or t[0] in _WANTED]
 RATIO_TEXT = re.compile(r"(?i)\bULN\b|upper limit of normal")
 
 
@@ -106,7 +112,21 @@ def main() -> int:
         applied = service.apply_artifact(resp.artifactId, ["eligibility"], version)
         print(f"  apply_artifact: {applied}", flush=True)
 
-        service.process_eligibility(study_id)
+        # process_eligibility produces an artifact and does NOT write through. Skipping
+        # this apply left the study with new criteria, no conceptSetId on any of them
+        # and structuredExpression=None, which then failed generate_seeded_cohorts with
+        # "Eligibility must be processed before generating treatment cohorts" -- an
+        # error naming the step that had just run. Applying it takes ARISTOTLE from
+        # 0 to 39 mapped criteria and 40 Circe concept sets.
+        processed = service.process_eligibility(study_id)
+        if processed.artifactId:
+            version = int(store.get_study(study_id).get("version") or 1)
+            service.apply_artifact(processed.artifactId, ["eligibility"], version)
+            print(f"  process_eligibility applied: {processed.artifactId}", flush=True)
+        else:
+            print(f"  WARNING: process_eligibility returned no artifact ({processed.status})")
+            failures += 1
+
         total, hits = report("after", store.get_study(study_id))
         if hits == 0:
             print(f"  WARNING: {name} still has no ULN-bearing criterion — the PDF text "
