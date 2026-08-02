@@ -1,6 +1,6 @@
 # ARTEMIS Documentation MOC (Map of Content)
 
-> 최종 업데이트: 2026-03-28
+> 최종 업데이트: 2026-07-31
 > 프로젝트 전체 문서 탐색 → [docs/MOC.md](../../docs/MOC.md)
 
 ---
@@ -26,7 +26,8 @@
 | [DEVELOPMENT_STATUS.md](./DEVELOPMENT_STATUS.md)         | 현재 개발 상태                       |
 | [User Guide](./user_guide.md)                            | 사용자 가이드                        |
 | [Mapping Agent 설명서](./mapping_agent_explanation.md)   | Agent 2 상세 설명 (Living Doc)       |
-| [**Agent Reference**](./architecture/agent_reference.md) | **전체 Agent 역할/입출력/파일 정리** |
+| [**Agent Reference**](./architecture/agent_reference.md) | **전체 Agent 역할/입출력/파일 정리 (2026-07-31 전면 갱신)** |
+| [Agent Inventory Snapshot](../../docs/tte_agent/32_agent_inventory_2026-07-31.md) | 구현 상태 인벤토리 (Result doc) |
 | [Trial Agent 설명서](./trial_agent_explanation.md)       | Agent 1 상세 설명 (Living Doc)       |
 
 ---
