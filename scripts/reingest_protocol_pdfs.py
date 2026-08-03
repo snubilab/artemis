@@ -32,13 +32,30 @@ sys.path.insert(0, "/app")
 from src.services.tte_service import TTEService  # noqa: E402
 from src.services.tte_store import TTEStore  # noqa: E402
 
-_ALL_TARGETS = [(3, "NCT00412984", "ARISTOTLE", 3), (2, "NCT00391872", "PLATO", 4)]
+_ALL_TARGETS = [
+    (3, "NCT00412984", "ARISTOTLE", 3),
+    (2, "NCT00391872", "PLATO", 4),
+    (10, "NCT01243424", "CAROLINA", 3),
+    (8, "NCT01131676", "EMPA-REG", 3),
+    (9, "NCT01897532", "CARMELINA", 3),
+]
 
 # REINGEST_STUDIES exists so a smoke run can reach the failure regime on one study
 # instead of paying for both. ARISTOTLE alone is the interesting case: it is where
 # the LLM dropped the constraint.
 _WANTED = {int(x) for x in (os.environ.get("REINGEST_STUDIES") or "").split(",") if x.strip()}
 TARGETS = [t for t in _ALL_TARGETS if not _WANTED or t[0] in _WANTED]
+if _WANTED:
+    # A study id with no entry here used to yield an empty TARGETS, a loop that ran
+    # zero times, and exit 0 -- a run reporting success having done nothing. The
+    # log was zero lines and only a gate caught it.
+    _unknown = _WANTED - {t[0] for t in _ALL_TARGETS}
+    if _unknown:
+        raise SystemExit(
+            f"REINGEST_STUDIES names {sorted(_unknown)}, which have no entry in "
+            f"_ALL_TARGETS {sorted(t[0] for t in _ALL_TARGETS)}. Refusing to run "
+            f"and report success for studies that were never processed."
+        )
 RATIO_TEXT = re.compile(r"(?i)\bULN\b|upper limit of normal")
 
 

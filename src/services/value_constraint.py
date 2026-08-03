@@ -518,7 +518,16 @@ def parse_value_constraints(line: str) -> list[ValueConstraint]:
 
 
 def annotate_value_constraints(line: str) -> str:
-    """Render a criterion's parsed constraints for Agent 1's prompt (ADR-031 D7).
+    """Render a criterion's parsed constraints for Agent 1's prompt (ADR-031-B).
+
+    ADR-031 D2 split the work one way -- the LLM finds which criteria carry a
+    threshold, deterministic code turns the phrase into structure. ADR-031-B closes
+    the loop: the parser runs FIRST and its answer travels back into the prompt, so
+    the numbers survive even when the model summarises the phrase away.
+
+    The division this implements, stated because reports must not overclaim: the
+    parser extracts the numbers, the model places them into one rule per analyte.
+    "the LLM extracts value constraints from the literature" is not what happens.
 
     Agent 1 is asked to classify a criterion and extract its numbers in one pass.
     It is reliable at the first and not at the second, and the failure is silent:
