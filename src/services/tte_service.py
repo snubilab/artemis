@@ -5926,6 +5926,137 @@ class TTEService:
             if expr.get("items"):
                 cs["expression"] = expr
 
+    def _fetch_drug_forms(self, ingredient_ids: list[int]) -> list:
+        """Ingredient-by-dose-form concepts under the given ingredients.
+
+        One query, because a concept set may hold a dozen ingredients and this
+        runs per criterion. Returns `Clinical Drug Form` concepts joined to the
+        Dose Form they link to via `RxNorm has dose form`.
+
+        :param ingredient_ids: concept ids already in the built expression.
+        :returns: DrugForm records; empty on any database error, which leaves
+            the concept set exactly as it was.
+        """
+        from src.services.route_subtraction import DrugForm
+
+        if not ingredient_ids:
+            return []
+        try:
+            import psycopg2
+
+            from src.settings import settings
+
+            conn = psycopg2.connect(settings.DATABASE_URL)
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""
+                        SELECT DISTINCT c.concept_id, c.concept_name, f.concept_name
+                        FROM {settings.CDM_SCHEMA}.concept_ancestor ca
+                        JOIN {settings.CDM_SCHEMA}.concept c
+                          ON c.concept_id = ca.descendant_concept_id
+                         AND c.concept_class_id = 'Clinical Drug Form'
+                         AND c.invalid_reason IS NULL
+                        JOIN {settings.CDM_SCHEMA}.concept_relationship cr
+                          ON cr.concept_id_1 = c.concept_id
+                         AND cr.relationship_id = 'RxNorm has dose form'
+                         AND cr.invalid_reason IS NULL
+                        JOIN {settings.CDM_SCHEMA}.concept f
+                          ON f.concept_id = cr.concept_id_2
+                        WHERE ca.ancestor_concept_id = ANY(%s)
+                        """,
+                        (list(ingredient_ids),),
+                    )
+                    rows = cur.fetchall()
+            finally:
+                conn.close()
+        except Exception as exc:
+            logging.debug("[TTE] drug-form lookup failed: %s", exc)
+            return []
+
+        return [DrugForm(concept_id=int(cid), concept_name=name, dose_form=form)
+                for cid, name, form in rows]
+
+    def _apply_route_subtraction(
+        self,
+        items: list[dict[str, Any]],
+        seed_text: str,
+        expected_domain: str | None,
+    ) -> None:
+        """Append isExcluded items for routes the criterion did not ask for.
+
+        A criterion reading "systemic corticosteroids" becomes a concept set of
+        RxNorm Ingredients with includeDescendants, which is every form of the
+        drug: for CAROLINA, 14,331 concepts of which 3,875 are creams, eye drops
+        and inhalers. This subtracts the forms whose route was not asked for, at
+        `Clinical Drug Form` level with includeDescendants so a few dozen items
+        cover thousands of leaves -- the axis gold uses, 139 items against its
+        136 on the criterion that prompted this.
+
+        Drug domain only. "systemic" next to a condition means whole-body, not a
+        route, and route_qualifier already refuses those senses; the domain gate
+        is the second guard.
+
+        Mutates `items` in place. Does nothing when the criterion states no
+        route, which is the overwhelming majority -- 6 of 473 criteria across
+        the six studies carry one.
+
+        :param items: the built expression's items, mutated in place.
+        :param seed_text: the criterion text to read the qualifier from.
+        :param expected_domain: the criterion's domain; only "Drug" applies.
+        """
+        if (expected_domain or "") != "Drug":
+            return
+
+        from src.services.route_qualifier import detect_route_qualifiers
+        from src.services.route_subtraction import compute_route_subtraction, routes_to_keep
+
+        keep = routes_to_keep(detect_route_qualifiers(seed_text))
+        if not keep:
+            return
+
+        included_ids = [
+            item["concept"]["CONCEPT_ID"]
+            for item in items
+            if not item.get("isExcluded") and (item.get("concept") or {}).get("CONCEPT_ID")
+        ]
+        forms = self._fetch_drug_forms(included_ids)
+        if not forms:
+            return
+
+        result = compute_route_subtraction(forms, keep)
+        if not result.excluded:
+            return
+
+        already = {(item.get("concept") or {}).get("CONCEPT_ID") for item in items}
+        for form in result.excluded:
+            if form.concept_id in already:
+                continue
+            items.append({
+                "concept": {
+                    "CONCEPT_ID": form.concept_id,
+                    "CONCEPT_NAME": form.concept_name,
+                    "DOMAIN_ID": "Drug",
+                    "CONCEPT_CLASS_ID": "Clinical Drug Form",
+                    "STANDARD_CONCEPT": "S",
+                    "VOCABULARY_ID": "RxNorm",
+                    "CONCEPT_CODE": "",
+                    "INVALID_REASON": None,
+                },
+                "isExcluded": True,
+                "includeDescendants": True,
+                "includeMapped": False,
+            })
+
+        # Undecidable forms are left included on purpose: leaving one in keeps
+        # the existing over-inclusion, excluding it on a guess creates a new
+        # wrong exclusion. Said out loud so a silent count never has to be
+        # inferred from a diff.
+        logging.info(
+            "[TTE] route subtraction on '%s': keep=%s excluded=%d undecidable=%d",
+            seed_text, sorted(keep), len(result.excluded), len(result.undecidable),
+        )
+
     def _recommend_seeded_concept_set(
         self,
         seed_text: str,
@@ -6002,6 +6133,10 @@ class TTEService:
                             concept = item.get("concept", {})
                             if concept.get("CONCEPT_ID") in overbroad_set:
                                 item["includeDescendants"] = False
+
+                        self._apply_route_subtraction(
+                            items, normalized_seed, expected_domain
+                        )
 
                         # Capture mapping metadata for HITL transparency
                         selected_ids = [

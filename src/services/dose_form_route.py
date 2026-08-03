@@ -82,6 +82,15 @@ _SYSTEMIC_BY_ROUTE: dict[str, bool] = {
     "irrigation": False,
 }
 
+# Semi-solid forms applied *in* the mouth rather than swallowed. The name says
+# "oral" but systemic-ness depends on the drug, not the form: OMOP holds both
+# `Alendronate Oral Gel` (systemic) and `Benzocaine Oral Ointment` (local) under
+# the same dose form, and for a corticosteroid an "Oral Paste" is dental paste.
+# Neither answer is right for the form, so the form does not get one.
+_DRUG_DEPENDENT_FORMS = frozenset({
+    "oral cream", "oral ointment", "oral paste", "oral gel", "oral foam",
+})
+
 _COMPILED = [(route, re.compile(pattern, re.IGNORECASE)) for route, pattern in _ROUTE_PATTERNS]
 
 
@@ -117,6 +126,9 @@ def classify_dose_form(name: str) -> DoseFormRoute:
     routes = [route for route, pattern in _COMPILED if pattern.search(name)]
     if not routes:
         return DoseFormRoute(name=name, routes=[], systemic=None)
+
+    if name.strip().lower() in _DRUG_DEPENDENT_FORMS:
+        return DoseFormRoute(name=name, routes=routes, systemic=None)
 
     known = [_SYSTEMIC_BY_ROUTE[r] for r in routes if r in _SYSTEMIC_BY_ROUTE]
     systemic = any(known) if known else None

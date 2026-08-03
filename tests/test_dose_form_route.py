@@ -79,6 +79,23 @@ class TestSystemicJudgement:
         assert classify_dose_form("Metered Dose Inhaler").systemic is False
 
 
+class TestFormsWhereTheDrugDecides:
+    """"Oral Gel" holds both Alendronate (systemic) and Acyclovir; "Oral
+    Ointment" holds Benzocaine (local). The form cannot answer for the drug."""
+
+    @pytest.mark.parametrize("name", [
+        "Oral Cream", "Oral Ointment", "Oral Paste", "Oral Gel", "Oral Foam",
+    ])
+    def test_mouth_applied_semisolids_are_undecidable(self, name):
+        result = classify_dose_form(name)
+        assert "oral" in result.routes, "the route is still stated"
+        assert result.systemic is None, "but systemic-ness is not the form's to say"
+
+    @pytest.mark.parametrize("name", ["Oral Tablet", "Oral Capsule", "Oral Solution"])
+    def test_swallowed_oral_forms_are_unaffected(self, name):
+        assert classify_dose_form(name).systemic is True
+
+
 class TestTheCriterionThatStartedThis:
 
     def test_prednisolone_eye_drops_are_not_a_systemic_corticosteroid(self):
