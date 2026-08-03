@@ -144,3 +144,44 @@ class TestEligibilityExtractor:
         assert len(result["exclusion"]) > 0
         exclusion_text = " ".join(result["exclusion"]).lower()
         assert "upper" in exclusion_text and "limit of normal" in exclusion_text
+
+    def test_extract_eligibility_drops_running_headers(self):
+        """
+        Given: A protocol PDF whose page header repeats a short line -- a compound
+               code, a protocol number, a revision date -- between criteria
+        When:  extract_eligibility_from_text is called
+        Then:  Those repeated lines are not returned as criteria
+
+        Regression: pdftotext interleaves running headers into the body, and every
+        occurrence became a criterion. ARISTOTLE contributed 12 of 48 and CAROLINA
+        32 of 80. Each was mapped to the Procedure domain, matched zero people and
+        was ANDed into the cohort, so cohort 3395 returned 0 patients against 1113
+        for gold -- see docs/handoff/2026-08-03.
+        """
+        from src.agents.agent1.pubmed_fetcher import extract_eligibility_from_text
+
+        header = "CV185030\nBMS-562247\nApproved v 8.0\n"
+        text = (
+            "Inclusion criteria:\n"
+            + header
+            + "Age 18 years or older at the time of informed consent\n"
+            + header
+            + "Documented diagnosis of atrial fibrillation or atrial flutter\n"
+            + header
+            + "\nExclusion criteria:\n"
+            + header
+            + "Active liver disease with ALT above 3 x upper limit of normal\n"
+            + header
+            + "Severe renal impairment with creatinine clearance below 25 mL/min\n"
+            + header
+        )
+
+        result = extract_eligibility_from_text(text)
+
+        returned = result["inclusion"] + result["exclusion"]
+        for junk in ("CV185030", "BMS-562247", "Approved v 8.0"):
+            assert junk not in returned, f"running header {junk!r} survived as a criterion"
+
+        joined = " ".join(returned).lower()
+        assert "atrial fibrillation" in joined
+        assert "upper limit of normal" in joined

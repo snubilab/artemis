@@ -8,6 +8,7 @@ hybrid regex + LLM parsing for eligibility section extraction.
 import logging
 import re
 import requests
+from collections import Counter
 from difflib import SequenceMatcher
 from typing import Dict, List, Optional
 from dataclasses import dataclass
@@ -147,6 +148,43 @@ def _best_section_match(text: str, patterns: List[str]) -> List[str]:
     return []
 
 
+# A page header repeats once per page; a criterion is written once. Measured over
+# the six protocol PDFs: running headers occur 5 to 10 times inside the extracted
+# section, real criteria 0 or 1. Three sits in the gap.
+_RUNNING_HEADER_MIN_REPEATS = 3
+# The longest running header measured was 26 characters ("Name of active
+# ingredient:"). Real criteria are sentences, so the length guard means a genuine
+# criterion cannot be dropped merely for repeating.
+_RUNNING_HEADER_MAX_CHARS = 60
+
+
+def _drop_running_headers(items: List[str], source_text: str) -> List[str]:
+    """Remove criteria that are really page headers or footers.
+
+    pdftotext interleaves a PDF's running header into the body, so a protocol
+    stamped "CV185030 / BMS-562247 / Approved v 8.0" on every page yields one
+    criterion per line per page. ARISTOTLE contributed 12 such items of 48 and
+    CAROLINA 32 of 80. Each was mapped to the Procedure domain, matched zero
+    people, and Circe ANDs inclusion rules -- so one of them empties the cohort.
+    Cohort 3395 returned 0 patients against 1113 for gold on the same source.
+
+    :param items: candidate criteria strings.
+    :param source_text: the text they were parsed from, for line frequency.
+    :returns: items with repeated short lines removed, original order preserved.
+    """
+    line_counts = Counter(line.strip() for line in source_text.split("\n") if line.strip())
+    kept = []
+    for item in items:
+        stripped = item.strip()
+        if (len(stripped) <= _RUNNING_HEADER_MAX_CHARS
+                and line_counts.get(stripped, 0) >= _RUNNING_HEADER_MIN_REPEATS):
+            logger.debug("dropping running header %r (%d occurrences)", stripped,
+                         line_counts[stripped])
+            continue
+        kept.append(item)
+    return kept
+
+
 def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
     """
     Extract inclusion/exclusion criteria from free text.
@@ -203,7 +241,7 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
         r"eligible\s+(?:patients?|subjects?|if)[:\s]*(.*?)" + _section_end,
     ]
 
-    result["inclusion"] = _best_section_match(text, inc_patterns)
+    result["inclusion"] = _drop_running_headers(_best_section_match(text, inc_patterns), text)
 
     # Find exclusion section (same terminators, minus 'exclusion' itself)
     _exc_section_end = (
@@ -222,8 +260,8 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
         r"(?:ineligible|excluded)\s+(?:patients?|subjects?|if)[:\s]*(.*?)" + _exc_section_end,
     ]
 
-    result["exclusion"] = _best_section_match(text, exc_patterns)
-    
+    result["exclusion"] = _drop_running_headers(_best_section_match(text, exc_patterns), text)
+
     return result
 
 
