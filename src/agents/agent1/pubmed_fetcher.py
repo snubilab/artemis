@@ -171,6 +171,7 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
     # Check if text contains any criteria-related keywords
     criteria_keywords = [
         "inclusion criteria", "exclusion criteria",
+        "criteria for inclusion", "criteria for exclusion",
         "key inclusion", "key exclusion",
         "eligible if", "excluded if",
         "inclusion:", "exclusion:",
@@ -188,14 +189,17 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
         r"section\s+[A-Z]|appendix|reference|bibliography|"
         r"supplement|figure|table\s+\d|acknowledgement|"
         r"randomization|treatment\s+period|follow-up|visit\s+schedule|"
-        r"inclusion\s+criteria"
+        r"inclusion\s+criteria|criteria\s+for\s+inclusion"
         r"|$)"
     )
 
     # Strategy 1: Split by inclusion/exclusion headers
-    # Find inclusion section — pick the longest substantive match
+    # Find inclusion section — pick the longest substantive match.
+    # Protocol synopses (e.g. the Boehringer Ingelheim form used by the
+    # CAROLINA supplement) reverse the noun phrase: "Criteria for inclusion:".
     inc_patterns = [
         r"(?:key\s+)?inclusion\s+criteria\s*(?:include)?[:\s]*(.*?)" + _section_end,
+        r"criteria\s+for\s+inclusion\s*[:\s]*(.*?)" + _section_end,
         r"eligible\s+(?:patients?|subjects?|if)[:\s]*(.*?)" + _section_end,
     ]
 
@@ -209,11 +213,12 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
         r"section\s+[A-Z]|appendix|reference|bibliography|"
         r"supplement|figure|table\s+\d|acknowledgement|"
         r"randomization|treatment\s+period|follow-up|visit\s+schedule|"
-        r"inclusion\s+criteria"
+        r"inclusion\s+criteria|criteria\s+for\s+inclusion"
         r"|$)"
     )
     exc_patterns = [
         r"(?:key\s+)?exclusion\s+criteria\s*(?:include)?[:\s]*(.*?)" + _exc_section_end,
+        r"criteria\s+for\s+exclusion\s*[:\s]*(.*?)" + _exc_section_end,
         r"(?:ineligible|excluded)\s+(?:patients?|subjects?|if)[:\s]*(.*?)" + _exc_section_end,
     ]
 

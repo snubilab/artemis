@@ -111,3 +111,36 @@ class TestEligibilityExtractor:
         )
         assert result["inclusion"] == []
         assert result["exclusion"] == []
+
+    def test_extract_eligibility_reversed_header_order(self):
+        """
+        Given: A protocol synopsis that heads its sections "Criteria for
+               inclusion/exclusion:" instead of "Inclusion/Exclusion criteria:"
+               (the Boehringer Ingelheim form used by the CAROLINA supplement)
+        When:  extract_eligibility_from_text is called
+        Then:  Both sections are extracted, including the ULN ratio criterion
+
+        Regression: the exclusion patterns only accepted "exclusion criteria",
+        so this header form silently yielded zero exclusion criteria while the
+        inclusion side still succeeded — see docs/handoff/2026-08-03.
+        """
+        from src.agents.agent1.pubmed_fetcher import extract_eligibility_from_text
+
+        text = (
+            "Criteria for inclusion:\n"
+            "Documented diagnosis of type 2 diabetes mellitus\n"
+            "Age 40 to 85 years at informed consent\n"
+            "\n"
+            "Criteria for exclusion:\n"
+            "Type 1 diabetes mellitus\n"
+            "Active liver disease or impaired hepatic function, defined by serum levels of\n"
+            "either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper\n"
+            "limit of normal (ULN) as determined at visit 1a\n"
+        )
+
+        result = extract_eligibility_from_text(text)
+
+        assert len(result["inclusion"]) > 0
+        assert len(result["exclusion"]) > 0
+        exclusion_text = " ".join(result["exclusion"]).lower()
+        assert "upper" in exclusion_text and "limit of normal" in exclusion_text
