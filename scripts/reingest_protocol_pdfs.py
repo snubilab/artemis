@@ -38,6 +38,10 @@ _ALL_TARGETS = [
     (10, "NCT01243424", "CAROLINA", 3),
     (8, "NCT01131676", "EMPA-REG", 3),
     (9, "NCT01897532", "CARMELINA", 3),
+    # LEADER expects zero: its appendix's three ULN mentions are lipase result
+    # figures, not eligibility criteria, and the gold carries none either. It is
+    # here so "all six studies, one code path" is literally true.
+    (1, "NCT01179048", "LEADER", 0),
 ]
 
 # REINGEST_STUDIES exists so a smoke run can reach the failure regime on one study
@@ -145,9 +149,16 @@ def main() -> int:
             failures += 1
 
         total, hits = report("after", store.get_study(study_id))
-        if hits == 0:
+        # Guarded on gold: LEADER legitimately expects zero, and counting that as a
+        # failure would set a non-zero exit and suppress the verification that runs
+        # after this script -- the same false-failure shape the report() docstring
+        # describes.
+        if gold > 0 and hits == 0:
             print(f"  WARNING: {name} still has no ULN-bearing criterion — the PDF text "
                   f"reached extraction in a dry run, so look at process_eligibility, not the PDF")
+            failures += 1
+        elif gold == 0 and hits > 0:
+            print(f"  WARNING: {name} expected no ratio constraint but produced {hits}")
             failures += 1
 
     return 1 if failures else 0

@@ -50,7 +50,11 @@ MAX_MODEL_LEN=65536
 # applied over real ones -- and `cp -n` below would preserve that wreckage as if it
 # were a resume.
 STORE_DIR="${REINGEST_STORE_DIR:-/app/tmp/tte_reingest}"
-CANONICAL=/app/tmp/tte/studies.json
+# Overridable because /app/tmp/tte/studies.json carries nctId=None for studies
+# 8, 9 and 10. run_generate_from_nct takes its NCT from _ALL_TARGETS so the run
+# itself survives that, but everything downstream of the merge reads the record.
+# /app/tmp/tte_nct/studies.json is the same store with those three filled in.
+CANONICAL="${REINGEST_CANONICAL:-/app/tmp/tte/studies.json}"
 # A separate root on purpose. The harness resumes per study file, and
 # tmp/model_benchmarks/vllm__google__gemma-4-E4B-it__stored-criteria already holds
 # six results from the CT.gov-only run -- writing there would make every study
@@ -122,8 +126,12 @@ rc=$?
 log "  re-ingest exit=${rc}"
 tail -30 /tmp/reingest_run.log
 
-if [ "$rc" -eq 0 ]; then
-  log "  arms benchmark on studies 2,3"
+# Benchmark whatever was just re-ingested, not a fixed pair. "3,2" stayed hardcoded
+# after REINGEST_STUDIES was added, so a single-study run spent GPU time measuring
+# two studies it had not touched and left none for the one it had.
+BENCH_STUDIES="${REINGEST_STUDIES:-3,2}"
+if [ "$rc" -eq 0 ] && [ "${REINGEST_SKIP_BENCH:-0}" != "1" ]; then
+  log "  arms benchmark on studies ${BENCH_STUDIES}"
   docker exec \
     -e LLM_MODEL="vllm/${MODEL}" \
     -e VLLM_BASE_URL="http://${HOST_IP}:${PORT}/v1" \
@@ -131,7 +139,7 @@ if [ "$rc" -eq 0 ]; then
     -e ARTEMIS_GIT_REV="$rev" \
     -e PYTHONUNBUFFERED=1 \
     artemis-api python /app/scripts/benchmark_value_constraint_arms.py \
-    --studies "3,2" --output-root "$RESULT_ROOT" > /tmp/reingest_bench.log 2>&1
+    --studies "$BENCH_STUDIES" --output-root "$RESULT_ROOT" > /tmp/reingest_bench.log 2>&1
   log "  benchmark exit=$?"
 fi
 
