@@ -190,23 +190,54 @@ done
   `STUDY_CONFIGS` 가 가리키는 gold 파일 4개가 모두 없다
   (`data/gold/LEADER/LEADER_GOLD.json` 등). 실제로 있는 것은 TROY arm 별 파일.
 
+## 2026-08-04 해결 — CARMELINA 1건 뭉침은 파싱 문제였다 (`08d2522`)
+
+원문 PDF 가 `... serum levels of either ALT` 뒤에서 줄바꿈된다. 줄 재결합 조건이
+`stripped[0].islower()` 하나였으므로, `(` 로 시작하는 이어지는 줄이 재결합되지 않고
+별개 기준이 됐다. LLM 은 `ALT` 가 빠진 파편
+(`(SGPT), AST (SGOT), or alkaline phosphatase (AP) ≥3 x ULN`) 을 받아 분석물을 셋으로
+셀 수 없었고 `Liver enzyme elevation` 하나를 냈다. **CAROLINA 와의 차이는 이것뿐**
+— 같은 문장인데 거기서는 그 지점에서 줄바꿈되지 않는다.
+
+수정: 대문자로 시작하지 않는 줄은 이어짐으로 본다 (약어 가드는 유지, `eGFR` 은 여전히
+새 기준). 그 과정에서 두 번 되돌아왔다:
+
+1. 머리글 필터가 깨졌다 — `Approved v 8.0` 이 아래 `37`·`930018272 6.0` 과 붙어
+   유일해지며 빈도 검사를 통과했다 (ARISTOTLE 4건, CAROLINA 5건 부활).
+   → **줄을 붙이기 전에 머리글을 제거**하도록 순서를 바꿨다.
+2. CAROLINA 포함기준이 0이 됐다 — `Inclusion criteria:` 가 3회 반복돼 짧아서
+   절 머리글 자체가 제거됐다. → 절 머리글을 명시 보호 (`_SECTION_HEADER_RE`).
+
+재수집 결과 (2026-08-04, 약 30분): `ratio-emitting 1 → 3`, 개념집합 이름이
+`Alanine aminotransferase` / `Aspartate aminotransferase` / `Alkaline phosphatase`
+로 갈린 **진짜 분해**. gold 3 과 일치.
+
+**나머지 5개는 이 수정 이전 코드 산출물이다.** 수정은 다섯 곳의 기준 목록도 바꾸지만
+(파편 병합) ULN 개수는 불변이라 재수집하지 않았다. 전량 통일이 필요하면 약 3~4시간.
+
 ## 미해결 — 설명되지 않은 것
 
-- **EMPA-REG 의 간효소 기준이 6번 복제된 이유.** 코드 변경이 "결과가 달라진 것"은
-  설명하지만 "왜 하나가 6개로 복제됐는지"는 설명하지 못한다. `fe08096` 의 의도는
-  분석물당 규칙 하나(= 3건)이지 동일 문장 6벌이 아니다. gold 는 3.
-- **CARMELINA 는 반대로 1건으로 뭉쳤다** (`Liver enzyme elevation` 하나).
-  같은 코드·같은 모델인데 CAROLINA 는 3개로 정확히 분해했다.
-- 두 건 모두 값 제약 분해 단계의 문제이며 경로 뺄셈과 무관하다.
+- ~~CARMELINA 1건 뭉침~~ → 위에서 해결 (`08d2522`).
+- **EMPA-REG 6건은 결함이 아니다.** 부록에 같은 간효소 기준이 12번·13번 두 항목으로
+  실려 있고 (표기도 다름: 하나는 `amininotransferase` 오타, 하나는 `(ALT)` 병기),
+  각각이 ALT/AST/ALP 로 정상 분해되어 2 × 3 = 6 이다. gold 가 3인 것은 gold 가
+  중복을 한 번으로 정리했기 때문. 산출물 정합성 문제일 뿐 로직 결함이 아니다.
+- **PLATO 의 자격기준 파편화는 미해결.** `plato_design_ahj2009.pdf` 의 2단 조판
+  `Table I` 을 pdftotext 가 뒤섞어 `to be preexisting or due to a` 같은 열 파편이
+  기준으로 들어온다. 파싱 수정 전 24개 / 후 18개 — 둘 다 파편이다. ULN 기준
+  (`Troponin I or T or CK-MB greater than the upper limit of normal`) 은 온전하다.
 
-## 병원 전달 산출물 (2026-08-03)
+## 병원 전달 산출물 (2026-08-04 갱신)
 
-- `output/circe_be/tte_circe_6studies_20260803.tar.gz` — circe 6종 + README + manifest
+- `output/circe_be/tte_circe_6studies_20260804.tar.gz` — circe 6종 + README + manifest
 - 경로 뺄셈 적용본. `isExcluded` 148건 (CAROLINA 139, EMPA-REG 9, 나머지 0)
-- 원본 스토어 `tmp/tte_six_fixed/`, 경로 적용본 `tmp/tte_six_routed/`
-- 스냅샷 `snapshots/2026-08-03_six-studies_fixed-code.json` (md5 검증)
-- 평가 목적으로 WebAPI 코호트 정의 **3396~3401** 을 만들었다. 전부 0명이며
-  당뇨 3종은 소스가 부적절해 무효. 불필요하면 삭제해도 된다.
+- **CARMELINA 만 08-04 코드**(파싱 수정 반영), 나머지 5개는 08-03 코드.
+  README 에 그 사실과 이유를 적어두었다.
+- 스토어 계보: `tmp/tte_six_fixed/` (원본) → `tmp/tte_six_routed/` (경로 뺄셈)
+  → `tmp/tte_six_deliver/` (CARMELINA 교체) — 마지막이 산출물 원본
+- CARMELINA 재수집 스토어는 `tmp/tte_carmelina_fix/`
+- 스냅샷 `snapshots/2026-08-04_six-studies_deliverable.json` (md5 검증)
+- 평가 목적으로 만들었던 WebAPI 코호트 정의 3396~3401 은 **삭제 완료**.
 
 ## Gotchas / constraints
 
