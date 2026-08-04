@@ -2,11 +2,18 @@
 """Apply route subtraction to a store's already-built concept sets.
 
 The subtraction normally runs inside `_recommend_seeded_concept_set`, during
-mapping. Re-running mapping to pick it up would also re-roll the concept
-selection itself, which is not deterministic -- the six-study run produced
-EMPA-REG's liver criterion six times over from one sentence. This applies the
-same `TTEService._apply_route_subtraction` to the concept sets already chosen,
-so the only change is the isExcluded tail.
+mapping. Re-running mapping to pick it up would re-run the whole LLM chain --
+hours of GPU, and every criterion's concept selection re-derived, not just the
+six that carry a route qualifier. This applies the same
+`TTEService._apply_route_subtraction` to the concept sets already chosen, so
+exactly one thing changes and the diff is countable.
+
+Not a determinism argument. `LLM_TEMPERATURE` is 0.0 and `LLM_SEED` is 42, so
+the chain is configured to be reproducible; an earlier version of this docstring
+claimed otherwise on the strength of EMPA-REG's liver criterion differing
+between runs, which is explained by the prompt and parser changing in baa2629,
+fe08096 and 3fd4b8e rather than by sampling. Whether vLLM's continuous batching
+perturbs greedy output has not been measured here.
 
 Writes to a new store path; the input is never modified.
 

@@ -167,6 +167,47 @@ for f in test_08_pubmed_fetcher test_criterion_constraint_annotation test_agent1
 done
 ```
 
+## 확정된 사실 — 다시 유도하지 말 것
+
+- **LLM 체인은 재현 가능하도록 설정돼 있다.** `LLM_TEMPERATURE=0.0`,
+  `LLM_SEED=42` (`src/settings.py:41-42`, 컨테이너 실측 확인).
+  세션 중 "매핑이 비결정적"이라는 주장을 한 적이 있으나 **근거가 틀렸다** —
+  EMPA-REG 결과 차이는 2026-06-22 구코드와 08-03 코드의 프롬프트·파서 차이
+  (`baa2629`, `fe08096`, `3fd4b8e`)로 설명되며 샘플링 흔들림이 아니다.
+  vLLM continuous batching이 greedy 출력을 흔드는지는 **측정한 적 없음**.
+- **PLATO의 경구 항응고제 기준에 뺄 것이 없는 것은 정상이다.** 리바록사반·
+  다비가트란·아픽사반의 Clinical Drug Form 이 각각 4개·8개 조회되고 전부 경구다.
+  조회 실패와 진짜 0건이 똑같이 `+0` 으로 보이므로 확인해두었다.
+- **벤치마크 CDM 들에는 약이 거의 없다.** `synthea_cdm_aristotle` 21,000명에
+  약물 노출 6,685행·서로 다른 약물 **2종**, `synthea_cdm_plato` 2종,
+  `synthea_cdm_leader` **1종**. 대상약·비교약만 심어둔 데이터라 자격기준의
+  병용약·제외약은 존재하지 않는다. 경로 뺄셈은 이 데이터에서 환자 수를
+  바꾸지 않는다.
+- **`SYNTHEA_CDM_BENCHMARK` 는 고정 벤치마크가 아니다.**
+  `evaluate_generated_gold_studies.py` 가 gold 로부터 환자를 생성해 매번
+  ETL 로 갈아끼우는 작업 스키마다. 현재 내용물로 돌린 숫자는 의미 없다.
+- **`evaluate_generated_gold_studies.py` 는 지금 상태로 실행되지 않는다.**
+  `STUDY_CONFIGS` 가 가리키는 gold 파일 4개가 모두 없다
+  (`data/gold/LEADER/LEADER_GOLD.json` 등). 실제로 있는 것은 TROY arm 별 파일.
+
+## 미해결 — 설명되지 않은 것
+
+- **EMPA-REG 의 간효소 기준이 6번 복제된 이유.** 코드 변경이 "결과가 달라진 것"은
+  설명하지만 "왜 하나가 6개로 복제됐는지"는 설명하지 못한다. `fe08096` 의 의도는
+  분석물당 규칙 하나(= 3건)이지 동일 문장 6벌이 아니다. gold 는 3.
+- **CARMELINA 는 반대로 1건으로 뭉쳤다** (`Liver enzyme elevation` 하나).
+  같은 코드·같은 모델인데 CAROLINA 는 3개로 정확히 분해했다.
+- 두 건 모두 값 제약 분해 단계의 문제이며 경로 뺄셈과 무관하다.
+
+## 병원 전달 산출물 (2026-08-03)
+
+- `output/circe_be/tte_circe_6studies_20260803.tar.gz` — circe 6종 + README + manifest
+- 경로 뺄셈 적용본. `isExcluded` 148건 (CAROLINA 139, EMPA-REG 9, 나머지 0)
+- 원본 스토어 `tmp/tte_six_fixed/`, 경로 적용본 `tmp/tte_six_routed/`
+- 스냅샷 `snapshots/2026-08-03_six-studies_fixed-code.json` (md5 검증)
+- 평가 목적으로 WebAPI 코호트 정의 **3396~3401** 을 만들었다. 전부 0명이며
+  당뇨 3종은 소스가 부적절해 무효. 불필요하면 삭제해도 된다.
+
 ## Gotchas / constraints
 
 - **컨테이너는 UTC, 호스트는 KST.** `docker exec ls` 의 mtime 을 `git log` 시각과 직접
