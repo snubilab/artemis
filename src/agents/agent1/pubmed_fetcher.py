@@ -157,6 +157,46 @@ _RUNNING_HEADER_MIN_REPEATS = 3
 # criterion cannot be dropped merely for repeating.
 _RUNNING_HEADER_MAX_CHARS = 60
 
+# Lines that open a criteria section, in either noun order. Protected from the
+# header strip because they repeat as often as a page header does.
+_SECTION_HEADER_RE = re.compile(
+    r"(?:key\s+)?(?:in|ex)clusion\s+criteria|criteria\s+for\s+(?:in|ex)clusion|"
+    r"eligible\s+(?:patients?|subjects?|if)|(?:in|ex)clusion\s*:",
+    re.IGNORECASE,
+)
+
+
+def _strip_running_header_lines(text: str) -> str:
+    """Remove page headers and footers before the text is split into criteria.
+
+    Order matters. The item-level filter below compares a whole criterion
+    against the line frequencies, so it only catches a header that survived as
+    its own item. Once line-wrap rejoining glues `Approved v 8.0` to the `37`
+    and `930018272 6.0` beneath it, the result is unique and slips through —
+    which is what happened when rejoining was extended to continuations
+    starting with a symbol. Stripping first means there is nothing to glue.
+
+    :param text: the eligibility section, or the whole document on fallback.
+    :returns: the same text with repeated short lines removed.
+    """
+    lines = text.split("\n")
+    counts = Counter(line.strip() for line in lines if line.strip())
+    kept = []
+    for line in lines:
+        stripped = line.strip()
+        # A section header repeats as often as a page header -- CAROLINA's
+        # supplement writes "Inclusion criteria:" three times. Removing those
+        # leaves the header patterns nothing to match and the study ingests zero
+        # inclusion criteria, so they are protected explicitly.
+        if _SECTION_HEADER_RE.search(stripped):
+            kept.append(line)
+            continue
+        if (len(stripped) <= _RUNNING_HEADER_MAX_CHARS
+                and counts.get(stripped, 0) >= _RUNNING_HEADER_MIN_REPEATS):
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
 
 def _drop_running_headers(items: List[str], source_text: str) -> List[str]:
     """Remove criteria that are really page headers or footers.
@@ -218,7 +258,11 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
     
     if not has_criteria:
         return result
-    
+
+    # Before anything is split or rejoined, so a header cannot be glued to a
+    # criterion and thereby escape the frequency check.
+    text = _strip_running_header_lines(text)
+
     # Section boundary terminators for clinical trial supplements
     _section_end = (
         r"(?="
@@ -441,22 +485,30 @@ def _regex_parse_criteria(text: str) -> List[str]:
     # Split on newlines that start a new item (newline followed by capital letter)
     normalized = re.sub(r"\n\s*(?=[A-Z])", "\n", normalized)
 
-    # Step 2: Rejoin line-wrapped continuations: lines starting with lowercase
-    # are likely sentence continuations (not new criteria items)
+    # Step 2: Rejoin line-wrapped continuations. A criterion that wraps resumes
+    # either with a lowercase word or with a symbol; only a capital letter
+    # reliably opens a new one.
     rejoined_lines: List[str] = []
     for line in normalized.split("\n"):
         stripped = line.strip()
         if not stripped:
             continue
-        # Continuation: starts with lowercase AND prev line doesn't end sentence.
-        # Exclude medical abbreviations like eGFR, mL — first word has uppercase
-        # after initial lowercase.
-        first_word = stripped.split()[0] if stripped else ""
-        is_abbrev = any(c.isupper() for c in first_word[1:])
-        if (rejoined_lines
-                and stripped[0].islower()
-                and not is_abbrev
-                and not rejoined_lines[-1].rstrip()[-1:] in ".;:"):
+
+        first_char = stripped[0]
+        # A wrap can land anywhere, including before a bracket, an operator or a
+        # number: CARMELINA's supplement breaks straight after "ALT" so the next
+        # line opens "(SGPT), AST (SGOT), ...". Testing only for a lowercase
+        # letter made that fragment its own criterion, and a fragment with no
+        # ALT in it yielded one generic "Liver enzyme elevation" where gold has
+        # three analytes.
+        resumes_with_symbol = not first_char.isalpha()
+        # A lowercase start is a continuation unless the first word is an
+        # abbreviation that opens a criterion of its own — eGFR, mL, mmHg.
+        first_word = stripped.split()[0]
+        resumes_lowercase = first_char.islower() and not any(c.isupper() for c in first_word[1:])
+        previous_ended = bool(rejoined_lines) and rejoined_lines[-1].rstrip()[-1:] in ".;:"
+
+        if rejoined_lines and not previous_ended and (resumes_with_symbol or resumes_lowercase):
             rejoined_lines[-1] = rejoined_lines[-1].rstrip() + " " + stripped
         else:
             rejoined_lines.append(stripped)

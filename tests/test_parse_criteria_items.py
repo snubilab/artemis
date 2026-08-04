@@ -7,7 +7,7 @@ newline-separated items, mixed formats, short-item filtering, and LLM fallback.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.agents.agent1.pubmed_fetcher import _parse_criteria_items
+from src.agents.agent1.pubmed_fetcher import _parse_criteria_items, _regex_parse_criteria
 
 
 class TestCommaSeparated:
@@ -323,3 +323,64 @@ class TestLLMFallback:
 
         # Assert -- should not raise, returns whatever regex found
         assert isinstance(result, list)
+
+
+class TestWrappedLineStartingWithPunctuation:
+    """pdftotext wraps a criterion mid-sentence and the next line starts with a
+    bracket, an operator or a digit rather than a lowercase letter.
+
+    CARMELINA's supplement wraps immediately after "ALT", so the continuation
+    begins "(SGPT), AST (SGOT), ...". The rejoin heuristic tested only
+    `stripped[0].islower()`, so the fragment became a criterion of its own and
+    the model, handed a fragment with no ALT in it, emitted one generic
+    "Liver enzyme elevation" instead of three analyte criteria. Gold has three.
+
+    These exercise _regex_parse_criteria rather than _parse_criteria_items:
+    the latter hands text over ~200 characters to a live LLM, which both makes
+    the test billable and hides what the regex pass did.
+    """
+
+    def test_the_carmelina_wrap_is_rejoined(self):
+        # verbatim from jama_2019_carmelina_supplement.pdf, item 3
+        text = (
+            "3) Active liver disease or impaired hepatic function, defined by serum levels of either ALT\n"
+            "(SGPT), AST (SGOT), or alkaline phosphatase (AP) >=3 x upper limit of normal (ULN) as\n"
+            "determined at Visit 1.\n"
+        )
+
+        result = _regex_parse_criteria(text)
+
+        assert len(result) == 1, f"expected one criterion, got {result}"
+        assert "ALT" in result[0] and "AST" in result[0] and "alkaline phosphatase" in result[0]
+
+    @pytest.mark.parametrize("continuation", [
+        "(SGPT), AST (SGOT) above the limit",       # bracket
+        ">=3 x upper limit of normal at Visit 1",   # comparison operator
+        "18 years or older at informed consent",    # digit
+    ])
+    def test_continuations_that_do_not_start_with_a_letter_are_rejoined(self, continuation):
+        # numbered so the splitter stays in bullet mode and does not sub-split commas
+        text = f"1) Serum levels of either ALT\n{continuation}\n"
+
+        result = _regex_parse_criteria(text)
+
+        assert len(result) == 1, f"expected one criterion, got {result}"
+
+    def test_a_new_item_starting_with_a_capital_still_splits(self):
+        text = ("1) Documented type 2 diabetes mellitus\n"
+                "2) Age 40 to 85 years at informed consent\n")
+
+        assert len(_regex_parse_criteria(text)) == 2
+
+    def test_an_abbreviation_starting_a_line_still_starts_a_new_item(self):
+        """eGFR opens a criterion; it must not be glued to the previous one.
+        This is what the abbreviation guard protects."""
+        text = ("1) Active liver disease or impaired hepatic function\n"
+                "eGFR <15 ml/min/1.73 m2 as determined during screening\n")
+
+        assert len(_regex_parse_criteria(text)) == 2
+
+    def test_a_sentence_that_already_ended_is_not_glued_to_the_next(self):
+        text = "1) Type 1 diabetes mellitus.\n(SGPT) elevation above the reference range\n"
+
+        assert len(_regex_parse_criteria(text)) == 2
