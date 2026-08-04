@@ -1,0 +1,74 @@
+[
+  {
+    "study": "ARISTOTLE",
+    "nct": "NCT00412984",
+    "file": "ARISTOTLE_NCT00412984_study3_circe.json",
+    "conceptSets": 43,
+    "inclusionRules": 35,
+    "rangeHighRatio": 3,
+    "isExcludedItems": 0,
+    "codeVersion": "2026-08-03",
+    "bytes": 192647,
+    "md5": "22f45104b3078fdcd8dcc4fff7063e71"
+  },
+  {
+    "study": "PLATO",
+    "nct": "NCT00391872",
+    "file": "PLATO_NCT00391872_study2_circe.json",
+    "conceptSets": 90,
+    "inclusionRules": 33,
+    "rangeHighRatio": 3,
+    "isExcludedItems": 0,
+    "codeVersion": "2026-08-03",
+    "bytes": 359449,
+    "md5": "cbc9d8e5616aeebdc47a25aad4281fe1"
+  },
+  {
+    "study": "CAROLINA",
+    "nct": "NCT01243424",
+    "file": "CAROLINA_NCT01243424_study10_circe.json",
+    "conceptSets": 77,
+    "inclusionRules": 42,
+    "rangeHighRatio": 3,
+    "isExcludedItems": 139,
+    "codeVersion": "2026-08-03",
+    "bytes": 390589,
+    "md5": "40aca31bc3f65ea9566298522615d5f3"
+  },
+  {
+    "study": "EMPA-REG",
+    "nct": "NCT01131676",
+    "file": "EMPA-REG_NCT01131676_study8_circe.json",
+    "conceptSets": 76,
+    "inclusionRules": 33,
+    "rangeHighRatio": 6,
+    "isExcludedItems": 9,
+    "codeVersion": "2026-08-03",
+    "bytes": 352131,
+    "md5": "bbc0e0d807ac84a28433f0c87d21c334"
+  },
+  {
+    "study": "CARMELINA",
+    "nct": "NCT01897532",
+    "file": "CARMELINA_NCT01897532_study9_circe.json",
+    "conceptSets": 30,
+    "inclusionRules": 25,
+    "rangeHighRatio": 3,
+    "isExcludedItems": 0,
+    "codeVersion": "2026-08-04 (parsing fix)",
+    "bytes": 135833,
+    "md5": "9d3bfe3e8b5c507dfd318b9d3ad8b310"
+  },
+  {
+    "study": "LEADER",
+    "nct": "NCT01179048",
+    "file": "LEADER_NCT01179048_study1_circe.json",
+    "conceptSets": 58,
+    "inclusionRules": 27,
+    "rangeHighRatio": 0,
+    "isExcludedItems": 0,
+    "codeVersion": "2026-08-03",
+    "bytes": 274064,
+    "md5": "f77bdad5a4cb01a246c03054f0eee658"
+  }
+]

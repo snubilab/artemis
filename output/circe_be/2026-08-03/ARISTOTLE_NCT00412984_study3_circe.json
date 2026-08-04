@@ -1,0 +1,5925 @@
+{
+  "cdmVersionRange": ">=5.0.0",
+  "QualifiedLimit": {
+    "Type": "First"
+  },
+  "ExpressionLimit": {
+    "Type": "First"
+  },
+  "CollapseSettings": {
+    "CollapseType": "ERA",
+    "EraPad": 0
+  },
+  "ConceptSets": [
+    {
+      "id": 1,
+      "name": "apixaban",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 43013024,
+              "CONCEPT_NAME": "apixaban",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "Prior stroke/TIA/SE presence",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4043734,
+              "CONCEPT_NAME": "Carotid territory transient ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4079008,
+              "CONCEPT_NAME": "Chronic central post-stroke pain",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4153352,
+              "CONCEPT_NAME": "Embolic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36684470,
+              "CONCEPT_NAME": "Visual field defect due to and following cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36716860,
+              "CONCEPT_NAME": "Late effects of cerebral ischemic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40481354,
+              "CONCEPT_NAME": "Speech and language deficit as late effect of cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40482301,
+              "CONCEPT_NAME": "Residual cognitive deficit as late effect of cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42535344,
+              "CONCEPT_NAME": "Apraxia as sequela of cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43530736,
+              "CONCEPT_NAME": "Sequela of cardioembolic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531592,
+              "CONCEPT_NAME": "Sequela of thrombotic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531610,
+              "CONCEPT_NAME": "Spasticity as sequela of stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531617,
+              "CONCEPT_NAME": "Alteration of sensation as late effect of stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46272244,
+              "CONCEPT_NAME": "Transient ischemic attack due to embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "Diabetes mellitus",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201820,
+              "CONCEPT_NAME": "Diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "Diabetes mellitus",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201820,
+              "CONCEPT_NAME": "Diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "Hypertension",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 316866,
+              "CONCEPT_NAME": "Hypertensive disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "name": "ECG",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4033557,
+              "CONCEPT_NAME": "Tilt table test",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4144544,
+              "CONCEPT_NAME": "Continuous electrocardiogram",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4145308,
+              "CONCEPT_NAME": "12 lead ECG",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4148302,
+              "CONCEPT_NAME": "Bundle of His recording",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4187078,
+              "CONCEPT_NAME": "Electrocardiographic monitoring",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4327042,
+              "CONCEPT_NAME": "Fetal electrocardiogram",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "name": "Congestive heart failure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 316139,
+              "CONCEPT_NAME": "Heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "name": "Left ventricular ejection fraction",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3016171,
+              "CONCEPT_NAME": "Left ventricular Ejection fraction by US",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3027172,
+              "CONCEPT_NAME": "Left ventricular Ejection fraction",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4239905,
+              "CONCEPT_NAME": "Feature of left ventricle",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4323433,
+              "CONCEPT_NAME": "Cardiac ejection fraction",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40758535,
+              "CONCEPT_NAME": "Left ventricular Cardiac ejection fraction method",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "name": "AF/Flutter documentation requirement",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 314665,
+              "CONCEPT_NAME": "Atrial flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4021776,
+              "CONCEPT_NAME": "Atrial rhythm",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4059915,
+              "CONCEPT_NAME": "Fluttering heart",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "AF/Flutter presence",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 315643,
+              "CONCEPT_NAME": "Tachyarrhythmia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4064452,
+              "CONCEPT_NAME": "ECG: atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "name": "Prior stroke, TIA or systemic embolus",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 312339,
+              "CONCEPT_NAME": "Arterial embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 762933,
+              "CONCEPT_NAME": "Cerebral infarction due to cerebral artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4031045,
+              "CONCEPT_NAME": "Anterior choroidal artery syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4046361,
+              "CONCEPT_NAME": "Pure sensorimotor lacunar infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4153352,
+              "CONCEPT_NAME": "Embolic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4194719,
+              "CONCEPT_NAME": "Head and neck arterial thrombosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37395574,
+              "CONCEPT_NAME": "Cerebrovascular accident due to right carotid artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46272244,
+              "CONCEPT_NAME": "Transient ischemic attack due to embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "name": "Stroke",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 381316,
+              "CONCEPT_NAME": "Cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "name": "TIA",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4043001,
+              "CONCEPT_NAME": "Infarction of thyroid",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4043734,
+              "CONCEPT_NAME": "Carotid territory transient ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4139517,
+              "CONCEPT_NAME": "Transient cerebral ischemia due to atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46272244,
+              "CONCEPT_NAME": "Transient ischemic attack due to embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "name": "Congestive heart failure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 316139,
+              "CONCEPT_NAME": "Heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "name": "Left ventricular ejection fraction",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3016171,
+              "CONCEPT_NAME": "Left ventricular Ejection fraction by US",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3027172,
+              "CONCEPT_NAME": "Left ventricular Ejection fraction",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4239905,
+              "CONCEPT_NAME": "Feature of left ventricle",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4323433,
+              "CONCEPT_NAME": "Cardiac ejection fraction",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40758535,
+              "CONCEPT_NAME": "Left ventricular Cardiac ejection fraction method",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "name": "Systolic blood pressure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3004249,
+              "CONCEPT_NAME": "Systolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3035856,
+              "CONCEPT_NAME": "Systolic blood pressure--standing",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4152194,
+              "CONCEPT_NAME": "Systolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4154790,
+              "CONCEPT_NAME": "Diastolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 21492239,
+              "CONCEPT_NAME": "Systolic blood pressure by Noninvasive",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44807556,
+              "CONCEPT_NAME": "Highest brachial systolic pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "name": "Alanine aminotransferase",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1761617,
+              "CONCEPT_NAME": "Alanine aminotransferase.macromolecular [Presence] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3005755,
+              "CONCEPT_NAME": "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma by With P-5'-P",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3006923,
+              "CONCEPT_NAME": "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3015912,
+              "CONCEPT_NAME": "Alanine aminotransferase [Enzymatic activity/volume] in Red Blood Cells",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3022893,
+              "CONCEPT_NAME": "Aspartate aminotransferase/Alanine aminotransferase [Enzymatic activity ratio] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3027388,
+              "CONCEPT_NAME": "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma by No addition of P-5'-P",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3045928,
+              "CONCEPT_NAME": "Alanine aminotransferase [Enzymatic activity/volume] (Maximum value during study) in Serum or Plasma by No addition of P-5'-P",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3052018,
+              "CONCEPT_NAME": "Alanine aminotransferase.macromolecular [Enzymatic activity/volume] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4190899,
+              "CONCEPT_NAME": "Plasma alanine aminotransferase level",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36032251,
+              "CONCEPT_NAME": "Alanine aminotransferase [Enzymatic activity/volume] in DBS",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44788835,
+              "CONCEPT_NAME": "Serum alanine aminotransferase level",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46235106,
+              "CONCEPT_NAME": "Alanine aminotransferase [Enzymatic activity/volume] in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46236949,
+              "CONCEPT_NAME": "Alanine aminotransferase [Enzymatic activity/volume] in Serum, Plasma or Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "name": "Aspartate aminotransferase",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3003792,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] in Body fluid",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3005435,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] in Red Blood Cells",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3010587,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Presence] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3012169,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] in Urine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3013721,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3023488,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] in Amniotic fluid",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3024746,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] in Synovial fluid",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3025649,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] in Gastric fluid",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3042781,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] (Maximum value during study) in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3046412,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Presence] in Body fluid",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4094595,
+              "CONCEPT_NAME": "AST serum measurement",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4197974,
+              "CONCEPT_NAME": "Plasma aspartate transaminase measurement",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36031681,
+              "CONCEPT_NAME": "Aspartate aminotransferase [Enzymatic activity/volume] in DBS",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37208565,
+              "CONCEPT_NAME": "Aspartate aminotransferase enzyme activity in plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40757631,
+              "CONCEPT_NAME": "Aspartate aminotransferase.macromolecular/Aspartate aminotransferase.total in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "name": "Total bilirubin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1175183,
+              "CONCEPT_NAME": "Bilirubin.total [Moles/volume] in Arterial blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3024128,
+              "CONCEPT_NAME": "Bilirubin.total [Mass/volume] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3028193,
+              "CONCEPT_NAME": "Bilirubin.total [Mass/volume] in Body fluid",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3043744,
+              "CONCEPT_NAME": "Bilirubin.conjugated+indirect [Mass/volume] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4230543,
+              "CONCEPT_NAME": "Bilirubin, total measurement",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40757494,
+              "CONCEPT_NAME": "Bilirubin.total [Moles/volume] in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46235782,
+              "CONCEPT_NAME": "Bilirubin.total [Moles/volume] in Serum, Plasma or Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "name": "Active alcohol or drug abuse",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3026846,
+              "CONCEPT_NAME": "Alcohol or substance abuse symptoms with physiological dependence indicator",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Claims Attachment",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3032020,
+              "CONCEPT_NAME": "Alcohol abuse [CCC]",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Survey",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40479411,
+              "CONCEPT_NAME": "Suspected clinical finding",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Context-dependent",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "name": "Infective endocarditis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 441589,
+              "CONCEPT_NAME": "Endocarditis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "name": "AF/Flutter due to reversible causes",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 314665,
+              "CONCEPT_NAME": "Atrial flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 606035,
+              "CONCEPT_NAME": "Right atrial non-cavotricuspid isthmus dependent macro re-entrant atrial tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 606036,
+              "CONCEPT_NAME": "Non-scar mediated right atrial non-cavotricuspid isthmus dependent macro re-entrant atrial tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 606055,
+              "CONCEPT_NAME": "Non scar mediated left atrial non-cavotricuspid isthmus dependent macro re-entrant atrial tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 606057,
+              "CONCEPT_NAME": "Scar mediated left atrial non-cavotricuspid isthmus dependent macro re-entrant atrial tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 606069,
+              "CONCEPT_NAME": "Left atrial non-cavotricuspid isthmus dependent macro re-entrant atrial tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 606087,
+              "CONCEPT_NAME": "Scar mediated right atrial non-cavotricuspid isthmus dependent macro re-entrant atrial tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42536725,
+              "CONCEPT_NAME": "Cavotricuspid isthmus dependent macroreentry tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "name": "Mitral stenosis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 315273,
+              "CONCEPT_NAME": "Mitral valve stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "name": "Other chronic anticoagulation conditions",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 200451,
+              "CONCEPT_NAME": "Chronic passive congestion of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4133004,
+              "CONCEPT_NAME": "Deep venous thrombosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4134586,
+              "CONCEPT_NAME": "Chronic heart disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4149782,
+              "CONCEPT_NAME": "Thrombosis of vein of lower limb",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4159647,
+              "CONCEPT_NAME": "Thromboembolic disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35615125,
+              "CONCEPT_NAME": "Chronic venous thrombosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40481089,
+              "CONCEPT_NAME": "Embolism from thrombosis of vein of lower extremity",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "name": "Hemoglobin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3000963,
+              "CONCEPT_NAME": "Hemoglobin [Mass/volume] in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3004158,
+              "CONCEPT_NAME": "Hemoglobin H/Hemoglobin.total in Blood by Electrophoresis",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3007339,
+              "CONCEPT_NAME": "Hemoglobin H/Hemoglobin.total in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3025678,
+              "CONCEPT_NAME": "Hemoglobin H [Presence] in Blood by Heat denaturation",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3038533,
+              "CONCEPT_NAME": "Hemoglobin H [Mass/volume] in Blood by Electrophoresis",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3041888,
+              "CONCEPT_NAME": "Hemoglobin H [Presence] in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3051396,
+              "CONCEPT_NAME": "Hemoglobin.other/Hemoglobin.total in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4237629,
+              "CONCEPT_NAME": "Hemoglobin H inclusion test",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42869617,
+              "CONCEPT_NAME": "Hemoglobin H/Hemoglobin.total [Pure mass fraction] in Blood by Electrophoresis",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "name": "Inability to comply with INR monitoring",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 763687,
+              "CONCEPT_NAME": "Noncompliance with self-monitoring regimen",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4005175,
+              "CONCEPT_NAME": "Noncompliance with dental treatment",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4031367,
+              "CONCEPT_NAME": "Noncompliance with dietary regimen",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4032522,
+              "CONCEPT_NAME": "Noncompliance with fluid volume regimen",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4032524,
+              "CONCEPT_NAME": "Noncompliance with therapeutic regimen",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4086298,
+              "CONCEPT_NAME": "Patient non-compliant with specific advice",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Context-dependent",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4137088,
+              "CONCEPT_NAME": "Difficulty complying with treatment",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4305297,
+              "CONCEPT_NAME": "Noncompliance with medication regimen",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46270032,
+              "CONCEPT_NAME": "Non-compliance with renal dialysis",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "name": "Increased bleeding risk contraindication",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 600769,
+              "CONCEPT_NAME": "Platelet aggregation inhibitor therapy contraindication",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4093842,
+              "CONCEPT_NAME": "Tendency to bleed",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4140465,
+              "CONCEPT_NAME": "At increased risk of bleeding from aspirin therapy",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4141768,
+              "CONCEPT_NAME": "Medical contraindication to procedure",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Context-dependent",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4193016,
+              "CONCEPT_NAME": "Thrombolysis contraindicated",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Context-dependent",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4231195,
+              "CONCEPT_NAME": "Administration of medication contraindicated",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Context-dependent",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4248529,
+              "CONCEPT_NAME": "Clopidogrel contraindicated",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Context-dependent",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44792581,
+              "CONCEPT_NAME": "Medication contraindicated",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Context-dependent",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46286421,
+              "CONCEPT_NAME": "Rivaroxaban contraindicated",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Context-dependent",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "name": "Systolic blood pressure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3004249,
+              "CONCEPT_NAME": "Systolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3035856,
+              "CONCEPT_NAME": "Systolic blood pressure--standing",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4152194,
+              "CONCEPT_NAME": "Systolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4154790,
+              "CONCEPT_NAME": "Diastolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 21492239,
+              "CONCEPT_NAME": "Systolic blood pressure by Noninvasive",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44807556,
+              "CONCEPT_NAME": "Highest brachial systolic pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "name": "Diastolic blood pressure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3012888,
+              "CONCEPT_NAME": "Diastolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4068414,
+              "CONCEPT_NAME": "Non-invasive diastolic arterial pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4152194,
+              "CONCEPT_NAME": "Systolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4154790,
+              "CONCEPT_NAME": "Diastolic blood pressure",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40758413,
+              "CONCEPT_NAME": "Blood pressure systolic and diastolic",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 30,
+      "name": "Atrial fibrillation ablation",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1073964,
+              "CONCEPT_NAME": "Cardiac ablation for atrial fibrillation",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4049986,
+              "CONCEPT_NAME": "Ablation operation for arrhythmia by diathermy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4049987,
+              "CONCEPT_NAME": "Radiofrequency ablation operation for arrhythmia",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4057420,
+              "CONCEPT_NAME": "Catheter ablation of tissue of heart",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4322906,
+              "CONCEPT_NAME": "Percutaneous transluminal ablation of wall of atrium",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4335811,
+              "CONCEPT_NAME": "Cardiac ablation using fluoroscopy guidance",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44809588,
+              "CONCEPT_NAME": "High intensity focused ultrasound ablation of left atrium",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45769227,
+              "CONCEPT_NAME": "Percutaneous transluminal ablation of pulmonary vein to left atrium conducting system",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "name": "Coronary artery bypass graft (CABG)",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4231998,
+              "CONCEPT_NAME": "Cardiac revascularization with bypass anastomosis",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4336464,
+              "CONCEPT_NAME": "Coronary artery bypass graft",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "name": "Heart valve replacement",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1449139,
+              "CONCEPT_NAME": "Replacement of implanted heart valve prosthesis",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4145119,
+              "CONCEPT_NAME": "Heart valve replacement",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "name": "Major abdominal surgery (e.g., colectomy, gastric bypass)",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 2002768,
+              "CONCEPT_NAME": "Laparoscopic total intra-abdominal colectomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "ICD9Proc",
+              "CONCEPT_CLASS_ID": "4-dig billing code",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 2002769,
+              "CONCEPT_NAME": "Open total intra-abdominal colectomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "ICD9Proc",
+              "CONCEPT_CLASS_ID": "4-dig billing code",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 2002770,
+              "CONCEPT_NAME": "Other and unspecified total intra-abdominal colectomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "ICD9Proc",
+              "CONCEPT_CLASS_ID": "4-dig billing code",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4066750,
+              "CONCEPT_NAME": "Bypass of ileum by anastomosis of jejunum to ileum",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4066751,
+              "CONCEPT_NAME": "Bypass of ileum by anastomosis of ileum to ileum",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4066753,
+              "CONCEPT_NAME": "Bypass of ileum by anastomosis of ileum to cecum",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4069249,
+              "CONCEPT_NAME": "Roux-en-Y gastrojejunostomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4069355,
+              "CONCEPT_NAME": "Bypass of duodenum by anastomosis of stomach to jejunum",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4095787,
+              "CONCEPT_NAME": "Biliopancreatic bypass to ileum with partial gastrectomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4145225,
+              "CONCEPT_NAME": "Total colectomy and ileostomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4148762,
+              "CONCEPT_NAME": "Printen and Mason operation, high gastric bypass",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4197412,
+              "CONCEPT_NAME": "Total abdominal colectomy with rectal mucosectomy and ileoanal anastomosis",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4262950,
+              "CONCEPT_NAME": "Total abdominal colectomy with ileoproctostomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4309342,
+              "CONCEPT_NAME": "Roux-en-Y anastomosis of extrahepatic biliary ducts and gastrointestinal tract",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37204027,
+              "CONCEPT_NAME": "Excision of entire colon and entire rectum",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37312780,
+              "CONCEPT_NAME": "Laparoscopic total colectomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44807804,
+              "CONCEPT_NAME": "Open total colectomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44807809,
+              "CONCEPT_NAME": "Laparoscopic total colectomy converted to open",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 34,
+      "name": "Major orthopedic surgery (e.g., joint replacement)",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1242869,
+              "CONCEPT_NAME": "Prosthetic arthroplasty of joint",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 2005966,
+              "CONCEPT_NAME": "Other repair of joint",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "ICD9Proc",
+              "CONCEPT_CLASS_ID": "4-dig billing code",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4034396,
+              "CONCEPT_NAME": "Arthroplasty of elbow",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4034665,
+              "CONCEPT_NAME": "Arthroplasty of shoulder",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4078547,
+              "CONCEPT_NAME": "Arthroplasty of knee",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4165513,
+              "CONCEPT_NAME": "Repair of hip",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4166766,
+              "CONCEPT_NAME": "Arthroplasty (excluding hip)",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4321095,
+              "CONCEPT_NAME": "Reconstruction of joint",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4325438,
+              "CONCEPT_NAME": "Arthroplasty of wrist",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40487664,
+              "CONCEPT_NAME": "Revision of uncemented prosthetic replacement of joint",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44808730,
+              "CONCEPT_NAME": "Major orthopaedic surgery care management",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "name": "Platelet count",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3007461,
+              "CONCEPT_NAME": "Platelets [#/volume] in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4267147,
+              "CONCEPT_NAME": "Platelet count",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37208696,
+              "CONCEPT_NAME": "Platelet count in blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 36,
+      "name": "Ischemic stroke",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4045734,
+              "CONCEPT_NAME": "CVA - cerebrovascular accident due to cerebral artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4310996,
+              "CONCEPT_NAME": "Ischemic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 37,
+      "name": "Aspirin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1112807,
+              "CONCEPT_NAME": "aspirin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "name": "Severe comorbid condition with life expectancy ≤ 1 year",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 2617405,
+              "CONCEPT_NAME": "END STAGE RENAL DISEASE (ESRD) RELATED SERVICES LESS THAN FULL MONTH, PER DAY; FOR PATIENTS TWENTY YEARS OF AGE AND OVER (Deprecated)",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "HCPCS",
+              "CONCEPT_CLASS_ID": "HCPCS",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3031104,
+              "CONCEPT_NAME": "Comorbidities and complications 1",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3046355,
+              "CONCEPT_NAME": "End-Stage disease, 6 or fewer months to live [Minimum Data Set]",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Survey",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3050013,
+              "CONCEPT_NAME": "Life expectancy [OASIS]",
+              "DOMAIN_ID": "Observation",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Survey",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "name": "Creatinine",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3001349,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in 24 hour Urine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3003326,
+              "CONCEPT_NAME": "Creatine/Creatinine [Mass Ratio] in Urine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3003447,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Urine by Test strip",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3009508,
+              "CONCEPT_NAME": "Creatinine [Moles/volume] in Urine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3011002,
+              "CONCEPT_NAME": "Creatinine [Mass/time] in 6 hour Urine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3016723,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3017250,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Urine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3021126,
+              "CONCEPT_NAME": "Creatinine [Mass/time] in 12 hour Urine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3027111,
+              "CONCEPT_NAME": "Creatinine [Mass/time] in 72 hour Urine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3038377,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Urine --8 hours post XXX challenge",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3038539,
+              "CONCEPT_NAME": "Creatinine [Moles/volume] in Urine --30 minutes post XXX challenge",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3044271,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Urine --6 hours post XXX challenge",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3051825,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 40,
+      "name": "Creatinine clearance",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3047148,
+              "CONCEPT_NAME": "Creatinine renal clearance in Urine and Serum or Plasma collected for unspecified duration",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4010651,
+              "CONCEPT_NAME": "Creatinine renal clearance",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4042762,
+              "CONCEPT_NAME": "Measurement of renal clearance of creatinine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37208635,
+              "CONCEPT_NAME": "Estimated glomerular filtration rate by laboratory calculation",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37393360,
+              "CONCEPT_NAME": "Creatinine clearance test",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37393690,
+              "CONCEPT_NAME": "GFR (glomerular filtration rate) calculated by abbreviated Modification of Diet in Renal Disease Study Group calculation",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37393805,
+              "CONCEPT_NAME": "Urate clearance test",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37398780,
+              "CONCEPT_NAME": "Blood urea/renal function",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44808279,
+              "CONCEPT_NAME": "Estimated glomerular filtration rate using Chronic Kidney Disease Epidemiology Collaboration formula",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 41,
+      "name": "Simultaneous aspirin and thienopyridine use",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1112807,
+              "CONCEPT_NAME": "aspirin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1322184,
+              "CONCEPT_NAME": "clopidogrel",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "name": "Unapproved investigational drug use",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 42709328,
+              "CONCEPT_NAME": "robenacoxib",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 43,
+      "name": "Prosthetic mechanical heart valve",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 142026,
+              "CONCEPT_NAME": "Disorder of cardiovascular prostheses and implants",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 434822,
+              "CONCEPT_NAME": "Complication of internal prosthetic device",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4008709,
+              "CONCEPT_NAME": "Mechanical breakdown of cardiac device",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": false,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    }
+  ],
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "DrugEra": {
+          "CodesetId": 1
+        }
+      }
+    ],
+    "ObservationWindow": {
+      "PriorDays": 365,
+      "PostDays": 0
+    },
+    "PrimaryCriteriaLimit": {
+      "Type": "First"
+    }
+  },
+  "InclusionRules": [
+    {
+      "name": "Age >= 18 years",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [
+          {
+            "Age": {
+              "Value": 18.0,
+              "Op": "gte"
+            }
+          }
+        ],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Age >= 75 years",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [
+          {
+            "Age": {
+              "Value": 75.0,
+              "Op": "gte"
+            }
+          }
+        ],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Age >= 18 years (redundant check)",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [
+          {
+            "Age": {
+              "Value": 18.0,
+              "Op": "gte"
+            }
+          }
+        ],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Prior stroke/TIA/SE presence + Age >= 75 years with previous stroke",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 2
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [],
+            "DemographicCriteriaList": [
+              {
+                "Age": {
+                  "Value": 75.0,
+                  "Op": "gte"
+                }
+              }
+            ],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Diabetes mellitus",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 3
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "ECG",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ProcedureOccurrence": {
+                "CodesetId": 6
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "AF/Flutter documentation requirement",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 9
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 365,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "AF/Flutter presence",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 10
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Systolic blood pressure",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 16,
+                "ValueAsNumber": {
+                  "Value": 100.0,
+                  "Op": "gt"
+                },
+                "Unit": [
+                  {
+                    "CONCEPT_CODE": "mm[Hg]",
+                    "CONCEPT_ID": 8876,
+                    "CONCEPT_NAME": "millimeter mercury column",
+                    "DOMAIN_ID": "Unit",
+                    "INVALID_REASON_CAPTION": "Unknown",
+                    "STANDARD_CONCEPT_CAPTION": "Unknown",
+                    "VOCABULARY_ID": "UCUM"
+                  }
+                ]
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Active alcohol or drug abuse",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Observation": {
+                "CodesetId": 20
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Infective endocarditis",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 21
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "AF/Flutter due to reversible causes",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 22
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Mitral stenosis",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 23
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Other chronic anticoagulation conditions",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 24
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Hemoglobin",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 25,
+                "ValueAsNumber": {
+                  "Value": 9.0,
+                  "Op": "lt"
+                },
+                "Unit": [
+                  {
+                    "CONCEPT_CODE": "g/dL",
+                    "CONCEPT_ID": 8713,
+                    "CONCEPT_NAME": "gram per deciliter",
+                    "DOMAIN_ID": "Unit",
+                    "INVALID_REASON_CAPTION": "Unknown",
+                    "STANDARD_CONCEPT_CAPTION": "Unknown",
+                    "VOCABULARY_ID": "UCUM"
+                  }
+                ]
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Inability to comply with INR monitoring",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Observation": {
+                "CodesetId": 26
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Increased bleeding risk contraindication",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Observation": {
+                "CodesetId": 27
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Systolic blood pressure",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 28,
+                "ValueAsNumber": {
+                  "Value": 180.0,
+                  "Op": "gt"
+                },
+                "Unit": [
+                  {
+                    "CONCEPT_CODE": "mm[Hg]",
+                    "CONCEPT_ID": 8876,
+                    "CONCEPT_NAME": "millimeter mercury column",
+                    "DOMAIN_ID": "Unit",
+                    "INVALID_REASON_CAPTION": "Unknown",
+                    "STANDARD_CONCEPT_CAPTION": "Unknown",
+                    "VOCABULARY_ID": "UCUM"
+                  }
+                ]
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Diastolic blood pressure",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 29,
+                "ValueAsNumber": {
+                  "Value": 180.0,
+                  "Op": "gt"
+                },
+                "Unit": [
+                  {
+                    "CONCEPT_CODE": "mm[Hg]",
+                    "CONCEPT_ID": 8876,
+                    "CONCEPT_NAME": "millimeter mercury column",
+                    "DOMAIN_ID": "Unit",
+                    "INVALID_REASON_CAPTION": "Unknown",
+                    "STANDARD_CONCEPT_CAPTION": "Unknown",
+                    "VOCABULARY_ID": "UCUM"
+                  }
+                ]
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Atrial fibrillation ablation",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ProcedureOccurrence": {
+                "CodesetId": 30
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Platelet count",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 35,
+                "ValueAsNumber": {
+                  "Value": 100000.0,
+                  "Op": "lte"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Ischemic stroke",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 36
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 7,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Aspirin",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "DrugExposure": {
+                "CodesetId": 37,
+                "ValueAsNumber": {
+                  "Value": 165.0,
+                  "Op": "gt"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 365,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Severe comorbid condition with life expectancy ≤ 1 year",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Observation": {
+                "CodesetId": 38,
+                "ValueAsNumber": {
+                  "Value": 1.0,
+                  "Op": "lte"
+                },
+                "Unit": [
+                  {
+                    "CONCEPT_CODE": "a",
+                    "CONCEPT_ID": 9448,
+                    "CONCEPT_NAME": "year",
+                    "DOMAIN_ID": "Unit",
+                    "INVALID_REASON_CAPTION": "Unknown",
+                    "STANDARD_CONCEPT_CAPTION": "Unknown",
+                    "VOCABULARY_ID": "UCUM"
+                  }
+                ]
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Creatinine",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 39,
+                "ValueAsNumber": {
+                  "Value": 2.5,
+                  "Op": "gt"
+                },
+                "Unit": [
+                  {
+                    "CONCEPT_CODE": "mg/dL",
+                    "CONCEPT_ID": 8840,
+                    "CONCEPT_NAME": "milligram per deciliter",
+                    "DOMAIN_ID": "Unit",
+                    "INVALID_REASON_CAPTION": "Unknown",
+                    "STANDARD_CONCEPT_CAPTION": "Unknown",
+                    "VOCABULARY_ID": "UCUM"
+                  }
+                ]
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Creatinine clearance",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 40,
+                "ValueAsNumber": {
+                  "Value": 25.0,
+                  "Op": "lt"
+                },
+                "Unit": [
+                  {
+                    "CONCEPT_CODE": "mL/min",
+                    "CONCEPT_ID": 8795,
+                    "CONCEPT_NAME": "milliliter per minute",
+                    "DOMAIN_ID": "Unit",
+                    "INVALID_REASON_CAPTION": "Unknown",
+                    "STANDARD_CONCEPT_CAPTION": "Unknown",
+                    "VOCABULARY_ID": "UCUM"
+                  }
+                ]
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Simultaneous aspirin and thienopyridine use",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "DrugExposure": {
+                "CodesetId": 41
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 365,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Unapproved investigational drug use",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "DrugExposure": {
+                "CodesetId": 42
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 30,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Prosthetic mechanical heart valve",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 43
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Diabetes mellitus + Hypertension requiring pharmacological treatment",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 4
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 5
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Symptomatic congestive heart failure within 3 months + LVEF ≤ 40%",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 7
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "Measurement": {
+                    "CodesetId": 8,
+                    "ValueAsNumber": {
+                      "Value": 40.0,
+                      "Op": "lte"
+                    },
+                    "Unit": [
+                      {
+                        "CONCEPT_CODE": "%",
+                        "CONCEPT_ID": 8554,
+                        "CONCEPT_NAME": "percent",
+                        "DOMAIN_ID": "Unit",
+                        "INVALID_REASON_CAPTION": "Unknown",
+                        "STANDARD_CONCEPT_CAPTION": "Unknown",
+                        "VOCABULARY_ID": "UCUM"
+                      }
+                    ]
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 180,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Prior stroke, TIA or systemic embolus + Prior stroke + TIA or Systemic Embolus",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 11
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 12
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 13
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Symptomatic congestive heart failure + LVEF ≤ 40%",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 14
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "Measurement": {
+                    "CodesetId": 15,
+                    "ValueAsNumber": {
+                      "Value": 40.0,
+                      "Op": "lte"
+                    },
+                    "Unit": [
+                      {
+                        "CONCEPT_CODE": "%",
+                        "CONCEPT_ID": 8554,
+                        "CONCEPT_NAME": "percent",
+                        "DOMAIN_ID": "Unit",
+                        "INVALID_REASON_CAPTION": "Unknown",
+                        "STANDARD_CONCEPT_CAPTION": "Unknown",
+                        "VOCABULARY_ID": "UCUM"
+                      }
+                    ]
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 180,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "ALT > 2X ULN + AST > 2X ULN + Total Bilirubin ≥ 1.5X ULN",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "Measurement": {
+                    "CodesetId": 17,
+                    "RangeHighRatio": {
+                      "Value": 2.0,
+                      "Op": "gt"
+                    }
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 180,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "Measurement": {
+                    "CodesetId": 18,
+                    "RangeHighRatio": {
+                      "Value": 2.0,
+                      "Op": "gt"
+                    }
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 180,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "Measurement": {
+                    "CodesetId": 19,
+                    "RangeHighRatio": {
+                      "Value": 1.5,
+                      "Op": "gte"
+                    }
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 180,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Major Surgical Procedure + Major Surgical Procedure + Major Surgical Procedure + Major Surgical Procedure",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 31
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 32
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 33
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 34
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    }
+  ]
+}
