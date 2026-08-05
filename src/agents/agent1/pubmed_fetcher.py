@@ -340,6 +340,25 @@ def _collapse_hierarchical_groups(text: str) -> str:
         r"(?:≥\s*1\s+of|at\s+least\s+one\s+of|one\s+or\s+more\s+of|any\s+(?:one\s+)?of\s*:?)",
         re.IGNORECASE,
     )
+    # Protocols enumerate rather than indent. ARISTOTLE lists its five stroke risk
+    # factors as a) to e), flush left, under "One or more of the following:".
+    _enum_marker = re.compile(
+        r"^\s*\(?(?:(?P<roman>i{2,3}|iv|vi{1,3}|ix|xi{0,3})|(?P<alpha>[a-z])|(?P<digit>\d{1,2}))[.)]\s+",
+        re.IGNORECASE,
+    )
+    # A page number stranded between children by pdftotext.
+    _noise_line = re.compile(r"^\s*\d{1,4}\s*$")
+
+    def _child_style(candidate: str) -> Optional[str]:
+        """Which enumeration a line uses, or None if it is not a list item."""
+        if _indented.match(candidate):
+            return "bullet"
+        marker = _enum_marker.match(candidate)
+        if not marker:
+            return None
+        if marker.group("roman"):
+            return "roman"
+        return "alpha" if marker.group("alpha") else "digit"
 
     lines = text.split("\n")
     result_lines: List[str] = []
@@ -351,22 +370,49 @@ def _collapse_hierarchical_groups(text: str) -> str:
 
         # Check if this line is a potential parent header
         if stripped and _header_trigger.search(stripped):
-            # Collect contiguous indented/bullet children
             children: List[str] = []
+            # The children share one enumeration; a different one ends the group.
+            # That is what separates ARISTOTLE's a)-e) from the 4) after them.
+            style: Optional[str] = None
             j = i + 1
             while j < len(lines):
                 child = lines[j]
                 child_stripped = child.strip()
-                if not child_stripped:
-                    # Blank line — stop collecting
+
+                if not child_stripped or _noise_line.match(child):
+                    # Step over blank lines and page numbers only when a child of
+                    # the same enumeration resumes after them; otherwise the group
+                    # has really ended. ARISTOTLE's list is broken between c) and
+                    # d) by a stray "37".
+                    k = j + 1
+                    while k < len(lines) and (not lines[k].strip() or _noise_line.match(lines[k])):
+                        k += 1
+                    if k < len(lines) and style is not None and _child_style(lines[k]) == style:
+                        j = k
+                        continue
                     break
-                if _indented.match(child):
-                    child_text = _bullet_start.sub("", child).strip()
-                    if child_text:
-                        children.append(child_text)
-                    j += 1
-                else:
+
+                this_style = _child_style(child)
+                if this_style is None:
+                    # A wrapped child, e.g. c) running onto a second line. Only
+                    # enumerated lists wrap this way; for indented bullets the
+                    # indentation is the signal and its absence ends the group.
+                    if children and style in ("alpha", "roman", "digit"):
+                        children[-1] = children[-1] + " " + child_stripped
+                        j += 1
+                        continue
                     break
+
+                if style is None:
+                    style = this_style
+                elif this_style != style:
+                    break
+
+                child_text = (_bullet_start.sub("", child) if style == "bullet"
+                              else _enum_marker.sub("", child)).strip()
+                if child_text:
+                    children.append(child_text)
+                j += 1
 
             if len(children) >= 2:
                 # Build [OR-GROUP] string from header + children

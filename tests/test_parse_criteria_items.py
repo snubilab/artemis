@@ -7,7 +7,11 @@ newline-separated items, mixed formats, short-item filtering, and LLM fallback.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.agents.agent1.pubmed_fetcher import _parse_criteria_items, _regex_parse_criteria
+from src.agents.agent1.pubmed_fetcher import (
+    _collapse_hierarchical_groups,
+    _parse_criteria_items,
+    _regex_parse_criteria,
+)
 
 
 class TestCommaSeparated:
@@ -384,3 +388,70 @@ class TestWrappedLineStartingWithPunctuation:
         text = "1) Type 1 diabetes mellitus.\n(SGPT) elevation above the reference range\n"
 
         assert len(_regex_parse_criteria(text)) == 2
+
+
+class TestEnumeratedOrGroup:
+    """A protocol writes its OR group as "One or more of the following:" over
+    lettered items, not indented bullets.
+
+    ARISTOTLE's inclusion criterion 3 lists five stroke risk factors as a) to e).
+    Gold expresses them as one rule -- any one qualifies. Ours emitted five
+    separate rules, and Circe ANDs rules, so a patient had to have all five.
+    That is the whole reason the ARISTOTLE cohort came back empty.
+
+    The children are flush left and a page number sits between c) and d), so
+    both the indentation test and the blank-line stop have to give way.
+    """
+
+    ARISTOTLE = (
+        "3) One or more of the following risk factor(s) for stroke:\n"
+        "a) Age 75 years or older\n"
+        "b) Prior stroke, TIA or systemic embolus\n"
+        "c) Either symptomatic congestive heart failure within 3 months or left ventricular\n"
+        "dysfunction with an LV ejection fraction (LVEF) <= 40%\n"
+        "\n"
+        "37\n"
+        "\n"
+        "d) Diabetes mellitus\n"
+        "e) Hypertension requiring pharmacological treatment\n"
+        "4) Women of childbearing potential must be using contraception\n"
+    )
+
+    def test_lettered_children_collapse_into_one_or_group(self):
+        collapsed = _collapse_hierarchical_groups(self.ARISTOTLE)
+
+        groups = [l for l in collapsed.split("\n") if l.startswith("[OR-GROUP]")]
+        assert len(groups) == 1, f"expected one OR group, got {groups}"
+
+    def test_all_five_risk_factors_are_inside_the_group(self):
+        collapsed = _collapse_hierarchical_groups(self.ARISTOTLE)
+        group = next(l for l in collapsed.split("\n") if l.startswith("[OR-GROUP]"))
+
+        for factor in ("75 years", "Prior stroke", "ejection fraction",
+                       "Diabetes mellitus", "Hypertension"):
+            assert factor in group, f"{factor!r} fell out of the group"
+
+    def test_the_next_numbered_criterion_stays_outside(self):
+        collapsed = _collapse_hierarchical_groups(self.ARISTOTLE)
+        group = next(l for l in collapsed.split("\n") if l.startswith("[OR-GROUP]"))
+
+        assert "childbearing" not in group
+        assert any("childbearing" in l for l in collapsed.split("\n"))
+
+    def test_a_plain_header_does_not_become_an_or_group(self):
+        """"Inclusion criteria:" over lettered items is a list of AND criteria.
+        Only an explicit or-quantifier collapses."""
+        text = ("Inclusion criteria:\n"
+                "a) Age 18 years or older\n"
+                "b) Documented type 2 diabetes\n")
+
+        assert "[OR-GROUP]" not in _collapse_hierarchical_groups(text)
+
+    def test_indented_bullets_still_work(self):
+        text = ("Any of the following:\n"
+                "  - prior myocardial infarction\n"
+                "  - prior stroke\n")
+
+        collapsed = _collapse_hierarchical_groups(text)
+        assert collapsed.count("[OR-GROUP]") == 1
+        assert "myocardial" in collapsed and "stroke" in collapsed
