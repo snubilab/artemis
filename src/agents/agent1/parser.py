@@ -410,6 +410,29 @@ class LogicDecomposer:
         results.sort(key=lambda x: x["priority"])
         return results
     
+    # A protocol and a supplement are both the trial's own text; ClinicalTrials.gov
+    # is a summary of it. Merging the two as equals duplicates every criterion they
+    # share, and Circe ANDs InclusionRules, so a duplicate is an extra mandatory
+    # rule rather than a redundant one. On ARISTOTLE that turned "one or more of
+    # the following risk factors" back into an AND: the collapsed five-way ANY rule
+    # stood, and merge added the registry's diabetes-or-hypertension,
+    # TIA-or-embolism and LVEF criteria as three further rules the patient also had
+    # to satisfy. "Age >= 18 years" arrived twice for the same reason.
+    #
+    # "main" stays on merge. It is whatever the classifier could not place — a
+    # results paper, a design paper — and does not get to override the registry.
+    _PDF_AUTHORITATIVE_ROLES = frozenset({"protocol", "supplement"})
+
+    @classmethod
+    def _strategy_for_role(cls, role: str) -> str:
+        """Which enrichment strategy a PDF's role selects.
+
+        :param role: "main", "protocol" or "supplement", from _discover_pdfs.
+        :returns: "supplement_priority" when the PDF is the trial's own text,
+            else "merge".
+        """
+        return "supplement_priority" if role in cls._PDF_AUTHORITATIVE_ROLES else "merge"
+
     def _enrich_from_pdf(
         self, trial_data: TrialData, pdf_path: str, role: str = "main"
     ) -> TrialData:
@@ -478,8 +501,7 @@ class LogicDecomposer:
                 )
                 return trial_data
             
-            # Choose strategy based on PDF role
-            strategy = "supplement_priority" if role == "supplement" else "merge"
+            strategy = self._strategy_for_role(role)
             enriched = enrich_trial_data(trial_data, pdf_criteria, strategy=strategy)
             logger.info(
                 "[Agent 1] PDF enriched (strategy=%s): %d -> %d inclusion, %d -> %d exclusion",
