@@ -121,10 +121,11 @@ docker exec \
   -e ARTEMIS_GIT_REV="$rev" \
   -e PYTHONUNBUFFERED=1 \
   -e REINGEST_STUDIES="${REINGEST_STUDIES:-}" \
-  artemis-api python /app/scripts/reingest_protocol_pdfs.py > /tmp/reingest_run.log 2>&1
+  -e ARTEMIS_DISABLE_ORGROUP_DEDUP="${ARTEMIS_DISABLE_ORGROUP_DEDUP:-}" \
+  artemis-api python /app/scripts/reingest_protocol_pdfs.py > "${REINGEST_RUN_LOG:-/tmp/reingest_run.log}" 2>&1
 rc=$?
 log "  re-ingest exit=${rc}"
-tail -30 /tmp/reingest_run.log
+tail -30 "${REINGEST_RUN_LOG:-/tmp/reingest_run.log}"
 
 # Benchmark whatever was just re-ingested, not a fixed pair. "3,2" stayed hardcoded
 # after REINGEST_STUDIES was added, so a single-study run spent GPU time measuring
