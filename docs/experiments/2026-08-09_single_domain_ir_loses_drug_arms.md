@@ -112,3 +112,129 @@ and the mapper has to read the richer text.
 
 Related: `docs/debugging/2026-08-09_benchmark_cdm_is_not_an_oracle.md`,
 `../omx_wiki/benchmark-cdm-not-an-oracle.md`.
+
+---
+
+# Addendum — the metric was wrong, and it inverted the conclusion
+
+Everything above this line was computed as a **micro average over pooled concept ids**.
+That is the wrong unit. Re-scored per eligibility criterion, 1:1, macro-averaged:
+
+| | micro (concept mass) | per criterion 1:1 |
+| --- | --- | --- |
+| overall recall | 0.141 | **0.542 mean / 0.500 median** |
+| overall precision | 0.503 | **0.484 mean / 0.457 median** |
+| ARISTOTLE recall | 0.087 | **0.749 median** |
+| ARISTOTLE precision | 0.863 | **0.153 median** |
+
+ARISTOTLE reads as "worst recall, best precision" under micro and as the **opposite**
+per criterion. Its micro recall was set by one 111,910-concept antihypertensive set we
+never build; its micro precision by one 10,720-concept aspirin set that matches gold
+exactly. Neither says anything about the other forty criteria.
+
+Recall distribution over the 144 matched pairs — a third are perfect, which the pooled
+number erases completely:
+
+```
+1.0  perfect   48
+0.8-1.0        11
+0.5-0.8        19
+0.2-0.5        17
+0-0.2          35
+0.0            14
+```
+
+Coverage: 144 of gold's 238 concept sets (61%) got a counterpart at all; 94 got none.
+
+## The 14 zero-overlap pairs — three distinct causes
+
+Both sides exist, and they share **no concept**. Invisible in any pooled figure
+(linagliptin's 301 concepts are under 2% of our 16,625-concept union), and the sharpest
+defect class in the corpus.
+
+### A. Mapped to the wrong entity — 7 of 14
+
+| trial | gold wants | we built |
+| --- | --- | --- |
+| CAROLINA, CARMELINA (5 rows) | `linagliptin` RxNorm Ingredient | **`sitagliptin`** — a different DPP-4 inhibitor |
+| CAROLINA (2 rows) | `glimepiride` RxNorm Ingredient | `Poisoning caused by sulfonylurea`, `Hypoglycemic event due to diabetes`, `Drug-induced hypoglycemia` — all **Condition** |
+
+These are the trials' own study and comparator drugs. Not a granularity problem: a
+wrong molecule and a wrong domain. Likely shape: embedding search returned a
+semantic neighbour, since same-class drugs sit close in the vector space, and a proper
+noun needs exact match first. `_exact_ingredient_mapping` exists at
+`src/services/tte_service.py:5804` — why it did not fire is the next thing to check.
+
+### B. Right meaning, wrong vocabulary axis — 4 of 14
+
+| item | gold | ours |
+| --- | --- | --- |
+| eGFR (x2) | LOINC `Lab Test`, 5 | SNOMED `Observable Entity` / `Procedure`, 11 |
+| CrCl | LOINC `Lab Test`, 3 | different LOINC + SNOMED mixed, 8 |
+| substance abuse | SNOMED **Condition**, 3 | LOINC **Observation** surveys, 11 |
+
+Both sides mean the same clinical thing and neither is an ancestor of the other, so the
+closure intersection is empty. `substance abuse` is worse: the domain differs, so the
+CIRCE criterion queries a different CDM table entirely.
+
+### C. Qualifier dropped — 3 of 14
+
+```
+gold  3004501  Glucose [Mass/volume] in Serum or Plasma
+ours  3028247  Glucose [Mass/volume] in Serum or Plasma --30 minutes post dose glucose
+ours  1616656  Glucose [Mass/volume] in Serum or Plasma --30 minutes post dose arginine
+```
+
+Gold names one fasting-glucose LOINC. We emit 205 glucose concepts and **omit that
+one**, substituting OGTT timepoints. Size is not the defect — the set is 205x gold and
+still misses the answer. Smoking is the same shape (gold: one Condition + one
+Observation; ours: 18 `cigarette smoking` concepts, zero shared).
+
+## What the Fable investigation settled
+
+**Do not change the IR schema.** The IR already represents condition+drug:
+`Criteria.sub_criteria` + `group_type="ALL"` (`src/models/ir.py:95-96`),
+`_criteria_from_ir` flattens a composite into sibling rows sharing a `groupId` each
+keeping its own scalar `domain` (`tte_service.py:9523-9553`), and
+`_build_grouped_inclusion_rule` (`4307-4352`) emits exactly gold's
+`ALL[ConditionOccurrence, DrugExposure]`. We already emit 16 mixed-domain rules and 19
+mixed-domain IR groups. What we emit **zero** of, across all 191 rules, is the
+multi-domain presence *conjunction*. That is an Agent 1 prompt gap
+(`prompts.py:480-489` teaches `sub_criteria` only with `group_type:"ANY"`), not a
+schema gap.
+
+A list-valued `domain` would have been actively harmful: every Agent 2 gate is a scalar
+equality (`domain_hint == "Drug"` at `workflow.py:297` for ATC expansion, `:421` for
+ingredient rollup), so a list evaluates False and **silently disables the drug
+pipeline** — reintroducing the exact loss being fixed. It also crashes
+`tte-manager.js:2339` on study load. An additive field is dropped by the Atlas save
+whitelist (`tte-manager.js:3820-3846`).
+
+**Do not switch the mapper from `sourceText` to `description`.** Measured over a
+36-criterion A/B on local vLLM: ARISTOTLE antihypertensives recovered 0 of 111,910;
+PLATO's exact ingredient closures went 2,879 → 0; noise +45%; and 93% of the apparent
+gains were cross-domain concepts on criteria whose CIRCE table can never match them.
+Two premises of the section above are also corrected by it: ARISTOTLE `id=10` has
+`description == sourceText == "Diabetes mellitus"` (the OAD signal was lost at Agent 1,
+not by truncation), and LEADER's under-expanded drug set already has an empty
+`sourceText`, so it is *already* description-fed and still under-expands 3.5x.
+
+Also: the stored `sourceText` is not a truncation but Agent 1's normalized
+`entity_text` (`tte_service.py:9574`), and the genuinely verbatim `Criteria.source_text`
+(`ir.py:87`) is dropped on the way into the store, so no consumer can read it today.
+
+**Concentration, stated honestly.** The condition+drug conjunction occurs exactly twice
+in the whole six-trial corpus, both in ARISTOTLE. Those two nodes are 87.9% of
+ARISTOTLE's gold union and 42.5% of the six-trial gold mass, and zero elsewhere. The
+multi-domain idiom is general (25 nodes) but its *pairs* are Condition+Procedure 10x,
+Condition+Measurement 8x, Condition+Drug only 2x. Any general fix must handle procedure
+and measurement arms, not just drug.
+
+## Next, in order of evidence
+
+1. **The 7 wrong-entity mappings.** Cheapest and most severe: a trial's own study drug
+   resolving to a different molecule. Start at `_exact_ingredient_mapping`.
+2. **Agent 1 conjunction extraction** (`prompts.py` Rule 12b) — recovers ARISTOTLE's
+   two nodes, worth little elsewhere.
+3. **Drug-class decomposition** in Agent 2 — the general lever behind the 23
+   under-expanded arms.

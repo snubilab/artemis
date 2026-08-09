@@ -352,12 +352,78 @@ def pair_concept_sets(
 # metrics
 # --------------------------------------------------------------------------
 
-def micro_totals(gold_sets: list[ResolvedSet], generated_sets: list[ResolvedSet]) -> dict:
-    """Union-level totals, computed independently of the pairing.
+def per_criterion_macro(pairs: list[PairRow]) -> dict:
+    """THE MEASURE OF RECORD: per-criterion 1:1 overlap, macro-averaged.
 
-    Read these alongside ``over_expansion``: micro precision is dominated by the
-    largest sets (on ARISTOTLE, aspirin's 10,720 concepts carry almost all of
-    0.863), so the over-expanded lab sets barely move it.
+    Quote this, not :func:`micro_totals`. On this corpus the two disagree in
+    direction, not just in magnitude, because a micro average is set by whichever
+    concept set happens to be enormous:
+
+        overall     micro recall 0.141 / precision 0.503
+                    macro recall 0.542 / precision 0.484
+        ARISTOTLE   micro recall 0.087 / precision 0.863   <- "worst recall, best precision"
+                    macro recall 0.749 / precision 0.153   <- the opposite, and correct
+
+    ARISTOTLE's micro recall was set by one 111,910-concept antihypertensive set we
+    never build; its micro precision by one 10,720-concept aspirin set that matches
+    gold exactly. Neither says anything about the other forty criteria. Per criterion,
+    48 of 144 matched pairs reach full recall -- a fact the pooled number erases.
+
+    The distribution matters more than the mean. ``recall_histogram`` is reported for
+    that reason, and ``zero_overlap`` isolates the sharpest defect class: pairs where
+    both sides exist and share NOTHING (e.g. gold Glimepiride 3,422 concepts against
+    our 29, or our "linagliptin" set resolving to sitagliptin). Those are invisible in
+    any pooled figure.
+    """
+    matched = [p for p in pairs if str(p.outcome).startswith("matched")]
+    if not matched:
+        return {"matched_pairs": 0}
+    rec = sorted(p.recall for p in matched)
+    pre = sorted(p.precision for p in matched)
+
+    def _median(xs: list[float]) -> float:
+        n = len(xs)
+        return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+    bands = [(1.0, "1.0"), (0.8, "0.8-1.0"), (0.5, "0.5-0.8"), (0.2, "0.2-0.5"), (0.0, "0-0.2")]
+    hist: dict[str, int] = {label: 0 for _, label in bands}
+    hist["0.0"] = 0
+    for p in matched:
+        if p.recall < 1e-9:
+            hist["0.0"] += 1
+            continue
+        for lo, label in bands:
+            if p.recall >= lo:
+                hist[label] += 1
+                break
+    return {
+        "matched_pairs": len(matched),
+        "recall_mean": _round(sum(rec) / len(rec)),
+        "recall_median": _round(_median(rec)),
+        "precision_mean": _round(sum(pre) / len(pre)),
+        "precision_median": _round(_median(pre)),
+        "exact_pairs": sum(1 for p in matched if p.recall > 0.999 and p.precision > 0.999),
+        "recall_histogram": hist,
+        "zero_overlap": [
+            {
+                "gold_name": p.gold_name,
+                "gen_name": p.gen_name,
+                "gold_size": p.gold_size,
+                "gen_size": p.gen_size,
+            }
+            for p in matched
+            if p.recall < 1e-9
+        ],
+    }
+
+
+def micro_totals(gold_sets: list[ResolvedSet], generated_sets: list[ResolvedSet]) -> dict:
+    """Union-level totals -- SECONDARY. Concept mass, not criterion quality.
+
+    Never quote this as the headline; see :func:`per_criterion_macro` for why the two
+    invert on ARISTOTLE. Micro precision is dominated by the largest sets (aspirin's
+    10,720 concepts carry almost all of 0.863), so the over-expanded lab sets barely
+    move it.
     """
     gold_union: set[int] = set().union(*(s.concept_ids for s in gold_sets)) if gold_sets else set()
     gen_union: set[int] = (
@@ -426,6 +492,10 @@ def build_report(
         "gold_concept_sets": len(gold_sets),
         "generated_concept_sets": len(generated_sets),
         "outcome_counts": counts,
+        # Ordered deliberately: the macro block is the measure of record and is read
+        # first; micro follows as concept mass. Swapping them invites the inversion
+        # documented in per_criterion_macro.
+        "per_criterion": per_criterion_macro(pairing.pairs),
         "micro": micro_totals(gold_sets, generated_sets),
         "pairs": [p.to_dict() for p in pairing.pairs],
         "unmatched_gold": pairing.unmatched_gold,
@@ -563,18 +633,47 @@ def _print_console(payload: dict) -> None:
     print(f"MODE={mode}  vocab_schema={payload['vocab_schema']}  "
           f"thresholds={payload['thresholds']}")
     print(f"generated_dir={payload['generated_dir']}")
-    hdr = (f"{'trial':<18}{'gsets':>6}{'asets':>6}{'g|U|':>9}{'a|U|':>8}"
-           f"{'rec':>7}{'prec':>7}{'jacc':>7}{'name':>6}{'ovlp':>6}{'none':>6}")
+
+    # The measure of record goes first and gets the wide columns. The micro table
+    # below is concept mass and is labelled as such, because on this corpus the two
+    # disagree in DIRECTION (ARISTOTLE macro 0.749/0.153 vs micro 0.087/0.863) and a
+    # reader who sees micro first will quote it.
+    print("\nPER-CRITERION 1:1 (measure of record -- AGENTS.md EVALUATION)")
+    hdr = (f"{'trial':<18}{'pairs':>6}{'rec_mean':>9}{'rec_med':>8}{'prec_mean':>10}"
+           f"{'prec_med':>9}{'exact':>6}{'zero':>5}{'no_cp':>6}{'extra':>6}")
     print(hdr)
     print("-" * len(hdr))
     for r in payload["trials"]:
         c = r["outcome_counts"]
+        pc = r.get("per_criterion") or {}
+        if not pc.get("matched_pairs"):
+            print(f"{r['trial']:<18}{'0':>6}   (no matched pairs)")
+            continue
+        print(f"{r['trial']:<18}{pc['matched_pairs']:>6}{pc['recall_mean']:>9.3f}"
+              f"{pc['recall_median']:>8.3f}{pc['precision_mean']:>10.3f}"
+              f"{pc['precision_median']:>9.3f}{pc['exact_pairs']:>6}"
+              f"{len(pc.get('zero_overlap', [])):>5}"
+              f"{c.get('no_counterpart', 0):>6}{len(r['unmatched_generated']):>6}")
+
+    for r in payload["trials"]:
+        zo = (r.get("per_criterion") or {}).get("zero_overlap") or []
+        if not zo:
+            continue
+        print(f"\nZERO OVERLAP -- {r['trial']}  [{len(zo)} pairs share no concept at all]")
+        for row in sorted(zo, key=lambda x: -(x["gold_size"] or 0)):
+            print(f"  gold {row['gold_size']:>6} {row['gold_name'][:44]:<46}"
+                  f"ours {row['gen_size']:>6}  {row['gen_name'][:34]}")
+
+    print("\nMICRO (concept mass -- secondary, do not quote as quality)")
+    hdr = (f"{'trial':<18}{'gsets':>6}{'asets':>6}{'g|U|':>9}{'a|U|':>8}"
+           f"{'rec':>7}{'prec':>7}{'jacc':>7}")
+    print(hdr)
+    print("-" * len(hdr))
+    for r in payload["trials"]:
         m = r["micro"]
         print(f"{r['trial']:<18}{r['gold_concept_sets']:>6}{r['generated_concept_sets']:>6}"
               f"{m['gold_union']:>9}{m['generated_union']:>8}"
-              f"{m['recall']:>7.3f}{m['precision']:>7.3f}{m['jaccard']:>7.3f}"
-              f"{c.get('matched_by_name', 0):>6}{c.get('matched_by_overlap', 0):>6}"
-              f"{c.get('no_counterpart', 0):>6}")
+              f"{m['recall']:>7.3f}{m['precision']:>7.3f}{m['jaccard']:>7.3f}")
 
     for r in payload["trials"]:
         rows = r["over_expansion"][:8]
