@@ -13,6 +13,7 @@ venv/
 node_modules/
 
 # Large / runtime artifacts (not source)
+.cache/
 chroma_db/
 tmp/
 data/
