@@ -206,21 +206,35 @@ class TestLeaderSupplementStyle:
         assert len(result) == 2, f"regex-only should yield the two headers, got {result}"
         assert all(item.startswith("[OR-GROUP]") for item in result)
 
-    def test_llm_items_are_merged_with_the_headers(self):
-        """Deterministic: a canned fallback must reach the caller, not be dropped."""
+    def test_llm_items_that_restate_group_alternatives_are_suppressed(self):
+        """The fallback still reaches the caller; restatements are dropped.
+
+        This test used to assert ">= 12 items after merge", on the reasoning
+        that a canned fallback must not be silently discarded. But the LLM is
+        handed the raw, uncollapsed text, so those twelve bullets ARE the two
+        groups' alternatives -- re-adding them is what turned "any one of these"
+        into "all of these" and emptied the ARISTOTLE cohort. Appending them was
+        the defect, not the contract.
+
+        The positive control keeps the test able to tell "correctly
+        deduplicated" from "fallback silently discarded".
+        """
         bullets = [
             "Prior MI", "Prior stroke or TIA", "Coronary revascularization",
             ">50% stenosis", "Symptomatic CHD", "Asymptomatic cardiac ischemia",
             "CHF NYHA class II-III", "eGFR <60", "Microalbuminuria or proteinuria",
             "Hypertension and LVH", "LV systolic or diastolic dysfunction",
             "ABI <0.9",
+            "Prior amputation for vascular disease",  # not an alternative of either group
         ]
         with patch(
             "src.agents.agent1.pubmed_fetcher._llm_parse_criteria", return_value=bullets
         ):
             result = _parse_criteria_items(self.LEADER_TEXT)
 
-        assert len(result) >= 12, f"Expected >= 12 after merge, got {len(result)}"
+        assert sum(1 for item in result if item.startswith("[OR-GROUP]")) == 2
+        assert "Asymptomatic cardiac ischemia" not in result
+        assert "Prior amputation for vascular disease" in result
 
     @pytest.mark.billed
     def test_leader_supplement_produces_many_items(self):

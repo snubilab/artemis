@@ -113,3 +113,54 @@ class TestTrialDataEnrichment:
         assert len(enriched.inclusion_criteria) >= 3
         # Both sources' exclusions
         assert len(enriched.exclusion_criteria) >= 2
+
+    @pytest.mark.parametrize("strategy", ["merge", "supplement_priority", "replace"])
+    def test_should_keep_the_negated_criterion_when_a_group_offers_its_positive_form(
+        self, strategy
+    ):
+        """
+        Given: One source states an OR-GROUP offering "Prior stroke"
+        When:  The other source states "No prior stroke, TIA or systemic embolus"
+        Then:  The negated criterion survives the merge, under every strategy
+
+        The two land in the same list, which is where the merge compares them.
+        Once no/not/prior are stripped as stopwords the negated form tokenises
+        identically to the positive alternative, so it was deleted as a
+        restatement. Deleting a restriction WIDENS the cohort silently -- the
+        opposite direction from the empty-cohort bug, and nothing else in this
+        file would notice, because every other assertion here is a lower bound
+        on a count.
+        """
+        from src.agents.agent1.criteria_dedup import (
+            OR_GROUP_JOIN,
+            OR_GROUP_PREFIX,
+            OR_GROUP_SEP,
+        )
+        from src.agents.agent1.enricher import enrich_trial_data
+
+        group = (
+            f"{OR_GROUP_PREFIX}Atrial fibrillation with one or more risk factors"
+            f"{OR_GROUP_JOIN}"
+            + OR_GROUP_SEP.join([
+                "Prior stroke",
+                "Prior TIA",
+                "Prior systemic embolus",
+                "Diabetes mellitus",
+                "Hypertension requiring pharmacological treatment",
+            ])
+        )
+        negated = "No prior stroke, TIA or systemic embolus"
+        trial_data = TrialData(
+            nct_id="NCT00412984",
+            inclusion_criteria=[group],
+            exclusion_criteria=[],
+        )
+
+        enriched = enrich_trial_data(
+            trial_data,
+            {"inclusion": [group, negated], "exclusion": []},
+            strategy=strategy,
+        )
+
+        assert negated in enriched.inclusion_criteria
+        assert group in enriched.inclusion_criteria

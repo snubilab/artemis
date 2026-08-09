@@ -6,6 +6,23 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
+@pytest.fixture(autouse=True)
+def _no_llm(monkeypatch):
+    """Keep the LLM fallback out of this file.
+
+    extract_eligibility_from_text calls _llm_parse_criteria whenever the regex
+    pass yields fewer than 5 items from more than 200 characters. Three tests
+    here feed it real abstract text and hit that gate, so a default `pytest`
+    run billed three paid calls per run. The marker `billed` only deselects
+    tests that carry it, and these never did. Every assertion in this file
+    passes with the fallback stubbed to [], so the calls bought nothing.
+    """
+    monkeypatch.setattr(
+        "src.agents.agent1.pubmed_fetcher._llm_parse_criteria",
+        lambda *args, **kwargs: [],
+    )
+
+
 SAMPLE_ABSTRACT = """
 BACKGROUND: The Liraglutide Effect and Action in Diabetes: Evaluation of Cardiovascular 
 Outcome Results (LEADER) trial is designed to evaluate the long-term cardiovascular safety 

@@ -13,6 +13,15 @@ from difflib import SequenceMatcher
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
+from src.agents.agent1.criteria_dedup import (
+    DROP,
+    KEEP,
+    OR_GROUP_JOIN,
+    OR_GROUP_PREFIX,
+    OR_GROUP_SEP,
+    structural_verdict,
+)
+
 logger = logging.getLogger(__name__)
 
 # Lazy-cached LLM instance for criteria parsing validation
@@ -315,8 +324,10 @@ def _collapse_hierarchical_groups(text: str) -> str:
     a single [OR-GROUP] criterion string.
 
     Detection rule:
-    - A line ending with ':' (or containing "≥1 of", "at least one of",
-      "one or more of", "any of") is treated as a parent header.
+    - A line carrying an OR-quantifier phrase is treated as a parent header.
+      `any of` additionally requires a list announcer -- 'the/these/those
+      following|below|listed', or a line-terminal colon within 40 characters --
+      because `any of` also quantifies nouns ("any of the components").
     - Followed by 2+ lines that start with whitespace (spaces/tabs) or a
       bullet character (•, -, *, o followed by space).
     - Those child lines are joined with ' | ' and the whole group becomes:
@@ -336,8 +347,23 @@ def _collapse_hierarchical_groups(text: str) -> str:
     _indented = re.compile(r"^(?:[\t ]+|\s*[•\-\*\u25cb\u2022\u2023\u2043\u25e6\uf0b7\u00b7\u2219○]\s+)", re.UNICODE)
     # Header trigger: ONLY explicit OR-quantifier phrases trigger OR-group collapse.
     # Plain "Criteria:" headers must NOT trigger — their children are AND criteria.
+    #
+    # A quantifier phrase alone is not a list header: CAROLINA's "known
+    # hypersensitivity to any of the components" quantifies a noun, and matching
+    # it swallowed exclusion criteria 11-20 as ten fabricated alternatives. Only
+    # the ambiguous `any of` arm is constrained -- it must be followed by a
+    # forward reference (the/these/those following|below|listed) or terminate the
+    # line, optionally after a short noun phrase and a colon. The unambiguous
+    # arms keep firing anywhere so that wrapped headers ("...including at least
+    # one of") still collapse; they only refuse relative pronouns and
+    # possessives, which is what "at least one of which should be performed" and
+    # "one or more of its affiliated companies" are.
     _header_trigger = re.compile(
-        r"(?:≥\s*1\s+of|at\s+least\s+one\s+of|one\s+or\s+more\s+of|any\s+(?:one\s+)?of\s*:?)",
+        r"(?:[≥>]=?\s*1|\bat\s+least\s+(?:one|1)|\bone\s+or\s+more|\beither)"
+        r"\s+of\b(?!\s+(?:which|whom|its|their|his|her)\b)"
+        r"|\bany\s+(?:one\s+)?of"
+        r"(?:\s+(?:the\s+|these\s+|those\s+)?(?:following|below|listed)\b"
+        r"|[^:\n]{0,40}:\s*$)",
         re.IGNORECASE,
     )
     # Protocols enumerate rather than indent. ARISTOTLE lists its five stroke risk
@@ -418,7 +444,8 @@ def _collapse_hierarchical_groups(text: str) -> str:
                 # Build [OR-GROUP] string from header + children
                 # Strip trailing colon/whitespace from header
                 header_text = re.sub(r"[\s:]+$", "", stripped)
-                or_group = f"[OR-GROUP] {header_text} with any of: {' | '.join(children)}"
+                or_group = (f"{OR_GROUP_PREFIX}{header_text}"
+                            f"{OR_GROUP_JOIN}{OR_GROUP_SEP.join(children)}")
                 result_lines.append(or_group)
                 i = j  # skip consumed child lines
                 continue
@@ -451,7 +478,7 @@ def _parse_criteria_items(text: str) -> List[str]:
     or_group_items: List[str] = []
     remaining_lines: List[str] = []
     for line in preprocessed.splitlines():
-        if line.strip().startswith("[OR-GROUP]"):
+        if line.strip().startswith(OR_GROUP_PREFIX.strip()):
             or_group_items.append(line.strip())
         else:
             remaining_lines.append(line)
@@ -674,11 +701,25 @@ def _merge_parsed_items(
     """
     Merge regex and LLM parsed items, deduplicating by string similarity.
 
-    LLM items not similar to any regex item are appended.
+    LLM items not similar to any regex item are appended, unless they merely
+    restate an alternative already inside an [OR-GROUP] -- the LLM is handed the
+    raw, uncollapsed text, so it re-flattens any hierarchy the collapse just
+    built. Whole-string similarity cannot catch that: an alternative is far
+    shorter than the group line that contains it.
+
+    Routed through structural_verdict for the single-home rule rather than for a
+    behaviour change: the LLM is handed raw text and never emits the OR-GROUP
+    wire format, so the KEEP branch is unreachable from here in production.
     """
     merged = list(regex_items)
 
     for llm_item in llm_items:
+        verdict = structural_verdict(llm_item, merged)
+        if verdict == DROP:
+            continue
+        if verdict == KEEP:
+            merged.append(llm_item)
+            continue
         is_duplicate = False
         for existing in merged:
             similarity = SequenceMatcher(
