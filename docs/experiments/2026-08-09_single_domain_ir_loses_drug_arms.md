@@ -164,6 +164,18 @@ defect class in the corpus.
 
 ### A. Mapped to the wrong entity — 7 of 14
 
+> **PARTLY SUPERSEDED 2026-08-09** by
+> `2026-08-09_entry_drug_exact_match_paired_eval.md`. This is two defects, not one.
+> The 5 linagliptin rows were the entry drug reaching the mapper with no
+> `expected_domain`, fixed in 991c11c and measured 0.000 → 1.000 in a paired arm.
+> The 2 glimepiride rows are misfiled here: that criterion is *"Hypersensitivity to
+> investigational product or glimepiride"*, so `domain="Condition"` is defensible and
+> the real defect is its `sourceText` normalizing to the bare drug name — class C
+> below, not this class. The "why it did not fire" question at the end of this section
+> is answered there too: a feature flag, not a lookup failure. A sixth wrong entry drug
+> this table misses — EMPA-REG's `BI 10773` → `CHF-6366 .beta.-2 metabolite` — is
+> recorded in that document as still open.
+
 | trial | gold wants | we built |
 | --- | --- | --- |
 | CAROLINA, CARMELINA (5 rows) | `linagliptin` RxNorm Ingredient | **`sitagliptin`** — a different DPP-4 inhibitor |
