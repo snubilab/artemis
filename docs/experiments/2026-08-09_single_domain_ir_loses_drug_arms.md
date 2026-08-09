@@ -1,5 +1,15 @@
 # Experiment Log — 2026-08-09: a one-domain IR field loses gold's drug arms
 
+> **CORRECTED — read the Addendum first.** Three claims below were measured and are
+> false: (1) every number in "Result — six trials" is a micro average over pooled
+> concept ids, which inverts the conclusion for ARISTOTLE; (2) "the IR **cannot
+> represent** a criterion that needs two domains" — it can, via `sub_criteria` +
+> `group_type="ALL"`, and changing the schema would have silently disabled Agent 2's
+> drug pipeline; (3) "`sourceText` is truncated" — it is Agent 1's normalized
+> `entity_text`, and switching the mapper to `description` recovers 0 of the 111,910
+> concepts it was supposed to. The **Conclusion** section is therefore wrong as
+> written. The Addendum supersedes it.
+
 ## Question
 
 Concept-set recall against gold is 0.141 across the six trials. Is the loss in
