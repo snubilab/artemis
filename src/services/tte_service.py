@@ -282,6 +282,20 @@ class TTEService:
         """True when drug-anchored entry mode (Defect A / ADR-019) is enabled."""
         return os.environ.get("TTE_DRUG_ANCHORED_ENTRY", "").strip().lower() in ("1", "true", "yes")
 
+    # A named ablation, not a fallback (same idiom as
+    # src/agents/agent1/criteria_dedup.py:_ABLATION_ENV). Attributing a
+    # concept-set fix to exact-ingredient matching needs a control arm that runs
+    # the identical pipeline with the match off, not a guess from disabling it
+    # mid-experiment. Set ARTEMIS_DISABLE_EXACT_INGREDIENT_MATCH=1 only to
+    # produce that control arm for the per-criterion A/B measurement, and say so
+    # when reporting the number. Default is ON;
+    # tests/test_defect_b_exact_ingredient_gate.py pins that.
+    _EXACT_INGREDIENT_ABLATION_ENV = "ARTEMIS_DISABLE_EXACT_INGREDIENT_MATCH"
+
+    def _exact_ingredient_match_enabled(self) -> bool:
+        """:returns: False only when the ablation env var is explicitly set to 1."""
+        return os.environ.get(self._EXACT_INGREDIENT_ABLATION_ENV, "").strip() != "1"
+
     def _is_placebo_arm(self, name: str) -> bool:
         """True when an arm denotes placebo/no-drug (no real-world cohort possible)."""
         n = (name or "").strip().lower()
@@ -6072,9 +6086,13 @@ class TTEService:
         # Defect B fix: for drug seeds, an EXACT standard RxNorm Ingredient name
         # match wins over embedding search (fixes linagliptin->sitagliptin,
         # warfarin->LOINC lab, glimepiride->combo). Runs before the cache so it
-        # also overrides previously-cached wrong mappings. Gated with the
-        # drug-anchored (gold) mode so A/B/C toggle together.
-        if expected_domain == "Drug" and self._drug_anchored_entry():
+        # also overrides previously-cached wrong mappings. Applies unconditionally
+        # -- decoupled from drug-anchored entry mode (Defect A / ADR-019): B is a
+        # correctness fix for a proper-noun lookup, A is that unfinished
+        # entry-mode feature's Phase 1 dependency, still off by default on this
+        # branch. They no longer need to toggle together. See
+        # _exact_ingredient_match_enabled for this fix's own ablation.
+        if expected_domain == "Drug" and self._exact_ingredient_match_enabled():
             _exact = self._exact_ingredient_mapping(normalized_seed)
             if _exact is not None:
                 return _exact
