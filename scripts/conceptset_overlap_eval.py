@@ -193,6 +193,44 @@ def resolve_cohort_sets(
     return out
 
 
+def censoring_only_codeset_keys(cohort: dict) -> set[str]:
+    """:returns: keys of concept sets this cohort references ONLY from CensoringCriteria.
+
+    The header of this module already states that gold's treatment- and comparator-arm
+    drug sets "have no generated counterpart and are out of scope here, not scored
+    weakly". Nothing enforced it, so all 17 such sets across the six trials were being
+    paired: gold censors at initiation of either arm's drug, while the generated
+    artifact is the eligibility cohort and carries no CensoringCriteria section at all.
+    Pairing them scores our eligibility sets against a part of gold that the artifact
+    does not attempt -- CAROLINA's exclusion "Hypersensitivity to investigational
+    product or glimepiride" was matched, by name alone, to gold's glimepiride censoring
+    set.
+
+    A set referenced from CensoringCriteria *and* anywhere else stays in scope; only
+    censoring-exclusive sets are dropped.
+    """
+    sections: dict[int, set[str]] = {}
+
+    def walk(node: object, section: str) -> None:
+        if isinstance(node, dict):
+            codeset_id = node.get("CodesetId")
+            if isinstance(codeset_id, int):
+                sections.setdefault(codeset_id, set()).add(section)
+            for value in node.values():
+                walk(value, section)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value, section)
+
+    expression = cohort.get("expression") if isinstance(cohort.get("expression"), dict) else cohort
+    for section, subtree in expression.items():
+        if section == "ConceptSets":
+            continue
+        walk(subtree, section)
+
+    return {str(cid) for cid, secs in sections.items() if secs == {"CensoringCriteria"}}
+
+
 # --------------------------------------------------------------------------
 # name similarity
 # --------------------------------------------------------------------------
@@ -473,6 +511,7 @@ def build_report(
     generated_sets: list[ResolvedSet],
     thresholds: Thresholds = DEFAULT_THRESHOLDS,
     meta: dict | None = None,
+    out_of_scope_gold: list[ResolvedSet] | None = None,
 ) -> dict:
     pairing = pair_concept_sets(gold_sets, generated_sets, thresholds)
     counts: dict[str, int] = {}
@@ -500,6 +539,16 @@ def build_report(
         "pairs": [p.to_dict() for p in pairing.pairs],
         "unmatched_gold": pairing.unmatched_gold,
         "unmatched_generated": pairing.unmatched_generated,
+        # Not "unmatched": never offered for matching. Gold censors at initiation of
+        # either arm's drug; the generated artifact is the eligibility cohort and has no
+        # CensoringCriteria at all, so these are outside what it attempts.
+        "out_of_scope_gold": {
+            "reason": "gold concept set referenced only from CensoringCriteria; the generated eligibility cohort has no such section",
+            "sets": [
+                {"key": s.key, "name": s.name, "size": s.size}
+                for s in (out_of_scope_gold or [])
+            ],
+        },
         "over_expansion": over_expansion_rows(pairing.pairs, thresholds.over_expansion_ratio),
         # Circe's CONCEPT join drops these without an error; reporting them is a
         # fact about gold, not a resolver failure.
@@ -595,7 +644,10 @@ def main(argv: list[str] | None = None) -> int:
 
     reports = []
     for label, gold_path, gen_path, gold, gen in loaded:
-        gold_sets = resolve_cohort_sets(gold, args.mode, lookup)
+        all_gold_sets = resolve_cohort_sets(gold, args.mode, lookup)
+        censoring_only = censoring_only_codeset_keys(gold)
+        gold_sets = [s for s in all_gold_sets if s.key not in censoring_only]
+        out_of_scope = [s for s in all_gold_sets if s.key in censoring_only]
         gen_sets = resolve_cohort_sets(gen, args.mode, lookup)
         reports.append(
             build_report(
@@ -605,6 +657,7 @@ def main(argv: list[str] | None = None) -> int:
                     "generated_file": gen_path.name,
                     "generated_md5": _md5(gen_path),
                 },
+                out_of_scope_gold=out_of_scope,
             )
         )
     if vocab is not None:

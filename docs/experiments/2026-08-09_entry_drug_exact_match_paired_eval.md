@@ -123,3 +123,54 @@ done
 `output/` is gitignored, so the scored artifacts are not in the tree; the commands above
 rebuild them. `tmp/` is root-owned and not writable by the run user, which is why the arm
 stores live under `output/`.
+
+---
+
+## Addendum 2026-08-10 — the denominator was wrong, and part of the gain was against gold sets gold does not use
+
+Re-scoring with `out_of_scope_gold` (see below) gives macro recall **0.567 → 0.598**,
+zero-overlap **104 → 99**, over **232** pairs. The +0.030 headline survives. Two things
+behind it did not.
+
+**Censoring-only gold sets were being paired — now excluded.** The module header of
+`conceptset_overlap_eval.py` already said gold's arm drug sets "have no generated
+counterpart and are out of scope here, not scored weakly". Nothing enforced it. Six sets
+in the scored gold files are referenced only from `CensoringCriteria` — Warfarin (ATC),
+Sulfonylureas (ATC), Glimepiride (ATC), DPP4 inhibitors (ATC) x2, Clopidogrel (ATC) —
+and the generated eligibility cohort has no `CensoringCriteria` section at all. Gold
+censors at initiation of either arm's drug; our artifact does not attempt that. Fixed:
+those sets are now reported under `out_of_scope_gold` instead of paired.
+
+That resolves one of the two glimepiride rows, as out of scope rather than as a defect.
+
+**14 of 238 gold sets are orphans, and 3 of the 5 "improved" pairs were among them.**
+A gold concept set that no criterion references cannot affect gold's cohort. Fourteen
+such sets exist in the scored files, nearly all `[TROY intervention] <drug>` duplicates
+of the `(ATC)` variant that PrimaryCriteria actually uses:
+
+| trial | gold PrimaryCriteria entry drug |
+| --- | --- |
+| ARISTOTLE | `[TROY intervention] Apixaban (ATC)` (119) |
+| CARMELINA | `[TROY intervention] Linagliptin (ATC)` (114) |
+| CAROLINA | `[TROY intervention] Linagliptin (ATC)` (204) |
+| EMPA-REG OUTCOME | `[TROY intervention] Empagliflozin (ATC)` (219) |
+| LEADER | `[TROY intervention] Liraglutide (ATC)` (171) |
+| PLATO | `[TROY intervention] Ticagrelor (ATC)` (68) |
+
+So the entry drug's legitimate counterpart is the `(ATC)` set. Of the five pairs that
+moved 0.000 → ~1.000, **two are those counterparts** (CARMELINA and CAROLINA,
+`Linagliptin (ATC)`, 0.000 → 0.997) and **three are orphan duplicates**
+(`CARMELINA/[TROY intervention] Linagliptin`, `CAROLINA/linagliptin`,
+`CAROLINA/[TROY intervention] Linagliptin`).
+
+The honest statement of the fix is therefore **two pairs, one per affected trial** —
+which is what one entry drug per study should produce. "Five pairs" counted the same
+correction three extra times through gold's own duplicates.
+
+**Open, and deliberately not decided here:** whether orphan gold sets should be excluded
+from pairing the way censoring-only sets now are. It changes the measure of record pinned
+in `AGENTS.md`, so it is a decision, not a cleanup. Excluding them is defensible — a set
+no criterion references cannot change gold's cohort, and the module header's stated
+intent already points that way. Keeping them is defensible too — the eval asks whether we
+built gold's concept sets, and TROY exports them as a library. Until it is decided, the
+numbers above include orphan pairs and this paragraph is why.
