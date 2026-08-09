@@ -13,6 +13,20 @@ This evaluates the combined Agent 1 → Agent 2 pipeline.
 Agent 1 and Agent 2 performance are coupled — to isolate Agent 2,
 use TROY concept set names directly (see v5.0 runs in BENCHMARK_V5_RESULTS.md).
 
+NOT THE MEASURE OF RECORD (note added 2026-08-09). What this IS for: measuring the
+COUPLED Agent 1 + Agent 2 pipeline per TROY rule -- a legitimate question no other
+script answers, since the canonical evaluator scores finished concept sets and cannot
+attribute a loss to decomposition vs mapping. What its "Avg R/P/F1" headline is NOT:
+the measure of record. Its per-rule concept resolution is this script's own, not the
+canonical Circe closure (direct items, descendants through concept_ancestor filtered by
+invalid_reason IS NULL, isExcluded subtracted as an anti-join), so the numbers are not
+interchangeable with canonical ones. Report it as an Agent1+Agent2 attribution figure,
+never as overall concept-set quality.
+
+Measure of record: per-eligibility-criterion 1:1 concept-set overlap against data/gold/,
+macro-averaged -- scripts/conceptset_overlap_eval.py --mode closure (see AGENTS.md
+EVALUATION).
+
 Usage:
     PIPELINE_MODE=benchmark conda run -n artemis python scripts/benchmark_v5.py
     PIPELINE_MODE=benchmark conda run -n artemis python scripts/benchmark_v5.py \

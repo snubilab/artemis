@@ -7,6 +7,18 @@ This script evaluates Agent 2's pure mapping ability by:
   3. Resolving Agent 2 output with descendants (standard only)
   4. Comparing with TROY's resolved concept set (1:1 per rule)
 
+NOT THE MEASURE OF RECORD (note added 2026-08-09). What this IS for: isolating Agent 2's
+mapping ability by bypassing Agent 1 -- the Tier-1 control arm for benchmark_v5.py, and
+the only way to attribute a loss to mapping rather than decomposition. What its per-rule
+R/P/F1 headline is NOT: the measure of record. It resolves descendants with this
+script's own conventions (inherited from benchmark_v5.py), not the canonical Circe
+closure (invalid_reason IS NULL filter, isExcluded anti-join), so its numbers are not
+comparable to canonical ones despite carrying the same metric names.
+
+Measure of record: per-eligibility-criterion 1:1 concept-set overlap against data/gold/,
+macro-averaged -- scripts/conceptset_overlap_eval.py --mode closure (see AGENTS.md
+EVALUATION).
+
 Usage:
     PIPELINE_MODE=benchmark conda run -n artemis python scripts/benchmark_a_direct.py
 """

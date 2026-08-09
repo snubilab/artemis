@@ -5,6 +5,18 @@ Compares RAG, LLM Direct, and Agent2 mappers on 50 atlas cohort concept sets.
 
 Memory strategy: run all 50 items for one mapper at a time (load → run → unload),
 so only one mapper is in memory per phase.
+
+SUPERSEDED IN PLACE (note added 2026-08-09). What this IS for: comparing mappers on
+ATLAS/OHDSI cohort concept sets -- a different corpus from data/gold/ trials, and not
+one of the two evaluation anti-patterns (it is per-item, with no patient counts).
+What its numbers are NOT: current. quick_concept_benchmark_v2.py documents two defects
+here -- this version evaluates the wrong gold field and skips vocabulary normalization,
+which undercounts recall. Run scripts/quick_concept_benchmark_v2.py instead for this
+corpus.
+
+For gold-trial concept-set quality the measure of record is elsewhere entirely:
+per-eligibility-criterion 1:1 overlap against data/gold/, macro-averaged --
+scripts/conceptset_overlap_eval.py --mode closure (see AGENTS.md EVALUATION).
 """
 
 import sys

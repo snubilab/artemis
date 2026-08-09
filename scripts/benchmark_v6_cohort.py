@@ -1,3 +1,21 @@
+# DEPRECATED 2026-08-09.
+#
+# This measured pipeline quality as patient-count overlap (Jaccard / recall /
+# precision on cohort membership) between the generated cohort and the gold cohort,
+# both generated on the benchmark CDM via WebAPI. That is superseded because the
+# benchmark CDM is generated FROM data/gold/ by scripts/generate_synthea_from_gold.py,
+# so a patient count on it partly measures that generator rather than the pipeline:
+# gold writes the ARISTOTLE platelet threshold as 100 (thousands/uL) while the
+# protocol PDF writes 100,000/mm3, nothing records a unit, and that 1000x gap alone
+# took the cohort to 0 patients — which is also how the 2026-03-17 all-zero runs of
+# this benchmark read as a pipeline failure.
+# Run instead: scripts/conceptset_overlap_eval.py --mode closure   (per-criterion 1:1
+# overlap against data/gold/, the measure of record; see AGENTS.md EVALUATION).
+# Not replaced: the end-to-end cohort-materialization path this exercised (Agent1 ->
+# Agent2 -> Agent3 -> WebAPI generation) has no current quality benchmark. Use it as a
+# smoke test that the pipeline still produces a generatable cohort if you like, but do
+# not read its overlap numbers as a quality score.
+
 import os
 import sys
 import json
@@ -270,7 +288,19 @@ def run_cohort_benchmark(config: BenchmarkConfig) -> Dict[str, Any]:
     return result
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="ARTEMIS V6 Cohort Overlap Benchmark")
+    print(
+        "\n"
+        "=========================================================================\n"
+        "DEPRECATED 2026-08-09: benchmark_v6_cohort.py\n"
+        "Patient-count overlap on the benchmark CDM is NOT evidence of pipeline\n"
+        "quality. That CDM is generated FROM data/gold/; the unrecorded 1000x\n"
+        "platelet-unit gap alone took ARISTOTLE to 0 patients.\n"
+        "Measure of record: scripts/conceptset_overlap_eval.py --mode closure\n"
+        "(see AGENTS.md EVALUATION). Running anyway.\n"
+        "=========================================================================\n",
+        file=sys.stderr,
+    )
+    parser = argparse.ArgumentParser(description="ARTEMIS V6 Cohort Overlap Benchmark (DEPRECATED 2026-08-09)")
     parser.add_argument("--trial", type=str, required=True, choices=["LEADER", "PLATO", "ARISTOTLE"], help="Trial to benchmark")
     parser.add_argument("--mode", type=str, default="E2E_SUPP", help="Run mode flag")
     parser.add_argument("--gold", type=str, required=True, help="Path to the Gold Standard Circe JSON file")

@@ -3,11 +3,23 @@
 Simplified TROY vs ARTEMIS Comparison.
 
 Strips down both TROY and ARTEMIS to their core criteria (entry + T2DM),
-generates cohorts on SYNTHEA100K, and compares patient counts.
+generates cohorts on SYNTHEA23M (SOURCE_KEY), and compares patient counts.
 
 This reveals whether the CONCEPT MAPPING differences between expert (TROY)
 and auto-generated (ARTEMIS) affect patient capture, independent of
 the complex inclusion rules.
+
+NOT A QUALITY MEASURE (note added 2026-08-09). What this IS for: asking whether a
+mapping difference is materially visible in patient capture at all, on SYNTHEA23M --
+an independent CDM (SOURCE_KEY below), NOT one of the synthea_cdm_{aristotle,leader,plato,benchmark}
+sets that are generated from data/gold/ and therefore cannot referee mapping quality.
+What its output is NOT evidence of: which mapping is better. A TROY-vs-ARTEMIS count
+table reads like a verdict; it is a sensitivity probe. Equal counts mean the difference
+did not move this CDM, not that the mappings agree.
+
+Measure of record for mapping quality: per-eligibility-criterion 1:1 concept-set overlap
+against data/gold/, macro-averaged -- scripts/conceptset_overlap_eval.py --mode closure
+(see AGENTS.md EVALUATION).
 """
 import json
 import time

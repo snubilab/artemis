@@ -8,6 +8,18 @@ parent inclusion rule level:
 2. Semantic N:1 matching (multiple ARTEMIS rules can match one TROY composite rule)
 3. Per-rule resolved concept pool recall
 
+NOT THE MEASURE OF RECORD (note added 2026-08-09). What this IS for: parent-level rule
+comparison against TROY, with N:1 semantic matching -- a legitimate shape (per-rule,
+macro, no patient counts). What it is NOT evidence of: concept-set quality as currently
+defined. Its per-rule concept pools are resolved by CONCEPT_ANCESTOR conventions of its
+own, which differ from the canonical Circe closure (invalid_reason IS NULL filter on
+descendants, isExcluded items subtracted as an anti-join), so its recall/precision are
+not comparable to the canonical numbers even though they look like the same metric.
+
+Measure of record: per-eligibility-criterion 1:1 concept-set overlap against data/gold/,
+macro-averaged -- scripts/conceptset_overlap_eval.py --mode closure (see AGENTS.md
+EVALUATION).
+
 Usage:
     conda run -n artemis python scripts/benchmark_v4.py
 """

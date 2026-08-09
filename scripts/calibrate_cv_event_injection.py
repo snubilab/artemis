@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 """
 Iterative CI-width calibration for AI vs GOLD event injection.
+
+NOT A QUALITY MEASURE (note added 2026-08-09). This drives
+scripts/run_gold_vs_ai_comparison.py in a loop and reads its --output-json, and that
+script is DEPRECATED: it judges the pipeline by patient counts and hazard ratios on
+synthea_cdm_{aristotle,leader,plato}, which are generated FROM data/gold/ by
+scripts/generate_synthea_from_gold.py, so a count partly measures the generator. See
+AGENTS.md EVALUATION and docs/debugging/2026-08-09_benchmark_cdm_is_not_an_oracle.md.
+
+What this IS still for: tuning how many events to inject so a confidence interval
+reaches a target width. That calibration loop is arithmetic on its own output and does
+not depend on the HR being a valid quality verdict. What its output is NOT evidence of:
+that one pipeline is better than another.
+
+Measure of record for concept-set quality: per-eligibility-criterion 1:1 overlap,
+scripts/conceptset_overlap_eval.py --mode closure. Nothing currently replaces
+gold-vs-generated HR comparison itself.
 """
 from __future__ import annotations
 

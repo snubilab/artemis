@@ -12,7 +12,8 @@ Outputs a single comparison.json consumed by the HTML dashboard
 Raw-item overlap and closure overlap are NOT interchangeable -- they differ by
 1.5x-3x on every trial. The closure-level evaluation that AGENTS.md (EVALUATION)
 requires lives in scripts/conceptset_overlap_eval.py; the JSON written here is
-stamped "mode": "raw_items" so the two can never be confused. The existing six
+stamped "mode": "raw_items_including_excluded" so the two can never be confused.
+Do not quote the numbers here as pipeline quality. The existing six
 treatment/comparator rows keep raw-item semantics precisely because
 build_diagnosis_data.py publishes their numbers.
 

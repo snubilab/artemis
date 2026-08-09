@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# DEPRECATED 2026-08-09.
+#
+# This measured pipeline quality as Kaplan-Meier survival separation between the gold
+# cohort and the generated ("Ours") cohort, querying synthea_cdm_{leader,plato,
+# aristotle} directly through its own hard-coded STUDIES table. It is not a passive
+# plotter: it derives the patient-level evidence it renders. That is superseded
+# because those CDMs are generated FROM data/gold/ by
+# scripts/generate_synthea_from_gold.py, so the curves partly draw that generator's
+# conventions: gold writes the ARISTOTLE platelet threshold as 100 (thousands/uL),
+# the protocol PDF writes 100,000/mm3, nothing records a unit, and that 1000x gap
+# alone took the cohort to 0 patients — i.e. an empty curve with no pipeline defect.
+# Run instead: scripts/conceptset_overlap_eval.py --mode closure   (per-criterion 1:1
+# overlap against data/gold/, the measure of record; see AGENTS.md EVALUATION).
+# Not replaced: no current tool renders survival curves for gold vs generated cohorts.
+# The canonical evaluator scores concept sets, not outcomes, and has no figure output.
+# Contrast scripts/plot_gold_vs_ai_hr_steps.py, which is a pure formatter over a JSON
+# it is handed and carries no method of its own.
 """Export per-study Kaplan-Meier survival curves comparing Gold vs Ours."""
 from __future__ import annotations
 
@@ -288,4 +305,17 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    print(
+        "\n"
+        "=========================================================================\n"
+        "DEPRECATED 2026-08-09: plot_gold_vs_ai_survival_curves.py\n"
+        "These curves are drawn from patient-level data in synthea_cdm_*, which is\n"
+        "generated FROM data/gold/ — so they partly render that generator, not the\n"
+        "pipeline. The unrecorded 1000x platelet-unit gap alone took ARISTOTLE to\n"
+        "0 patients (an empty curve with no pipeline defect).\n"
+        "Measure of record: scripts/conceptset_overlap_eval.py --mode closure\n"
+        "(see AGENTS.md EVALUATION). Running anyway.\n"
+        "=========================================================================\n",
+        file=sys.stderr,
+    )
     main()

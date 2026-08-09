@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+# DEPRECATED 2026-08-09.
+#
+# This measured pipeline quality as patient counts and Cox hazard ratios for the
+# generated ("AI") cohort versus the gold cohort, run against
+# synthea_cdm_{leader,plato,aristotle}. That is superseded because those CDMs are
+# generated FROM data/gold/ by scripts/generate_synthea_from_gold.py, so any count
+# on them partly measures that generator's conventions rather than the pipeline:
+# gold writes the ARISTOTLE platelet threshold as 100 (thousands/uL) while the
+# protocol PDF writes 100,000/mm3, nothing records a unit, and that 1000x gap alone
+# took the cohort to 0 patients.
+# Run instead: scripts/conceptset_overlap_eval.py --mode closure   (per-criterion 1:1
+# overlap against data/gold/, the measure of record; see AGENTS.md EVALUATION).
+# Not replaced: nothing currently produces a survival/HR effect-size comparison
+# between gold and generated cohorts. The canonical evaluator scores concept sets,
+# not outcomes. If an effect-size comparison is needed again it must run against a
+# CDM that was NOT generated from data/gold/.
 """
 Gold vs AI cohort comparison script.
 Runs Agent5 survival analysis for both gold and AI treatment cohorts
@@ -449,4 +465,16 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    print(
+        "\n"
+        "=========================================================================\n"
+        "DEPRECATED 2026-08-09: run_gold_vs_ai_comparison.py\n"
+        "Patient counts / HRs on synthea_cdm_* are NOT evidence of pipeline quality.\n"
+        "Those CDMs are generated FROM data/gold/ (generate_synthea_from_gold.py);\n"
+        "the unrecorded 1000x platelet-unit gap alone took ARISTOTLE to 0 patients.\n"
+        "Measure of record: scripts/conceptset_overlap_eval.py --mode closure\n"
+        "(see AGENTS.md EVALUATION). Running anyway.\n"
+        "=========================================================================\n",
+        file=sys.stderr,
+    )
     main()

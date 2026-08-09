@@ -5,6 +5,18 @@ Compares ARTEMIS output against TROY reference using 3 layers:
   Layer 2: Semantic Fingerprinting (rule-level Jaccard)
   Layer 3: Concept Set Resolved Recall (V2 inherited)
 
+NOT THE MEASURE OF RECORD (note added 2026-08-09). What this IS for: the historical
+three-layer view (validator sanity, rule-level fingerprint Jaccard, concept recall) that
+the later benchmarks were built from. What it is NOT: current. Its 1:1 sub-criteria
+matching is superseded by benchmark_v4.py's parent-rule matching, and its concept
+resolution predates the canonical Circe closure (direct items, descendants through
+concept_ancestor filtered by invalid_reason IS NULL, isExcluded subtracted as an
+anti-join), so its recall/precision are not comparable to current numbers.
+
+Measure of record: per-eligibility-criterion 1:1 concept-set overlap against data/gold/,
+macro-averaged -- scripts/conceptset_overlap_eval.py --mode closure (see AGENTS.md
+EVALUATION).
+
 Usage:
     conda run -n artemis python scripts/benchmark_v3.py
     conda run -n artemis python scripts/benchmark_v3.py --artemis output/leader/circe_cohort.json

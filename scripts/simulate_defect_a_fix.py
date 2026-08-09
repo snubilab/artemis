@@ -12,6 +12,22 @@ concept, inclusion-rule count, and concept overlap (Jaccard) vs gold:
 No DB is touched; this predicts how much the A fix realigns the definition to gold.
 Residual gap after A (wrong drug concept, infeasible rules) shows B/D still needed.
 
+NOT A QUALITY MEASURE (note added 2026-08-09). What this IS for: predicting the
+structural effect of one specific code change (the disease-anchored entry swap) on the
+generated definition, before spending a pipeline run on it. What it is NOT evidence of:
+concept-set quality. Its per-cohort Jaccard column is a POOLED concept-mass figure over
+one whole cohort, and pooled concept mass disagrees with the measure of record in
+DIRECTION, not just magnitude -- on this corpus micro reads recall 0.141 / precision
+0.503 while per-criterion reads 0.542 / 0.484, and for ARISTOTLE the two invert
+(0.087/0.863 micro vs 0.749/0.153 per criterion). Never quote the Jaccard here as a
+quality score. The measure of record is per-eligibility-criterion 1:1 overlap against
+data/gold/, macro-averaged: scripts/conceptset_overlap_eval.py --mode closure (see
+AGENTS.md EVALUATION).
+
+This script's output/gold_vs_generated/simulation.json is read by
+scripts/build_diagnosis_dashboard.py; do not change its schema without updating that
+consumer.
+
 Usage: python3 artemis/scripts/simulate_defect_a_fix.py
 """
 from __future__ import annotations

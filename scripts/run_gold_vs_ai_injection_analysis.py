@@ -1,4 +1,22 @@
 #!/usr/bin/env python3
+# DEPRECATED 2026-08-09.
+#
+# This measured pipeline quality by comparing gold-cohort vs generated-cohort
+# membership and Cox PH hazard ratios on synthea_cdm_{leader,plato,aristotle},
+# holding the injected outcome events constant. That is superseded because holding
+# the outcomes constant does not fix the denominator: those CDMs are generated FROM
+# data/gold/ by scripts/generate_synthea_from_gold.py, so cohort membership on them
+# partly measures that generator. Worked failure: gold writes the ARISTOTLE platelet
+# threshold as 100 (thousands/uL), the protocol PDF writes 100,000/mm3, nothing
+# records a unit, and that 1000x gap alone took the cohort to 0 patients — with no
+# defect anywhere in the pipeline being measured.
+# Run instead: scripts/conceptset_overlap_eval.py --mode closure   (per-criterion 1:1
+# overlap against data/gold/, the measure of record; see AGENTS.md EVALUATION).
+# Not replaced: no current tool compares gold and generated cohorts at the patient or
+# effect-size level. The canonical evaluator scores concept sets, not outcomes. The
+# outcome-injection machinery itself (inject_cv_events.py,
+# calibrate_cv_event_injection.py, run_outcome_injection_analysis.py) is unaffected —
+# only the gold-vs-AI quality verdict drawn from it here is.
 """
 Gold vs AI cohort Cox PH comparison using the SAME injected outcome events.
 
@@ -360,4 +378,17 @@ def main():
 
 
 if __name__ == "__main__":
+    print(
+        "\n"
+        "=========================================================================\n"
+        "DEPRECATED 2026-08-09: run_gold_vs_ai_injection_analysis.py\n"
+        "Cohort membership / HRs on synthea_cdm_* are NOT evidence of pipeline\n"
+        "quality. Those CDMs are generated FROM data/gold/; holding the injected\n"
+        "outcomes constant does not fix the denominator. The unrecorded 1000x\n"
+        "platelet-unit gap alone took ARISTOTLE to 0 patients.\n"
+        "Measure of record: scripts/conceptset_overlap_eval.py --mode closure\n"
+        "(see AGENTS.md EVALUATION). Running anyway.\n"
+        "=========================================================================\n",
+        file=sys.stderr,
+    )
     main()

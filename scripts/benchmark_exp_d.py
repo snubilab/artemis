@@ -8,6 +8,18 @@ Approach:
   4. Compare Agent 2 output vs TROY resolved concepts per rule
 
 This tests the END-TO-END pipeline with appendix enrichment.
+
+NOT THE MEASURE OF RECORD (note added 2026-08-09). What this IS for: the end-to-end arm
+(NCT + appendix papers -> Agent 1 -> Agent 2) that pairs with benchmark_v5.py and
+benchmark_a_direct.py to attribute a loss across the pipeline stages. What its per-rule
+R/P/F1 headline is NOT: the measure of record. Its concept resolution is this script's
+own, not the canonical Circe closure (direct items, descendants through concept_ancestor
+filtered by invalid_reason IS NULL, isExcluded subtracted as an anti-join), so its
+numbers are not comparable to canonical ones despite the shared metric names.
+
+Measure of record: per-eligibility-criterion 1:1 concept-set overlap against data/gold/,
+macro-averaged -- scripts/conceptset_overlap_eval.py --mode closure (see AGENTS.md
+EVALUATION).
 """
 import os
 import sys

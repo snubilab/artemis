@@ -8,6 +8,17 @@ Categorize failure modes:
   C) Entity in IR, correct domain, but different concept IDs
   D) Agent 2 returned 0 results
   F) Functional match via hierarchy (ancestor/descendant, sep≤2)
+
+SUPERSEDED IN PLACE (note added 2026-08-09). What this IS for: a readable taxonomy of
+WHY a mapping failed, which no scoring tool provides. What it is NOT: current.
+diagnose_agent2_gaps_v2.py documents the defect here -- this version compares raw seed
+concepts, which does not match how ATLAS actually resolves a concept set, so the
+categories can be assigned on the wrong basis. Run scripts/diagnose_agent2_gaps_v2.py
+instead.
+
+Either way this is a diagnostic, not a score. The measure of record is
+per-eligibility-criterion 1:1 concept-set overlap against data/gold/, macro-averaged --
+scripts/conceptset_overlap_eval.py --mode closure (see AGENTS.md EVALUATION).
 """
 import json
 import sys

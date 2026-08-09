@@ -821,6 +821,11 @@ def main(argv: list[str] | None = None) -> None:
         print("DRY RUN — no data was written")
     else:
         print("Injection complete. Run run_gold_vs_ai_comparison.py to compute HR.")
+        # That script is DEPRECATED 2026-08-09: its HR is computed on a CDM
+        # generated from data/gold/, so it cannot referee pipeline quality.
+        # Injection itself is unaffected. See AGENTS.md EVALUATION.
+        print("  NOTE: that comparison is deprecated as a quality measure; "
+              "see AGENTS.md EVALUATION.")
 
 
 if __name__ == "__main__":

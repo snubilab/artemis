@@ -10,6 +10,24 @@ For each study this script:
 6. If the final WebAPI count is zero, executes translated SQL directly for comparison
 
 Every run writes step logs plus JSON/Markdown summaries under output/generated_gold_eval/.
+
+NOT A QUALITY MEASURE (note added 2026-08-09). What this IS for: the generated-gold
+data pipeline itself -- Synthea module build, patient generation, native load, OMOP ETL,
+and (the reason CLAUDE.md/AGENTS.md name it the preferred entrypoint) clearing the
+WebAPI COHORT generation cache before attrition, so a stale "Using cached generation
+results" cannot be mistaken for a real count. That job is infrastructure and stays.
+
+What its output is NOT evidence of: pipeline quality. The counts it prints are patient
+counts against synthea_cdm_benchmark, which this very script generates FROM data/gold/
+via scripts/generate_synthea_from_gold.py -- so a count partly measures that generator's
+conventions. Worked failure: gold writes the ARISTOTLE platelet threshold as 100
+(thousands/uL) and the protocol PDF writes 100,000/mm3; both are correct, nothing
+records a unit, and that 1000x gap alone took the cohort to 0 patients. Read the
+attrition output as a diagnostic of WHERE a cohort collapses, never as a quality score.
+
+Measure of record: per-eligibility-criterion 1:1 concept-set overlap against data/gold/,
+macro-averaged -- scripts/conceptset_overlap_eval.py --mode closure (see AGENTS.md
+EVALUATION and docs/debugging/2026-08-09_benchmark_cdm_is_not_an_oracle.md).
 """
 
 from __future__ import annotations
