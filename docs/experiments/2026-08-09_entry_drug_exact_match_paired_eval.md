@@ -167,10 +167,14 @@ The honest statement of the fix is therefore **two pairs, one per affected trial
 which is what one entry drug per study should produce. "Five pairs" counted the same
 correction three extra times through gold's own duplicates.
 
-**Open, and deliberately not decided here:** whether orphan gold sets should be excluded
-from pairing the way censoring-only sets now are. It changes the measure of record pinned
-in `AGENTS.md`, so it is a decision, not a cleanup. Excluding them is defensible — a set
-no criterion references cannot change gold's cohort, and the module header's stated
-intent already points that way. Keeping them is defensible too — the eval asks whether we
-built gold's concept sets, and TROY exports them as a library. Until it is decided, the
-numbers above include orphan pairs and this paragraph is why.
+**Decided 2026-08-10: orphans stay in the denominator.** The question this eval asks is
+whether we built gold's concept sets, and TROY exports them as a library, so a set being
+unreferenced does not make it an illegitimate target. Excluding them was the alternative
+and is also defensible — a set no criterion references cannot change gold's cohort — but
+it would have broken comparability with every number already published.
+
+The cost of that choice is paid at reporting time, and it is now a rule in `AGENTS.md`
+EVALUATION: **one correction can score as several pairs.** Quote distinct corrections,
+not pair counts. For this fix that is **two** — CARMELINA and CAROLINA, one entry drug
+each — and the five-pair figure above is retained only because it is what the metric
+emits, with the three duplicates named so nobody re-derives "five defects fixed".

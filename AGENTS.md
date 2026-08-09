@@ -87,6 +87,22 @@ glucose set omits gold's one fasting-glucose LOINC.
 `scripts/conceptset_overlap_eval.py` emits this as `per_criterion` and prints it above
 the micro block; micro is labelled "concept mass — do not quote as quality".
 
+Gold sets referenced **only** from `CensoringCriteria` are out of scope and reported
+under `out_of_scope_gold`, not paired: gold censors at initiation of either arm's drug,
+and the generated eligibility cohort has no such section. Six of the scored sets are in
+this class. Without the exclusion, CAROLINA's "Hypersensitivity to investigational
+product or glimepiride" was matched to gold's glimepiride censoring set by name alone.
+
+**Unreferenced gold sets are kept in the denominator — decided 2026-08-10, do not
+silently change it.** 14 of 238 scored gold sets are orphans that no criterion
+references, nearly all non-ATC duplicates of the `(ATC)` set PrimaryCriteria actually
+uses. They stay because the question this eval asks is whether we built gold's concept
+sets, and TROY exports them as a library. The cost of that choice must be paid at
+reporting time: **one correction can score as several pairs.** Fixing the entry drug
+moved five pairs, but three were orphan duplicates of the other two — the honest count
+is two, one per affected trial. Report distinct corrections, not pair counts, and say
+which pairs are duplicates when quoting a delta.
+
 ## ANTI-PATTERNS
 
 - Do not move API contract fields without checking Atlas TTE consumers under `../atlas-dev/js/pages/target-trial-emulation/`.
