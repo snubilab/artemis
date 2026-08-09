@@ -1,23 +1,45 @@
 #!/usr/bin/env python3
 """Compare gold (TROY v1.1) vs AI-generated Circe cohort definitions.
 
-Definition-level comparison only (no DB / WebAPI). For each trial and role
-(treatment/comparator) it pairs the gold Circe JSON against the generated one
-and reports ConceptSet counts, unique concept overlap, and InclusionRule counts.
+RAW-ITEM comparison only (no DB / WebAPI): concepts are the ids as *listed* in
+each ConceptSet, not Circe's resolved closure. For each trial and role it pairs
+the gold Circe JSON against the generated one and reports ConceptSet counts,
+unique concept overlap, and InclusionRule counts.
 
-Outputs a single comparison.json consumed by the HTML dashboard.
+Outputs a single comparison.json consumed by the HTML dashboard
+(scripts/build_diagnosis_data.py -> scripts/build_diagnosis_dashboard.py).
 
-Usage: python3 artemis/scripts/compare_gold_vs_generated_circe.py
+Raw-item overlap and closure overlap are NOT interchangeable -- they differ by
+1.5x-3x on every trial. The closure-level evaluation that AGENTS.md (EVALUATION)
+requires lives in scripts/conceptset_overlap_eval.py; the JSON written here is
+stamped "mode": "raw_items" so the two can never be confused. The existing six
+treatment/comparator rows keep raw-item semantics precisely because
+build_diagnosis_data.py publishes their numbers.
+
+Usage:
+    python3 artemis/scripts/compare_gold_vs_generated_circe.py
+    python3 artemis/scripts/compare_gold_vs_generated_circe.py --generated-dir tmp/circe_b
 """
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from pathlib import Path
 
 ARTEMIS_DIR = Path(__file__).resolve().parents[1]
+if str(ARTEMIS_DIR) not in sys.path:
+    sys.path.insert(0, str(ARTEMIS_DIR))
+
+from scripts.conceptset_overlap_eval import TRIALS as STUDY_TRIALS  # noqa: E402
+from src.services.conceptset_closure import all_item_ids  # noqa: E402
+
 GOLD_DIR = ARTEMIS_DIR / "data" / "gold"
 GEN_DIR = ARTEMIS_DIR / "data" / "generated"
+DEFAULT_STUDY_DIR = ARTEMIS_DIR / "tmp" / "circe_b"
 OUT_DIR = ARTEMIS_DIR / "output" / "gold_vs_generated"
+
+CLOSURE_REPORT = "scripts/conceptset_overlap_eval.py --mode closure"
 
 # (trial_label, role, gold_file_relative, generated_file_relative)
 # Mapping follows each trial's design: treatment = study drug, comparator = active control.
@@ -44,13 +66,26 @@ PAIRS = [
 
 
 def extract_concepts(cohort: dict) -> dict[int, str]:
-    """concept_id -> concept_name across all ConceptSets."""
+    """concept_id -> concept_name across all ConceptSets.
+
+    Which ids a concept set *lists* is decided once, in
+    ``src.services.conceptset_closure.all_item_ids``; this function only adds the
+    display names, which the resolver has no reason to carry.
+
+    ``all_item_ids`` and not ``raw_item_ids``: this comparison has always counted
+    ``isExcluded`` items too, and the published dashboard reads these numbers.
+    Gold CAROLINA alone carries 160 excluded items, so switching primitives would
+    silently move a published figure for unchanged input. The non-excluded
+    variant (``raw_item_ids``) is what ``conceptset_overlap_eval.py --mode raw``
+    uses; the JSON below records which of the two produced it.
+    """
     out: dict[int, str] = {}
     for cs in cohort.get("ConceptSets", []):
+        ids = all_item_ids(cs)
         for item in cs.get("expression", {}).get("items", []):
             c = item.get("concept", {})
             cid = c.get("CONCEPT_ID")
-            if cid is None:
+            if cid is None or int(cid) not in ids:
                 continue
             out[int(cid)] = c.get("CONCEPT_NAME", "")
     return out
@@ -102,17 +137,70 @@ def compare_pair(trial: str, role: str, gold_path: Path, gen_path: Path) -> dict
     }
 
 
-def main() -> None:
+def study_pairs(study_dir: Path) -> list[tuple[str, str, Path, Path]]:
+    """The six one-per-study generated cohorts, paired with the gold treatment arm.
+
+    Additive: these carry role "study" and therefore cannot collide with the
+    ``trial|role`` keys build_diagnosis_data.py looks up. The registry is shared
+    with conceptset_overlap_eval.py so the gold/generated mapping exists once.
+    """
+    out = []
+    for trial, (gold_rel, gen_name) in STUDY_TRIALS.items():
+        out.append((trial, "study", GOLD_DIR / gold_rel, study_dir / gen_name))
+    return out
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--generated-dir", default=str(DEFAULT_STUDY_DIR),
+                    help="directory holding the one-per-study generated Circe JSONs")
+    ap.add_argument("--skip-study-rows", action="store_true",
+                    help="emit only the six original treatment/comparator rows")
+    return ap.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+
+    todo: list[tuple[str, str, Path, Path]] = [
+        (trial, role, GOLD_DIR / gold_rel, GEN_DIR / gen_rel)
+        for trial, role, gold_rel, gen_rel in PAIRS
+    ]
+    if not args.skip_study_rows:
+        todo += study_pairs(Path(args.generated_dir))
+
+    # A missing gold file is a real error -- data/gold/ is tracked, so its absence
+    # means the checkout is broken. A missing GENERATED study file is not: those
+    # live under tmp/, which is gitignored (.gitignore:17) and is repopulated by
+    # copying out of the artemis-api container. Asserting on it made this script,
+    # which predates the study rows and feeds the dashboard, fail on a fresh
+    # checkout and leave comparison.json stale rather than regenerated.
     results = []
-    for trial, role, gold_rel, gen_rel in PAIRS:
-        gold_path = GOLD_DIR / gold_rel
-        gen_path = GEN_DIR / gen_rel
+    skipped: list[str] = []
+    for trial, role, gold_path, gen_path in todo:
         assert gold_path.exists(), f"missing gold: {gold_path}"
-        assert gen_path.exists(), f"missing generated: {gen_path}"
+        if not gen_path.exists():
+            skipped.append(f"{trial}/{role}: {gen_path}")
+            continue
         results.append(compare_pair(trial, role, gold_path, gen_path))
 
+    if skipped:
+        print(f"WARNING: skipped {len(skipped)} pair(s) with no generated CIRCE "
+              f"(tmp/ is gitignored; repopulate from the artemis-api container):")
+        for s in skipped:
+            print(f"  - {s}")
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    payload = {"pairs": results}
+    payload = {
+        # Stamped so nobody reads these numbers as Circe closure. Raw-item and
+        # closure overlap differ by 1.5x-3x on every trial.
+        "mode": "raw_items_including_excluded",
+        "closure_report": CLOSURE_REPORT,
+        "study_generated_dir": None if args.skip_study_rows else str(Path(args.generated_dir)),
+        "skipped_pairs": skipped,
+        "pairs": results,
+    }
     (OUT_DIR / "comparison.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
 
@@ -132,7 +220,8 @@ def main() -> None:
         assert r["shared"] + r["gen_only"] == r["gen_concepts"], r
         assert len(r["gold_only_list"]) == r["gold_only"], r
         assert len(r["gen_only_list"]) == r["gen_only"], r
-    print("self-check OK: overlap arithmetic consistent for all 6 pairs")
+    print(f"self-check OK: overlap arithmetic consistent for all {len(results)} pairs")
+    print(f"mode={payload['mode']} -- for Circe closure overlap run: {CLOSURE_REPORT}")
 
 
 if __name__ == "__main__":
