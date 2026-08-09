@@ -12,7 +12,8 @@ Synthea benchmark CDMs) was measuring the wrong thing, and replaced it.
 - Repo: `/home/bilab/work/projects/Broadsea/artemis` (git root). The
   workspace root `/home/bilab/work/projects/Broadsea` is **not** a git repo
   (`git status` there returns "not a git repository").
-- Branch: `fix/tte-a-drug-anchored-entry` · HEAD: `a655469` · no remote
+- Branch: `fix/tte-a-drug-anchored-entry` · HEAD at correction time: `862a04f`
+  (point-in-time; later handoff/doc commits may advance it) · no remote
   configured (`gh pr list` fails with "no git remotes found") — nothing is
   pushed anywhere.
 - Uncommitted in the git repo: clean (`git status --short` empty).
@@ -47,7 +48,7 @@ Synthea benchmark CDMs) was measuring the wrong thing, and replaced it.
   the `artemis-api` container — use `.venv/bin/python -m pytest` from
   `/home/bilab/work/projects/Broadsea/artemis`.
 
-## Done this session (11 commits, `4300eec..a655469`, oldest first)
+## Done this session (11 substantive commits, fixed range `4300eec..a655469`, oldest first)
 
 1. `ab91c60` fix(agent1): route every duplicate decision through one predicate that can see containment
 2. `ee921fb` test(scripts): make the OR-group dedup ablation runnable as a two-arm experiment
@@ -61,8 +62,10 @@ Synthea benchmark CDMs) was measuring the wrong thing, and replaced it.
 10. `8fd1b7f` docs(AGENTS): pin the unit of evaluation, not just its source
 11. `a655469` docs(scripts): deprecate the superseded evaluators and relabel the ones with a live consumer
 
-(Verified: `git log --oneline 4300eec..HEAD | wc -l` = 11. The brief that
-commissioned this handoff said 12; it was wrong.)
+(Verified: `git log --oneline 4300eec..a655469 | wc -l` = 11. Handoff/doc
+commits land above `a655469`, so `git log --oneline 4300eec..HEAD | wc -l`
+is 12 or more as those commits accumulate. The commissioning brief's 12 did
+not match the 11 substantive commits.)
 
 ## Key decisions & why
 
@@ -158,9 +161,11 @@ commissioned this handoff said 12; it was wrong.)
 - **Do NOT change the IR schema to a list-valued `domain`.** The IR already
   expresses condition+drug conjunction via `Criteria.sub_criteria` +
   `group_type="ALL"` (confirmed: `src/models/ir.py:95-96`). A list-valued
-  `domain` would silently disable Agent 2's scalar `domain_hint == "Drug"`
-  gates (`workflow.py:297`, `:421`) and reintroduce the exact drug-arm loss
-  under investigation, plus crash `atlas-dev` `tte-manager.js:2339` on
+  `domain` would silently disable Agent 2's scalar gates —
+  `domain_hint == "Drug"` (`workflow.py:297`,
+  `concept_set_refiner.py:205`) and `domain_hint in ("Drug", None)`
+  (`workflow.py:421`) — and reintroduce the exact drug-arm loss under
+  investigation, plus crash `atlas-dev` `tte-manager.js:2339` on
   study load. The actual gap is an Agent 1 prompt gap (`prompts.py:480-489`
   teaches `sub_criteria` only under `group_type:"ANY"`), not a schema gap.
 
