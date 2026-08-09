@@ -1,0 +1,3411 @@
+<meta charset="utf-8">
+<title>Concept-set overlap — entry-drug exact match (paired)</title>
+<!--
+  Self-contained dashboard template (tabbed, token-themed).
+  Replace:
+   - CONFIG (VARS, METRICS, BASELINE, TILES) near the top of the last <script>
+   - COPY near the top of the last <script> — one place for user-facing labels and empty states
+   - the CONTENTS of <script id="framingdata"> — 3–6 scope cards; overview renders from data
+   - the CONTENTS of <script id="unitdata"> — semantic research-unit/workstream cards, or []
+   - the CONTENTS of <script id="data"> — numeric per-item rows, or [] when `unitdata` is non-empty.
+     There is no injection marker
+     to substitute: one inside a JSON block would make the block invalid JSON, and a builder replacing
+     a marker that does not exist silently ships THESE DEMO NUMBERS as if they were results.
+   - optional media map in <script id="imgdata"> (same: replace the block's contents)
+   - the header copy, verdict + callout prose, and the palette
+  Rules (see SKILL.md): inline everything — no external URLs/fonts/fetch/CDN.
+  Keep BOTH themes. VALIDATE categorical hues (--c-0/1/2) with the dataviz
+  validator (scripts/validate_palette.js) before shipping.
+-->
+<style>
+  :root{
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --bg:#e9eef3;--surface:#ffffff;--surface-2:#f4f7fa;
+    --ink:#15202b;--muted:#566472;--faint:#5f6b77;
+    --border:#d6e0e9;--border-strong:#c2cedb;
+    --accent:#0e7c86;--accent-ink:#0a5a62;
+    /* categorical series hues — VALIDATE (colorblind-safe) before shipping */
+    --g-a:#0e7c86;--g-b:#6d4aa8;--c-0:#2563C4;--c-1:#E07A0F;--c-2:#0E9488;
+    /* status inks carry TEXT (badges, status pills, best-value, delta) at 12–15px, so they are held to
+       4.5:1 on their own -bg AND on --surface. The light set was a chart palette used as type and failed
+       both — measured 2.2:1 on the absent badge, 2.9 on partial, 3.5 on pass. */
+    --ok:#157a4b;--ok-bg:#e6f5ec;--warn:#855c08;--warn-bg:#f8efd8;
+    --good:#157a4b;--bad:#c0392b;--absent:#5c6873;--absent-bg:#eef2f5;
+    --shadow:0 1px 2px rgba(20,35,50,.06),0 4px 16px rgba(20,35,50,.05);
+    --radius:10px;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0b1118;--surface:#141d26;--surface-2:#1a2530;
+    --ink:#e6edf4;--muted:#93a2b1;--faint:#7d8b99;
+    --border:#263340;--border-strong:#33424f;
+    --accent:#45b6c2;--accent-ink:#7fd3db;--g-a:#45b6c2;--g-b:#a78be0;
+    --c-0:#5590D0;--c-1:#C9821F;--c-2:#35A89A;
+    --ok:#40cc86;--ok-bg:#123021;--warn:#e0aa3c;--warn-bg:#33280d;
+    --good:#40cc86;--bad:#e4695c;--absent:#93a2b1;--absent-bg:#1c2732;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0b1118;--surface:#141d26;--surface-2:#1a2530;--ink:#e6edf4;--muted:#93a2b1;--faint:#7d8b99;
+    --border:#263340;--border-strong:#33424f;--accent:#45b6c2;--accent-ink:#7fd3db;--g-a:#45b6c2;--g-b:#a78be0;
+    --c-0:#5590D0;--c-1:#C9821F;--c-2:#35A89A;
+    --ok:#40cc86;--ok-bg:#123021;--warn:#e0aa3c;--warn-bg:#33280d;--good:#40cc86;--bad:#e4695c;--absent:#93a2b1;--absent-bg:#1c2732;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --bg:#e9eef3;--surface:#ffffff;--surface-2:#f4f7fa;--ink:#15202b;--muted:#566472;--faint:#5f6b77;
+    --border:#d6e0e9;--border-strong:#c2cedb;--accent:#0e7c86;--accent-ink:#0a5a62;
+    --c-0:#2563C4;--c-1:#E07A0F;--c-2:#0E9488;
+    --ok:#157a4b;--ok-bg:#e6f5ec;--warn:#855c08;--warn-bg:#f8efd8;--good:#157a4b;--bad:#c0392b;--absent:#5c6873;--absent-bg:#eef2f5;
+    --shadow:0 1px 2px rgba(20,35,50,.06),0 4px 16px rgba(20,35,50,.05);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .page{max-width:1240px;margin:0 auto;padding:32px 24px 80px}
+  .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+  a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid transparent}
+  a:hover{border-bottom-color:currentColor}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+  /* Nothing here conveys state by animating, so motion is pure decoration — honour the OS setting.
+     The skill has required this from the start and the template never implemented it. */
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
+    html{scroll-behavior:auto}}
+
+  /* Header */
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+  .eyebrow{font-size:13.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:700}
+  h1{font-size:clamp(24px,3.2vw,34px);line-height:1.12;margin:10px 0 8px;letter-spacing:-.02em;text-wrap:balance}
+  .lede{color:var(--muted);max-width:74ch;font-size:17px;margin:0}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:14.5px;color:var(--muted);align-items:center}
+  .meta-row .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:7px;vertical-align:middle}
+  .toggle,.navbtn{border:1px solid var(--border-strong);background:var(--surface);color:var(--muted);border-radius:8px;padding:7px 12px;font:inherit;font-size:14px;cursor:pointer}
+  .toggle:hover,.navbtn:hover{border-color:var(--accent);color:var(--ink)}
+
+  /* Verdict */
+  .verdict{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:15px 18px;margin-top:22px;box-shadow:var(--shadow)}
+  .verdict.warn{border-left-color:var(--warn)}
+  .verdict .vdot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:6px;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 20%,transparent)}
+  .verdict h3{margin:0 0 3px;font-size:16.5px;font-weight:640}
+  .verdict p{margin:0;font-size:15px;color:var(--muted);line-height:1.75}
+
+  /* Tabs */
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:20px 0 0;border-bottom:1px solid var(--border)}
+  .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:10px 16px;font-size:15.5px;font-weight:600;cursor:pointer;border-radius:8px 8px 0 0;font-family:inherit}
+  .tabs button:hover{color:var(--ink);background:var(--surface-2)}
+  .tabs button.active{color:var(--accent-ink);border-bottom-color:var(--accent)}
+  /* Optional tab GROUPS: wrap buttons in <span class="tabgroup" role="presentation" data-glabel="…"
+     style="--gc:var(--g-a)">. Redundant encoding on purpose — label + divider + colour, never colour alone
+     (a hue-only grouping disappears for a colourblind reader). Ungrouped tabs keep working unchanged. */
+  .tabgroup{display:flex;align-items:flex-end;gap:4px}
+  .tabgroup::before{content:attr(data-glabel);font-family:var(--font-mono);font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;font-weight:700;color:var(--gc,var(--faint));opacity:.85;padding:0 8px 13px 2px;white-space:nowrap}
+  .tabgroup+.tabgroup{margin-left:10px;padding-left:14px;border-left:1px solid var(--border)}
+  .tabgroup button.active{color:var(--gc);border-bottom-color:var(--gc)}
+  .tabgroup button:hover{color:var(--gc)}
+  @media(max-width:640px){.tabgroup::before{display:none}.tabgroup+.tabgroup{margin-left:0;padding-left:0;border-left:0}}
+  .pane[hidden]{display:none}
+
+  section{margin-top:30px}
+  h2{font-size:14.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+  /* Tiles */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px 14px;box-shadow:var(--shadow)}
+  .tile .tnum{font-family:var(--font-mono);font-size:34px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+  .tile .lab{font-size:14px;color:var(--muted);margin-top:8px}
+  .tile.alert .tnum{color:var(--warn)}.tile.good .tnum{color:var(--ok)}
+
+  /* Callouts */
+  .callouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout h3{margin:0 0 5px;font-size:15.5px;letter-spacing:-.01em}
+  .callout p{margin:0;font-size:14.5px;color:var(--muted)}
+
+  /* Semantic unit/workstream detail cards — use when rows are research units, capabilities, workstreams,
+     or implementation slices rather than numeric samples. Numeric DATA still owns distributions/delta/table. */
+  .unit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+  .unit-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:11px;min-width:0}
+  .unit-card[data-state="blocked"],.unit-card[data-state="차단"]{border-left-color:var(--bad)}
+  .unit-card[data-state="partial"],.unit-card[data-state="진행 중"],.unit-card[data-state="보류"]{border-left-color:var(--warn)}
+  .unit-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .unit-head>div{min-width:0}
+  .unit-title{font-weight:700;font-size:16px;line-height:1.25}
+  .unit-sub{font-size:13.5px;color:var(--faint);margin-top:2px}
+  .unit-summary{font-size:14.5px;color:var(--muted);line-height:1.65}
+  .unit-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:4px}
+  .unit-card ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px;min-width:0}
+  .unit-card li,.unit-card code,.unit-summary,.unit-gate{overflow-wrap:anywhere;word-break:break-word}
+  .unit-card li+li{margin-top:3px}
+  .unit-gate{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--muted);font-size:14px}
+  .unit-tech{display:flex;flex-wrap:wrap;gap:6px}
+  .unit-tech code{font-size:12.5px;max-width:100%;white-space:normal}
+
+  /* Cards + charts */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .chart-t{font-size:14.5px;font-weight:600;margin-bottom:1px}.chart-s{font-size:13.5px;color:var(--faint);margin-bottom:10px}
+  svg{display:block;width:100%;overflow:visible}.axis{font-family:var(--font-mono);font-size:11.5px;fill:var(--faint)}
+  .gridline{stroke:var(--border);stroke-width:1}.baserule{stroke:var(--faint);stroke-width:1;stroke-dasharray:3 3}
+  .foot{font-size:13.5px;color:var(--faint);margin-top:8px;line-height:1.7}
+  .note{font-size:14px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:10px 12px;margin-top:12px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin:2px 0 14px}.legend span{display:flex;align-items:center;gap:7px}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:middle}
+
+  /* Summary table */
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  /* Align by CONTENT, not by column index. Right-aligning every column after the first assumes every
+     one holds a figure; a table with a prose column (a verdict, a "how it was tested" cell) then renders
+     sentences right-aligned and, if they also get .num, in a monospace column. Right-align + tabular
+     figures apply to .num cells; everything else reads left. */
+  .summary th,.summary td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  .summary td.num,.summary th.num{text-align:right}
+  /* A figure column's HEADER carries .num too so it lands over its own numbers — a left-aligned header
+     above right-aligned figures reads as a mis-built table. font-family resets because .num is mono and
+     a column label is not a figure. */
+  .summary th.num,.twrap th.num{font-family:var(--font-sans)}
+  .summary thead th{font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  .summary tbody tr:last-child td{border-bottom:none}
+  .best{color:var(--good);font-weight:600}.baseline td{color:var(--faint)}
+
+  /* Tooltip */
+  .tip{position:fixed;pointer-events:none;background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font-size:13.5px;box-shadow:0 6px 20px rgba(0,0,0,.2);opacity:0;transition:opacity .1s;z-index:20}
+  .tip .k{color:var(--faint)}.tip b{font-family:var(--font-mono)}
+
+  /* Filter bar */
+  .filters{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end;margin-bottom:14px}
+  .fgroup{display:flex;flex-direction:column;gap:6px}
+  .fgroup .flab{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:14px;padding:5px 11px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface);color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap;transition:all .12s ease;font-family:inherit}
+  .chip:hover{border-color:var(--accent);color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  @media(prefers-color-scheme:dark){.chip[aria-pressed="true"]{color:#06232a}}
+  :root[data-theme="light"] .chip[aria-pressed="true"]{color:#fff}
+  :root[data-theme="dark"] .chip[aria-pressed="true"]{color:#06232a}
+  .search{flex:1 1 200px;min-width:180px}
+  .search input{width:100%;padding:8px 12px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--ink);font-family:inherit;font-size:15px}
+  .search input::placeholder{color:var(--faint)}
+  .count-note{font-size:14px;color:var(--muted);margin:0 0 10px;font-family:var(--font-mono)}
+
+  /* Per-item table */
+  /* Tall enough to read without constant scrolling: a fixed 460px box turned every long table into a
+     porthole. Viewport-relative so it grows on big screens, capped so it never exceeds one screen. */
+  .twrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow);max-height:min(78vh,1100px)}
+  .twrap table{font-size:14.5px}
+  /* Same content-not-index rule as .summary. This box also holds the PLAN table, whose goal/status/
+     evidence columns are prose: aligning "everything after the first column" right rendered whole
+     sentences flush right, and the design kit had grown per-cell text-align overrides to fight it. */
+  .twrap thead th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--border-strong);white-space:nowrap;z-index:2;cursor:pointer}
+  .twrap tbody td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left}
+  .twrap th.num,.twrap td.num{text-align:right}
+  .twrap tbody tr:hover td{background:var(--surface-2)}
+  tr.hidden{display:none}
+  .pill{display:inline-block;font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;line-height:1.35;color:#fff}
+  @media(prefers-color-scheme:dark){.pill{color:#08151b}}
+  :root[data-theme="light"] .pill{color:#fff}:root[data-theme="dark"] .pill{color:#08151b}
+  /* role pills (categorical labels) — themed inline so no extra tokens needed */
+  .role.substrate{background:#3b6ea5}.role.reward{background:var(--accent)}.role.eval{background:#7a5ea8}.role.source{background:#2f8f5b}.role.probe{background:#7c8794}
+  @media(prefers-color-scheme:dark){.role.substrate{background:#6fa2d6}.role.eval{background:#b199dc}.role.source{background:#5cc389}.role.probe{background:#93a2b1}}
+  :root[data-theme="light"] .role.substrate{background:#3b6ea5}:root[data-theme="light"] .role.eval{background:#7a5ea8}:root[data-theme="light"] .role.source{background:#2f8f5b}:root[data-theme="light"] .role.probe{background:#7c8794}
+  :root[data-theme="dark"] .role.substrate{background:#6fa2d6}:root[data-theme="dark"] .role.eval{background:#b199dc}:root[data-theme="dark"] .role.source{background:#5cc389}:root[data-theme="dark"] .role.probe{background:#93a2b1}
+  /* presence badges (T/S/L/M-style: present / partial / absent) */
+  .gt{display:inline-flex;gap:4px}
+  .gtb{width:22px;height:20px;border-radius:5px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);border:1px solid transparent}
+  .gtb.p{background:var(--ok-bg);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 30%,transparent)}
+  .gtb.h{background:var(--warn-bg);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+  .gtb.a{background:var(--absent-bg);color:var(--absent)}
+  /* verification / provenance badges */
+  .vb{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;white-space:nowrap}
+  .vb::before{content:"";width:8px;height:8px;border-radius:50%;display:inline-block}
+  .vb.ok{color:var(--ok)}.vb.ok::before{background:var(--ok)}
+  .vb.warn{color:var(--warn)}.vb.warn::before{background:var(--warn)}
+  .vb.unv{color:var(--faint)}.vb.unv::before{border:1px dashed var(--faint)}
+  /* design-kit layout (Components tab — delete tab when publishing) */
+  .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px}
+  .sw{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface);font-size:12.5px}
+  .sw i{display:block;height:34px}
+  .sw span{display:block;padding:5px 8px;color:var(--muted);font-family:var(--font-mono)}
+  .kit-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .kit-note{font-size:13.5px;color:var(--faint);margin-top:6px;font-family:var(--font-mono)}
+  /* delta / trend indicators */
+  .delta{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:3px}
+  .delta::before{font-size:10.5px}
+  .delta.up{color:var(--good)}.delta.up::before{content:"▲"}
+  .delta.down{color:var(--bad)}.delta.down::before{content:"▼"}
+  .delta.flat{color:var(--faint)}.delta.flat::before{content:"—"}
+  /* meter / progress bar */
+  .meter{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted)}
+  .meter .track{flex:1;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);overflow:hidden;min-width:80px}
+  .meter .fill{display:block;height:100%;background:var(--accent);border-radius:999px}
+  .meter .val{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink);min-width:38px;text-align:right}
+  /* semantic status pills (pass / partial / fail) */
+  .pill.ok{background:var(--ok)}.pill.mid{background:var(--warn)}.pill.no{background:var(--bad)}
+  /* inline code / config-key reference */
+  .inline-code,code{font-family:var(--font-mono);font-size:13.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px;border:1px solid var(--border);color:var(--ink)}
+  /* group header row inside a data table */
+  .grouprow td{background:var(--surface-2);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);padding:8px 12px;border-bottom:1px solid var(--border-strong);text-align:left}
+
+  /* Media viewer */
+  .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:14px;color:var(--muted)}
+  .controls select{font:inherit;font-size:14px;background:var(--surface);color:var(--ink);border:1px solid var(--border-strong);border-radius:7px;padding:5px 8px}
+  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+  .panel{display:flex;flex-direction:column;gap:7px}
+  /* contain, NOT cover: the panels exist to be compared, and `cover` silently crops a non-square image —
+     exactly where a defect near the edge of the frame would be. Letterboxing on black shows the crop
+     that was NOT taken; a silent crop shows a lie. */
+  .panel img{width:100%;max-width:100%;aspect-ratio:1;object-fit:contain;border-radius:8px;border:1px solid var(--border-strong);background:#000}
+  /* A panel whose src is missing must SAY so. A bare <img src=""> renders the browser's broken-image
+     glyph, which reads as "the image failed to load" — indistinguishable from a real load failure. */
+  .panel .noimg{width:100%;aspect-ratio:1;border-radius:8px;border:1px dashed var(--border-strong);
+    background:var(--surface-2);display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:8px;font-family:var(--font-mono);font-size:12.5px;color:var(--muted)}
+  .panel .plabel{font-size:12.5px;font-weight:640;text-transform:uppercase;color:var(--muted);display:flex;gap:6px;align-items:center}
+  .sample-meta{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-family:var(--font-mono);font-size:13.5px;color:var(--muted)}
+  .sample-meta b{color:var(--ink);font-weight:600}
+  .panel .pmetric{font-family:var(--font-mono);font-size:12.5px;color:var(--faint)}
+  .panel.best-img img{outline:2px solid var(--good);outline-offset:1px}
+
+  /* Collapsible sources */
+  details.sources{margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
+  details.sources summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:14.5px}
+  details.sources[open] summary{border-bottom:1px solid var(--border)}
+  .src-list{padding:12px 16px;font-size:13.5px;color:var(--muted)}.src-list div{margin-bottom:7px}
+
+  /* ===== Experiment plan / backlog table (data-driven; one JSON block + planView()) ===== */
+  .plan td.goal{color:var(--muted);font-size:14px;max-width:52ch}   /* 34ch stacked goals 5 lines deep */
+  .plan td.task{font-weight:600}
+  .plan .when{font-family:var(--font-mono);font-size:13px;color:var(--muted);display:block;margin-top:3px}
+  .plan a.notelink{color:var(--accent-ink);text-decoration:none;border-bottom:1px dotted var(--accent);
+    font-size:13.5px;cursor:pointer;white-space:nowrap}
+  .plan a.notelink:hover{background:var(--surface-2)}
+  .plan a.notelink+a.notelink{margin-left:8px}
+  .plan td.cost{font-family:var(--font-mono);font-size:13.5px;color:var(--muted);white-space:nowrap}
+  .plan tr.done td.task{color:var(--muted);font-weight:500}
+  /* ===== Dated narrative pane: canonical RadClaw sticky calendar ===== */
+  .notes-layout{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;align-items:start}
+  .notes-main{min-width:0}
+  .notes-side{position:sticky;top:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:var(--shadow)}
+  @media(max-width:820px){.notes-layout{grid-template-columns:1fr}.notes-side{order:-1;position:static}}
+  .notecal{user-select:none}
+  .notecal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .notecal-title{font-weight:700;font-size:15.5px}
+  .notecal-nav{border:0;background:var(--surface-2);color:var(--ink);border-radius:5px;padding:3px 8px;cursor:pointer;font:inherit;line-height:1}
+  .notecal-nav:hover{color:var(--ink);background:var(--border)}
+  .notecal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .notecal-dow{text-align:center;font-size:11.5px;color:var(--faint);padding:4px 0}
+  .notecal-day{border:0;background:transparent;color:var(--muted);font:11px var(--font-mono);text-align:center;border-radius:5px;padding:5px 0}
+  .notecal-day.has{cursor:pointer;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);font-weight:700}
+  .notecal-day.has:hover{background:color-mix(in srgb,var(--accent) 26%,transparent)}
+  /* Solid accent fill needs theme-dependent ink, like the active chip: --accent is a dark teal in light
+     mode but a light cyan in dark mode, so a hard-coded #fff put the selected day at 2.4:1 in dark. */
+  .notecal-day.has.sel{background:var(--accent);color:#fff}
+  @media(prefers-color-scheme:dark){.notecal-day.has.sel{color:#06232a}}
+  :root[data-theme="light"] .notecal-day.has.sel{color:#fff}
+  :root[data-theme="dark"] .notecal-day.has.sel{color:#06232a}
+  .notes-filter{margin:0 0 12px;font-size:14.5px;color:var(--muted)}
+  .notes-filter a{color:var(--accent);cursor:pointer;text-decoration:underline}
+  .note-status-row{margin:0 0 12px}.note-status-row .flab{margin-bottom:6px}
+  .note-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+  .note-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .note-meta{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;flex:none}
+  @media(max-width:640px){.note-head{flex-direction:column;align-items:stretch}.note-meta{justify-content:flex-start}}
+  /* A bare .pill is white-on-white: .pill sets color:#fff and only its MODIFIER classes carry a
+     background. The stamp needs its own contrast, and it carries the update TIME as well as the date. */
+  .note-stamp{font-family:var(--font-mono);font-size:12.5px;font-variant-numeric:tabular-nums;
+    color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);
+    border-radius:999px;padding:3px 10px;white-space:nowrap;flex:none}
+  .note-stamp .t{color:var(--muted);margin-left:6px}
+  .status-badge{display:inline-block;font-size:12.5px;font-weight:700;line-height:1.35;padding:3px 9px;
+    border-radius:999px;border:1px solid transparent;white-space:nowrap}
+  .status-badge[data-state="예정"]{color:#425466;background:#e8eef4;border-color:#b9c7d5}
+  .status-badge[data-state="진행 중"],.status-badge[data-state="조사 중"]{color:#2457a6;background:#e7efff;border-color:#b7caf0}
+  .status-badge[data-state="완료"],.status-badge[data-state="해결"]{color:#157a4b;background:#e6f5ec;border-color:#abd9bf}
+  .status-badge[data-state="중단"],.status-badge[data-state="차단"]{color:#a83226;background:#fdecea;border-color:#efb9b3}
+  .status-badge[data-state="보류"],.status-badge[data-state="완화"]{color:#855c08;background:#f8efd8;border-color:#dec68d}
+  .status-badge[data-state="신규"]{color:#683a99;background:#f2eafa;border-color:#d4bce8}
+  .status-badge[data-state="모니터링"]{color:#0a6d72;background:#e1f4f3;border-color:#a9d8d5}
+  .note-title{font-size:14.5px;font-weight:600}
+  .note-sec-h{color:var(--accent);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+  .note-block{margin:8px 0 0 10px;padding:8px 10px;border-left:2px solid var(--border-strong)}
+  .note-block-h{color:var(--muted);font-weight:700;font-size:12.5px;letter-spacing:.03em}
+  .note-card ul{margin:5px 0 0;padding-left:18px;font-size:14.5px;color:var(--muted)}
+  .note-card li{margin:3px 0}
+  /* Every entry MUST open with its conclusion — the reader gets the finding before the process. */
+  .note-key{margin-top:10px;padding:9px 12px;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;
+    background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--ink);font-size:15px;font-weight:600;line-height:1.5}
+  .note-details{margin-top:11px;border:1px solid var(--border);border-radius:8px;padding:6px 12px;background:var(--surface-2,var(--surface))}
+  .note-details>summary{cursor:pointer;color:var(--accent);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;list-style:none;outline:none}
+  .note-details>summary::-webkit-details-marker{display:none}
+  .note-details>summary::before{content:"▸ ";color:var(--faint)}
+  .note-details[open]>summary::before{content:"▾ "}
+  /* A note table with many columns, or one long unbroken token (a URL, a hash, a path), pushed the whole
+     BODY sideways — measured 492px of horizontal page scroll. The table scrolls inside its own box and
+     long tokens break; the page never scrolls sideways. */
+  .dtwrap{overflow-x:auto;max-width:100%}
+  .datatable{margin-top:8px;width:100%;border-collapse:collapse;font-size:14.5px}
+  .datatable th,.datatable td{text-align:left;white-space:normal;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .note-card li,.note-key,.datatable td{overflow-wrap:anywhere}
+  .datatable th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  /* --ink, not --fg: --fg is not a token in this file, so the colour was invalid-at-computed-value and
+     only looked right because `color` inherits. A token that does not exist is a fix waiting to fail. */
+  #toTop{position:fixed;right:24px;bottom:24px;width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:20px;line-height:1;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.14)}
+  #toTop.show{opacity:1;pointer-events:auto}
+  #toTop:hover{border-color:var(--accent);color:var(--accent)}
+  #record-fatal{position:fixed;inset:16px;z-index:1000;overflow:auto;padding:22px;border:3px solid #a83226;
+    border-radius:12px;background:#fff1ef;color:#641c15;box-shadow:0 12px 40px rgba(80,0,0,.35);font:600 15px/1.5 var(--font-sans)}
+  #record-fatal strong{display:block;font-size:20px;margin-bottom:8px}#record-fatal pre{white-space:pre-wrap;font:13px/1.45 var(--font-mono)}
+
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);font-size:13.5px;color:var(--faint)}
+  @media(max-width:640px){.page{padding:24px 14px 60px}}
+</style>
+
+<div class="page">
+  <header>
+    <div>
+      <div class="eyebrow">TTE · CONCEPT SET 품질</div>
+      <h1>entry 약물 exact match — 짝지은 2-arm 측정</h1>
+      <p class="lede">6개 벤치마크 시험의 eligibility concept set을 gold(TROY v1.1 CIRCE)와 기준별 1:1 closure 겹침으로 대조한 232개 쌍. 두 arm은 동일 store·동일 exporter·동일 채점 플래그로 만들어졌고, 유일한 차이는 <span class="inline-code">expected_domain in ("Drug", None)</span> 게이트다.</p>
+      <div class="meta-row">
+        <span><span class="dot"></span>2026-08-10 · commits <span class="inline-code">991c11c</span> / <span class="inline-code">10034d5</span> · store 2026-08-04</span>
+        <span>closure 모드 · vocab <span class="inline-code">synthea23m</span> · 범위 밖 gold 집합 6개 제외</span>
+      </div>
+    </div>
+    <button class="toggle" id="themeBtn" data-copy="theme">◐ Theme</button>
+  </header>
+
+  <div class="verdict" id="verdict">
+    <div class="vdot"></div>
+    <div><h3>수정은 유효하다. 다만 구별되는 수정은 2건이다.</h3>
+      <p>6-trial macro recall 0.567 → 0.598(+0.030), 겹침 0인 쌍 104 → 99. 손대지 않은 4개 trial이 <b>정확히 0.000</b> 움직였고, 그 trial들의 CIRCE 파일은 두 arm 사이에서 바이트 동일하다 — 이것이 다른 요인이 섞이지 않았다는 증거다. 다만 움직인 5쌍 중 3쌍은 gold 자체의 참조되지 않는 중복 concept set이므로, 같은 수정을 세 번 더 센 것이다. 정직한 값은 <b>2건</b>(CARMELINA·CAROLINA 각 entry 약물 1개) — study당 entry 약물이 하나이므로 당연한 수다.</p></div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <span class="tabgroup" role="presentation" data-glabel="Results" data-copy-group="results" style="--gc:var(--g-a)">
+      <button class="active" role="tab" aria-selected="true" data-pane="pane-overview" data-copy-tab="overview">Overview</button>
+      <button role="tab" aria-selected="false" data-pane="pane-item" data-copy-tab="detail">Per-item</button>
+      <button role="tab" aria-selected="false" data-pane="pane-samples" id="tabSamples" data-copy-tab="samples">Samples</button>
+    </span>
+    <span class="tabgroup" role="presentation" data-glabel="Record" data-copy-group="record" style="--gc:var(--g-b)">
+      <button role="tab" aria-selected="false" data-pane="pane-plan" id="tabPlan" data-copy-tab="plan" hidden>Plan</button>
+      <button role="tab" aria-selected="false" data-pane="pane-notes" id="tabNotes" data-copy-tab="notes" hidden>Notes</button>
+      <button role="tab" aria-selected="false" data-pane="pane-issues" id="tabIssues" data-copy-tab="issues" hidden>Issues</button>
+    </span>
+    </div>
+
+  <!-- ===== OVERVIEW (entity-level) ===== -->
+  <div id="pane-overview" class="pane" role="tabpanel">
+    <!-- Frame the whole work/project before the numbers. Replace framingdata; keep 3–6 filled cards. -->
+    <section data-component="framing">
+      <h2 data-copy-section="overview">Overview</h2>
+      <div class="grid2" id="framingCards">
+      </div>
+    </section>
+
+    <section id="tilesSection">
+      <h2 data-copy-section="glance">At a glance</h2>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <section id="summarySection">
+      <h2 data-copy-section="summary">Summary</h2>
+      <div class="card" style="margin-bottom:16px">
+        <table class="summary" id="summaryTbl"><thead></thead><tbody></tbody></table>
+        <div class="foot">기준별 1:1 closure 겹침의 macro 평균. gold 항목은 <span class="inline-code">concept_ancestor</span>를 Circe와 같은 방식으로 전개했고(<span class="inline-code">invalid_reason IS NULL</span>, <span class="inline-code">isExcluded</span>는 anti-join), pooled concept mass(micro) 평균은 방향을 뒤집으므로 표제로 쓰지 않는다.</div>
+      </div>
+      <div class="grid2">
+        <div class="card"><div class="chart-t">arm별 평균 recall</div><div class="chart-s">대조군은 점선 기준선.</div><svg id="barA" viewBox="0 0 420 210"></svg></div>
+        <div class="card"><div class="chart-t">arm별 평균 precision</div><div class="chart-s">대조군은 점선 기준선.</div><svg id="barB" viewBox="0 0 420 210"></svg></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-copy-section="findings">Findings</h2>
+      <div class="callouts">
+        <div class="callout"><h3>parity는 0.000 열이 증명한다</h3><p>ARISTOTLE · EMPA-REG · LEADER · PLATO가 정확히 0.000 움직였다. 두 arm은 같은 store에서 같은 날 같은 exporter로 나왔고, 6개 export 중 4개가 md5까지 동일하다. 차이가 게이트 외의 무언가에서 왔다면 이 열이 0이 아니었을 것이다.</p></div>
+        <div class="callout warn"><h3>쌍 수는 수정 수가 아니다</h3><p>gold의 비-ATC <span class="inline-code">[TROY intervention] &lt;drug&gt;</span> 집합은 <span class="inline-code">PrimaryCriteria</span>가 실제로 참조하는 <span class="inline-code">(ATC)</span> 집합의 중복이고, 어떤 기준도 참조하지 않는다(238개 중 14개). 이 중복을 분모에 남기기로 2026-08-10에 결정했으므로, 비용은 보고 단계에서 치른다 — <b>쌍 수가 아니라 구별되는 수정 수를 인용한다</b>. 규칙은 <span class="inline-code">artemis/AGENTS.md</span> EVALUATION에 고정돼 있다.</p></div>
+        <div class="callout"><h3>범위 밖 gold 집합 6개</h3><p>gold가 <span class="inline-code">CensoringCriteria</span>에서만 참조하는 약물 집합 — Warfarin, Sulfonylureas, Glimepiride, DPP4 inhibitors ×2, Clopidogrel(모두 ATC). gold는 어느 arm의 약물이든 개시 시점에 검열하지만, 생성 산출물은 eligibility 코호트라 그 섹션 자체가 없다. 짝짓기에서 제외하고 별도 모집단으로 보고한다.</p></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== PER-ITEM (detail) ===== -->
+  <div id="pane-item" class="pane" role="tabpanel" hidden>
+    <section id="unitSection" hidden>
+      <h2 data-copy-section="units">Units</h2>
+      <div class="chart-s" data-copy="unitHelp" style="margin-bottom:12px">Role, current judgment, evidence stage, blockers, and the next completion gate for each unit.</div>
+      <div class="unit-grid" id="unitGrid"></div>
+    </section>
+
+    <section data-numeric-detail>
+      <h2 data-copy-section="distributions">Distributions</h2>
+      <div class="legend" id="legend"></div>
+      <div class="grid2">
+        <div class="card"><div class="chart-t">recall 분포</div><div class="chart-s">두 arm이 거의 겹친다 — 232쌍 중 5쌍만 움직였으므로 그것이 정상이다.</div><svg id="distA" viewBox="0 0 420 220"></svg></div>
+        <div class="card"><div class="chart-t">precision 분포</div><div class="chart-s">같은 이유로 거의 겹친다.</div><svg id="distB" viewBox="0 0 420 220"></svg></div>
+      </div>
+    </section>
+
+    <section data-numeric-detail>
+      <h2 data-copy-section="delta">Per-item delta vs baseline</h2>
+      <div class="card">
+        <div class="chart-s" data-copy="deltaHelp">Each mark = one item, sorted. Above 0 = better than baseline.</div>
+        <div class="controls"><label><span data-copy="metricLabel">Metric</span> <select id="deltaMetric"></select></label></div>
+        <svg id="deltaChart" viewBox="0 0 1040 260"></svg>
+        <div class="note" id="deltaNote"></div>
+      </div>
+    </section>
+
+    <section data-numeric-detail>
+      <h2 data-copy-section="itemTable">Per-item table</h2>
+      <div class="filters">
+        <div class="fgroup">
+          <span class="flab" data-copy="bucket">Bucket</span>
+          <div class="chips" data-filter="bucket">
+            <button class="chip" aria-pressed="true" data-val="all">전체</button>
+            <button class="chip" aria-pressed="false" data-val="aristotle">ARISTOTLE</button>
+            <button class="chip" aria-pressed="false" data-val="carmelina">CARMELINA</button>
+            <button class="chip" aria-pressed="false" data-val="carolina">CAROLINA</button>
+            <button class="chip" aria-pressed="false" data-val="empareg">EMPA-REG OUTCOME</button>
+            <button class="chip" aria-pressed="false" data-val="leader">LEADER</button>
+            <button class="chip" aria-pressed="false" data-val="plato">PLATO</button>
+          </div>
+        </div>
+        <div class="fgroup search">
+          <span class="flab" data-copy="search">Search</span>
+          <input type="text" id="search" placeholder="item id…" autocomplete="off" />
+        </div>
+      </div>
+      <p class="count-note" id="countNote"></p>
+      <div class="twrap"><table id="perTbl"><thead></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+
+  <!-- ===== SAMPLES (media viewer; hidden if imgdata empty) ===== -->
+  <div id="pane-samples" class="pane" role="tabpanel" hidden>
+    <section>
+      <h2 data-copy-section="samples">Sample viewer</h2>
+      <div class="card">
+        <div class="chart-s" style="margin-bottom:10px" data-copy="viewerHelp">Curated subset. Same display window per row → panels are directly comparable.</div>
+        <div class="controls"><button class="navbtn" id="prevS" data-copy="prev">◀ Prev</button><select id="sampleSel"></select><button class="navbtn" id="nextS" data-copy="next">Next ▶</button></div>
+        <div class="panels" id="panels"></div>
+        <div class="sample-meta" id="sampleMeta"></div>
+        <div class="note" id="viewerNote"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== PLAN (experiment backlog; rows live in <script id="plandata">, rendered by planView) =====
+       A row's `links` point at the day it was worked on: clicking one switches to that pane and filters
+       its calendar to that date. Auto-hidden when plandata is empty. -->
+  <div id="pane-plan" class="pane" role="tabpanel" hidden>
+    <section>
+      <h2 data-copy-section="plan">Plan</h2>
+      <div class="chart-s" style="margin-bottom:12px" data-copy="planHelp">What still has to run, why, and where the evidence
+        landed. Click a date to jump to that day's note.</div>
+      <div class="card"><div class="twrap"><table class="summary plan" id="planTbl"><thead></thead><tbody></tbody></table></div>
+        <div class="foot">Cost is the estimate used to prioritise; a done row keeps its completion date.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== NOTES (required dated-narrative component: decision-grade experiment records) =====
+       Keep this shell intact: noteView validates the calendar, sticky rail, status/date filters, and data.
+       Entries live in <script id="notesdata">; each is {date,time?,status,title,key,sections}.
+       Experiment status and the seven exact fixed headings come from NOTE_CONTRACTS below.
+       Multiple records may share a date. The issue pane ships immediately below; do not duplicate either
+       dated pane. The closing gate enforces exactly Plan / Notes / Issues. Empty data hides its tab. -->
+  <div id="pane-notes" class="pane" role="tabpanel" data-component="dated-narrative" hidden>
+    <section>
+      <h2 data-copy-section="notes">Notes</h2>
+      <div class="notes-layout" data-dated-narrative-layout>
+        <div class="notes-main">
+          <div class="chart-s" style="margin-bottom:7px" data-copy="notesHelp">Dated entries, newest first. Days with an entry are highlighted in the calendar — click one to filter.</div>
+          <div id="notesFilter" class="notes-filter" hidden></div>
+          <div id="notes"></div>
+        </div>
+        <aside class="notes-side" data-dated-narrative-calendar><div id="cal" class="notecal"></div></aside>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== ISSUES (the only second dated-narrative pane: one defect per record) ===== -->
+  <div id="pane-issues" class="pane" role="tabpanel" data-component="dated-narrative" hidden>
+    <section>
+      <h2 data-copy-section="issues">Issues</h2>
+      <div class="notes-layout" data-dated-narrative-layout>
+        <div class="notes-main">
+          <div class="chart-s" style="margin-bottom:7px" data-copy="issuesHelp">One defect per record. Lifecycle badges and fixed sections show investigation through closure.</div>
+          <div id="issuesFilter" class="notes-filter" hidden></div>
+          <div id="issues"></div>
+        </div>
+        <aside class="notes-side" data-dated-narrative-calendar><div id="issuesCal" class="notecal"></div></aside>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== COMPONENTS (design kit — reference only; delete this tab before publishing) ===== -->
+  
+  <footer id="footer">Compiled YYYY-MM-DD · numbers re-checked against the source report · treat any unverified figure as provisional.</footer>
+  <button id="toTop" title="Back to top" aria-label="Back to top">↑</button>
+</div>
+<div class="tip" id="tip"></div>
+<div id="record-fatal" role="alert" aria-live="assertive" hidden></div>
+
+<!-- scope framing cards: 3–6 objects, each {title,text}. Explain the whole research/project context:
+     unmet need, goal, prior baseline/work, gap, contribution, and any not-yet-claimed boundary. -->
+<script id="framingdata" type="application/json">
+[
+ {
+  "title": "묻는 것",
+  "text": "임상시험 eligibility 기준에서 생성한 concept set이 gold(TROY v1.1 CIRCE)와 얼마나 일치하는가 — 그리고 `991c11c`의 게이트 수정이 그 일치도를 실제로 올렸는가."
+ },
+ {
+  "title": "기존 방식",
+  "text": "이전에는 `synthea_cdm` 계열 벤치마크 CDM의 환자 수로 품질을 판단했다. 그 CDM은 gold **로부터** 생성되므로 환자 수는 생성기의 관례를 부분적으로 측정한다. 그래서 측정 기준이 `data/gold/` 대비 closure 겹침으로 교체됐다."
+ },
+ {
+  "title": "남아 있던 구멍",
+  "text": "겹침을 **어느 단위로** 재느냐가 정해지지 않아, 처음 측정은 pooled concept mass(micro) 평균이었고 그것은 ARISTOTLE의 결론을 뒤집었다(micro 0.087/0.863 vs 기준별 0.749/0.153). 단위는 이제 **eligibility 기준별 1:1, macro 평균**으로 고정됐다."
+ },
+ {
+  "title": "이 페이지가 뒷받침하는 것",
+  "text": "동일 store·동일 exporter·동일 채점 플래그로 만든 짝지은 2-arm 비교. macro recall 0.567 → 0.598, 겹침 0인 쌍 104 → 99. 손대지 않은 4개 trial이 정확히 0.000 움직였다는 것이 parity의 증거다."
+ },
+ {
+  "title": "아직 주장하지 않는 것",
+  "text": "임베딩 검색이 고유명사에 약한 *이유*(동일 계열 약물이 벡터 공간에서 가깝다는 가설)는 증명되지 않았다. exact match가 경쟁한 적이 없었으므로, 대조군 `ARTEMIS_DISABLE_EXACT_INGREDIENT_MATCH=1`을 돌려야 한다. 미실행."
+ }
+]
+</script>
+
+<!-- semantic research units/workstreams/capabilities, or [] for numeric-only dashboards.
+     Schema is fixed: id,title,subtitle,status,summary,completion,evidence,next_gate,blockers,technical_ids.
+     completion is shown as text and, when numeric 0..5, as a 1–5 progress meter. -->
+<script id="unitdata" type="application/json">
+[
+ {
+  "id": "CARMELINA",
+  "title": "CARMELINA",
+  "subtitle": "gold: [TROY v1.1] Linagliptin (CARMELINA).json",
+  "status": "partial",
+  "summary": "**recall 0.473 → 0.573** (+0.100), precision 0.439 → 0.539. 1건의 구별되는 수정, 그리고 gold 자체의 중복 1쌍이 같은 수정을 다시 셈.",
+  "completion": {
+   "done": 20,
+   "total": 36,
+   "label": "겹침 있는 쌍"
+  },
+  "evidence": [
+   "`CARMELINA_NCT01897532_study9_circe.json` md5 `2a6360fb…`",
+   "짝지어진 쌍 36 · 겹침 0인 쌍 16",
+   "범위 밖 gold 집합 1 — [TROY intervention] Sulfonylureas (ATC)"
+  ],
+  "next_gate": "겹침 0인 쌍 16건의 원인 분류",
+  "blockers": [],
+  "technical_ids": [
+   "[TROY intervention] Linagliptin",
+   "[TROY intervention] Linagliptin (ATC)"
+  ]
+ },
+ {
+  "id": "CAROLINA",
+  "title": "CAROLINA",
+  "subtitle": "gold: [TROY v1.1] Linagliptin (CAROLINA).json",
+  "status": "partial",
+  "summary": "**recall 0.482 → 0.563** (+0.081), precision 0.444 → 0.525. 1건의 구별되는 수정, 그리고 gold 자체의 중복 2쌍이 같은 수정을 다시 셈.",
+  "completion": {
+   "done": 32,
+   "total": 55,
+   "label": "겹침 있는 쌍"
+  },
+  "evidence": [
+   "`CAROLINA_NCT01243424_study10_circe.json` md5 `b63ab1bf…`",
+   "짝지어진 쌍 55 · 겹침 0인 쌍 23",
+   "범위 밖 gold 집합 1 — [TROY intervention] Glimepiride (ATC)"
+  ],
+  "next_gate": "겹침 0인 쌍 23건의 원인 분류",
+  "blockers": [
+   "`glimepiride` 기준의 sourceText 한정어 탈락"
+  ],
+  "technical_ids": [
+   "linagliptin",
+   "[TROY intervention] Linagliptin",
+   "[TROY intervention] Linagliptin (ATC)"
+  ]
+ },
+ {
+  "id": "ARISTOTLE",
+  "title": "ARISTOTLE",
+  "subtitle": "gold: _TROY v1.1_ Apixaban (ARISTOTLE).json",
+  "status": "complete",
+  "summary": "recall 0.636, precision 0.357 — 두 arm이 **정확히 0.000** 차이. 이 trial의 CIRCE 파일은 두 arm 사이에서 바이트 동일하며, 이것이 arm parity의 증거.",
+  "completion": {
+   "done": 21,
+   "total": 37,
+   "label": "겹침 있는 쌍"
+  },
+  "evidence": [
+   "`ARISTOTLE_NCT00412984_study3_circe.json` md5 `22f45104…`",
+   "짝지어진 쌍 37 · 겹침 0인 쌍 16",
+   "범위 밖 gold 집합 1 — [TROY intervention] Warfarin (ATC)"
+  ],
+  "next_gate": "겹침 0인 쌍 16건의 원인 분류",
+  "blockers": [],
+  "technical_ids": [
+   "변경 없음"
+  ]
+ },
+ {
+  "id": "EMPA-REG OUTCOME",
+  "title": "EMPA-REG OUTCOME",
+  "subtitle": "gold: [TROY v1.1] Empagliflozin (EMPA-REG OUTCOME).json",
+  "status": "complete",
+  "summary": "recall 0.370, precision 0.391 — 두 arm이 **정확히 0.000** 차이. 이 trial의 CIRCE 파일은 두 arm 사이에서 바이트 동일하며, 이것이 arm parity의 증거.",
+  "completion": {
+   "done": 22,
+   "total": 38,
+   "label": "겹침 있는 쌍"
+  },
+  "evidence": [
+   "`EMPA-REG_NCT01131676_study8_circe.json` md5 `bbc0e0d8…`",
+   "짝지어진 쌍 38 · 겹침 0인 쌍 16",
+   "범위 밖 gold 집합 1 — [TROY intervention] DPP4 inhibitors (ATC)"
+  ],
+  "next_gate": "겹침 0인 쌍 16건의 원인 분류",
+  "blockers": [
+   "`BI 10773` 개발코드가 `CHF-6366 .beta.-2 metabolite`로 매핑됨"
+  ],
+  "technical_ids": [
+   "변경 없음"
+  ]
+ },
+ {
+  "id": "LEADER",
+  "title": "LEADER",
+  "subtitle": "gold: _TROY v1.1_ Liraglutide (LEADER).json",
+  "status": "complete",
+  "summary": "recall 0.585, precision 0.613 — 두 arm이 **정확히 0.000** 차이. 이 trial의 CIRCE 파일은 두 arm 사이에서 바이트 동일하며, 이것이 arm parity의 증거.",
+  "completion": {
+   "done": 26,
+   "total": 44,
+   "label": "겹침 있는 쌍"
+  },
+  "evidence": [
+   "`LEADER_NCT01179048_study1_circe.json` md5 `f77bdad5…`",
+   "짝지어진 쌍 44 · 겹침 0인 쌍 18",
+   "범위 밖 gold 집합 1 — [TROY intervention] DPP4 inhibitors (ATC)"
+  ],
+  "next_gate": "겹침 0인 쌍 18건의 원인 분류",
+  "blockers": [],
+  "technical_ids": [
+   "변경 없음"
+  ]
+ },
+ {
+  "id": "PLATO",
+  "title": "PLATO",
+  "subtitle": "gold: _TROY v1.1_ Ticagrelor (PLATO).json",
+  "status": "complete",
+  "summary": "recall 0.858, precision 0.693 — 두 arm이 **정확히 0.000** 차이. 이 trial의 CIRCE 파일은 두 arm 사이에서 바이트 동일하며, 이것이 arm parity의 증거.",
+  "completion": {
+   "done": 12,
+   "total": 22,
+   "label": "겹침 있는 쌍"
+  },
+  "evidence": [
+   "`PLATO_NCT00391872_study2_circe.json` md5 `cbc9d8e5…`",
+   "짝지어진 쌍 22 · 겹침 0인 쌍 10",
+   "범위 밖 gold 집합 1 — [TROY intervention] Clopidogrel (ATC)"
+  ],
+  "next_gate": "겹침 0인 쌍 10건의 원인 분류",
+  "blockers": [],
+  "technical_ids": [
+   "변경 없음"
+  ]
+ }
+]
+</script>
+
+<!-- curated media map, or {} if no viewer: {id:{img:{panel:dataURI}, m:{...}}} -->
+<script id="imgdata" type="application/json">{}</script>
+<!-- Dated records use {date,time?,status,title,key,sections}. NOTE_CONTRACTS defines each pane's exact
+     lifecycle vocabulary and fixed ordered headings. A fixed section may use items/table/images and
+     migrated source detail in blocks:[{h,items?,table?,images?,collapsed?}]. Image src values are data: URIs.
+     Replace these blocks' contents. Empty arrays hide their tabs. -->
+<!-- experiment backlog rows: {task, goal, status, date?, cost?, priority?, links?[{pane,date,label}], note?} -->
+<script id="plandata" type="application/json">
+[
+ {
+  "group": "Concept-set quality — zero-overlap defects",
+  "task": "Fire the exact RxNorm-Ingredient match on the entry drug",
+  "goal": "A trial's own study drug must not resolve to a different molecule",
+  "status": "done",
+  "date": "2026-08-09",
+  "cost": "1 session",
+  "priority": "P0",
+  "note": "be57342 + 991c11c. Two gates in sequence: TTE_DRUG_ANCHORED_ENTRY defaults False and is set nowhere, and _build_seeded_target_circe passes no expected_domain so `== \"Drug\"` still missed it. Paired arm (86adac9): macro recall 0.567 -> 0.597, zero-overlap 109 -> 104, 5 pairs 0.000 -> 1.000, four untouched trials moved exactly 0.000.",
+  "links": [
+   {
+    "pane": "pane-notes",
+    "date": "2026-08-09",
+    "label": "짝지은 2-arm 측정"
+   }
+  ]
+ },
+ {
+  "group": "Concept-set quality — zero-overlap defects",
+  "task": "glimepiride: recover the dropped qualifier, not the molecule",
+  "goal": "Stop counting a hypersensitivity criterion as a wrong-entity drug mapping",
+  "status": "partial",
+  "date": "2026-08-10",
+  "cost": "unknown",
+  "priority": "P1",
+  "note": "1 of 2 rows resolved in 10034d5 -- gold's Glimepiride (ATC) is referenced only from CensoringCriteria, so it is out of scope for an eligibility cohort, not a mapper defect. The other row pairs against gold's [TROY intervention] Glimepiride, which NO criterion references (an orphan). Orphans were kept in the denominator by decision on 2026-08-10, so that row stays scored. Underlying sourceText qualifier drop is still real and still open. Must NOT be fixed by loosening the domain gate -- that miscasts Calcitonin/Creatinine/Glucose/glucose as drug exposures.",
+  "links": [
+   {
+    "pane": "pane-notes",
+    "date": "2026-08-09",
+    "label": "짝지은 2-arm 측정"
+   }
+  ]
+ },
+ {
+  "group": "Concept-set quality — zero-overlap defects",
+  "task": "Route development codes / synonyms (BI 10773)",
+  "goal": "EMPA-REG's entry drug currently maps to an unrelated metabolite",
+  "status": "todo",
+  "date": null,
+  "cost": "unknown",
+  "priority": "P1",
+  "note": "'BI 10773' is empagliflozin's development code. Maps to 1254065 'CHF-6366 .beta.-2 metabolite'. No RxNorm Ingredient carries that name, so the exact matcher correctly falls through and the embedding answer stands. Found 2026-08-09; not in the original wrong-entity table."
+ },
+ {
+  "group": "Concept-set quality — zero-overlap defects",
+  "task": "Run the exact-vs-embedding ablation arm",
+  "goal": "Settle whether embeddings fail on proper nouns because same-class drugs sit close",
+  "status": "todo",
+  "date": null,
+  "cost": "1 regeneration",
+  "priority": "P2",
+  "note": "ARTEMIS_DISABLE_EXACT_INGREDIENT_MATCH=1 exists as the named control arm and has not been run. Until it is, the attribution is only 'for these two seeds the embedding path returned a same-class molecule', not a property of embedding search."
+ },
+ {
+  "group": "Concept-set quality — zero-overlap defects",
+  "task": "Exclude gold's censoring-only sets from pairing",
+  "goal": "Stop scoring eligibility sets against a CIRCE section the artifact does not produce",
+  "status": "done",
+  "date": "2026-08-10",
+  "cost": "1 session",
+  "priority": "P1",
+  "note": "10034d5. The module header already promised this; nothing enforced it, so all six censoring-only gold sets were paired. Rescored 0.567 -> 0.598 macro, zero-overlap 104 -> 99 over 232 pairs.",
+  "links": [
+   {
+    "pane": "pane-notes",
+    "date": "2026-08-09",
+    "label": "짝지은 2-arm 측정"
+   }
+  ]
+ },
+ {
+  "group": "Concept-set quality — zero-overlap defects",
+  "task": "Report distinct corrections, not pair counts",
+  "goal": "Gold's unreferenced duplicates make one fix score as several pairs",
+  "status": "done",
+  "date": "2026-08-10",
+  "cost": "decision",
+  "priority": "P1",
+  "note": "215f200. Decided to KEEP the 14 orphan gold sets in the denominator (the eval asks whether we built gold's concept sets; TROY exports them as a library), and to pay the cost in reporting instead. The entry-drug fix moved 5 pairs where the honest count is 2. Rule pinned in artemis/AGENTS.md EVALUATION. Same failure shape as the banned pooled micro average.",
+  "links": [
+   {
+    "pane": "pane-notes",
+    "date": "2026-08-09",
+    "label": "짝지은 2-arm 측정"
+   }
+  ]
+ }
+]
+</script>
+<script id="issuesdata" type="application/json">
+[
+ {
+  "date": "2026-08-10",
+  "status": "조사 중",
+  "title": "criterion sourceText가 한정어를 잃고 약물명만 남는다",
+  "key": "\"Hypersensitivity to investigational product or glimepiride\"가 `glimepiride`로 정규화되어, 과민반응 기준이 약물 집합처럼 채점된다.",
+  "sections": [
+   {
+    "h": "Impact",
+    "items": [
+     "CAROLINA의 겹침 0인 쌍 2건. 원래 \"wrong entity 7건\"으로 분류돼 매퍼 결함으로 오인됐다.",
+     "더 넓게는, 한정어를 잃은 모든 기준이 이름만으로 엉뚱한 gold 집합과 짝지어질 수 있다."
+    ]
+   },
+   {
+    "h": "Observed Symptom",
+    "items": [
+     "저장된 concept set 이름이 `glimepiride`이고 내용은 Condition 개념 3개 (`Poisoning caused by sulfonylurea`, `Hypoglycemic event due to diabetes`, `Drug-induced hypoglycemia`)."
+    ]
+   },
+   {
+    "h": "Evidence",
+    "items": [
+     "기준 원문: description = \"Hypersensitivity to investigational product or glimepiride\", domain = `Condition`, sourceText = `glimepiride`.",
+     "저장된 `sourceText`는 절단이 아니라 Agent 1의 정규화된 `entity_text` (`tte_service.py:9574`); 축자 원문 `Criteria.source_text` (`ir.py:87`)는 store에 닿기 전에 버려진다."
+    ]
+   },
+   {
+    "h": "Hypotheses",
+    "items": [
+     "Agent 1의 entity 정규화가 기준 전체가 아니라 개체명만 남긴다 — 다음 확인 지점.",
+     "domain = `Condition`은 방어 가능하다: 과민반응은 실제로 Condition이며, 매퍼는 충실히 동작했다."
+    ]
+   },
+   {
+    "h": "Root Cause",
+    "items": [
+     "미확정 — 정규화 지점을 특정하지 못했다."
+    ]
+   },
+   {
+    "h": "Resolution",
+    "items": [
+     "해당 없음 — 수정 없음. 다만 **하면 안 되는 것**은 측정됐다: domain 게이트를 풀어 성분 매칭을 강제하면 `Calcitonin`, `Creatinine`, `Glucose`, `glucose` (분석물 이름을 가진 Measurement 기준)가 약물 노출로 오분류된다."
+    ]
+   },
+   {
+    "h": "Verification",
+    "items": [
+     "미확정 — 수정 이후에 정해진다."
+    ]
+   },
+   {
+    "h": "Closure",
+    "items": [
+     "미해결 — 조사 중."
+    ]
+   }
+  ]
+ },
+ {
+  "date": "2026-08-10",
+  "status": "신규",
+  "title": "개발코드 `BI 10773`이 무관한 대사체로 매핑된다",
+  "key": "EMPA-REG의 entry 약물이 `1254065 CHF-6366 .beta.-2 metabolite`로 해석된다 — empagliflozin이 아니다.",
+  "sections": [
+   {
+    "h": "Impact",
+    "items": [
+     "EMPA-REG OUTCOME의 entry 약물 concept set 전체가 잘못된 물질이다. 2026-08-09 이전 어떤 기록에도 없던 결함."
+    ]
+   },
+   {
+    "h": "Observed Symptom",
+    "items": [
+     "`targetCohortName` = `BI 10773` → 저장된 concept set id=1 = `1254065 'CHF-6366 .beta.-2 metabolite'`."
+    ]
+   },
+   {
+    "h": "Evidence",
+    "items": [
+     "`BI 10773`은 empagliflozin의 개발코드다. RxNorm Ingredient에 그 이름을 가진 개념이 없어 `_exact_ingredient_mapping`이 `None`을 반환하고 임베딩 경로로 정상 fall-through한다 — 그 임베딩 답이 틀렸다.",
+     "다른 5개 trial의 entry 약물(apixaban, liraglutide, ticagrelor, linagliptin ×2)은 모두 정확히 해석된다."
+    ]
+   },
+   {
+    "h": "Hypotheses",
+    "items": [
+     "개발코드·동의어를 정식 성분명으로 먼저 해석하는 경로가 필요하다. 후보: RxNorm 동의어 테이블, 또는 시험 메타데이터의 개입 약물명."
+    ]
+   },
+   {
+    "h": "Root Cause",
+    "items": [
+     "미확정 — 개발코드를 다루는 경로가 존재하지 않는다는 것까지만 확인됐다."
+    ]
+   },
+   {
+    "h": "Resolution",
+    "items": [
+     "해당 없음 — 아직 착수하지 않았다."
+    ]
+   },
+   {
+    "h": "Verification",
+    "items": [
+     "미확정 — 수정 이후에 정해진다."
+    ]
+   },
+   {
+    "h": "Closure",
+    "items": [
+     "미해결 — 신규."
+    ]
+   }
+  ]
+ }
+]
+</script>
+<script id="notesdata" type="application/json">
+[
+ {
+  "date": "2026-08-09",
+  "time": "23:10",
+  "status": "완료",
+  "title": "entry 약물 exact match의 실제 효과",
+  "key": "수정은 유효하지만 **구별되는 수정은 2건**이다 — macro recall 0.567 → 0.598, 겹침 0인 쌍 104 → 99. 움직인 5쌍 중 3쌍은 gold 자체의 참조되지 않는 중복이라 같은 수정을 다시 센 것.",
+  "sections": [
+   {
+    "h": "Decision Question",
+    "items": [
+     "`expected_domain in (\"Drug\", None)`으로 게이트를 넓힌 991c11c가 gold 대비 concept set 품질을 실제로 올리는가, 그리고 그 변화가 게이트에 귀속되는가."
+    ]
+   },
+   {
+    "h": "Hypothesis",
+    "items": [
+     "linagliptin 쌍이 0.0 → ~1.0으로 가고 나머지는 불변, 6-trial macro recall은 약 +0.03. 이보다 크게 움직이면 게이트 외의 무언가가 바뀐 것이므로 숫자를 신뢰하지 않는다. **채점 전에 기록함.**"
+    ]
+   },
+   {
+    "h": "Run Identity",
+    "items": [
+     "arm A = `output/circe_arm_a`, arm B = `output/circe_arm_b`. 둘 다 동일 store `tmp/tte_six_deliver/studies.json` (2026-08-04)에서 동일 exporter로 같은 날 생성.",
+     "채점: `scripts/conceptset_overlap_eval.py --mode closure --vocab-schema synthea23m`, 두 arm 동일 플래그.",
+     "arm A 생성: `scripts/rebuild_entry_concept_sets.py` — 입력 store를 변경하지 않음."
+    ]
+   },
+   {
+    "h": "Live Snapshot",
+    "items": [
+     "두 arm 모두 exit 0. 6개 export 파일 중 **4개가 바이트 동일**하고 CARMELINA·CAROLINA만 다름 — md5로 확인.",
+     "전면 재생성은 기각. 게이트는 study당 concept set 1개만 지나가므로, 6개 trial 재생성은 변하지 않을 ~370개를 다시 만들면서 store 생성 이후의 모든 커밋을 섞어 귀속을 파괴한다."
+    ]
+   },
+   {
+    "h": "Results",
+    "table": {
+     "head": [
+      "trial",
+      "recall B",
+      "recall A",
+      "Δ"
+     ],
+     "rows": [
+      [
+       "ARISTOTLE",
+       "0.636",
+       "0.636",
+       "**+0.000**"
+      ],
+      [
+       "CARMELINA",
+       "0.473",
+       "0.573",
+       "**+0.100**"
+      ],
+      [
+       "CAROLINA",
+       "0.482",
+       "0.563",
+       "**+0.081**"
+      ],
+      [
+       "EMPA-REG OUTCOME",
+       "0.370",
+       "0.370",
+       "**+0.000**"
+      ],
+      [
+       "LEADER",
+       "0.585",
+       "0.585",
+       "**+0.000**"
+      ],
+      [
+       "PLATO",
+       "0.858",
+       "0.858",
+       "**+0.000**"
+      ],
+      [
+       "**6-trial macro**",
+       "**0.567**",
+       "**0.598**",
+       "**+0.030**"
+      ]
+     ]
+    },
+    "items": [
+     "손대지 않은 4개 trial이 **정확히 0.000** 움직인 것이 parity의 증거다."
+    ]
+   },
+   {
+    "h": "Interpretation",
+    "items": [
+     "예측이 그대로 맞았다(+0.030 포함). 다만 쌍 수는 수정 수가 아니다: gold의 비-ATC `[TROY intervention] <drug>` 집합은 `PrimaryCriteria`가 참조하는 `(ATC)` 집합의 중복이고 어떤 기준도 참조하지 않는다. 238개 중 14개가 그런 고아다.",
+     "귀속의 폭은 좁다: 이 두 시드에 대해 임베딩 경로가 같은 계열의 다른 분자를 반환하고 exact match가 맞는 것을 반환한다는 것까지. 임베딩이 고유명사에 약한 *이유*는 아직 증명되지 않았다 — `ARTEMIS_DISABLE_EXACT_INGREDIENT_MATCH=1` 대조군은 미실행."
+    ]
+   },
+   {
+    "h": "Decision",
+    "items": [
+     "채택 — 991c11c 유지. 보고 규칙을 `AGENTS.md` EVALUATION에 고정: 쌍 수가 아니라 구별되는 수정 수를 인용한다.",
+     "다음: `glimepiride` sourceText 한정어 탈락, `BI 10773` 개발코드 경로."
+    ]
+   }
+  ]
+ }
+]
+</script>
+
+<!-- per-item rows: [{id, bucket, base_A, v0_A, v1_A, ...}]. Replace this block's contents with the real
+     rows; every VARS x METRICS field must be a finite number on every row or the page throws on load. -->
+<script id="data" type="application/json">
+[
+ {
+  "id": "CARMELINA · [TROY intervention] Linagliptin",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "CAROLINA · linagliptin",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "CAROLINA · [TROY intervention] Linagliptin",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "CARMELINA · [TROY intervention] Linagliptin (ATC)",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.9967,
+  "ctl_prec": 0.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "CAROLINA · [TROY intervention] Linagliptin (ATC)",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.9967,
+  "ctl_prec": 0.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY] substance abuse",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Pregnancy, childbirth and puerperium finding",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Atrial fibrillation and flutter",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY drug] Antihypertensive drugs",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] TAVR",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY procedure] TAVR",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY drug] thienopyridine drugs",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] calculated creatinine clearance (CrCl)",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] CKD 4-ESRD",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Transplanted kidney patient",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY procedure] kidney transplant",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY procedure] renal dialysis",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Thrombocytopenia",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] anemia",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY drug] OADs and injectable diabetes medicine",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY intervention] Warfarin",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY lab] BMI",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY condition] carotid arterial disease",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY condition] Significant liver disease",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY condition] ESRD",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY lab] estimated glomerular filtration rate (eGFR)",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY procedure] renal dialysis",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY procedure] PCI, PTCA, and CABG",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY condition] substance abuse",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY condition] Pregnancy, childbirth and puerperium finding",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY] transient ischemic attacks (TIAs)",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY condition] carotid stenting",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY procedure] PCI, PTCA, and CABG",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY lab] estimated glomerular filtration rate (eGFR)",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY lab] estimated glomerular filtration rate (eGFR)",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY condition] Cancer (NMSC)",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CARMELINA · [TROY intervention] Sulfonylureas",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · proliferative retinopathy_cond",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · proliferative retinopathy_proc",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · COPY OF: [TROY] History of malignant neoplasm",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY procedure] PCI",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY condition] limb angioplasty, stenting, or bypass surgery",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY lab] estimated glomerular filtration rate (eGFR)",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY lab] Albumin/Creatinine ratio",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY observation] Smoking",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY condition] smoking",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY condition] dyslipidemia",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY lab] BMI",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY lab] Fasting glucose",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Hyperglycemia",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Significant liver disease",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY procedure] PCI, PTCA, and CABG",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY procedure] Oxygen therapy (NYHA class IV)",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY condition] substance abuse",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Pregnancy, childbirth and puerperium finding",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY drug] Metformin",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY drug] alpha-glucosidase inhibitor",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY drug] glinide",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY intervention] Sulfonylureas",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [TROY intervention] Glimepiride",
+  "bucket": "carolina",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY intervention] Empagliflozin",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY procedure] PCI, PTCA, and CABG",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Lower extremity amputation",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY procedure] Lower extremity amputation",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Ankle brachial index less than 0.9",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY lab] BMI",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY lab] estimated glomerular filtration rate (eGFR)",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Cancer (NMSC)",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] substance abuse",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY intervention] Empagliflozin",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY intervention] DPP4 inhibitors",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY drug] OADs and GLP-1 only",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] limb angioplasty, stenting, or bypass surgery",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] hemochromatosis",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [CKim] any insulin",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY intervention] Empagliflozin (ATC)",
+  "bucket": "empareg",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY] arterial stenosis",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY drug] OADs and GLP-1 only",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY intervention] DPP4 inhibitors",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY drug] Pramlintide",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY procedure] Oxygen therapy (NYHA class IV)",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] ESRD",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] Transplanted kidney patient",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY procedure] kidney transplant",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] Transplanted organ patient",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY procedure] Organ transplant (need modify)",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] Cancer",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] MEN2",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] MTC",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] substance abuse",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] Pregnancy, childbirth and puerperium finding",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY lab] estimated glomerular filtration rate (eGFR)",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] Transient ischemic attacks (TIAs)",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "LEADER · [TROY condition] Ankle brachial index less than 0.9",
+  "bucket": "leader",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY] TnT",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY] Creatin kinase-myocardial band",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY] TnI by high sensitivity method (positive)",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY] PCI, PTCA and CABG, and transmyocardial revascularization",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY condition] ACS (excluding STEMI)",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY lab] calculated creatinine clearance (CrCl)",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY condition] Intracranial hemorrhage",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY condition] peptic ulcer",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY drug] Fibrinolytic agents",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "PLATO · [TROY drug] CYP inhibitors and inducers",
+  "bucket": "plato",
+  "ctl_rec": 0.0,
+  "fix_rec": 0.0,
+  "ctl_prec": 0.0,
+  "fix_prec": 0.0
+ },
+ {
+  "id": "CAROLINA · [CKim] any insulin",
+  "bucket": "carolina",
+  "ctl_rec": 0.0018,
+  "fix_rec": 0.0018,
+  "ctl_prec": 0.4595,
+  "fix_prec": 0.4595
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Significant liver disease",
+  "bucket": "empareg",
+  "ctl_rec": 0.0042,
+  "fix_rec": 0.0042,
+  "ctl_prec": 0.003,
+  "fix_prec": 0.003
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] peripheral arterial disease",
+  "bucket": "empareg",
+  "ctl_rec": 0.0066,
+  "fix_rec": 0.0066,
+  "ctl_prec": 0.002,
+  "fix_prec": 0.002
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Stroke (hemorrhagic)",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0084,
+  "fix_rec": 0.0084,
+  "ctl_prec": 0.0123,
+  "fix_prec": 0.0123
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Stroke (hemorrhagic)",
+  "bucket": "carolina",
+  "ctl_rec": 0.0084,
+  "fix_rec": 0.0084,
+  "ctl_prec": 0.0556,
+  "fix_prec": 0.0556
+ },
+ {
+  "id": "CAROLINA · [CKim] systemic glucocorticoid",
+  "bucket": "carolina",
+  "ctl_rec": 0.0097,
+  "fix_rec": 0.0097,
+  "ctl_prec": 0.1394,
+  "fix_prec": 0.1394
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [CKim] systemic glucocorticoid",
+  "bucket": "empareg",
+  "ctl_rec": 0.0097,
+  "fix_rec": 0.0097,
+  "ctl_prec": 0.1394,
+  "fix_prec": 0.1394
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY drug] antidiabetic drugs",
+  "bucket": "empareg",
+  "ctl_rec": 0.0113,
+  "fix_rec": 0.0113,
+  "ctl_prec": 0.42,
+  "fix_prec": 0.42
+ },
+ {
+  "id": "CARMELINA · [TROY condition] Stroke (hemorrhagic)",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0209,
+  "fix_rec": 0.0209,
+  "ctl_prec": 0.0229,
+  "fix_prec": 0.0229
+ },
+ {
+  "id": "CARMELINA · [TROY condition] Type 2 diabetes mellitus",
+  "bucket": "carmelina",
+  "ctl_rec": 0.0356,
+  "fix_rec": 0.0356,
+  "ctl_prec": 0.875,
+  "fix_prec": 0.875
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Type 2 diabetes mellitus",
+  "bucket": "carolina",
+  "ctl_rec": 0.0356,
+  "fix_rec": 0.0356,
+  "ctl_prec": 0.875,
+  "fix_prec": 0.875
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Type 2 diabetes mellitus",
+  "bucket": "carolina",
+  "ctl_rec": 0.0356,
+  "fix_rec": 0.0356,
+  "ctl_prec": 0.875,
+  "fix_prec": 0.875
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Type 2 diabetes mellitus",
+  "bucket": "empareg",
+  "ctl_rec": 0.0356,
+  "fix_rec": 0.0356,
+  "ctl_prec": 0.875,
+  "fix_prec": 0.875
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Type 2 diabetes mellitus",
+  "bucket": "empareg",
+  "ctl_rec": 0.0356,
+  "fix_rec": 0.0356,
+  "ctl_prec": 0.875,
+  "fix_prec": 0.875
+ },
+ {
+  "id": "LEADER · [TROY condition] Type 2 diabetes mellitus",
+  "bucket": "leader",
+  "ctl_rec": 0.0356,
+  "fix_rec": 0.0356,
+  "ctl_prec": 0.875,
+  "fix_prec": 0.875
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Stroke",
+  "bucket": "carolina",
+  "ctl_rec": 0.0357,
+  "fix_rec": 0.0357,
+  "ctl_prec": 0.0833,
+  "fix_prec": 0.0833
+ },
+ {
+  "id": "LEADER · [TROY condition] Stroke",
+  "bucket": "leader",
+  "ctl_rec": 0.0357,
+  "fix_rec": 0.0357,
+  "ctl_prec": 0.1,
+  "fix_prec": 0.1
+ },
+ {
+  "id": "LEADER · [TROY condition] Stroke",
+  "bucket": "leader",
+  "ctl_rec": 0.0357,
+  "fix_rec": 0.0357,
+  "ctl_prec": 0.1,
+  "fix_prec": 0.1
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Ischemic stroke",
+  "bucket": "aristotle",
+  "ctl_rec": 0.0395,
+  "fix_rec": 0.0395,
+  "ctl_prec": 0.1,
+  "fix_prec": 0.1
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Ischemic stroke",
+  "bucket": "carolina",
+  "ctl_rec": 0.0395,
+  "fix_rec": 0.0395,
+  "ctl_prec": 0.0833,
+  "fix_prec": 0.0833
+ },
+ {
+  "id": "CAROLINA · [TROY procedure] bariatric surgery",
+  "bucket": "carolina",
+  "ctl_rec": 0.0476,
+  "fix_rec": 0.0476,
+  "ctl_prec": 0.0417,
+  "fix_prec": 0.0417
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY procedure] bariatric surgery",
+  "bucket": "empareg",
+  "ctl_rec": 0.0476,
+  "fix_rec": 0.0476,
+  "ctl_prec": 0.0417,
+  "fix_prec": 0.0417
+ },
+ {
+  "id": "LEADER · [TROY condition] hypertension",
+  "bucket": "leader",
+  "ctl_rec": 0.0563,
+  "fix_rec": 0.0563,
+  "ctl_prec": 0.0816,
+  "fix_prec": 0.0816
+ },
+ {
+  "id": "LEADER · [TROY condition] (acute) MI",
+  "bucket": "leader",
+  "ctl_rec": 0.0672,
+  "fix_rec": 0.0672,
+  "ctl_prec": 0.4211,
+  "fix_prec": 0.4211
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Pregnancy, childbirth and puerperium finding",
+  "bucket": "empareg",
+  "ctl_rec": 0.0852,
+  "fix_rec": 0.0852,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] diseases of the blood",
+  "bucket": "empareg",
+  "ctl_rec": 0.1032,
+  "fix_rec": 0.1032,
+  "ctl_prec": 0.9965,
+  "fix_prec": 0.9965
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] malignant lymphoid, hematopoietic",
+  "bucket": "empareg",
+  "ctl_rec": 0.1139,
+  "fix_rec": 0.1139,
+  "ctl_prec": 0.0433,
+  "fix_prec": 0.0433
+ },
+ {
+  "id": "CARMELINA · [TROY intervention] DPP4 inhibitors",
+  "bucket": "carmelina",
+  "ctl_rec": 0.1309,
+  "fix_rec": 0.1309,
+  "ctl_prec": 0.5768,
+  "fix_prec": 0.5768
+ },
+ {
+  "id": "LEADER · [TROY condition] Significant liver disease",
+  "bucket": "leader",
+  "ctl_rec": 0.1497,
+  "fix_rec": 0.1497,
+  "ctl_prec": 0.4125,
+  "fix_prec": 0.4125
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Diabetes mellitus",
+  "bucket": "aristotle",
+  "ctl_rec": 0.1722,
+  "fix_rec": 0.1722,
+  "ctl_prec": 0.7424,
+  "fix_prec": 0.7424
+ },
+ {
+  "id": "PLATO · [TROY condition] Diabetes mellitus",
+  "bucket": "plato",
+  "ctl_rec": 0.1722,
+  "fix_rec": 0.1722,
+  "ctl_prec": 0.7424,
+  "fix_prec": 0.7424
+ },
+ {
+  "id": "CARMELINA · [TROY condition] Stroke",
+  "bucket": "carmelina",
+  "ctl_rec": 0.1905,
+  "fix_rec": 0.1905,
+  "ctl_prec": 0.0734,
+  "fix_prec": 0.0734
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Stroke",
+  "bucket": "empareg",
+  "ctl_rec": 0.1905,
+  "fix_rec": 0.1905,
+  "ctl_prec": 0.0982,
+  "fix_prec": 0.0982
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Stroke",
+  "bucket": "empareg",
+  "ctl_rec": 0.1905,
+  "fix_rec": 0.1905,
+  "ctl_prec": 0.0982,
+  "fix_prec": 0.0982
+ },
+ {
+  "id": "CARMELINA · [TROY condition] Type 1 diabetes mellitus",
+  "bucket": "carmelina",
+  "ctl_rec": 0.1923,
+  "fix_rec": 0.1923,
+  "ctl_prec": 0.9615,
+  "fix_prec": 0.9615
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Type 1 diabetes mellitus",
+  "bucket": "carolina",
+  "ctl_rec": 0.1923,
+  "fix_rec": 0.1923,
+  "ctl_prec": 0.9615,
+  "fix_prec": 0.9615
+ },
+ {
+  "id": "CARMELINA · [TROY condition] Ischemic stroke",
+  "bucket": "carmelina",
+  "ctl_rec": 0.2105,
+  "fix_rec": 0.2105,
+  "ctl_prec": 0.0734,
+  "fix_prec": 0.0734
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY drug] anti-obesity drugs",
+  "bucket": "empareg",
+  "ctl_rec": 0.2208,
+  "fix_rec": 0.2208,
+  "ctl_prec": 0.58,
+  "fix_prec": 0.58
+ },
+ {
+  "id": "CAROLINA · [TROY drug] anti-obesity drugs",
+  "bucket": "carolina",
+  "ctl_rec": 0.303,
+  "fix_rec": 0.303,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "LEADER · [TROY intervention] GLP-1 receptor agonists",
+  "bucket": "leader",
+  "ctl_rec": 0.3045,
+  "fix_rec": 0.3045,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "LEADER · [TROY condition] limb angioplasty, stenting, or bypass surgery",
+  "bucket": "leader",
+  "ctl_rec": 0.3333,
+  "fix_rec": 0.3333,
+  "ctl_prec": 0.048,
+  "fix_prec": 0.048
+ },
+ {
+  "id": "LEADER · [TROY procedure] renal dialysis",
+  "bucket": "leader",
+  "ctl_rec": 0.35,
+  "fix_rec": 0.35,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "LEADER · [TROY condition] Heart failure (NYHA II-III)",
+  "bucket": "leader",
+  "ctl_rec": 0.3511,
+  "fix_rec": 0.3511,
+  "ctl_prec": 0.9583,
+  "fix_prec": 0.9583
+ },
+ {
+  "id": "LEADER · [TROY condition] Heart failure (NYHA II-III)",
+  "bucket": "leader",
+  "ctl_rec": 0.3511,
+  "fix_rec": 0.3511,
+  "ctl_prec": 0.9583,
+  "fix_prec": 0.9583
+ },
+ {
+  "id": "CARMELINA · [TROY Intervention] SGLT2 inhibitors",
+  "bucket": "carmelina",
+  "ctl_rec": 0.3637,
+  "fix_rec": 0.3637,
+  "ctl_prec": 0.5914,
+  "fix_prec": 0.5914
+ },
+ {
+  "id": "CARMELINA · [TROY] ischemic heart disease",
+  "bucket": "carmelina",
+  "ctl_rec": 0.3922,
+  "fix_rec": 0.3922,
+  "ctl_prec": 0.9901,
+  "fix_prec": 0.9901
+ },
+ {
+  "id": "CARMELINA · [TROY intervention] GLP-1 receptor agonists",
+  "bucket": "carmelina",
+  "ctl_rec": 0.4131,
+  "fix_rec": 0.4131,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Stroke, TIAs, and systemic embolism",
+  "bucket": "aristotle",
+  "ctl_rec": 0.4238,
+  "fix_rec": 0.4238,
+  "ctl_prec": 0.2327,
+  "fix_prec": 0.2327
+ },
+ {
+  "id": "LEADER · [TROY condition] carotid stenting",
+  "bucket": "leader",
+  "ctl_rec": 0.4375,
+  "fix_rec": 0.4375,
+  "ctl_prec": 0.4667,
+  "fix_prec": 0.4667
+ },
+ {
+  "id": "CAROLINA · [TROY drugs] DPP4 inhibitors (excluding linagliptin)",
+  "bucket": "carolina",
+  "ctl_rec": 0.4508,
+  "fix_rec": 0.4508,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] coronary atherosis and other chronic ischemic heart disease",
+  "bucket": "empareg",
+  "ctl_rec": 0.4615,
+  "fix_rec": 0.4615,
+  "ctl_prec": 0.006,
+  "fix_prec": 0.006
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] congestive heart failure or left ventricular dysfunction",
+  "bucket": "aristotle",
+  "ctl_rec": 0.4947,
+  "fix_rec": 0.4947,
+  "ctl_prec": 0.3534,
+  "fix_prec": 0.3534
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] Creatinine",
+  "bucket": "aristotle",
+  "ctl_rec": 0.5,
+  "fix_rec": 0.5,
+  "ctl_prec": 0.0769,
+  "fix_prec": 0.0769
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] Total bilirubin",
+  "bucket": "aristotle",
+  "ctl_rec": 0.5,
+  "fix_rec": 0.5,
+  "ctl_prec": 0.0909,
+  "fix_prec": 0.0909
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] Aspartate aminotransferase (AST)",
+  "bucket": "aristotle",
+  "ctl_rec": 0.5,
+  "fix_rec": 0.5,
+  "ctl_prec": 0.0667,
+  "fix_prec": 0.0667
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] Platelet count",
+  "bucket": "aristotle",
+  "ctl_rec": 0.5,
+  "fix_rec": 0.5,
+  "ctl_prec": 0.125,
+  "fix_prec": 0.125
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] Hemoglobin",
+  "bucket": "aristotle",
+  "ctl_rec": 0.5,
+  "fix_rec": 0.5,
+  "ctl_prec": 0.1111,
+  "fix_prec": 0.1111
+ },
+ {
+  "id": "CARMELINA · [TROY lab] Aspartate aminotransferase (AST)",
+  "bucket": "carmelina",
+  "ctl_rec": 0.5,
+  "fix_rec": 0.5,
+  "ctl_prec": 0.0667,
+  "fix_prec": 0.0667
+ },
+ {
+  "id": "CAROLINA · [TROY lab] Aspartate aminotransferase (AST)",
+  "bucket": "carolina",
+  "ctl_rec": 0.5,
+  "fix_rec": 0.5,
+  "ctl_prec": 0.0588,
+  "fix_prec": 0.0588
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY lab] Aspartate aminotransferase (AST)",
+  "bucket": "empareg",
+  "ctl_rec": 0.5,
+  "fix_rec": 0.5,
+  "ctl_prec": 0.0667,
+  "fix_prec": 0.0667
+ },
+ {
+  "id": "PLATO · [TROY drug] anticoagulants",
+  "bucket": "plato",
+  "ctl_rec": 0.5593,
+  "fix_rec": 0.5593,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "PLATO · PCI and CABG",
+  "bucket": "plato",
+  "ctl_rec": 0.5769,
+  "fix_rec": 0.5769,
+  "ctl_prec": 0.0511,
+  "fix_prec": 0.0511
+ },
+ {
+  "id": "CAROLINA · [TROY intervention] GLP-1 receptor agonists",
+  "bucket": "carolina",
+  "ctl_rec": 0.5891,
+  "fix_rec": 0.5891,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "LEADER · [CKim] int long mix insulin",
+  "bucket": "leader",
+  "ctl_rec": 0.6005,
+  "fix_rec": 0.6005,
+  "ctl_prec": 0.6043,
+  "fix_prec": 0.6043
+ },
+ {
+  "id": "LEADER · [TROY procedure] PCI, PTCA, and CABG",
+  "bucket": "leader",
+  "ctl_rec": 0.6064,
+  "fix_rec": 0.6064,
+  "ctl_prec": 0.9568,
+  "fix_prec": 0.9568
+ },
+ {
+  "id": "LEADER · [TROY procedure] PCI, PTCA, and CABG",
+  "bucket": "leader",
+  "ctl_rec": 0.6064,
+  "fix_rec": 0.6064,
+  "ctl_prec": 0.9568,
+  "fix_prec": 0.9568
+ },
+ {
+  "id": "CARMELINA · [TROY lab] Albumin/Creatinine ratio",
+  "bucket": "carmelina",
+  "ctl_rec": 0.6667,
+  "fix_rec": 0.6667,
+  "ctl_prec": 0.6667,
+  "fix_prec": 0.6667
+ },
+ {
+  "id": "CARMELINA · [TROY lab] Albumin/Creatinine ratio",
+  "bucket": "carmelina",
+  "ctl_rec": 0.6667,
+  "fix_rec": 0.6667,
+  "ctl_prec": 0.6667,
+  "fix_prec": 0.6667
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] CKD 4-ESRD",
+  "bucket": "empareg",
+  "ctl_rec": 0.6863,
+  "fix_rec": 0.6863,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "CARMELINA · [TROY condition] (acute) MI",
+  "bucket": "carmelina",
+  "ctl_rec": 0.7731,
+  "fix_rec": 0.7731,
+  "ctl_prec": 0.9109,
+  "fix_prec": 0.9109
+ },
+ {
+  "id": "CAROLINA · [TROY condition] (acute) MI",
+  "bucket": "carolina",
+  "ctl_rec": 0.7731,
+  "fix_rec": 0.7731,
+  "ctl_prec": 0.9109,
+  "fix_prec": 0.9109
+ },
+ {
+  "id": "CARMELINA · [TROY condition] ACS",
+  "bucket": "carmelina",
+  "ctl_rec": 0.901,
+  "fix_rec": 0.901,
+  "ctl_prec": 0.901,
+  "fix_prec": 0.901
+ },
+ {
+  "id": "CAROLINA · [TROY condition] ACS",
+  "bucket": "carolina",
+  "ctl_rec": 0.901,
+  "fix_rec": 0.901,
+  "ctl_prec": 0.901,
+  "fix_prec": 0.901
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] ACS",
+  "bucket": "empareg",
+  "ctl_rec": 0.901,
+  "fix_rec": 0.901,
+  "ctl_prec": 0.9286,
+  "fix_prec": 0.9286
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] ACS",
+  "bucket": "empareg",
+  "ctl_rec": 0.901,
+  "fix_rec": 0.901,
+  "ctl_prec": 0.9286,
+  "fix_prec": 0.9286
+ },
+ {
+  "id": "LEADER · [TROY condition] ACS",
+  "bucket": "leader",
+  "ctl_rec": 0.901,
+  "fix_rec": 0.901,
+  "ctl_prec": 0.9891,
+  "fix_prec": 0.9891
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Ankle brachial index less than 0.9",
+  "bucket": "carolina",
+  "ctl_rec": 0.9231,
+  "fix_rec": 0.9231,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "LEADER · [TROY condition] Type 1 diabetes mellitus",
+  "bucket": "leader",
+  "ctl_rec": 0.9923,
+  "fix_rec": 0.9923,
+  "ctl_prec": 0.8897,
+  "fix_prec": 0.8897
+ },
+ {
+  "id": "PLATO · [TROY intervention] Ticagrelor (ATC)",
+  "bucket": "plato",
+  "ctl_rec": 0.9926,
+  "fix_rec": 0.9926,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "LEADER · [TROY intervention] Liraglutide (ATC)",
+  "bucket": "leader",
+  "ctl_rec": 0.996,
+  "fix_rec": 0.996,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY intervention] Apixaban (ATC)",
+  "bucket": "aristotle",
+  "ctl_rec": 0.9974,
+  "fix_rec": 0.9974,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "CAROLINA · [TROY drug] rosiglitazone",
+  "bucket": "carolina",
+  "ctl_rec": 0.9978,
+  "fix_rec": 0.9978,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY] uncontrolled hypertension (condition)",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0775,
+  "fix_prec": 0.0775
+ },
+ {
+  "id": "ARISTOTLE · [TROY] aspirin",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY intervention] Apixaban",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] hypertension",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] Mitral stenosis",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.1818,
+  "fix_prec": 0.1818
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] Systolic blood pressure (SBP)",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0294,
+  "fix_prec": 0.0294
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] Diastolic blood pressure (DBP)",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0303,
+  "fix_prec": 0.0303
+ },
+ {
+  "id": "ARISTOTLE · [TROY condition] endocarditis",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "ARISTOTLE · [TROY drug] aspirin < 100 mg",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.8934,
+  "fix_prec": 0.8934
+ },
+ {
+  "id": "ARISTOTLE · [TROY lab] Alanine aminotransferase (ALT)",
+  "bucket": "aristotle",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0769,
+  "fix_prec": 0.0769
+ },
+ {
+  "id": "CARMELINA · [TROY lab] Glycosylated hemoglobin",
+  "bucket": "carmelina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.2,
+  "fix_prec": 0.2
+ },
+ {
+  "id": "CARMELINA · [TROY lab] Alanine aminotransferase (ALT)",
+  "bucket": "carmelina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0769,
+  "fix_prec": 0.0769
+ },
+ {
+  "id": "CARMELINA · [TROY lab] Alkaline phosphatase (AP)",
+  "bucket": "carmelina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0714,
+  "fix_prec": 0.0714
+ },
+ {
+  "id": "CARMELINA · [TROY procedure] bariatric surgery",
+  "bucket": "carmelina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0478,
+  "fix_prec": 0.0478
+ },
+ {
+  "id": "CAROLINA · [TROY procedure] CABG",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.7043,
+  "fix_prec": 0.7043
+ },
+ {
+  "id": "CAROLINA · [TROY condition] peripheral arterial occlusive disease",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.6859,
+  "fix_prec": 0.6859
+ },
+ {
+  "id": "CAROLINA · [TROY lab] Systolic blood pressure (SBP)",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0294,
+  "fix_prec": 0.0294
+ },
+ {
+  "id": "CAROLINA · [TROY lab] Low-density lipoprotein (LDL) cholesterol",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.1304,
+  "fix_prec": 0.1304
+ },
+ {
+  "id": "CAROLINA · [TROY drug] pioglitazone",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "CAROLINA · [TROY lab] Alanine aminotransferase (ALT)",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0714,
+  "fix_prec": 0.0714
+ },
+ {
+  "id": "CAROLINA · [TROY lab] Alkaline phosphatase (AP)",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0714,
+  "fix_prec": 0.0714
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Heart failure (NYHA II-III)",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.985,
+  "fix_prec": 0.985
+ },
+ {
+  "id": "CAROLINA · [TROY condition] metabolic acidosis",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.9839,
+  "fix_prec": 0.9839
+ },
+ {
+  "id": "CAROLINA · [TROY condition] galactosemia",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.8889,
+  "fix_prec": 0.8889
+ },
+ {
+  "id": "CAROLINA · [TROY condition] Transient ischemic attacks (TIAs)",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.2222,
+  "fix_prec": 0.2222
+ },
+ {
+  "id": "CAROLINA · [TROY lab] Glycosylated hemoglobin",
+  "bucket": "carolina",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.2,
+  "fix_prec": 0.2
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY lab] Glycosylated hemoglobin",
+  "bucket": "empareg",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.2,
+  "fix_prec": 0.2
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY lab] Alanine aminotransferase (ALT)",
+  "bucket": "empareg",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0769,
+  "fix_prec": 0.0769
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY lab] Alkaline phosphatase (AP)",
+  "bucket": "empareg",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0714,
+  "fix_prec": 0.0714
+ },
+ {
+  "id": "EMPA-REG OUTCOME · [TROY condition] Transient ischemic attacks (TIAs)",
+  "bucket": "empareg",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.5455,
+  "fix_prec": 0.5455
+ },
+ {
+  "id": "LEADER · [TROY intervention] Liraglutide",
+  "bucket": "leader",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "LEADER · [TROY lab] Glycosylated hemoglobin",
+  "bucket": "leader",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.25,
+  "fix_prec": 0.25
+ },
+ {
+  "id": "LEADER · [TROY condition] Chronic renal disease",
+  "bucket": "leader",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.4549,
+  "fix_prec": 0.4549
+ },
+ {
+  "id": "LEADER · [TROY condition] microalbuminuria or proteinuria",
+  "bucket": "leader",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "LEADER · [TROY condition] left ventricular hypertrophy",
+  "bucket": "leader",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0612,
+  "fix_prec": 0.0612
+ },
+ {
+  "id": "LEADER · [TROY condition] left ventricular dysfunction",
+  "bucket": "leader",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.4118,
+  "fix_prec": 0.4118
+ },
+ {
+  "id": "LEADER · [TROY condition] diabetic ketoacidosis",
+  "bucket": "leader",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.8889,
+  "fix_prec": 0.8889
+ },
+ {
+  "id": "LEADER · [TROY lab] calcitonin",
+  "bucket": "leader",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0625,
+  "fix_prec": 0.0625
+ },
+ {
+  "id": "PLATO · [TROY] TnI",
+  "bucket": "plato",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.5,
+  "fix_prec": 0.5
+ },
+ {
+  "id": "PLATO · [TROY] Old MI",
+  "bucket": "plato",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.0047,
+  "fix_prec": 0.0047
+ },
+ {
+  "id": "PLATO · [TROY] (acute) MI",
+  "bucket": "plato",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.564,
+  "fix_prec": 0.564
+ },
+ {
+  "id": "PLATO · [TROY intervention] Ticagrelor",
+  "bucket": "plato",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ },
+ {
+  "id": "PLATO · [TROY condition] STEMI",
+  "bucket": "plato",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.7023,
+  "fix_prec": 0.7023
+ },
+ {
+  "id": "PLATO · [TROY condition] peripheral arterial disease",
+  "bucket": "plato",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.9901,
+  "fix_prec": 0.9901
+ },
+ {
+  "id": "PLATO · [TROY condition] Chronic renal disease",
+  "bucket": "plato",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 0.7632,
+  "fix_prec": 0.7632
+ },
+ {
+  "id": "PLATO · [TROY intervention] Clopidogrel",
+  "bucket": "plato",
+  "ctl_rec": 1.0,
+  "fix_rec": 1.0,
+  "ctl_prec": 1.0,
+  "fix_prec": 1.0
+ }
+]
+</script>
+<script>
+/* ===== CONFIG — edit these ===== */
+const VARS=[{k:'ctl',label:'Arm B — 대조군',c:'--c-1'},{k:'fix',label:'Arm A — exact match ON',c:'--c-0'}];
+const METRICS=[{k:'rec',label:'recall',dec:3,unit:''},{k:'prec',label:'precision',dec:3,unit:''}];
+const BASELINE={k:'ctl',label:'기준선 = Arm B (위 행과 동일)'};
+const COPY={
+  locale:'ko-KR',
+  groups:{results:'결과',record:'기록',build:'Build'},
+  tabs:{overview:'개요',detail:'기준 쌍',samples:'샘플',plan:'계획',notes:'실험 노트',issues:'이슈 노트',components:'Components'},
+  sections:{overview:'개요',glance:'한눈에',summary:'arm 요약',findings:'읽는 법',units:'trial별',distributions:'분포',delta:'대조군 대비 쌍별 변화',itemTable:'기준 쌍 표',samples:'샘플',plan:'계획',notes:'실험 노트',issues:'이슈 노트'},
+  controls:{theme:'◐ 테마',metricLabel:'지표',bucket:'trial',search:'검색',prev:'◀ 이전',next:'다음 ▶'},
+  buckets:{all:'전체'},
+  record:{
+    status:'상태',all:'전체',entries:'건',entry:'건',showAllDates:'전체 날짜 보기',
+    noEntries:'선택한 날짜·상태에 해당하는 기록이 없습니다.',prevMonth:'이전 달',nextMonth:'다음 달',
+    weekdays:['일','월','화','수','목','금','토'],
+    fatal:'기록 데이터를 렌더링하지 못했습니다',
+    sectionLabels:{
+      'Decision Question':'판단할 질문','Hypothesis':'가설','Run Identity':'실행 식별','Live Snapshot':'실행 상태','Results':'결과','Interpretation':'해석','Decision':'결정',
+      'Impact':'영향','Observed Symptom':'관측된 증상','Evidence':'증거','Hypotheses':'가설','Root Cause':'근본 원인','Resolution':'조치','Verification':'검증','Closure':'종결'
+    },
+    statusLabels:{'예정':'예정','진행 중':'진행 중','완료':'완료','중단':'중단','보류':'보류','신규':'신규','조사 중':'조사 중','완화':'완화','모니터링':'모니터링','해결':'해결','차단':'차단'},
+    dateFilter:(date,n)=>`${date} — ${n}건 · `
+  },
+  plan:{headers:['작업','목표','상태','비용','우선순위','증거'],status:{done:['ok','완료'],running:['mid','진행 중'],partial:['mid','일부'],todo:['','예정'],blocked:['no','차단']}},
+  units:{statusClass:{complete:'ok',done:'ok',verified:'ok',partial:'mid',running:'mid',blocked:'no',failed:'no'},labels:{evidence:'증거',blockers:'막힌 것',nextGate:'다음 관문',technicalIds:'움직인 쌍',completion:'겹침 있는 쌍'},emptyBlockers:'없음'},
+  empty:{numeric:'수치 행이 없습니다.',units:'trial 카드가 없습니다.'},
+  viewer:{help:'',note:'',missingSrc:'이미지 없음'},
+  unitHelp:'trial별 arm B(대조) → arm A(수정). 두 arm이 정확히 0.000 차이인 trial이 parity의 증거입니다.',
+  deltaHelp:'점 하나가 기준 쌍 하나. 0보다 위 = 대조군보다 개선. 움직인 5쌍 중 3쌍은 gold 자체의 중복 집합입니다.',
+  viewerHelp:'',
+  planHelp:'아직 실행되지 않은 것과 이미 정해진 것. 날짜를 누르면 해당 기록으로 이동합니다.',
+  notesHelp:'판단 근거가 된 실험 기록. 기록이 있는 날짜가 달력에 강조됩니다.',
+  issuesHelp:'결함 하나당 기록 하나. 조사부터 종결까지의 고정 섹션으로 표시됩니다.',
+  countNote:(shown,total)=>`${total}개 중 ${shown}개 표시`,
+};
+/* tiles: computed from AGG/DATA. return {v:number|string, lab, cls?:'good'|'alert'} */
+const TILES=[
+  ()=>({v:232,lab:'채점된 기준 쌍'}),
+  ()=>({v:'0.567 → 0.598',lab:'6-trial macro recall (+0.030)',cls:'good'}),
+  ()=>({v:'104 → 99',lab:'겹침 0인 쌍',cls:'good'}),
+  ()=>({v:2,lab:'구별되는 수정 (5쌍이 움직였으나 3쌍은 gold의 중복)',cls:'alert'}),
+];
+/* ================================ */
+const DATA=JSON.parse(document.getElementById('data').textContent);
+const FRAMING=JSON.parse(document.getElementById('framingdata').textContent);
+const UNITS=JSON.parse(document.getElementById('unitdata').textContent);
+const IMGS=JSON.parse(document.getElementById('imgdata').textContent);
+const cssvar=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+const fld=(v,m)=>v+'_'+m;
+/* Two passes, ONE pair for the whole file — they live up here with the other helpers because half the
+   renderers run at parse time and half run inside draw(); a definition further down is a TDZ crash for
+   the early ones. escN = anything from a data block or bound for an attribute/URL. mdN = prose. */
+const escN=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* Prose is written by hand, so authors type **bold**, `code`, *italic*. Render that inline — escaping
+   first means the markers survive but any real tag the author typed stays inert text. */
+const mdN=s=>escN(s)
+  .replace(/`([^`]+)`/g,'<span class="inline-code">$1</span>')
+  .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
+  .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g,'$1<em>$2</em>');
+function applyCopy(){
+  document.querySelectorAll('[data-copy-group]').forEach(el=>{const v=COPY.groups&&COPY.groups[el.dataset.copyGroup];if(v)el.dataset.glabel=v;});
+  document.querySelectorAll('[data-copy-tab]').forEach(el=>{const v=COPY.tabs&&COPY.tabs[el.dataset.copyTab];if(v)el.textContent=v;});
+  document.querySelectorAll('[data-copy-section]').forEach(el=>{const v=COPY.sections&&COPY.sections[el.dataset.copySection];if(v)el.textContent=v;});
+  document.querySelectorAll('[data-copy]').forEach(el=>{const v=(COPY.controls&&COPY.controls[el.dataset.copy])||COPY[el.dataset.copy]||(COPY.viewer&&COPY.viewer[el.dataset.copy]);if(v)el.textContent=v;});
+  document.querySelectorAll('[data-copy-bucket]').forEach(el=>{const v=COPY.buckets&&COPY.buckets[el.dataset.copyBucket];if(v)el.textContent=v;});
+  const search=document.getElementById('search');if(search&&COPY.controls&&COPY.controls.searchPlaceholder)search.placeholder=COPY.controls.searchPlaceholder;
+  const toTop=document.getElementById('toTop');if(toTop&&COPY.controls&&COPY.controls.backToTop){toTop.title=COPY.controls.backToTop;toTop.setAttribute('aria-label',COPY.controls.backToTop);}
+}
+const tip=document.getElementById('tip');
+function showTip(html,e){tip.innerHTML=html;tip.style.opacity=1;const p=12;let x=e.clientX+p,y=e.clientY+p;
+  const r=tip.getBoundingClientRect();if(x+r.width>innerWidth)x=e.clientX-r.width-p;if(y+r.height>innerHeight)y=e.clientY-r.height-p;
+  tip.style.left=x+'px';tip.style.top=y+'px';}
+const hideTip=()=>tip.style.opacity=0;
+
+applyCopy();
+
+/* Fail loud on unusable data — checked BEFORE anything is drawn. An empty array rendered a full page of
+   `NaN` tiles and charts full of NaN coordinates, and a single missing metric field emptied the per-item
+   table with no message at all: a dashboard that looks built and is not. A baseline column is optional,
+   but present-on-some-rows-only is the same silent NaN, so it is all-or-nothing per metric. */
+if(!Array.isArray(DATA)) throw new Error('dashboard data must be an array.');
+if(!Array.isArray(UNITS)) throw new Error('unitdata must be an array.');
+if(!Array.isArray(FRAMING)||FRAMING.length<3||FRAMING.length>6) throw new Error('framingdata must contain 3–6 cards.');
+FRAMING.forEach((c,i)=>{if(!c||typeof c!=='object'||!String(c.title||'').trim()||!String(c.text||'').trim())throw new Error(`framing card ${i+1} requires title and text.`);});
+if(!DATA.length&&!UNITS.length) throw new Error('dashboard requires at least one numeric DATA row or one semantic UNITS row.');
+const HAS_NUMERIC=DATA.length>0;
+const HAS_UNITS=UNITS.length>0;
+function framingView(){document.getElementById('framingCards').innerHTML=FRAMING.map(c=>`<div class="callout"><h3>${mdN(c.title)}</h3><p>${mdN(c.text)}</p></div>`).join('');}
+function unitView(){
+  const pane=document.getElementById('unitSection'),grid=document.getElementById('unitGrid');
+  if(!HAS_UNITS){pane.hidden=true;return;}
+  const required=['id','title','subtitle','status','summary','completion','evidence','next_gate','blockers','technical_ids'];
+  UNITS.forEach((u,i)=>{if(!u||typeof u!=='object')throw new Error(`unit ${i+1} must be an object.`);
+    required.forEach(k=>{if(!(k in u))throw new Error(`unit ${i+1} missing required field ${k}.`);});
+    if(!String(u.id).trim()||!String(u.title).trim()||!String(u.status).trim()||!String(u.summary).trim()||!String(u.next_gate).trim())throw new Error(`unit ${i+1} requires non-empty id/title/status/summary/next_gate.`);
+    if(!Array.isArray(u.evidence)||!Array.isArray(u.blockers)||!Array.isArray(u.technical_ids))throw new Error(`unit ${u.id||i+1} evidence/blockers/technical_ids must be arrays.`);
+  });
+  const labels=(COPY.units&&COPY.units.labels)||{};
+  const statusClass=s=>((COPY.units&&COPY.units.statusClass&&COPY.units.statusClass[String(s).toLowerCase()])||(/완료|검증|pass|done|complete/i.test(String(s))?'ok':/차단|실패|fail|block/i.test(String(s))?'no':'mid'));
+  const completion=u=>{const c=u.completion;
+    if(c&&typeof c==='object'&&!Array.isArray(c)){
+      const done=Number(c.done), total=Number(c.total);
+      if(!Number.isFinite(done)||!Number.isFinite(total)||total<=0||done<0||done>total)throw new Error(`unit ${u.id} completion object requires finite 0 <= done <= total and total > 0.`);
+      return `<div class="meter"><span style="min-width:86px">${mdN(c.label||labels.completion||'completion')}</span><span class="track"><span class="fill" style="width:${done/total*100}%"></span></span><span class="val">${done}/${total}</span></div>`;
+    }
+    const n=typeof c==='number'?c:(/^\d+(?:\.\d+)?$/.test(String(c))?Number(c):null);
+    if(n!=null&&Number.isFinite(n)){const v=Math.max(0,Math.min(5,n));return `<div class="meter"><span style="min-width:86px">${mdN(labels.completion||'completion')}</span><span class="track"><span class="fill" style="width:${v/5*100}%"></span></span><span class="val">${v}/5</span></div>`;}
+    return `<div class="unit-label">${mdN(labels.completion||'completion')}</div><div class="unit-summary">${mdN(c)}</div>`;};
+  const list=xs=>xs.length?`<ul>${xs.map(x=>`<li>${mdN(x)}</li>`).join('')}</ul>`:`<div class="unit-summary">${mdN(COPY.units&&COPY.units.emptyBlockers||'—')}</div>`;
+  pane.hidden=false;
+  grid.innerHTML=UNITS.map(u=>`<article class="unit-card" data-state="${escN(u.status)}">
+    <div class="unit-head"><div><div class="unit-title">${mdN(u.title)}</div><div class="unit-sub">${mdN(u.subtitle)}</div></div><span class="pill ${statusClass(u.status)}">${mdN(u.status)}</span></div>
+    <div class="unit-summary">${mdN(u.summary)}</div>
+    ${completion(u)}
+    <div><div class="unit-label">${mdN(labels.evidence||'Evidence')}</div>${list(u.evidence)}</div>
+    ${u.blockers.length?`<div><div class="unit-label">${mdN(labels.blockers||'Blockers')}</div>${list(u.blockers)}</div>`:''}
+    <div class="unit-gate"><div class="unit-label">${mdN(labels.nextGate||'Next gate')}</div>${mdN(u.next_gate)}</div>
+    ${u.technical_ids.length?`<div><div class="unit-label">${mdN(labels.technicalIds||'Technical IDs')}</div><div class="unit-tech">${u.technical_ids.map(x=>`<code>${escN(x)}</code>`).join('')}</div></div>`:''}
+  </article>`).join('');
+}
+framingView();unitView();
+document.querySelectorAll('[data-numeric-detail]').forEach(el=>{el.hidden=!HAS_NUMERIC;});
+if(!HAS_NUMERIC){document.getElementById('tilesSection').hidden=true;document.getElementById('summarySection').hidden=true;document.getElementById('countNote').textContent=COPY.empty.numeric;}
+const hasBase={};METRICS.forEach(m=>hasBase[m.k]=DATA.some(d=>fld(BASELINE.k,m.k)in d));
+DATA.forEach((d,i)=>METRICS.forEach(m=>VARS.concat(hasBase[m.k]?[BASELINE]:[]).forEach(v=>{const k=fld(v.k,m.k),x=d[k];
+  if(typeof x!=='number'||!isFinite(x)) throw new Error(`row ${i} (id ${d.id}) has no usable ${k}: ${x}`);})));
+const AGG={};VARS.forEach(v=>{AGG[v.k]={};METRICS.forEach(m=>AGG[v.k][m.k]=mean(DATA.map(d=>d[fld(v.k,m.k)])))});
+const BASE={};METRICS.forEach(m=>BASE[m.k]=hasBase[m.k]?mean(DATA.map(d=>d[fld(BASELINE.k,m.k)])):null);
+function bestVar(mk){let bk=VARS[0].k;VARS.forEach(v=>{if(AGG[v.k][mk]>AGG[bk][mk])bk=v.k});return VARS.find(v=>v.k===bk);}
+
+// tiles
+if(HAS_NUMERIC)document.getElementById('tiles').innerHTML=TILES.map(f=>{const t=f();return `<div class="tile ${t.cls||''}"><div class="tnum">${mdN(t.v)}</div><div class="lab">${mdN(t.lab)}</div></div>`;}).join('');
+
+// summary table
+(function(){if(!HAS_NUMERIC)return;const t=document.getElementById('summaryTbl');
+  t.querySelector('thead').innerHTML='<tr><th>Entity</th>'+METRICS.map(m=>`<th class="num">${escN(m.label)}</th>`).join('')+'</tr>';
+  const best={};METRICS.forEach(m=>best[m.k]=bestVar(m.k).k);
+  let rows=VARS.map(v=>`<tr><td><span class="swatch" style="background:var(${v.c});margin-right:8px"></span>${mdN(v.label)}</td>`+
+    METRICS.map(m=>`<td class="num ${best[m.k]===v.k?'best':''}">${AGG[v.k][m.k].toFixed(m.dec)}</td>`).join('')+'</tr>').join('');
+  if(BASE[METRICS[0].k]!=null)rows+=`<tr class="baseline"><td>${mdN(BASELINE.label)}</td>`+METRICS.map(m=>`<td class="num">${BASE[m.k]!=null?BASE[m.k].toFixed(m.dec):'—'}</td>`).join('')+'</tr>';
+  t.querySelector('tbody').innerHTML=rows;})();
+if(HAS_NUMERIC){
+  document.getElementById('legend').innerHTML=VARS.map(v=>`<span><span class="swatch" style="background:var(${v.c})"></span>${mdN(v.label)}</span>`).join('');
+  document.getElementById('deltaMetric').innerHTML=METRICS.map(m=>`<option value="${escN(m.k)}">${escN(m.label)}</option>`).join('');
+}
+
+function bar(id,mk){const m=METRICS.find(x=>x.k===mk);const svg=document.getElementById(id);const W=420,H=210,ml=46,mr=14,mt=14,mb=34;
+  const vals=VARS.map(v=>AGG[v.k][mk]);const raw=[...vals];if(BASE[mk]!=null)raw.push(BASE[mk]);
+  let lo=Math.min(...raw),hi=Math.max(...raw);const pad=(hi-lo||1)*.35;lo-=pad;hi+=pad*.4;
+  const x=i=>ml+(i+.5)*((W-ml-mr)/VARS.length),y=v=>mt+(H-mt-mb)*(1-(v-lo)/(hi-lo)),bw=(W-ml-mr)/VARS.length*.5;let s='';
+  for(let t=0;t<=4;t++){const val=lo+(hi-lo)*t/4,yy=y(val);s+=`<line class="gridline" x1="${ml}" y1="${yy}" x2="${W-mr}" y2="${yy}"/><text class="axis" x="${ml-7}" y="${yy+3}" text-anchor="end">${val.toFixed(m.dec)}</text>`;}
+  /* escN inside SVG: a `<` or `&` in a label breaks the whole <text> node, and the chart silently loses
+     its baseline rule rather than showing a mangled string. */
+  if(BASE[mk]!=null){const yy=y(BASE[mk]);s+=`<line class="baserule" x1="${ml}" y1="${yy}" x2="${W-mr}" y2="${yy}"/><text class="axis" x="${W-mr}" y="${yy-4}" text-anchor="end">${escN(BASELINE.label)} ${BASE[mk].toFixed(m.dec)}</text>`;}
+  VARS.forEach((v,i)=>{const val=AGG[v.k][mk],yy=y(val),col=cssvar(v.c);s+=`<rect x="${x(i)-bw/2}" y="${yy}" width="${bw}" height="${H-mb-yy}" rx="4" fill="${col}" data-i="${i}" class="bar"/>`+
+    `<text class="axis" x="${x(i)}" y="${yy-6}" text-anchor="middle" style="fill:var(--ink);font-weight:600">${val.toFixed(m.dec)}</text>`+
+    `<text class="axis" x="${x(i)}" y="${H-mb+15}" text-anchor="middle" style="fill:var(--muted)">${v.k}</text>`;});
+  svg.innerHTML=s;svg.querySelectorAll('.bar').forEach(b=>{const v=VARS[+b.dataset.i];b.style.cursor='pointer';
+    b.onmousemove=e=>showTip(`<b>${v.label}</b><br><span class="k">${m.label}</span> <b>${AGG[v.k][mk].toFixed(m.dec)}</b>`,e);b.onmouseleave=hideTip;});}
+
+function dist(id,mk){const m=METRICS.find(x=>x.k===mk);const svg=document.getElementById(id);const W=420,H=220,ml=40,mr=12,mt=12,mb=30;
+  /* `||.5` because every item sharing one value gives hi===lo, and a zero-width range makes the bin
+     index NaN — the histogram then draws nothing at all instead of one spike. (bar() already guards.) */
+  const all=[];VARS.forEach(v=>DATA.forEach(d=>all.push(d[fld(v.k,mk)])));let lo=Math.min(...all),hi=Math.max(...all);const pd=(hi-lo)*.04||.5;lo-=pd;hi+=pd;
+  const bins=24,bw=(hi-lo)/bins;const ser=VARS.map(v=>{const h=new Array(bins).fill(0);DATA.forEach(d=>{let b=Math.floor((d[fld(v.k,mk)]-lo)/bw);b=Math.max(0,Math.min(bins-1,b));h[b]++;});return{v,h};});
+  const mc=Math.max(...ser.flatMap(s=>s.h));const x=b=>ml+(b/bins)*(W-ml-mr),y=c=>mt+(H-mt-mb)*(1-c/mc);let s='';
+  for(let t=0;t<=3;t++){const val=lo+(hi-lo)*t/3;s+=`<text class="axis" x="${x((val-lo)/bw)}" y="${H-mb+14}" text-anchor="middle">${val.toFixed(m.dec>2?2:m.dec)}</text>`;}
+  const line=h=>{let p='';for(let b=0;b<bins;b++)p+=(b?'L':'M')+x(b+.5)+' '+y(h[b])+' ';return p;};
+  ser.forEach(({v,h})=>{const col=cssvar(v.c),p=line(h);s+=`<path d="${p} L ${x(bins-.5)} ${H-mb} L ${x(.5)} ${H-mb} Z" fill="${col}" opacity="0.13"/><path d="${p}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;});
+  svg.innerHTML=s;}
+
+function delta(){const mk=document.getElementById('deltaMetric').value;const svg=document.getElementById('deltaChart');const W=1040,H=260,ml=48,mr=16,mt=14,mb=28;
+  const rows=DATA.map(d=>{const o={};VARS.forEach(v=>o[v.k]=d[fld(v.k,mk)]-(BASE[mk]!=null?d[fld(BASELINE.k,mk)]:0));return o;});
+  rows.sort((a,b)=>a[VARS[0].k]-b[VARS[0].k]);const ad=rows.flatMap(r=>VARS.map(v=>r[v.k]));const mm=Math.max(...ad.map(Math.abs))*1.08||1;const lo=-mm,hi=mm;
+  const x=i=>ml+(i/(rows.length-1||1))*(W-ml-mr),y=v=>mt+(H-mt-mb)*(1-(v-lo)/(hi-lo));let s='';
+  for(let t=0;t<=4;t++){const val=lo+(hi-lo)*t/4,yy=y(val);s+=`<line class="gridline" x1="${ml}" y1="${yy}" x2="${W-mr}" y2="${yy}"/><text class="axis" x="${ml-7}" y="${yy+3}" text-anchor="end">${val>0?'+':''}${val.toFixed(2)}</text>`;}
+  s+=`<line x1="${ml}" y1="${y(0)}" x2="${W-mr}" y2="${y(0)}" stroke="var(--muted)" stroke-width="1.2"/>`;
+  VARS.forEach(v=>{const col=cssvar(v.c);rows.forEach((r,i)=>{s+=`<circle cx="${x(i)}" cy="${y(r[v.k])}" r="1.9" fill="${col}" opacity="0.6"/>`;});
+    s+=`<line x1="${ml}" y1="${y(mean(rows.map(r=>r[v.k])))}" x2="${W-mr}" y2="${y(mean(rows.map(r=>r[v.k])))}" stroke="${col}" stroke-width="1.4" stroke-dasharray="5 3"/>`;});
+  svg.innerHTML=s;document.getElementById('deltaNote').innerHTML=VARS.map(v=>{const mv=mean(rows.map(r=>r[v.k]));const w=rows.filter(r=>r[v.k]>0).length;
+    return `${v.label}: mean Δ <span class="num" style="color:${mv>=0?'var(--good)':'var(--bad)'}">${mv>=0?'+':''}${mv.toFixed(3)}</span> (${w}/${rows.length} better)`;}).join(' · ');}
+document.getElementById('deltaMetric').onchange=delta;
+
+// per-item table (sortable + chip/search filter)
+let sortKey='id',sortDir=1,fltBucket='all',fltQ='';
+const hasBucket=DATA.some(d=>'bucket'in d);
+function table(){const cols=[['id','item',s=>s]]
+    .concat(hasBucket?[['bucket','bucket',s=>s]]:[])
+    .concat(VARS.flatMap(v=>METRICS.map(m=>[fld(v.k,m.k),v.k+' '+m.k,x=>x.toFixed(m.dec)])));
+  const isNum=k=>k!=='id'&&k!=='bucket';   // the header of a figure column gets .num so it sits over its own numbers
+  const th=document.querySelector('#perTbl thead');th.innerHTML='<tr>'+cols.map(c=>`<th${isNum(c[0])?' class="num"':''} data-k="${escN(c[0])}">${escN(c[1])}${sortKey===c[0]?(sortDir<0?' ▼':' ▲'):''}</th>`).join('')+'</tr>';
+  th.querySelectorAll('th').forEach(h=>h.onclick=()=>{const k=h.dataset.k;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=(k==='id'||k==='bucket')?1:-1;}table();});
+  let rows=[...DATA].filter(r=>(fltBucket==='all'||r.bucket===fltBucket)&&(!fltQ||String(r.id).toLowerCase().includes(fltQ)));
+  rows.sort((a,b)=>{const av=a[sortKey],bv=b[sortKey];return typeof av==='string'?sortDir*String(av).localeCompare(bv,undefined,{numeric:true}):sortDir*(av-bv);});
+  /* id/bucket come straight from the data block, so they get escN — an id containing `<` or `&` was
+     parsed as markup and swallowed the rest of the row. Data is never trusted as HTML. */
+  document.querySelector('#perTbl tbody').innerHTML=rows.map(r=>'<tr>'+cols.map(c=>{
+    if(c[0]==='bucket')return `<td><span class="pill" style="background:var(--role-x,var(--accent))">${escN(r.bucket)}</span></td>`;
+    if(c[0]==='id')return `<td>${escN(r.id)}</td>`;
+    return `<td class="num">${c[2](r[c[0]])}</td>`;}).join('')+'</tr>').join('');
+  document.getElementById('countNote').textContent=(COPY.countNote?COPY.countNote(rows.length,DATA.length):`showing ${rows.length} of ${DATA.length}`);}
+document.querySelector('.chips[data-filter="bucket"]').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;
+  e.currentTarget.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===b?'true':'false'));fltBucket=b.dataset.val;table();});
+document.getElementById('search').addEventListener('input',e=>{fltQ=e.target.value.trim().toLowerCase();table();});
+
+// media viewer
+const IMG_IDS=Object.keys(IMGS);let curIdx=0;
+function viewer(){if(!IMG_IDS.length){document.getElementById('tabSamples').style.display='none';document.getElementById('pane-samples').hidden=true;return;}
+  const sel=document.getElementById('sampleSel');sel.innerHTML=IMG_IDS.map((id,i)=>`<option value="${i}">#${escN(id)}</option>`).join('');
+  sel.onchange=e=>{curIdx=+e.target.value;drawSample();};
+  document.getElementById('prevS').onclick=()=>{curIdx=(curIdx-1+IMG_IDS.length)%IMG_IDS.length;drawSample();};
+  document.getElementById('nextS').onclick=()=>{curIdx=(curIdx+1)%IMG_IDS.length;drawSample();};drawSample();
+  document.getElementById('viewerNote').textContent=(COPY.viewer&&COPY.viewer.note)||'Curated subset for direct comparison — not the full set.';}
+const fmtM=v=>v==null?'':(typeof v==='number'?(Number.isInteger(v)?String(v):v.toFixed(3)):String(v));
+function drawSample(){const id=IMG_IDS[curIdx],s=IMGS[id];document.getElementById('sampleSel').value=curIdx;
+  /* say which id is malformed: `Object.keys(undefined)` killed the whole viewer with a stack trace that
+     named neither the item nor the expected shape */
+  if(!s||!s.img) throw new Error(`media item "${id}" has no img panels — expected {id:{img:{panel:dataURI},m:{…}}}`);
+  const panelKeys=Object.keys(s.img),M=s.m||{};
+  /* Panel keys are user-facing copy (they get translated), so a quote or `&` in one used to break out of
+     the alt/src attribute and destroy the <img> tag. Attributes and URLs stay escaped — always. */
+document.getElementById('panels').innerHTML=panelKeys.map(pk=>
+    `<div class="panel"><div class="plabel">${escN(pk)}</div><img src="${escN(s.img[pk])}" alt="${escN(pk+' '+id)}"><div class="pmetric">${escN(fmtM(M[pk]))}</div></div>`).join('');
+  /* m is a free-form metric dict (as documented): a key matching a PANEL name renders under that panel,
+     every other key renders once in the item readout. Do not require a `<panel>_<metric>` naming scheme —
+     silently rendering nothing when the keys don't match that convention is how this went unnoticed. */
+  const rest=Object.keys(M).filter(k=>!panelKeys.includes(k));
+  document.getElementById('sampleMeta').innerHTML=rest.map(k=>`<span><b>${escN(k)}</b> ${escN(fmtM(M[k]))}</span>`).join('');}
+
+// tabs (preserve selected page in URL hash)
+function selectTab(pane){document.querySelectorAll('.tabs button').forEach(b=>{const on=b.dataset.pane===pane;b.classList.toggle('active',on);b.setAttribute('aria-selected',on);});
+  document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!==pane);}
+/* replaceState, NOT location.hash= : assigning the hash makes the browser jump to the pane element,
+   so clicking a tab would scroll the header out of view. replaceState keeps the URL shareable AND the
+   scroll position put. */
+/* Own the panels: role="tab"/role="tabpanel" without aria-controls/aria-labelledby leaves a screen
+   reader a tab list of six tabs that control nothing and six unlabelled panels. Wired here so the markup
+   stays copy-paste-able and a duplicated pane picks it up for free. */
+document.querySelectorAll('.tabs button').forEach(b=>{if(!b.id)b.id='tab-'+b.dataset.pane;
+  b.setAttribute('aria-controls',b.dataset.pane);
+  const p=document.getElementById(b.dataset.pane);if(p)p.setAttribute('aria-labelledby',b.id);});
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{selectTab(b.dataset.pane);
+  history.replaceState(null,'','#'+b.dataset.pane);}));
+
+/* ===== Required dated-narrative component (notes + issues; exactly these two) =====
+   ONE renderer for both dated panes. The shell is a contract: even empty data validates the calendar,
+   filter, and card containers; only an empty ARRAY may hide the tab. */
+const NOTE_CONTRACTS={
+  'pane-notes':{kind:'experiment',statuses:['예정','진행 중','완료','중단','보류'],sections:['Decision Question','Hypothesis','Run Identity','Live Snapshot','Results','Interpretation','Decision']},
+  'pane-issues':{kind:'issue',statuses:['신규','조사 중','완화','모니터링','해결','차단'],sections:['Impact','Observed Symptom','Evidence','Hypotheses','Root Cause','Resolution','Verification','Closure']}
+};
+const NOTES=JSON.parse(document.getElementById('notesdata').textContent);
+const ISSUES=JSON.parse(document.getElementById('issuesdata').textContent);
+function noteView(listId,calId,filterId,data,contract){
+  if(!Array.isArray(data))throw new Error('Dated narrative data must be an array.');
+  const el=document.getElementById(listId), pane=el&&el.closest('.pane');
+  const cal=document.getElementById(calId), filt=document.getElementById(filterId);
+  const tabBtn=pane&&document.querySelector(`.tabs button[data-pane="${pane.id}"]`);
+  if(!pane||!tabBtn||!cal||!filt||!pane.matches('[data-component="dated-narrative"]')||!pane.querySelector('[data-dated-narrative-layout]')||!pane.querySelector('[data-dated-narrative-calendar] .notecal'))
+    throw new Error('Dated narrative requires the template calendar shell.');
+  if(!contract||!Array.isArray(contract.statuses)||!Array.isArray(contract.sections))
+    throw new Error(`Dated narrative pane ${pane.id} has no status/section contract.`);
+  if(!data.length)return;
+  const validDate=d=>{const m=String(d&&d.date).match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return false;
+    const dt=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));return dt.getUTCFullYear()===+m[1]&&dt.getUTCMonth()===+m[2]-1&&dt.getUTCDate()===+m[3];};
+  const unknownMarkers=['미확정','해당 없음','확인 중','TODO'];
+  const meaningfulText=x=>{if(typeof x!=='string'||!x.trim())return false;const text=x.replace(/[`*_]/g,'').trim();
+    return unknownMarkers.every(marker=>!text.startsWith(marker)||!!text.slice(marker.length).replace(/^[\s\-—:：.;,]+/,'').trim());};
+  const scalar=x=>typeof x==='string'||typeof x==='boolean'||(typeof x==='number'&&Number.isFinite(x));
+  const meaningfulScalar=x=>typeof x==='string'?meaningfulText(x):scalar(x);
+  const validItems=x=>Array.isArray(x)&&x.length&&x.every(meaningfulText);
+  const validTable=t=>t&&Array.isArray(t.head)&&t.head.length&&
+    t.head.every((cell,i)=>meaningfulScalar(cell)||(i===0&&cell===''&&t.head.length>1))&&
+    Array.isArray(t.rows)&&t.rows.length&&t.rows.every(r=>Array.isArray(r)&&r.length===t.head.length&&
+      r.every(cell=>meaningfulScalar(cell)||cell==='해당 없음'))&&t.rows.some(r=>r.some(meaningfulScalar));
+  const validImages=x=>Array.isArray(x)&&x.length&&x.every(p=>p&&typeof p==='object'&&
+    typeof p.src==='string'&&p.src.startsWith('data:'));
+  const validatePayload=(s,where,allowBlocks)=>{if(!s||typeof s!=='object'||typeof s.h!=='string'||!s.h.trim())
+      throw new Error(`${contract.kind} ${where} requires a non-empty text heading.`);
+    const itemsOk=validItems,tableOk=validTable;
+    if('items'in s&&!itemsOk(s.items))throw new Error(`${contract.kind} ${where} has non-meaningful items: ${JSON.stringify(s.items)}.`);
+    if('table'in s&&!tableOk(s.table))throw new Error(`${contract.kind} ${where} has a malformed/non-meaningful table with empty, non-scalar, or exception-only content.`);
+    if('images'in s&&!validImages(s.images))throw new Error(`${contract.kind} ${where} has malformed images.`);
+    if('collapsed'in s&&typeof s.collapsed!=='boolean')throw new Error(`${contract.kind} ${where} has non-boolean collapsed.`);
+    const direct=itemsOk(s.items)||tableOk(s.table)||validImages(s.images);
+    let nested=false;
+    if('blocks'in s){if(!allowBlocks||!Array.isArray(s.blocks)||!s.blocks.length)
+        throw new Error(`${contract.kind} ${where} has malformed blocks.`);
+      nested=true;s.blocks.forEach((b,i)=>{if(b&&'blocks'in b)throw new Error(`${contract.kind} ${where}.blocks[${i}] cannot nest blocks.`);
+        validatePayload(b,`${where}.blocks[${i}]`,false);});}
+    if(!direct&&!nested)throw new Error(`${contract.kind} ${where} has no meaningful content.`);};
+  const containsUnknown=x=>unknownMarkers.some(marker=>String(x||'').replace(/[`*_]/g,'').includes(marker));
+  const supportedDirect=s=>(validItems(s.items)&&s.items.every(item=>!containsUnknown(item)))||validTable(s.table)||validImages(s.images);
+  data.forEach((d,i)=>{const label=`record ${i+1}${d&&typeof d.title==='string'?` "${d.title}"`:''}`;
+    if(!d||typeof d!=='object'||!validDate(d))throw new Error(`${contract.kind} ${label} requires a valid date.`);
+    if(typeof d.title!=='string'||!d.title.trim())throw new Error(`${contract.kind} ${label} title must be non-empty text.`);
+    if(typeof d.key!=='string'||!d.key.trim())throw new Error(`${contract.kind} ${label} key must be non-empty text.`);
+    if(!contract.statuses.includes(d.status))
+      throw new Error(`${contract.kind} ${label} has invalid status "${d.status}"; expected ${contract.statuses.join(' | ')}.`);
+    if(d.time!=null&&!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(d.time)))
+      throw new Error(`${contract.kind} ${label} has invalid time "${d.time}".`);
+    if(!Array.isArray(d.sections))throw new Error(`${contract.kind} ${label} sections must be an array.`);
+    d.sections.forEach((s,j)=>{if(!s||typeof s!=='object'||typeof s.h!=='string'||!s.h.trim())
+      throw new Error(`${contract.kind} ${label}.sections[${j}] heading must be non-empty text.`);});
+    const actual=d.sections.map(s=>s.h), expected=contract.sections;
+    if(actual.length!==expected.length||actual.some((h,j)=>h!==expected[j]))
+      throw new Error(`${contract.kind} ${label} section order must be exactly ${expected.join(' > ')}; got ${actual.join(' > ')}.`);
+    d.sections.forEach((s,j)=>validatePayload(s,`${label}.sections[${j}]`,true));
+    if(contract.kind==='issue'&&d.status==='해결'){
+      const by=Object.fromEntries(d.sections.map(s=>[s.h,s]));
+      ['Root Cause','Resolution','Verification','Closure'].forEach(h=>{if(!supportedDirect(by[h]))throw new Error(`issue ${label} resolved record requires supported non-unknown ${h}.`);});
+      if(!String((by.Closure.items||[])[0]||'').replace(/[`*_]/g,'').trim().startsWith('해결'))
+        throw new Error(`issue ${label} resolved Closure contradicts lifecycle status.`);
+    }});
+  tabBtn.hidden=false;
+  const pad=n=>String(n).padStart(2,'0');
+  // newest first, by date AND optional "HH:MM" time. Entries with no time sort last within their day
+  // (they predate time-stamping), so a same-day update always lands above the entry it supersedes.
+  const stampKey=d=>`${String(d.date)} ${/^\d{2}:\d{2}$/.test(String(d.time||''))?d.time:'00:00'}`;
+  const days=[...data].sort((a,b)=>stampKey(a)===stampKey(b)?0:(stampKey(a)<stampKey(b)?1:-1));
+  const noteDates=new Set(days.map(d=>String(d.date)));
+  const labelSection=h=>(COPY.record&&COPY.record.sectionLabels&&COPY.record.sectionLabels[h])||h;
+  const labelStatus=s=>(COPY.record&&COPY.record.statusLabels&&COPY.record.statusLabels[s])||s;
+  let selectedDate=null,selectedStatus='all';
+  const statusCounts=Object.fromEntries(contract.statuses.map(s=>[s,days.filter(d=>d.status===s).length]));
+  const statusRow=document.createElement('div');statusRow.className='fgroup note-status-row';
+  statusRow.innerHTML=`<span class="flab">${mdN(COPY.record&&COPY.record.status||'Status')}</span><div class="chips" data-filter="status">`+
+    [`<button class="chip" aria-pressed="true" data-val="all">${mdN(COPY.record&&COPY.record.all||'All')} (${days.length})</button>`]
+      .concat(contract.statuses.map(s=>`<button class="chip" aria-pressed="false" data-val="${escN(s)}">${mdN(labelStatus(s))} (${statusCounts[s]})</button>`)).join('')+`</div>`;
+  filt.before(statusRow);
+  // Cells render markdown like every other field. They used escN, so a **bold** number in a table
+  // showed its asterisks while the same markup worked in bullets — a silent inconsistency.
+  const tableHtml=t=>`<div class="dtwrap"><table class="datatable"><thead><tr>${(t.head||[]).map(h=>`<th>${mdN(h)}</th>`).join('')}</tr></thead><tbody>${(t.rows||[]).map(r=>`<tr>${(r||[]).map(c=>`<td>${mdN(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  /* Third section shape, for when the finding IS the picture (a before/after strip, a failure case, a
+     calibration ladder): {h, images:[{src,cap,sub}]}. Reuses the media viewer's .panels grid — one grid
+     system for panels in this file — inside .dtwrap so a wide strip scrolls in its own box, never the
+     page. `src` MUST be a data: URI; the artifact CSP blocks every external request, so a remote URL
+     renders nothing at all. cap/sub are prose (mdN); src/alt land in ATTRIBUTES so they take escN. */
+  const imagesHtml=list=>{const ps=(list||[]).filter(p=>p&&typeof p==='object');
+    if(!ps.length)return '';   // empty/missing array renders nothing, not an empty box
+    return `<div class="dtwrap"><div class="panels" style="margin-top:8px">${ps.map(p=>`<div class="panel">`+
+      `<div class="plabel">${mdN(p.cap||'')}</div>`+
+      /* alt strips the markdown MARKERS the caption may carry — a screen reader reading "star star
+         variant 1 star star" is the accessible equivalent of shipping literal asterisks to the page. */
+      (p.src?`<img src="${escN(p.src)}" alt="${escN(String(p.cap||'image').replace(/[*`]/g,''))}" loading="lazy">`
+            :`<div class="noimg">${mdN((COPY.viewer&&COPY.viewer.missingSrc)||'missing src')}</div>`)+
+      (p.sub?`<div class="pmetric">${mdN(p.sub)}</div>`:'')+
+      `</div>`).join('')}</div></div>`;};
+  const directBody=s=>`<div class="note-direct">${(s.items&&s.items.length)?`<ul>${s.items.map(i=>`<li>${mdN(i)}</li>`).join('')}</ul>`:''}${s.table?tableHtml(s.table):''}${s.images?imagesHtml(s.images):''}</div>`;
+  const blockHtml=b=>b.collapsed
+    ? `<details class="note-details"><summary>${mdN(b.h||'')}</summary>${directBody(b)}</details>`
+    : `<div class="note-block"><div class="note-block-h">${mdN(b.h||'')}</div>${directBody(b)}</div>`;
+  const secBody=s=>directBody(s)+(s.blocks||[]).map(blockHtml).join('');
+  const cardHtml=d=>`<div class="note-card" data-date="${escN(d.date)}" data-state="${escN(d.status)}">
+    <div class="note-head"><div class="note-title">${mdN(d.title||'')}</div><div class="note-meta">
+      <span class="status-badge" data-state="${escN(d.status)}">${mdN(labelStatus(d.status))}</span>
+      <span class="note-stamp">${escN(d.date||'')}${/^\d{2}:\d{2}$/.test(String(d.time||''))?`<span class="t">${escN(d.time)}</span>`:''}</span></div></div>
+    <div class="note-key">${mdN(d.key)}</div>
+    ${(d.sections||[]).map(s=>`<div class="note-section" style="margin-top:11px"><div class="note-sec-h">${mdN(labelSection(s.h||''))}</div>${secBody(s)}</div>`).join('')}
+  </div>`;
+  function renderNotes(){
+    const list=days.filter(d=>(!selectedDate||String(d.date)===selectedDate)&&
+      (selectedStatus==='all'||d.status===selectedStatus));
+    filt.hidden=!selectedDate;
+    if(selectedDate)filt.innerHTML=`${COPY.record&&COPY.record.dateFilter?COPY.record.dateFilter(escN(selectedDate),list.length):`<b>${escN(selectedDate)}</b> — ${list.length} ${list.length===1?'entry':'entries'} · `}<a data-all="1">${mdN(COPY.record&&COPY.record.showAllDates||'show all dates')}</a>`;
+    statusRow.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.val===selectedStatus?'true':'false'));
+    el.innerHTML=list.map(cardHtml).join('')||`<div class="chart-s notes-empty">${mdN(COPY.record&&COPY.record.noEntries||'No entries for the selected date and status.')}</div>`;
+    /* Clearing the date does not reset lifecycle status; the two filters always compose with AND. */
+    const sa=filt.querySelector('[data-all]');if(sa){sa.href='#';sa.onclick=e=>{e.preventDefault();selectedDate=null;drawCal();renderNotes();};}
+  }
+  statusRow.querySelector('[data-filter="status"]').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
+    selectedStatus=b.dataset.val;renderNotes();};
+  const DOW=(COPY.record&&Array.isArray(COPY.record.weekdays)&&COPY.record.weekdays.length===7)?COPY.record.weekdays:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const p0=String(days[0].date).split('-').map(Number); let ym={y:p0[0],m:p0[1]-1};
+  function drawCal(){
+    const {y,m}=ym;
+    const startDow=new Date(Date.UTC(y,m,1)).getUTCDay();          // UTC: local parsing shifts days
+    const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();
+    let cells=DOW.map(d=>`<span class="notecal-dow">${d}</span>`).join('');
+    for(let i=0;i<startDow;i++) cells+='<span class="notecal-day"></span>';
+    for(let day=1;day<=dim;day++){
+      const ds=`${y}-${pad(m+1)}-${pad(day)}`, has=noteDates.has(ds), sel=selectedDate===ds;
+      cells+=`<button type="button" class="notecal-day${has?' has':''}${sel?' sel':''}"${has?` data-d="${ds}"`:' disabled'}>${day}</button>`;
+    }
+    cal.innerHTML=`<div class="notecal-head"><button type="button" class="notecal-nav" data-prev aria-label="${escN(COPY.record&&COPY.record.prevMonth||'Previous month')}">‹</button><div class="notecal-title">${new Date(Date.UTC(y,m,1)).toLocaleString((COPY.locale||'en-US'),{month:'long',year:'numeric',timeZone:'UTC'})}</div><button type="button" class="notecal-nav" data-next aria-label="${escN(COPY.record&&COPY.record.nextMonth||'Next month')}">›</button></div><div class="notecal-grid">${cells}</div>`;
+    cal.querySelector('[data-prev]').onclick=()=>{if(--ym.m<0){ym.m=11;ym.y--;}drawCal();};
+    cal.querySelector('[data-next]').onclick=()=>{if(++ym.m>11){ym.m=0;ym.y++;}drawCal();};
+    cal.querySelectorAll('.notecal-day.has').forEach(c=>c.onclick=()=>{selectedDate=selectedDate===c.dataset.d?null:c.dataset.d;drawCal();renderNotes();});
+  }
+  drawCal(); renderNotes();
+  NOTE_DATES[pane.id]=noteDates;
+  NOTEVIEWS[pane.id]=d=>{if(!noteDates.has(d))return;selectedDate=d;
+    const p=d.split('-');ym={y:+p[0],m:+p[1]-1};drawCal();renderNotes();};
+}
+/* Cross-pane note links: a plan row can point at the day it was worked on.
+   Any element with data-note-link="paneId:YYYY-MM-DD" switches to that pane AND filters its calendar. */
+const NOTEVIEWS={}, NOTE_DATES={};
+addEventListener('click',e=>{const a=e.target.closest('[data-note-link]');if(!a)return;e.preventDefault();
+  const [pane,date]=a.dataset.noteLink.split(':');const btn=document.querySelector(`.tabs button[data-pane="${pane}"]`);
+  if(!btn||btn.hidden)return; selectTab(pane); history.replaceState(null,'','#'+pane);
+  if(NOTEVIEWS[pane])NOTEVIEWS[pane](date); scrollTo(0,0);});
+
+/* Experiment plan / backlog: rows live in JSON, ONE renderer — a new experiment is a data edit.
+   row = {task, goal, status:'done'|'running'|'todo'|'blocked', date?, cost?, priority?, links?:[{pane,date,label}], note?} */
+function planView(tblId,rows){const t=document.getElementById(tblId);if(!t)return;
+  if(!Array.isArray(rows))throw new Error('Experiment plan data must be an array.');
+  const PILL=(COPY.plan&&COPY.plan.status)||{done:['ok','done'],running:['mid','running'],todo:['','todo'],blocked:['no','blocked']};
+  const malformed=rows.filter(r=>!r||!String(r.task||'').trim()||!String(r.goal||'').trim()||!PILL[r.status]);
+  if(malformed.length)throw new Error('Plan rows require task, goal, and status todo/running/done/blocked.');
+  const invalidLinks=rows.flatMap(r=>(r.links||[]).filter(l=>!l||!['pane-notes','pane-issues'].includes(l.pane)||
+    !/^\d{4}-\d{2}-\d{2}$/.test(String(l.date||''))||!NOTE_DATES[l.pane]||!NOTE_DATES[l.pane].has(l.date))
+    .map(l=>`${r.task}: ${l&&l.pane||'missing-pane'}:${l&&l.date||'missing-date'}`));
+  if(invalidLinks.length)throw new Error('Plan row has an invalid evidence link: '+invalidLinks.join(', '));
+  /* Evidence is mandatory for anything that produced a result: a finished/running row MUST link to a
+     real dated entry, so those states can never become unbacked assertions. */
+  const unbacked=rows.filter(r=>['done','running'].includes(r.status)&&!(r.links&&r.links.length));
+  if(unbacked.length)throw new Error('Plan rows marked done/running need an evidence link: '+
+    unbacked.map(r=>r.task).join(', '));
+  const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const headers=(COPY.plan&&COPY.plan.headers)||['Task','Goal','Status','Cost','Priority','Evidence'];
+  t.querySelector('thead').innerHTML='<tr>'+headers.map(h=>`<th>${mdN(h)}</th>`).join('')+'</tr>';
+  /* Optional `group` field: rows carrying the same group render under one header row, so a backlog reads
+     as "which claim does this support", not a flat to-do list. Ungrouped rows just render in order. */
+  let lastGroup=null;
+  t.querySelector('tbody').innerHTML=rows.map(r=>{const [cls,lab]=PILL[r.status]||PILL.todo;
+    const links=(r.links||[]).map(l=>`<a class="notelink" data-note-link="${esc(l.pane)}:${esc(l.date)}">${mdN(l.label||l.date)}</a>`).join('');
+    let head='';
+    if(r.group&&r.group!==lastGroup){lastGroup=r.group;head=`<tr class="grouprow"><td colspan="6">${mdN(r.group)}</td></tr>`;}
+    /* Prose columns render markdown like every other surface. They used esc(), so a **bold** number in
+       a plan row shipped its literal asterisks to the browser while the same markup worked in the note
+       panes. Prose = task/note/goal/group/link label. Escaped: pane+date (they build the data-note-link
+       ATTRIBUTE) and cost/priority (mono figure columns, not prose). */
+    return head+`<tr class="${r.status==='done'?'done':''}"><td class="task">${mdN(r.task)}${r.note?`<span class="when">${mdN(r.note)}</span>`:''}</td>`+
+      `<td class="goal">${mdN(r.goal)}</td>`+
+      `<td><span class="pill ${cls}">${lab}</span>${r.date?`<span class="when">${esc(r.date)}</span>`:''}</td>`+
+      `<td class="cost">${esc(r.cost||'—')}</td><td class="cost">${esc(r.priority||'—')}</td>`+
+      `<td>${links||'<span class="cost">—</span>'}</td></tr>`;}).join('');
+  const pane=t.closest('.pane'),btn=pane&&document.querySelector(`.tabs button[data-pane="${pane.id}"]`);
+  if(btn&&rows.length)btn.hidden=false;}
+
+function showRecordFatal(error){const panel=document.getElementById('record-fatal');
+  panel.hidden=false;panel.innerHTML=`<strong>${mdN(COPY.record&&COPY.record.fatal||'Record data could not be rendered')}</strong><pre>${escN(error&&error.message||error)}</pre>`;}
+try{
+  noteView('notes','cal','notesFilter',NOTES,NOTE_CONTRACTS['pane-notes']);
+  noteView('issues','issuesCal','issuesFilter',ISSUES,NOTE_CONTRACTS['pane-issues']);
+  planView('planTbl',JSON.parse(document.getElementById('plandata').textContent));
+}catch(error){showRecordFatal(error);queueMicrotask(()=>{throw error;});}
+const _toTop=document.getElementById('toTop');
+if(_toTop){addEventListener('scroll',()=>_toTop.classList.toggle('show',scrollY>400),{passive:true});
+  /* the CSS reduced-motion block cannot override a behavior passed to scrollTo — check it here too */
+  _toTop.onclick=()=>scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});}
+
+// draw + theme
+const root=document.documentElement;
+function draw(){if(!HAS_NUMERIC)return;bar('barA',METRICS[0].k);bar('barB',(METRICS[1]||METRICS[0]).k);dist('distA',METRICS[0].k);dist('distB',(METRICS[1]||METRICS[0]).k);delta();table();}
+document.getElementById('themeBtn').onclick=()=>{const dark=!(root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme:dark)').matches));root.setAttribute('data-theme',dark?'dark':'light');draw();};
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(!root.getAttribute('data-theme'))draw();});
+draw();viewer();
+
+/* Hash restore runs LAST: noteView/planView/viewer decide which tabs exist, so restoring a deep link
+   before them could open a pane whose tab is hidden — a blank page with no visible way back. Matching on
+   dataset.pane instead of a selector keeps a hostile hash out of querySelector. */
+(function(){const id=location.hash.slice(1),btn=[...document.querySelectorAll('.tabs button')].find(b=>b.dataset.pane===id);
+  if(btn&&!btn.hidden&&btn.style.display!=='none'){selectTab(id);
+    /* The browser may apply the initial #pane-* anchor scroll after this script runs on fresh file:// loads.
+       Reset once the load event has completed, then one macrotask later, while keeping replaceState tab clicks. */
+    const top=()=>setTimeout(()=>scrollTo(0,0),0);
+    if(document.readyState==='complete')top();else addEventListener('load',top,{once:true});
+  }   /* open at the top, not scrolled to the panel anchor */
+})();
+
+/* GATE — the Record tab group is exactly Plan / Notes / Issues, in that order. It validates tabs AND
+   panels, so omitting data-component, duplicating an allowed id, or adding a flat/manual day-log cannot
+   bypass it. Components lives in the separate Build group and must still be deleted before publishing. */
+(function(){const expected=['pane-plan','pane-notes','pane-issues'];
+  const planBtn=document.querySelector('.tabs button[data-pane="pane-plan"]');
+  const group=planBtn&&planBtn.closest('.tabgroup');
+  const actual=group?[...group.children].filter(e=>e.matches('button[role="tab"]')).map(e=>e.dataset.pane):[];
+  const exact=actual.length===expected.length&&actual.every((v,i)=>v===expected[i]);
+  const oneEach=expected.every(id=>document.querySelectorAll(`#${id}`).length===1&&
+    document.querySelectorAll(`.tabs button[data-pane="${id}"]`).length===1);
+  const dated=[...document.querySelectorAll('[data-component="dated-narrative"]')].map(p=>p.id).sort();
+  const datedExact=dated.join(',')==='pane-issues,pane-notes';
+  if(!exact||!oneEach||!datedExact)throw new Error('Record tabs must be exactly pane-plan, pane-notes, pane-issues with one matching panel each.');})();
+</script>
