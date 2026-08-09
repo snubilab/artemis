@@ -6085,14 +6085,35 @@ class TTEService:
 
         # Defect B fix: for drug seeds, an EXACT standard RxNorm Ingredient name
         # match wins over embedding search (fixes linagliptin->sitagliptin,
-        # warfarin->LOINC lab, glimepiride->combo). Runs before the cache so it
-        # also overrides previously-cached wrong mappings. Applies unconditionally
-        # -- decoupled from drug-anchored entry mode (Defect A / ADR-019): B is a
-        # correctness fix for a proper-noun lookup, A is that unfinished
-        # entry-mode feature's Phase 1 dependency, still off by default on this
-        # branch. They no longer need to toggle together. See
-        # _exact_ingredient_match_enabled for this fix's own ablation.
-        if expected_domain == "Drug" and self._exact_ingredient_match_enabled():
+        # warfarin->LOINC lab). Runs before the cache so it also overrides
+        # previously-cached wrong mappings. Decoupled from drug-anchored entry
+        # mode (Defect A / ADR-019): B is a correctness fix for a proper-noun
+        # lookup, A is that unfinished entry-mode feature's Phase 1 dependency,
+        # still off by default. See _exact_ingredient_match_enabled for B's own
+        # ablation.
+        #
+        # None is included, and the domain check is NOT dropped. Both halves are
+        # load-bearing, measured over the 663 seeds of the six-trial store:
+        #   None  -- _build_seeded_target_circe maps the entry drug with no
+        #     expected_domain at all (see the target call in that method), so
+        #     `== "Drug"` alone left the PrimaryCriteria DrugEra concept set on
+        #     the embedding path. That is the whole linagliptin->sitagliptin
+        #     defect. Same convention as agent2/workflow.py's ingredient rollup,
+        #     which already reads `domain_hint in ("Drug", None)` for exactly
+        #     this caller. Widening to None newly fires on 5 seeds, all of them
+        #     study drugs (apixaban, liraglutide, ticagrelor, linagliptin x2)
+        #     and 0 non-drugs; 'BI 10773' is an investigational code with no
+        #     ingredient row and correctly still falls through.
+        #   not any-domain -- 5 seeds carry a non-Drug domain AND exactly match
+        #     an ingredient name: Calcitonin, Creatinine, Glucose, glucose
+        #     (Measurement -- lab tests named after the analyte) and glimepiride
+        #     (Condition -- "Hypersensitivity to investigational product or
+        #     glimepiride", whose sourceText normalized down to the bare drug
+        #     name). Dropping the domain check would recast all five as drug
+        #     exposures. glimepiride's zero-overlap pair is a dropped-qualifier
+        #     defect upstream of here, not a mapper defect; do not fix it by
+        #     loosening this gate.
+        if expected_domain in ("Drug", None) and self._exact_ingredient_match_enabled():
             _exact = self._exact_ingredient_mapping(normalized_seed)
             if _exact is not None:
                 return _exact

@@ -169,19 +169,49 @@ class TestExactIngredientGateScopedToDrugDomain:
         mock_exact.assert_not_called()
         assert result["name"] == "Cached Concept Set"
 
-    def test_should_skip_exact_mapping_when_expected_domain_is_none(self):
+    @pytest.mark.parametrize("domain", ["Condition", "Measurement", "Procedure", "Observation"])
+    def test_should_skip_exact_mapping_when_domain_is_set_and_not_drug(self, domain):
+        """Five seeds in the six-trial store carry a non-Drug domain and still match an
+        ingredient name exactly: Calcitonin, Creatinine, Glucose and glucose are
+        Measurement lab tests named after the analyte, and glimepiride is the Condition
+        "Hypersensitivity to investigational product or glimepiride" whose sourceText
+        normalized to the bare drug name. Dropping the domain check recasts all five as
+        drug exposures, so the gate must stay closed for any domain that is set and is
+        not Drug.
+        """
         svc = _build_service()
         cache = CriterionResultCache(max_entries=100, ttl_hours=1)
-        cache.put("linagliptin", None, _make_cache_entry("linagliptin"))
+        cache.put("Creatinine", domain, _make_cache_entry("creatinine"))
 
         with (
             patch.object(svc, "_exact_ingredient_mapping") as mock_exact,
             patch("src.agents.agent2.criterion_cache.get_criterion_cache", return_value=cache),
             patch.dict(os.environ, {"CRITERION_CACHE_ENABLED": "true"}),
         ):
-            svc._recommend_seeded_concept_set("linagliptin", expected_domain=None)
+            svc._recommend_seeded_concept_set("Creatinine", expected_domain=domain)
 
         mock_exact.assert_not_called()
+
+    def test_should_apply_exact_mapping_when_expected_domain_is_none(self):
+        """_build_seeded_target_circe maps the entry drug with no expected_domain, so the
+        PrimaryCriteria DrugEra concept set arrives here with None. Requiring == "Drug"
+        left it on the embedding path, which is the whole linagliptin->sitagliptin defect.
+        """
+        svc = _build_service()
+        cache = CriterionResultCache(max_entries=100, ttl_hours=1)
+        cache.put("linagliptin", None, _make_cache_entry("linagliptin"))
+        expected = _make_exact_mapping_result()
+
+        with (
+            patch.object(svc, "_exact_ingredient_mapping", return_value=expected) as mock_exact,
+            patch("src.agents.agent2.criterion_cache.get_criterion_cache", return_value=cache),
+            patch.dict(os.environ, {"CRITERION_CACHE_ENABLED": "true"}),
+        ):
+            result = svc._recommend_seeded_concept_set("linagliptin", expected_domain=None)
+
+        mock_exact.assert_called_once_with("linagliptin")
+        assert result is expected
+        assert result["expression"]["items"][0]["concept"]["CONCEPT_ID"] == 40239216
 
 
 class TestExactIngredientGateFallsThrough:

@@ -39,3 +39,7 @@ secrets/
 # state/session-memo.md keyed to a session id; the tracked SPECs live at the
 # Broadsea root, not here.
 .moai/
+# Derived code index, rebuildable in ~400ms with `codegraph init .` -- a
+# multi-tens-of-MB SQLite db plus a live daemon socket, so it must never enter
+# the index even though *.db above would already catch the db file alone.
+.codegraph/
