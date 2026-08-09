@@ -58,8 +58,34 @@ items as listed, descendants joined through `concept_ancestor` filtered by
 against the rendered SQL by POSTing the expression to
 `WebAPI /cohortdefinition/sql` rather than assuming.
 
-Report per-set recall and precision. A "best Jaccard match" against a gold set that
-has no real counterpart must be reported as *no counterpart*, not as a weak match.
+Score **per eligibility criterion, 1:1, macro-averaged**. Never lead with a micro
+average over pooled concept ids. On this corpus the two disagree in DIRECTION, not just
+magnitude:
+
+| | micro (concept mass) | per criterion 1:1 |
+| --- | --- | --- |
+| overall recall / precision | 0.141 / 0.503 | 0.542 / 0.484 |
+| ARISTOTLE | 0.087 / 0.863 | 0.749 / 0.153 |
+
+ARISTOTLE reads "worst recall, best precision" under micro and the opposite per
+criterion. Its micro recall was set by one 111,910-concept antihypertensive set we never
+build; its micro precision by one 10,720-concept aspirin set that matches gold exactly.
+Neither describes the other forty criteria, and per criterion 48 of 144 matched pairs
+reach full recall — erased by the pooled figure.
+
+Report per-set recall and precision, and the recall distribution rather than only a
+mean. Report three populations separately: matched pairs, gold sets with no counterpart
+(94 of 238 here), and generated sets with no counterpart. A "best Jaccard match" against
+a gold set that has no real counterpart must be reported as *no counterpart*, not as a
+weak match.
+
+Always surface **zero-overlap pairs** — both sides exist and share no concept. They are
+the sharpest defect class and are invisible in any pooled number: our "linagliptin" set
+resolves to sitagliptin, "glimepiride" to three Condition concepts, and our 205-concept
+glucose set omits gold's one fasting-glucose LOINC.
+
+`scripts/conceptset_overlap_eval.py` emits this as `per_criterion` and prints it above
+the micro block; micro is labelled "concept mass — do not quote as quality".
 
 ## ANTI-PATTERNS
 
