@@ -65,8 +65,13 @@ def _condition_criterion(
     )
 
 
-def _stub_recommend(name: str, expected_domain: str | None = None, workflow=None):
-    """Return a minimal concept set recommendation stub."""
+def _stub_recommend(name: str, expected_domain: str | None = None, workflow=None, **kwargs):
+    """Return a minimal concept set recommendation stub.
+
+    ``**kwargs`` absorbs optional resolution inputs this test does not exercise
+    (``pre_fetched_candidates``, ``alias_candidates``); these tests are about
+    demographics grouping, not about how a seed is resolved.
+    """
     return {
         "name": name,
         "domain": "Condition",

@@ -3435,6 +3435,12 @@ class TTEService:
             eligibility.pop("structuredExpression", None)
             if progress_callback:
                 eligibility["_progress_callback"] = progress_callback
+            # Same transient-key idiom as _progress_callback above: the entry drug is
+            # mapped seven call sites deep and none of them carry the study, so the
+            # trial's own MeSH intervention terms ride along and are popped there.
+            mesh_terms = (study.get("trialMetadata") or {}).get("interventionMeshTerms") or []
+            if mesh_terms:
+                eligibility["_interventionAliases"] = list(mesh_terms)
             structured_expression = self._build_seeded_target_circe(eligibility)
             criterion_mapping_meta = structured_expression.pop("_criterionMappingMetadata", {})
             rule_index_meta = structured_expression.pop("_ruleIndexMeta", {})
@@ -4372,6 +4378,7 @@ class TTEService:
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         progress_cb = eligibility.pop("_progress_callback", None)
+        alias_candidates = eligibility.pop("_interventionAliases", None)
         obs_window = eligibility.get("observationWindow") or {"PriorDays": 365, "PostDays": 0}
         target_name = (eligibility.get("targetCohortName") or "").strip()
 
@@ -4384,7 +4391,9 @@ class TTEService:
 
         if progress_cb and callable(progress_cb):
             progress_cb({"phase": "target", "target": target_name})
-        mapped_target = self._recommend_seeded_concept_set(target_name, workflow=shared_workflow)
+        mapped_target = self._recommend_seeded_concept_set(
+            target_name, workflow=shared_workflow, alias_candidates=alias_candidates
+        )
         if progress_cb and callable(progress_cb):
             progress_cb({"phase": "target_done", "target": target_name})
         concept_sets = [
@@ -5870,6 +5879,56 @@ class TTEService:
             "mapping_metadata": None,
         }
 
+    def _alias_ingredient_mapping(
+        self, seed: str, aliases: list[str] | None
+    ) -> dict[str, Any] | None:
+        """Resolve a drug seed through the trial's MeSH intervention terms.
+
+        Only reached when the seed is not itself a standard RxNorm Ingredient name. A
+        development code never is: 'BI 10773' occurs nowhere in the 6.3M-concept
+        vocabulary and empagliflozin's ingredient concept carries no synonym rows, so
+        embedding search answered it with '1254065 CHF-6366 .beta.-2 metabolite'. The
+        resolution the vocabulary lacks is in the trial record -- NLM's MeSH index says
+        'empagliflozin' where every sponsor-authored field says 'BI 10773'.
+
+        MeSH is a different vocabulary from RxNorm, so a term is only accepted after
+        clearing the same ingredient test as any other seed, and only when EXACTLY ONE
+        alias clears it. Two would mean an ambiguous trial (a code-named seed plus both
+        arms indexed) and is refused rather than guessed; the caller then falls through
+        to embedding search unchanged.
+
+        The returned set keeps the study's own label, not the alias, so the concept set
+        still reads as the arm the protocol named.
+
+        :param seed: the already-normalized seed text that failed the direct lookup.
+        :param aliases: MeSH intervention terms for this trial, or None.
+        :returns: a mapping dict in the same shape as the Agent2 path, or None.
+        """
+        if not aliases:
+            return None
+
+        resolved: list[tuple[str, dict[str, Any]]] = []
+        for alias in aliases:
+            normalized = " ".join(str(alias or "").split()).strip()
+            if not normalized or normalized.lower() == seed.lower():
+                continue
+            mapping = self._exact_ingredient_mapping(normalized)
+            if mapping is not None:
+                resolved.append((normalized, mapping))
+
+        if len(resolved) != 1:
+            if len(resolved) > 1:
+                logging.info(
+                    "[TTE] %d MeSH aliases resolve for seed '%s' (%s); refusing to guess",
+                    len(resolved), seed, ", ".join(a for a, _ in resolved),
+                )
+            return None
+
+        alias, mapping = resolved[0]
+        logging.info("[TTE] seed '%s' resolved through MeSH alias '%s'", seed, alias)
+        mapping["name"] = seed
+        return mapping
+
     def _repair_stale_drug_concept_sets(self, base: dict[str, Any]) -> None:
         """Defect B repair: re-map any concept set whose NAME is exactly one
         standard RxNorm Ingredient to that ingredient, fixing stale/wrong drug
@@ -6078,6 +6137,7 @@ class TTEService:
         expected_domain: str | None = None,
         pre_fetched_candidates: list | None = None,
         workflow: Any | None = None,
+        alias_candidates: list[str] | None = None,
     ) -> dict[str, Any]:
         normalized_seed = " ".join(seed_text.split()).strip()
         if not normalized_seed:
@@ -6117,6 +6177,12 @@ class TTEService:
             _exact = self._exact_ingredient_mapping(normalized_seed)
             if _exact is not None:
                 return _exact
+            # Only when the seed itself is not an ingredient name. A development code
+            # ('BI 10773') never will be -- it appears nowhere in the 6.3M-concept
+            # vocabulary -- so the trial's MeSH terms are tried next.
+            _alias = self._alias_ingredient_mapping(normalized_seed, alias_candidates)
+            if _alias is not None:
+                return _alias
 
         # --- Cache lookup ---
         _cache_enabled = os.environ.get("CRITERION_CACHE_ENABLED", "true").lower() == "true"
@@ -9315,6 +9381,19 @@ class TTEService:
                 metadata["sponsor"] = lead_sponsor.get("name", "")
                 eligibility_module = protocol.get("eligibilityModule", {})
                 metadata["eligibilityCriteria"] = eligibility_module.get("eligibilityCriteria", "")
+                # derivedSection is written by NLM's indexer, not by the sponsor, and that
+                # difference is the point. Boehringer named their drug 'BI 10773' in every
+                # field they authored -- briefTitle, armsInterventionsModule, arm labels --
+                # so no sponsor field carries 'empagliflozin'. MeSH is a controlled
+                # vocabulary whose job is collapsing synonyms onto a preferred term, so the
+                # index does. Measured over the six benchmark trials: 9 of 9 MeSH terms
+                # resolve to a unique standard RxNorm Ingredient.
+                browse = (raw.get("derivedSection") or {}).get("interventionBrowseModule") or {}
+                metadata["interventionMeshTerms"] = [
+                    term
+                    for term in ((m.get("term") or "").strip() for m in (browse.get("meshes") or []))
+                    if term
+                ]
             else:
                 # Minimal metadata when cache is not available
                 from src.agents.agent1.nct_fetcher import fetch_or_load_trial_data

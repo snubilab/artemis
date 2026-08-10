@@ -290,3 +290,120 @@ class TestExactIngredientMatchAblation:
 
         mock_exact.assert_called_once_with("linagliptin")
         assert result == sentinel
+
+
+class TestMeshAliasResolution:
+    """A development code is never an ingredient name, so the trial's MeSH terms are tried
+    next. The vocabulary genuinely cannot answer this: 'BI 10773' appears in none of the
+    6.3M concepts and empagliflozin's ingredient carries no synonym rows. The resolution
+    lives in the trial record, which NLM indexes to MeSH preferred terms.
+    """
+
+    def test_should_resolve_through_mesh_alias_when_seed_is_a_development_code(self):
+        svc = _build_service()
+        expected = _make_exact_mapping_result(45774751, "empagliflozin")
+
+        def lookup(name):
+            return expected if name == "empagliflozin" else None
+
+        with patch.object(svc, "_exact_ingredient_mapping", side_effect=lookup):
+            result = svc._alias_ingredient_mapping("BI 10773", ["empagliflozin"])
+
+        assert result is not None
+        assert result["expression"]["items"][0]["concept"]["CONCEPT_ID"] == 45774751
+
+    def test_should_keep_the_study_label_when_resolving_through_an_alias(self):
+        """The concept set still reads as the arm the protocol named, not as the alias."""
+        svc = _build_service()
+        with patch.object(
+            svc, "_exact_ingredient_mapping",
+            side_effect=lambda n: _make_exact_mapping_result(45774751, "empagliflozin")
+            if n == "empagliflozin" else None,
+        ):
+            result = svc._alias_ingredient_mapping("BI 10773", ["empagliflozin"])
+
+        assert result["name"] == "BI 10773"
+
+    def test_should_refuse_when_more_than_one_alias_resolves(self):
+        """Two resolving aliases means an ambiguous trial; refuse rather than guess."""
+        svc = _build_service()
+        with patch.object(
+            svc, "_exact_ingredient_mapping",
+            side_effect=lambda n: _make_exact_mapping_result(1, n.lower()),
+        ):
+            result = svc._alias_ingredient_mapping("BI 10773", ["Warfarin", "apixaban"])
+
+        assert result is None
+
+    def test_should_return_none_when_no_alias_resolves(self):
+        svc = _build_service()
+        with patch.object(svc, "_exact_ingredient_mapping", return_value=None):
+            assert svc._alias_ingredient_mapping("BI 10773", ["not a drug at all"]) is None
+
+    @pytest.mark.parametrize("aliases", [None, [], ["", "   "]])
+    def test_should_return_none_when_there_are_no_usable_aliases(self, aliases):
+        svc = _build_service()
+        with patch.object(svc, "_exact_ingredient_mapping", return_value=None) as mock_lookup:
+            assert svc._alias_ingredient_mapping("BI 10773", aliases) is None
+        if not aliases:
+            mock_lookup.assert_not_called()
+
+    def test_should_ignore_an_alias_identical_to_the_seed(self):
+        """Retrying the seed under a different case cannot succeed; it already failed."""
+        svc = _build_service()
+        with patch.object(svc, "_exact_ingredient_mapping", return_value=None) as mock_lookup:
+            svc._alias_ingredient_mapping("apixaban", ["Apixaban"])
+        mock_lookup.assert_not_called()
+
+    def test_should_not_consult_aliases_when_the_seed_itself_resolves(self):
+        """Seed wins. Five of the six benchmark trials never reach the alias route."""
+        svc = _build_service()
+        seed_hit = _make_exact_mapping_result(43013024, "apixaban")
+        cache = CriterionResultCache(max_entries=100, ttl_hours=1)
+        cache.put("apixaban", None, _make_cache_entry("apixaban"))
+
+        with (
+            patch.object(svc, "_exact_ingredient_mapping", return_value=seed_hit),
+            patch.object(svc, "_alias_ingredient_mapping") as mock_alias,
+            patch("src.agents.agent2.criterion_cache.get_criterion_cache", return_value=cache),
+        ):
+            result = svc._recommend_seeded_concept_set(
+                "apixaban", expected_domain=None, alias_candidates=["Warfarin", "apixaban"]
+            )
+
+        assert result is seed_hit
+        mock_alias.assert_not_called()
+
+    def test_should_try_aliases_from_the_gate_when_the_seed_fails(self):
+        svc = _build_service()
+        alias_hit = _make_exact_mapping_result(45774751, "empagliflozin")
+        cache = CriterionResultCache(max_entries=100, ttl_hours=1)
+        cache.put("BI 10773", None, _make_cache_entry("BI 10773"))
+
+        with (
+            patch.object(svc, "_exact_ingredient_mapping", return_value=None),
+            patch.object(svc, "_alias_ingredient_mapping", return_value=alias_hit) as mock_alias,
+            patch("src.agents.agent2.criterion_cache.get_criterion_cache", return_value=cache),
+        ):
+            result = svc._recommend_seeded_concept_set(
+                "BI 10773", expected_domain=None, alias_candidates=["empagliflozin"]
+            )
+
+        assert result is alias_hit
+        mock_alias.assert_called_once_with("BI 10773", ["empagliflozin"])
+
+    def test_should_skip_aliases_when_the_ablation_env_var_is_set(self, monkeypatch):
+        monkeypatch.setenv("ARTEMIS_DISABLE_EXACT_INGREDIENT_MATCH", "1")
+        svc = _build_service()
+        cache = CriterionResultCache(max_entries=100, ttl_hours=1)
+        cache.put("BI 10773", None, _make_cache_entry("BI 10773"))
+
+        with (
+            patch.object(svc, "_alias_ingredient_mapping") as mock_alias,
+            patch("src.agents.agent2.criterion_cache.get_criterion_cache", return_value=cache),
+        ):
+            svc._recommend_seeded_concept_set(
+                "BI 10773", expected_domain=None, alias_candidates=["empagliflozin"]
+            )
+
+        mock_alias.assert_not_called()
