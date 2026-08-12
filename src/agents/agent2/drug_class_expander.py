@@ -174,7 +174,16 @@ def expand_drug_class_via_vocab(
     db_conn,
     schema: str = "",
     distance_threshold: float = float(
-        os.environ.get("AGENT2_ATC_DISTANCE_THRESHOLD", "0.4")
+        # 0.4 admitted only near-verbatim names. Across all 31 ATC decisions in the
+        # 2026-08-12 six-trial remap: 4 accepted (max distance 0.134), 27 rejected
+        # (min 0.453), and the rejected 0.453-0.735 band was correct matches without
+        # exception -- DPP-4, SGLT2 x3, GLP-1 x3, insulin x3, corticosteroids,
+        # anti-obesity. The first wrong match is at 0.760 (CYP3A inhibitors ->
+        # Pi3K inhibitors), so 0.75 takes 14 true positives and no false one.
+        # It cost recall 0.04 on a 2093-concept gold set: ATC A10BH expands to 8 of
+        # the 10 gold DPP-4 ingredients with nothing extra, and never ran.
+        # Note this default binds at import; setting the env var later has no effect.
+        os.environ.get("AGENT2_ATC_DISTANCE_THRESHOLD", "0.75")
     ),
 ) -> Tuple[Optional[str], List[int]]:
     """

@@ -51,13 +51,21 @@ _SETTINGS_PATCH = "src.agents.agent2.drug_class_expander.Settings"
 # ---------------------------------------------------------------------------
 
 def test_atc_distance_above_threshold_is_rejected():
-    """ATC match with distance=0.55 must be rejected when threshold=0.4."""
+    """A far ATC match must still be rejected.
+
+    Was written against distance=0.55 and a 0.4 default. The default is now 0.75,
+    chosen from the 31 real match decisions in the 2026-08-12 remap, where every
+    rejection between 0.453 and 0.735 turned out to be a correct class match; see
+    tests/test_atc_class_distance_threshold.py. The scenario here moves to an
+    observed *wrong* match so it keeps testing rejection rather than the old
+    boundary: 'Drug-naive' -> 'OTHER NERVOUS SYSTEM DRUGS' at 0.957.
+    """
     # Arrange
     chroma_result = _make_chroma_result(
-        document="Sulfonylureas",
-        concept_id=21600745,
-        concept_code="A10BB",
-        distance=0.55,
+        document="OTHER NERVOUS SYSTEM DRUGS",
+        concept_id=21604488,
+        concept_code="N07",
+        distance=0.957,
     )
     mock_collection = MagicMock()
     mock_collection.query.return_value = chroma_result
@@ -132,8 +140,12 @@ def test_atc_distance_below_threshold_is_accepted():
 # ---------------------------------------------------------------------------
 
 def test_env_var_overrides_distance_threshold():
-    """AGENT2_ATC_DISTANCE_THRESHOLD=0.3 must reject distance=0.35 but
-    accept distance=0.25 — proving the env var is read at call time."""
+    """A threshold of 0.3 must reject distance=0.35 and accept 0.25.
+
+    The name says env var, but the call below passes the value explicitly, and it
+    has to: the default binds `os.environ` at import, so setting the variable later
+    does not reach this function. What this pins is the explicit parameter.
+    """
     ingredient_ids = [2001, 2002, 2003]
 
     def _run(distance: float):
