@@ -45,6 +45,41 @@ _PREFERRED_CLASSES: Dict[str, set] = {
     "Procedure": {"Procedure", "4-dig billing code", "CPT4"},
 }
 
+def _distance_unit(distances: List[float]) -> float:
+    """Divisor that makes vector distance dimensionless before modifiers apply.
+
+    The modifier constants above are absolute numbers tuned for normalised
+    embeddings, whose distances span roughly [0, 2]. The live collection is
+    ``omop_concepts_medcpt``, whose L2 distances run ~47.6-56.1, and against a
+    gap of that size a -0.30 vocabulary boost changes nothing — the ranking was
+    the raw vector order.
+
+    Dividing by the mean turns each distance into a ratio, so the comparison the
+    constants act on is "how much further than a typical candidate", which is the
+    same quantity under any embedding model. It is exactly invariant to a
+    multiplicative rescale (k*dist over k*mean), and it does not flatten a near
+    tie: two candidates 6% apart stay 6% apart whether the distances read
+    0.30/0.32 or 47.6/50.5.
+
+    Scaling by the candidate set's *spread* was tried first and rejected. It
+    inverts on tight clusters: at spread 0.02 the constants shrink by 100x and
+    the preference disappears precisely where near-ties most need deciding
+    (tests/test_map_retriever_scoring.py::test_hba1c_loinc_beats_snomed caught it).
+
+    Args:
+        distances: raw vector distances for the candidate set being scored.
+
+    Returns:
+        The mean distance, or 1.0 when it is empty or degenerate — which leaves
+        the constants at their original absolute meaning rather than dividing by
+        something near zero.
+    """
+    if not distances:
+        return 1.0
+    mean = sum(distances) / len(distances)
+    return mean if mean > 1e-9 else 1.0
+
+
 import json
 import os
 
@@ -124,100 +159,23 @@ class ConceptRetriever:
             print(f"Vector search failed (DB might be empty): {e}")
             return []
 
-        candidates = []
-        if results and results['ids']:
-            ids = results['ids'][0]
-            metadatas = results['metadatas'][0]
-            distances = results['distances'][0]
-            documents = results.get('documents', [[]])[0]
+        if not (results and results['ids']):
+            return []
 
-            query_lower = query_text.lower().strip()
+        # One scoring implementation, shared with batch_search(). Do not inline a
+        # second copy here: the pipeline reaches agent2 through search() and
+        # tte_service through batch_search(), so a divergent copy is invisible
+        # until it changes a trial's numbers.
+        result = self._score_candidates(
+            query_text=query_text,
+            ids=results['ids'][0],
+            metadatas=results['metadatas'][0],
+            distances=results['distances'][0],
+            documents=results.get('documents', [[]])[0],
+            domain_hint=domain_hint,
+            n_results=n_results,
+        )
 
-            for i, cid in enumerate(ids):
-                meta = metadatas[i]
-                concept_name = (
-                    documents[i] if i < len(documents) 
-                    else meta.get("concept_name", "Unknown")
-                )
-                domain = meta.get("domain_id", "Unknown")
-                vocab = meta.get("vocabulary_id", "Unknown")
-                concept_class = meta.get("concept_class_id", "Unknown")
-                dist = distances[i]
-
-                # --- Adjusted score = base distance + modifiers ---
-                score = dist
-
-                # 1. Vocabulary preference bonus
-                effective_domain = domain_hint or domain
-                vocab_prefs = _VOCAB_PREFERENCE.get(effective_domain, {})
-                score += vocab_prefs.get(vocab, 0.05)  # default: small penalty
-
-                # 2. Exact / substring match boost
-                name_lower = concept_name.lower()
-                if name_lower == query_lower:
-                    score -= 0.15  # strong boost for exact match
-                elif query_lower in name_lower:
-                    score -= 0.08  # boost for substring
-                elif name_lower in query_lower:
-                    score -= 0.04  # partial boost
-                else:
-                    # Word-level prefix match (catches hypertension/hypertensive)
-                    query_words = set(query_lower.split())
-                    name_words = set(name_lower.split())
-                    # Check if any query word shares a 6+ char prefix with name word
-                    for qw in query_words:
-                        if len(qw) < 5:
-                            continue
-                        prefix = qw[:min(len(qw)-2, 8)]  # e.g. "hypertens" from "hypertension"
-                        for nw in name_words:
-                            if nw.startswith(prefix):
-                                score -= 0.06  # word-stem boost
-                                break
-
-                # 3. Concept class preference
-                preferred = _PREFERRED_CLASSES.get(effective_domain, set())
-                if concept_class in preferred:
-                    score -= 0.03
-                if concept_class in _PENALIZED_CLASSES:
-                    # Skip penalty if concept name closely matches query
-                    # (e.g., don't penalize "Malignant neoplasm" when query IS "malignant neoplasm")
-                    if name_lower != query_lower and query_lower not in name_lower:
-                        score += 0.05
-
-                # 4. Domain mismatch penalty (strong — reduces domain confusion)
-                if domain_hint and domain != domain_hint:
-                    score += 0.50
-
-                # 5. Standard concept preference (graceful: skip if not in metadata)
-                if "standard_concept" in meta:
-                    std = meta["standard_concept"]
-                    if std == "S":
-                        score -= 0.10  # prefer standard concepts
-                    elif std is None or std == "":
-                        score += 0.15  # penalize non-standard
-                    # C (Classification) gets no adjustment (0.0)
-
-                # 6. Common Concept Boost (Reliability / Frequency)
-                # Data-driven priority from DB stats + Defaults
-                if int(cid) in self.concept_weights:
-                    score += self.concept_weights[int(cid)]
-
-                candidates.append(CandidateConcept(
-                    concept_id=int(cid),
-                    concept_name=concept_name,
-                    domain_id=domain,
-                    vocabulary_id=vocab,
-                    concept_class_id=concept_class,
-                    distance=dist,
-                    adjusted_score=score,
-                ))
-
-        # Sort by adjusted score (lower = better)
-        candidates.sort(key=lambda c: c.adjusted_score)
-        
-        # Return top n_results
-        result = candidates[:n_results]
-        
         if result and logger.isEnabledFor(logging.DEBUG):
             top = result[0]
             logger.debug(
@@ -240,13 +198,26 @@ class ConceptRetriever:
     ) -> List[CandidateConcept]:
         """Score and rank raw ChromaDB results for a single query.
 
-        Applies the same post-retrieval scoring as search():
-        vocab preference, exact match boost, class preference,
-        domain mismatch penalty, standard concept preference,
-        and concept weight boost.
+        The single scoring implementation: vocab preference, exact match boost,
+        class preference, domain mismatch penalty, standard concept preference,
+        and concept weight boost. search() and batch_search() both route here —
+        search() used to hold a second copy, and the same duplication in
+        reranker.py (rerank_topn vs rerank_topn_batch) had already produced a
+        green unit test over a prompt the pipeline never called.
+
+        Distance is divided by the candidate set's mean before the modifiers
+        below are added (see _distance_unit), so the constants keep the meaning
+        they were tuned for under any embedding scale. Measured on the real
+        "Platelet count" result: gold LOINC 3024929 sat at rank 9 behind four
+        SNOMED concepts despite Measurement preferring LOINC by -0.30.
+
+        `adjusted_score` is therefore dimensionless and centred near 1.0, not on
+        the distance scale. Nothing thresholds it — it is only ever compared
+        between candidates of the same query.
         """
         query_lower = query_text.lower().strip()
         candidates: List[CandidateConcept] = []
+        unit = _distance_unit(distances)
 
         for i, cid in enumerate(ids):
             meta = metadatas[i]
@@ -259,21 +230,22 @@ class ConceptRetriever:
             concept_class = meta.get("concept_class_id", "Unknown")
             dist = distances[i]
 
-            score = dist
+            # Modifiers accumulate on their own so they can be scaled as a unit.
+            adj = 0.0
 
             # 1. Vocabulary preference bonus
             effective_domain = domain_hint or domain
             vocab_prefs = _VOCAB_PREFERENCE.get(effective_domain, {})
-            score += vocab_prefs.get(vocab, 0.05)
+            adj += vocab_prefs.get(vocab, 0.05)
 
             # 2. Exact / substring match boost
             name_lower = concept_name.lower()
             if name_lower == query_lower:
-                score -= 0.15
+                adj -= 0.15
             elif query_lower in name_lower:
-                score -= 0.08
+                adj -= 0.08
             elif name_lower in query_lower:
-                score -= 0.04
+                adj -= 0.04
             else:
                 query_words = set(query_lower.split())
                 name_words = set(name_lower.split())
@@ -283,32 +255,35 @@ class ConceptRetriever:
                     prefix = qw[:min(len(qw) - 2, 8)]
                     for nw in name_words:
                         if nw.startswith(prefix):
-                            score -= 0.06
+                            adj -= 0.06
                             break
 
             # 3. Concept class preference
             preferred = _PREFERRED_CLASSES.get(effective_domain, set())
             if concept_class in preferred:
-                score -= 0.03
+                adj -= 0.03
             if concept_class in _PENALIZED_CLASSES:
                 if name_lower != query_lower and query_lower not in name_lower:
-                    score += 0.05
+                    adj += 0.05
 
             # 4. Domain mismatch penalty
             if domain_hint and domain != domain_hint:
-                score += 0.50
+                adj += 0.50
 
             # 5. Standard concept preference
+            # NOTE: omop_concepts_medcpt carries no standard_concept key, so this
+            # branch does not currently run. Left in place for collections that
+            # do; re-indexing with the field is what would activate it.
             if "standard_concept" in meta:
                 std = meta["standard_concept"]
                 if std == "S":
-                    score -= 0.10
+                    adj -= 0.10
                 elif std is None or std == "":
-                    score += 0.15
+                    adj += 0.15
 
             # 6. Common concept boost
             if int(cid) in self.concept_weights:
-                score += self.concept_weights[int(cid)]
+                adj += self.concept_weights[int(cid)]
 
             candidates.append(CandidateConcept(
                 concept_id=int(cid),
@@ -317,7 +292,7 @@ class ConceptRetriever:
                 vocabulary_id=vocab,
                 concept_class_id=concept_class,
                 distance=dist,
-                adjusted_score=score,
+                adjusted_score=dist / unit + adj,
             ))
 
         candidates.sort(key=lambda c: c.adjusted_score)

@@ -1,0 +1,490 @@
+{
+ "query": "Platelet count",
+ "domain_hint": "Measurement",
+ "gold_concept_ids": [
+  3007461,
+  3024929
+ ],
+ "candidates": [
+  {
+   "concept_id": 4015170,
+   "name": "Platelet count, blood, automated",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 47.6368
+  },
+  {
+   "concept_id": 4016231,
+   "name": "Platelet count, blood, manual",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 48.0013
+  },
+  {
+   "concept_id": 37208696,
+   "name": "Platelet count in blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Observable Entity",
+   "distance": 48.1292
+  },
+  {
+   "concept_id": 4273307,
+   "name": "Platelet count - finding",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Clinical Finding",
+   "distance": 48.5679
+  },
+  {
+   "concept_id": 37174422,
+   "name": "Platelet/neutrophil count ratio in blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Observable Entity",
+   "distance": 49.2568
+  },
+  {
+   "concept_id": 4267147,
+   "name": "Platelet count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 50.8197
+  },
+  {
+   "concept_id": 3011394,
+   "name": "Platelets given [Volume]",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 50.9796
+  },
+  {
+   "concept_id": 3010834,
+   "name": "Platelets [#/volume] in Blood by Manual count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 51.2815
+  },
+  {
+   "concept_id": 3024929,
+   "name": "Platelets [#/volume] in Blood by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 51.4807
+  },
+  {
+   "concept_id": 4190643,
+   "name": "Platelet count above reference range",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Clinical Finding",
+   "distance": 51.976
+  },
+  {
+   "concept_id": 3007461,
+   "name": "Platelets [#/volume] in Blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 52.0193
+  },
+  {
+   "concept_id": 36031577,
+   "name": "Platelets Large [#/volume] in Blood by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 52.0578
+  },
+  {
+   "concept_id": 3049178,
+   "name": "Platelets Large/Platelets in Blood by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 52.0675
+  },
+  {
+   "concept_id": 42869450,
+   "name": "Platelets reticulated/Platelets in Blood by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 52.3569
+  },
+  {
+   "concept_id": 3031586,
+   "name": "Platelets [#/volume] in Blood by Estimate",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 52.6409
+  },
+  {
+   "concept_id": 4306265,
+   "name": "Platelet count within reference range",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Clinical Finding",
+   "distance": 52.747
+  },
+  {
+   "concept_id": 4219401,
+   "name": "Platelet volume",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Observable Entity",
+   "distance": 52.8413
+  },
+  {
+   "concept_id": 3050583,
+   "name": "Platelets panel - Blood by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 52.8415
+  },
+  {
+   "concept_id": 4260199,
+   "name": "Serial platelet counts",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 52.9226
+  },
+  {
+   "concept_id": 2720530,
+   "name": "Platelets, leukocytes reduced, each unit",
+   "domain_id": "Device",
+   "vocabulary_id": "HCPCS",
+   "concept_class_id": "HCPCS",
+   "distance": 52.9268
+  },
+  {
+   "concept_id": 4215512,
+   "name": "Platelet diameter",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Observable Entity",
+   "distance": 53.4701
+  },
+  {
+   "concept_id": 3016682,
+   "name": "Platelets [#/volume] in Plasma by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 53.4858
+  },
+  {
+   "concept_id": 4309126,
+   "name": "Platelet/neutrophil ratio",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 53.4888
+  },
+  {
+   "concept_id": 4306266,
+   "name": "Platelet count outside reference range",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Clinical Finding",
+   "distance": 53.4963
+  },
+  {
+   "concept_id": 4190644,
+   "name": "Platelet count below reference range",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Clinical Finding",
+   "distance": 53.5844
+  },
+  {
+   "concept_id": 2720531,
+   "name": "Platelets, irradiated, each unit",
+   "domain_id": "Device",
+   "vocabulary_id": "HCPCS",
+   "concept_class_id": "HCPCS",
+   "distance": 53.6157
+  },
+  {
+   "concept_id": 3044935,
+   "name": "Platelets Large [Presence] in Blood by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 53.6658
+  },
+  {
+   "concept_id": 2720525,
+   "name": "Platelets, each unit",
+   "domain_id": "Device",
+   "vocabulary_id": "HCPCS",
+   "concept_class_id": "HCPCS",
+   "distance": 53.7003
+  },
+  {
+   "concept_id": 42869449,
+   "name": "Platelets reticulated [#/volume] in Blood by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 53.9166
+  },
+  {
+   "concept_id": 4015050,
+   "name": "Measurement of volume of platelets transfused",
+   "domain_id": "Procedure",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 53.9635
+  },
+  {
+   "concept_id": 37174445,
+   "name": "Reticulated platelet percent count in blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Observable Entity",
+   "distance": 53.998
+  },
+  {
+   "concept_id": 1616750,
+   "name": "Platelets Large/Platelets in Blood by Automated count.optical",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 54.0148
+  },
+  {
+   "concept_id": 2720532,
+   "name": "Platelets, leukocytes reduced, irradiated, each unit",
+   "domain_id": "Device",
+   "vocabulary_id": "HCPCS",
+   "concept_class_id": "HCPCS",
+   "distance": 54.4662
+  },
+  {
+   "concept_id": 3006297,
+   "name": "Platelets [#/volume] in Plasma",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 54.5898
+  },
+  {
+   "concept_id": 1092269,
+   "name": "Platelets [Presence] in Blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 54.6372
+  },
+  {
+   "concept_id": 3039827,
+   "name": "Platelets [#/volume] in Body fluid by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 54.6562
+  },
+  {
+   "concept_id": 3039417,
+   "name": "Platelet distribution width [Ratio] in Blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 54.7036
+  },
+  {
+   "concept_id": 40757561,
+   "name": "Pooled platelets given [Volume]",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 54.7343
+  },
+  {
+   "concept_id": 44816673,
+   "name": "Platelets [#/volume] in Platelet rich plasma by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 54.7822
+  },
+  {
+   "concept_id": 1616298,
+   "name": "Platelets [#/volume] in Blood by Automated count.optical",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 54.7827
+  },
+  {
+   "concept_id": 4267520,
+   "name": "Platelet morphology - finding",
+   "domain_id": "Condition",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Clinical Finding",
+   "distance": 54.7901
+  },
+  {
+   "concept_id": 37397923,
+   "name": "Mean platelet volume",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Observable Entity",
+   "distance": 54.925
+  },
+  {
+   "concept_id": 3048249,
+   "name": "Leukocytes+Platelets [Morphology] in Blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 55.0382
+  },
+  {
+   "concept_id": 3006985,
+   "name": "Platelets Large Fragments [#/volume] in Blood by Manual count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 55.0426
+  },
+  {
+   "concept_id": 4209512,
+   "name": "Platelet count below reference range at birth",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Clinical Finding",
+   "distance": 55.1721
+  },
+  {
+   "concept_id": 37393692,
+   "name": "Plateletcrit",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Observable Entity",
+   "distance": 55.2303
+  },
+  {
+   "concept_id": 4270019,
+   "name": "Percentage reticulated platelet count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 55.4723
+  },
+  {
+   "concept_id": 37174412,
+   "name": "Platelet distribution width percent in blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Observable Entity",
+   "distance": 55.4781
+  },
+  {
+   "concept_id": 3038216,
+   "name": "Platelets given [Type]",
+   "domain_id": "Observation",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Clinical Observation",
+   "distance": 55.4991
+  },
+  {
+   "concept_id": 4097620,
+   "name": "Platelet distribution width measurement",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 55.5009
+  },
+  {
+   "concept_id": 4094433,
+   "name": "Platelet aggregation ratio measurement",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 55.5468
+  },
+  {
+   "concept_id": 4097621,
+   "name": "Platelet hematocrit measurement",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 55.5538
+  },
+  {
+   "concept_id": 40765005,
+   "name": "Platelets [#/volume] in Blood from Fetus by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 55.579
+  },
+  {
+   "concept_id": 1091981,
+   "name": "Platelets Large [Presence] in Blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 55.6513
+  },
+  {
+   "concept_id": 3042863,
+   "name": "Giant platelets/Leukocytes [Ratio] in Blood by Manual count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 55.7589
+  },
+  {
+   "concept_id": 4095114,
+   "name": "Platelet aggregation with collagen test",
+   "domain_id": "Measurement",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Procedure",
+   "distance": 55.9078
+  },
+  {
+   "concept_id": 3038256,
+   "name": "Platelet clump [Presence] in Blood by Automated count",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 55.9506
+  },
+  {
+   "concept_id": 3010564,
+   "name": "Serotonin [Mass/volume] in Platelets",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 56.0258
+  },
+  {
+   "concept_id": 3039312,
+   "name": "Plateletcrit [Volume Fraction] in Blood",
+   "domain_id": "Measurement",
+   "vocabulary_id": "LOINC",
+   "concept_class_id": "Lab Test",
+   "distance": 56.0662
+  },
+  {
+   "concept_id": 4103790,
+   "name": "Platelets - irradiated",
+   "domain_id": "Device",
+   "vocabulary_id": "SNOMED",
+   "concept_class_id": "Pharma/Biol Product",
+   "distance": 56.1266
+  }
+ ]
+}
