@@ -25,9 +25,9 @@ finding-drop과 같은 자리에" — 를 구현하려 했다. 구현할 수 없
 - **테스트**: 100 failed / 2076 passed. 기준선 100/2071 + 신규 5건. **회귀 0.**
 - **실행 중**: vLLM PID `134304` (`google/gemma-4-E4B-it`, 32k, `:8000`),
   `artemis-api` 컨테이너 Up
-- **🔴 돌고 있는 작업**: 6개 시험 재매핑. 로그 `output/scale_fix.log`,
-  store `tmp/scale_fix/studies.json`(콜드 캐시). 시작 2026-08-12T09:05Z.
-  끝나면 아래 "채점 2단계"를 이어서 돌릴 것.
+- **재매핑 완료**: 09:05Z → 11:24Z(약 2시간 20분), 기준 298건, 예외 0건.
+  `tmp/scale_fix/studies.json` · `output/circe_scale_fix/` · 채점 결과
+  `output/conceptset_overlap/scoped_scale_fix.json`. 결과는 아래 "최종 측정".
 
 ## 핵심 발견 — 선호 상수가 거리 스케일 대비 10배 작다
 
@@ -120,16 +120,60 @@ OR Angioplasty" 4→None, LEADER Condition "Chronic heart failure" 13→None (2�
 
 **아직 모르는 것**: 최종 recall/precision. 검색 랭킹은 리랭커 선택의 상류일 뿐이다.
 Platelet은 수정 전에도 gold가 top-15 안(9위)이었는데 리랭커가 SNOMED를 골랐다 —
-랭킹 개선이 선택 개선을 보장하지 않는다. 그래서 재매핑을 돌리고 있다.
+랭킹 개선이 선택 개선을 보장하지 않는다. 그래서 재매핑을 돌렸다. 결과는 다음 절.
+
+## 최종 측정 — gold 대비 (scoped_gate_fix → scoped_scale_fix)
+
+**공통 gold 집합만으로 짝지은 결과**(양쪽 arm에서 매칭된 쌍만. 짝짓기가 바뀐 시험이 있어
+— CARMELINA 20→22, EMPA-REG 23→25, PLATO 12→11 — 짝짓기 없이 평균만 비교하면 구성
+변화가 개선으로 읽힌다. 2026-08-10에 이미 한 번 그렇게 틀렸다):
+
+| trial | n | per-criterion recall | precision |
+|---|---|---|---|
+| ARISTOTLE | 23 | 0.625 → 0.662 (+0.038) | 0.347 → 0.405 (+0.057) |
+| CARMELINA | 20 | 0.561 → 0.550 (−0.011) | 0.562 → 0.561 (−0.001) |
+| CAROLINA | 36 | 0.575 → 0.585 (+0.010) | 0.531 → 0.587 (+0.055) |
+| EMPA-REG | 22 | 0.387 → 0.429 (+0.042) | 0.407 → 0.428 (+0.021) |
+| LEADER | 26 | 0.614 → 0.625 (+0.010) | 0.611 → 0.604 (−0.007) |
+| PLATO | 11 | 0.846 → 0.807 (−0.038) | 0.717 → 0.734 (+0.016) |
+| **MACRO** | | **0.601 → 0.610 (+0.008)** | **0.529 → 0.553 (+0.024)** |
+
+`recall +0.008 = 0.68 SE`, `precision +0.024 = 2.12 SE`. 각각 4/6 시험에서 개선.
+
+**정직한 결론:**
+
+- **recall은 움직이지 않았다.** +0.008은 0.68 SE이고 ±0.02 해상도 아래다. 주장하지 말 것.
+- **precision은 완만히 올랐다** (+0.024, 2.12 SE). 짝짓기 없이 재면 +0.037 / 2.92 SE에
+  6/6 시험 개선으로 보이지만, 그 차이는 구성 변화가 만든 것이다. 2.12 SE / 4-6이 진짜 값이다.
+- **zero-overlap 쌍 9 → 5** (해상도와 무관한 개수).
+- **모티브가 된 사례는 끝까지 고쳐졌다.** ARISTOTLE `Platelet count`가 LOINC Lab Test
+  3개(gold 3007461·3024929 둘 다 포함)가 되어 **recall 0.000 → 1.000**, precision 0.667.
+  eGFR 2건도 각각 +0.40.
+
+**대가 — 해상도를 넘는 회귀가 실재한다:**
+
+| trial | Δrecall | 기준 |
+|---|---|---|
+| CARMELINA | −0.81 | `[TROY procedure] bariatric surgery` |
+| LEADER | −0.80 | `[TROY condition] Type 1 diabetes mellitus` |
+| LEADER | −0.27 | `[TROY condition] limb angioplasty, stenting, or bypass surgery` |
+| PLATO | −0.21 | `PCI and CABG`, `[TROY drug] anticoagulants` |
+
+검색 시뮬레이션이 예측한 모양 그대로다(45 개선 / 16 악화, 3건이 top-15 밖으로). 이름
+정확일치 −0.15가 무차원 스케일에서 강해져, 질의와 글자 그대로 맞는 좁은 개념이 넓은 gold
+개념을 밀어낸다. **이게 다음 세션의 1순위다** — 상수 재조정 전에 반드시 오프라인 랭킹
+시뮬레이션으로 먼저 확인할 것.
 
 ## Next steps (ordered, concrete)
 
-1. **돌고 있는 재매핑을 채점하고 앞 arm과 비교할 것.** 아래 "채점 2단계".
-   비교 기준은 `output/conceptset_overlap/scoped_gate_fix.json`(= 앞 세션 최종 arm).
-   **±0.02 해상도 규칙은 그대로 유효하다** — 1뽑기로 작은 델타를 주장하지 말 것.
-2. **top-15 밖으로 떨어진 3건을 볼 것.** 이름 정확일치 −0.15가 이제 무차원 ~1.0 스케일에서
-   지배적이다. 상수 재조정이 필요할 수 있는데, **재조정 전에 반드시 오프라인 랭킹
-   시뮬레이션으로 확인할 것**(방법은 아래).
+1. **이름 정확일치 −0.15가 이제 너무 강하다.** 위 회귀 4건이 전부 이 모양이다 —
+   좁은 문자열 일치가 넓은 gold 개념을 밀어낸다. 상수 재조정 후보이지만, **재조정 전에
+   반드시 오프라인 랭킹 시뮬레이션으로 확인할 것**(방법은 아래). 특히
+   `bariatric surgery`(CARMELINA −0.81)와 `Type 1 diabetes mellitus`(LEADER −0.80)를
+   먼저 재현할 것.
+2. **recall을 올리려면 다른 지렛대가 필요하다.** 이번 변경으로 검색 랭킹은 크게 좋아졌지만
+   (Measurement MRR 0.253 → 0.876) 최종 recall은 0.68 SE만큼만 움직였다. 병목이 검색에서
+   **리랭커 선택**으로 넘어갔다는 뜻이다.
 3. **`standard_concept`가 Chroma 메타데이터에 없다.** 채워 넣고 재색인하면 −0.10/+0.15
    보정이 처음으로 살아난다. 이번 수정으로 그 크기가 유의미해졌으므로 영향이 크다.
 4. **CAROLINA "Glucose"는 여전히 미해결** (수정 전후 모두 top-15 밖). gold 1개짜리이고
