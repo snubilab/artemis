@@ -103,9 +103,52 @@ moved five pairs, but three were orphan duplicates of the other two — the hone
 is two, one per affected trial. Report distinct corrections, not pair counts, and say
 which pairs are duplicates when quoting a delta.
 
+## NAME RESOLUTION OWNERSHIP
+
+Name resolution is owned by `TTEService._recommend_seeded_concept_set`, which funnels
+every criterion and target string through one fixed precedence — **exact RxNorm
+ingredient → trial-MeSH alias → criterion cache → Agent2Workflow (QueryExpander curated
+expansion → ATC drug-class → `ConceptRetriever.batch_search` → reranker) → RAGSearch
+fallback** — first tier returning non-None wins outright. Add a new resolver as a tier
+there, never as a second lookup inside a consumer.
+
+Three mechanisms in this tree were fully implemented and switched off, each failing
+silently. Check the switch before concluding a path is broken:
+
+- The MeSH alias tier needs `trialMetadata.interventionMeshTerms`, written only when a
+  study is imported with the raw registry payload present. Backfill an older store with
+  `scripts/backfill_intervention_mesh_terms.py`; `regenerate_structured_expression.py`
+  now warns loudly when a study has none.
+- `QueryExpander` holds a four-row curated table because the UMLS backend it was written
+  for needs a licensed `MRCONSO.RRF` that is not on this host. Do not add rows without
+  measuring: of the 14 abbreviations occurring in the six trials, expansion helped 4,
+  did nothing for 7 and made 2 **worse**. The two that got worse are excluded by the
+  6-character length gate; leave that gate alone.
+- `abbreviation_expander.py` is a no-op module superseded by the above.
+
+Settled, do not re-litigate:
+
+- **PubChem (`drug_name_normalizer.py` + the 22 GB SQLite) stays unwired.** Across the
+  730-trial cache its unique *and correct* contribution is one seed (TMC435 →
+  Simeprevir). "No MeSH term" and "no RxNorm ingredient" are the same condition — a
+  pre-approval compound — so it resolves the code and lands where OMOP has no concept.
+  The database also carries a contaminated synonym edge that answers wrongly with
+  `is_ambiguous=False`, the exact failure its docstring claims to prevent. OMOP's own
+  `concept_relationship` beats it on brand names at zero storage.
+- **The two ChromaDB readers do not disagree in production.** `RAGSearch` only beats
+  `ConceptRetriever` when handed a `domain_filter`, and no live caller passes one. What
+  is duplicated is the `collection.query` call, not the ranking; keep the two score
+  polarities separate (`rag_search.py` higher-is-better, `retriever.py` lower-is-better)
+  because `clinical_reranker` sorts descending on the former.
+- **`_VOCAB_PREFERENCE`'s Measurement LOINC −0.30 is not a defect.** It promotes the gold
+  concepts (3049187, 46236952 at ranks 1–2); the SNOMED pair it demotes appears in no
+  gold file. `tests/test_map_retriever_scoring.py::test_hba1c_loinc_beats_snomed` defends it.
+
 ## ANTI-PATTERNS
 
 - Do not move API contract fields without checking Atlas TTE consumers under `../atlas-dev/js/pages/target-trial-emulation/`.
+- Do not read `MappingCandidateItem.score` as a probability or compare it across criteria. It is a per-criterion rank score derived from the retriever's `adjusted_score`, which is normalised per query; `None` means the candidate arrived via KG/ATC expansion and was never scored, which is not the same as scoring badly.
+- Do not measure a mapping change against a warm criterion cache. The cache key is built from the *unexpanded* seed and it stores the whole mapping metadata, so a fixed run replays the old concept set and reads as "no change". Use `CRITERION_CACHE_ENABLED=false` or a fresh `CRITERION_CACHE_DB_PATH`.
 - Do not report a patient count from a trial benchmark CDM as evidence of pipeline quality; see EVALUATION above.
 - Do not infer a measurement's unit from its value distribution. An exclusion threshold sits in the abnormal tail by design, so "outside the observed range" is what a *correct* threshold looks like; the molar cases that must be refused score better than the decimal cases that must be accepted. Achilles 1815 is a sound detector and an unsound repairer.
 - Do not retype a wire-format constant (for example the `[OR-GROUP]` prefix, join, and separator). Import it from its owning module; `tests/test_dry_or_group_contract.py` fails if a second copy appears, and a guessed format silently makes every probe against it return `False`.
