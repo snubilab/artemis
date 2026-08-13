@@ -16,6 +16,39 @@ logger = logging.getLogger(__name__)
 # Short queries (<=6 chars) are abbreviation candidates
 _MAX_ABBREV_LENGTH = 6
 
+# Curated expansions, keyed by (abbreviation, domain hint).
+#
+# Small on purpose. All 14 abbreviations that actually occur as criterion
+# sourceText across the six benchmark trials were measured through the pipeline
+# retriever, bare against expanded, and only these four improved:
+#
+#   eGFR    0/5 gold -> 5/5. 'eGFR' and 'EGFR' are a case-only homograph
+#           (estimated Glomerular Filtration Rate vs Epidermal Growth Factor
+#           Receptor) and the receptor concepts take the whole candidate pool.
+#   NSTEMI, TIA, Stroke  same shape: the intended concept is absent from the
+#           pool bare and present expanded.
+#
+# The other ten are deliberately absent, and adding them would make things worse
+# or make no difference:
+#   ALT AST CK-MB COPD HbA1c STEMI  no material difference -- the abbreviation
+#           already appears literally in the LOINC/SNOMED concept names.
+#   Glucose Sarcoma  expansion measured WORSE. Both are 7 characters, so
+#           _MAX_ABBREV_LENGTH already excludes them; do not "fix" that.
+#   ECG     no query rewrite reaches the umbrella concept 4163951; both forms
+#           return sub-procedures.
+#   insulin OMOP has no umbrella standard ingredient for it; that belongs to
+#           drug-class expansion, not to query rewriting.
+#
+# Consulted before the UMLS backend because these are measured decisions, while
+# the UMLS path takes cuis[:1] from a query with no ORDER BY and would resolve
+# the eGFR/EGFR homograph arbitrarily.
+_CURATED_EXPANSIONS: dict[tuple[str, str], str] = {
+    ("eGFR", "Measurement"): "estimated glomerular filtration rate",
+    ("NSTEMI", "Condition"): "non-ST elevation myocardial infarction",
+    ("TIA", "Condition"): "transient ischemic attack",
+    ("Stroke", "Condition"): "cerebrovascular accident",
+}
+
 
 class QueryExpander:
     """Expand short clinical abbreviations to canonical names via UMLS."""
@@ -70,6 +103,9 @@ class QueryExpander:
         Returns:
             Preferred term string, or None if not found.
         """
+        curated = _CURATED_EXPANSIONS.get((abbrev, domain_hint))
+        if curated is not None:
+            return curated
         if self._umls is None:
             return None
         try:
