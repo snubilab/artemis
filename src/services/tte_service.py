@@ -5914,8 +5914,16 @@ class TTEService:
         ``Precise Ingredient --Maps to--> Ingredient`` edge, which is how a MeSH salt or
         ester heading ('Quetiapine Fumarate', 'Sildenafil Citrate') reaches the base
         ingredient without importing any new data. Measured over the 730-trial NCT cache,
-        the two together reach 8 of the 84 trials the MeSH alias tier could not serve
+        the two together reach 7 of the 84 trials the MeSH alias tier could not serve
         (``scripts/analyze_alias_tier_refusals.py``).
+
+        Probe 2 widens the hazard the caller's domain check exists for. RxNorm Extension
+        carries Drug-domain Ingredient rows named after analytes, so 'hemoglobin' -- a
+        Measurement criterion in the benchmark store -- now resolves by name to a drug
+        ingredient where before it resolved to nothing. Nothing here stops it; the
+        ``expected_domain in ("Drug", None)`` gate in ``_recommend_seeded_concept_set``
+        does, and it is the same gate already holding back Calcitonin, Creatinine and
+        Glucose. Do not loosen it: this probe made its blast radius larger, not smaller.
 
         :param seed: The already-normalized seed text.
         :returns: The concept_id, or None when no probe yields exactly one match.

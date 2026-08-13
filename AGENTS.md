@@ -159,16 +159,35 @@ Settled, do not re-litigate:
   nothing can newly resolve — 33 more MeSH terms resolve and 0 stopped. A bridge can
   create ambiguity instead of removing it: NCT07531173 carries two salt headings, goes
   0 → 2 resolving, and stays refused, which is the guard working. Un-inverting MeSH
-  headings (`Natriuretic Peptide, Brain`) recovers 0 and is not implemented. The one
-  scored seed the extension probe intercepts is `prothrombin complex concentrate` (a
-  PLATO exclusion) whose generated set has no gold counterpart and never appears in the
-  eval output, so no score moves. Re-measure with
-  `scripts/analyze_alias_tier_refusals.py`.
+  headings (`Natriuretic Peptide, Brain`) recovers 0 and is not implemented. Re-measure
+  with `scripts/analyze_alias_tier_refusals.py`.
+- **The mapping seed is `sourceText or description`, not `conceptSetName`.**
+  `_build_seeded_eligibility_rule` (`tte_service.py:5827`) builds the label that way, and
+  `queryUsed` in the recorded metadata equals `sourceText` for 323 of 351 generated sets.
+  A blast-radius measurement taken over `conceptSetName` is measuring the wrong column —
+  that error was made once already in this session and named the wrong seed. The scored
+  artifacts are also not from the obvious store: `scoped_mesh_fix_rematch.json` was
+  produced from `tmp/mesh_fix/studies.json`, not `tmp/tte/studies.json`, and their
+  criterion ids do not align. Measured correctly, the two ingredient-name bridges newly
+  resolve one seed per store: `hemoglobin` in `tmp/mesh_fix` (a Measurement criterion,
+  stopped by the domain gate) and `prothrombin complex concentrate` in `tmp/tte` (Drug,
+  reaches the mapper, but that store is not the scored one). No scored pair changes
+  either way.
 
 ## ANTI-PATTERNS
 
 - Do not move API contract fields without checking Atlas TTE consumers under `../atlas-dev/js/pages/target-trial-emulation/`.
 - Do not read `MappingCandidateItem.score` as a probability or compare it across criteria. It is a per-criterion rank score derived from the retriever's `adjusted_score`, which is normalised per query; `None` means the candidate arrived via KG/ATC expansion and was never scored, which is not the same as scoring badly.
+- Do not compare a macro across a change that alters *pairing*. `per_criterion_macro`
+  (`scripts/conceptset_overlap_eval.py:472`) averages over `outcome.startswith("matched")`
+  only, so a gold set with no generated counterpart leaves the denominator entirely
+  rather than scoring 0. Any change to the scorer's name matching therefore moves the
+  macro without moving quality — dropping three badly-scoring pairs out of `matched`
+  raises the mean by itself. Arm-to-arm comparisons under the *same* scorer are safe, and
+  the mesh_fix headline is one: EMPA-REG's numerator rose 11.04 → 14.03 over 38 fixed
+  gold sets, so its gain is +0.079 on the fixed population versus the +0.060 quoted off
+  the matched-only mean. When the scorer itself changed, quote the fixed population (all
+  gold sets, no-counterpart scored 0) or quote nothing.
 - Do not measure a mapping change against a warm criterion cache. The cache key is built from the *unexpanded* seed and it stores the whole mapping metadata, so a fixed run replays the old concept set and reads as "no change". Use `CRITERION_CACHE_ENABLED=false` or a fresh `CRITERION_CACHE_DB_PATH`.
 - Do not report a patient count from a trial benchmark CDM as evidence of pipeline quality; see EVALUATION above.
 - Do not infer a measurement's unit from its value distribution. An exclusion threshold sits in the abnormal tail by design, so "outside the observed range" is what a *correct* threshold looks like; the molar cases that must be refused score better than the decimal cases that must be accepted. Achilles 1815 is a sound detector and an unsound repairer.

@@ -170,25 +170,32 @@ class TestExactIngredientGateScopedToDrugDomain:
         assert result["name"] == "Cached Concept Set"
 
     @pytest.mark.parametrize("domain", ["Condition", "Measurement", "Procedure", "Observation"])
-    def test_should_skip_exact_mapping_when_domain_is_set_and_not_drug(self, domain):
-        """Five seeds in the six-trial store carry a non-Drug domain and still match an
+    @pytest.mark.parametrize("seed", ["Creatinine", "hemoglobin"])
+    def test_should_skip_exact_mapping_when_domain_is_set_and_not_drug(self, domain, seed):
+        """Six seeds in the benchmark stores carry a non-Drug domain and still match an
         ingredient name exactly: Calcitonin, Creatinine, Glucose and glucose are
         Measurement lab tests named after the analyte, and glimepiride is the Condition
         "Hypersensitivity to investigational product or glimepiride" whose sourceText
-        normalized to the bare drug name. Dropping the domain check recasts all five as
+        normalized to the bare drug name. Dropping the domain check recasts all of them as
         drug exposures, so the gate must stay closed for any domain that is set and is
         not Drug.
+
+        'hemoglobin' is the sixth and it is newer than the rest: it matched nothing until
+        `_resolve_ingredient_concept_id` gained its RxNorm Extension probe, and RxNorm
+        Extension carries a Drug-domain Ingredient row named HEMOGLOBIN. The probe made
+        this gate's blast radius larger, which is a reason to leave the gate alone rather
+        than a reason to revisit it.
         """
         svc = _build_service()
         cache = CriterionResultCache(max_entries=100, ttl_hours=1)
-        cache.put("Creatinine", domain, _make_cache_entry("creatinine"))
+        cache.put(seed, domain, _make_cache_entry(seed.lower()))
 
         with (
             patch.object(svc, "_exact_ingredient_mapping") as mock_exact,
             patch("src.agents.agent2.criterion_cache.get_criterion_cache", return_value=cache),
             patch.dict(os.environ, {"CRITERION_CACHE_ENABLED": "true"}),
         ):
-            svc._recommend_seeded_concept_set("Creatinine", expected_domain=domain)
+            svc._recommend_seeded_concept_set(seed, expected_domain=domain)
 
         mock_exact.assert_not_called()
 
