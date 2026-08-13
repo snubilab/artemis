@@ -313,8 +313,12 @@ class MappingCandidateItem(TTEModel):
 
     conceptId: int
     conceptName: str
-    score: float  # 0.0 to 1.0
-    source: str  # "rag", "ontology", or "phoebe"
+    # Relative rank score within ONE criterion, higher is better. None means the
+    # candidate never went through the retriever (KG/ATC expansion), so it has no
+    # embedding distance -- distinct from a low score. Not comparable across
+    # criteria: the underlying adjusted_score is normalised per query.
+    score: float | None = None
+    source: str  # "rag", "expansion", "ontology", or "phoebe"
     included: bool = False  # True if this candidate made it into the final expression
 
 

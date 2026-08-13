@@ -29,6 +29,7 @@ from src.api.models.tte import (
     AnalysisArtifactMeta,
     AnalysisStrategyPayload,
     AnalysisConfidenceInterval,
+    MappingCandidateItem,
     AnalysisPlotDescriptor,
     AnalysisPlotPoint,
     AnalysisPlotSeries,
@@ -110,6 +111,57 @@ class _AnalysisStrategyFinalizerDecision(BaseModel):
             if nested_lists:
                 return " ".join(nested_lists)
         return str(value or "").strip()
+
+
+def build_mapping_candidate_items(
+    candidates: list[Any],
+    candidate_scores: dict[int, float],
+    selected_ids: list[int],
+) -> list[MappingCandidateItem]:
+    """Record each candidate with the number and the origin that actually produced it.
+
+    ``candidate_scores`` holds the retriever's ``adjusted_score`` keyed by concept
+    id. That quantity is lower-is-better and normalised per query by the result
+    set's mean distance, so it is flipped here to a higher-is-better number and is
+    only comparable between candidates of the SAME criterion.
+
+    A concept absent from that dict never went through the retriever -- it arrived
+    through KG or ATC expansion -- so it records ``score=None`` and
+    ``source="expansion"``. Previously every candidate was re-hydrated from the CDM
+    with the two fields omitted, which defaulted them to 0.0 and "rag": a constant
+    that carried no signal and an origin that was false for expanded concepts.
+
+    :param candidates: Concept candidates in the order they should be recorded.
+    :param candidate_scores: adjusted_score by concept id, for retrieved concepts only.
+    :param selected_ids: Concept ids that reached the final expression.
+    :returns: The provenance rows for CriterionMappingMetadata.allCandidates.
+    """
+    selected = set(selected_ids)
+    items: list[MappingCandidateItem] = []
+    for candidate in candidates:
+        adjusted = candidate_scores.get(candidate.concept_id)
+        items.append(
+            MappingCandidateItem(
+                conceptId=candidate.concept_id,
+                conceptName=candidate.concept_name,
+                score=None if adjusted is None else 1.0 / (1.0 + adjusted),
+                source="rag" if adjusted is not None else "expansion",
+                included=candidate.concept_id in selected,
+            )
+        )
+    return items
+
+
+def mean_included_score(items: list[MappingCandidateItem]) -> float | None:
+    """Mean recorded score over the included candidates that have one.
+
+    :param items: Provenance rows for one criterion.
+    :returns: The mean, or None when no included candidate carried a score.
+        None rather than 0.0 on purpose -- 0.0 is what the defect produced, and a
+        reader must be able to tell "nothing was scored" from "scored badly".
+    """
+    scored = [i.score for i in items if i.included and i.score is not None]
+    return sum(scored) / len(scored) if scored else None
 
 
 class TTEService:
@@ -6271,21 +6323,25 @@ class TTEService:
                             for item in items
                             if item.get("concept", {}).get("CONCEPT_ID") is not None
                         ]
-                        all_candidate_items = [
-                            MappingCandidateItem(
-                                conceptId=c.concept_id,
-                                conceptName=c.concept_name,
-                                score=c.score,
-                                source=c.source,
-                                included=c.concept_id in selected_ids,
-                            )
-                            for c in candidates
-                        ]
-                        included_scores = [ci.score for ci in all_candidate_items if ci.included and ci.score > 0]
-                        avg_confidence = sum(included_scores) / len(included_scores) if included_scores else 0.0
+                        # `candidates` here came back from _fetch_concept_candidates,
+                        # which re-hydrates from the CDM by id and omits score/source
+                        # -- so c.score and c.source are Pydantic defaults, not
+                        # measurements. The real relevance number is on the retriever
+                        # objects the pre-fetch produced, which are still in scope.
+                        # A concept missing from this map reached the set through KG
+                        # or ATC expansion and was never scored; that is recorded as
+                        # None rather than invented.
+                        score_by_id = {
+                            c.concept_id: c.adjusted_score
+                            for c in (pre_fetched_candidates or [])
+                            if getattr(c, "adjusted_score", None) is not None
+                        }
+                        all_candidate_items = build_mapping_candidate_items(
+                            candidates, score_by_id, selected_ids,
+                        )
                         mapping_meta = CriterionMappingMetadata(
                             allCandidates=all_candidate_items,
-                            rerankConfidence=avg_confidence,
+                            rerankConfidence=mean_included_score(all_candidate_items),
                             rerankMethod="agent2",
                             queryUsed=normalized_seed,
                             selectedConceptIds=selected_ids,
