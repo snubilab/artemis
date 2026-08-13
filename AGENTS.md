@@ -143,6 +143,21 @@ Settled, do not re-litigate:
 - **`_VOCAB_PREFERENCE`'s Measurement LOINC −0.30 is not a defect.** It promotes the gold
   concepts (3049187, 46236952 at ranks 1–2); the SNOMED pair it demotes appears in no
   gold file. `tests/test_map_retriever_scoring.py::test_hba1c_loinc_beats_snomed` defends it.
+- **The MeSH alias tier's refusal rate is not its ambiguity guard.** Of the 94 cached
+  trials that actually depend on the tier — no arm label, intervention name, or otherName
+  spells the generic, the 'BI 10773' shape — it accepts 9, refuses 84 because *no* MeSH
+  term is a standard RxNorm Ingredient, and refuses **1** because more than one resolves.
+  Loosening `len(resolved) != 1` buys that single trial and reverses `8692a55`. The
+  binding constraint is vocabulary coverage, and most of it is not a gap: of the 88
+  unresolvable terms, the bulk are not drugs (`Office Visits`, `Watchful Waiting`),
+  development codes MeSH indexed verbatim (`SB 223412`), or systematic chemical names —
+  the segment PubChem was already rejected for. Two OMOP-native bridges reach 8 of the 84:
+  `Precise Ingredient --Maps to--> Ingredient` for salt headings like `Quetiapine
+  Fumarate` (6 trials, and 0 of the six-trial store's 241 seeds, so no benchmark effect),
+  and standard Ingredients that live in `RxNorm Extension` (2 trials, but it also newly
+  intercepts the scored seed `prothrombin complex concentrate`). Un-inverting MeSH
+  headings (`Natriuretic Peptide, Brain`) recovers 0. Re-measure with
+  `scripts/analyze_alias_tier_refusals.py`.
 
 ## ANTI-PATTERNS
 
