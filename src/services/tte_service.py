@@ -5981,10 +5981,23 @@ class TTEService:
         if not aliases:
             return None
 
+        # A seed that is itself one of the trial's MeSH terms is a recognised drug
+        # name, not a development code, so this tier has nothing to add and must
+        # decline. Merely SKIPPING that term instead defeated the ambiguity guard
+        # below: PLATO's ['Ticagrelor', 'Clopidogrel'] with seed 'ticagrelor' left
+        # exactly one resolving alias and returned clopidogrel's concept under the
+        # name 'ticagrelor' -- the comparator's drug in the study drug's slot.
+        normalized_aliases = [" ".join(str(a or "").split()).strip() for a in aliases]
+        if any(a and a.lower() == seed.lower() for a in normalized_aliases):
+            logging.info(
+                "[TTE] seed '%s' is itself a MeSH intervention term; alias path declines",
+                seed,
+            )
+            return None
+
         resolved: list[tuple[str, dict[str, Any]]] = []
-        for alias in aliases:
-            normalized = " ".join(str(alias or "").split()).strip()
-            if not normalized or normalized.lower() == seed.lower():
+        for normalized in normalized_aliases:
+            if not normalized:
                 continue
             mapping = self._exact_ingredient_mapping(normalized)
             if mapping is not None:

@@ -127,6 +127,51 @@ def test_should_report_none_when_the_trial_is_not_cached(tmp_path):
     assert mesh_terms_for("NCT99999999", tmp_path) is None
 
 
+# --------------------------------------------------------------------------
+# the alias tier must not answer for a seed that is already a drug name
+# --------------------------------------------------------------------------
+
+def test_should_refuse_the_alias_path_when_a_mesh_term_is_the_seed_itself():
+    """PLATO's shape: seed 'ticagrelor', MeSH terms ['Ticagrelor', 'Clopidogrel'].
+
+    Skipping the alias equal to the seed left exactly one resolving term, which
+    satisfied the "exactly one or refuse" guard and returned CLOPIDOGREL's
+    concept under the name 'ticagrelor' -- the comparator's drug in the study
+    drug's slot. Measured live before the fix: 1322184 clopidogrel.
+
+    The tier exists for seeds the vocabulary cannot answer, i.e. development
+    codes. A seed that IS one of the trial's MeSH terms is a recognised drug
+    name by definition, so this tier must decline and let the ordinary lookup
+    handle it. Masked today only because the exact-ingredient tier runs first.
+    """
+    from src.services.tte_service import TTEService
+
+    service = TTEService.__new__(TTEService)
+    calls: list[str] = []
+
+    def _never_resolves(name):
+        calls.append(name)
+        return None
+
+    service._exact_ingredient_mapping = _never_resolves
+    assert service._alias_ingredient_mapping("ticagrelor", ["Ticagrelor", "Clopidogrel"]) is None
+    assert "Clopidogrel" not in calls, "the comparator must not even be tried"
+
+
+def test_should_still_resolve_a_development_code_that_matches_no_mesh_term():
+    """The case the tier exists for must keep working: 'BI 10773' is not a MeSH term."""
+    from src.services.tte_service import TTEService
+
+    service = TTEService.__new__(TTEService)
+    service._exact_ingredient_mapping = lambda name: (
+        {"name": name, "expression": {"items": []}, "domain": "Drug"}
+        if name == "empagliflozin" else None
+    )
+    result = service._alias_ingredient_mapping("BI 10773", ["empagliflozin"])
+    assert result is not None
+    assert result["name"] == "BI 10773"
+
+
 def test_should_fill_the_store_from_the_cache_when_apply_is_given(tmp_path):
     cache = tmp_path / "cache"
     cache.mkdir()
