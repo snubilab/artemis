@@ -238,6 +238,16 @@ def censoring_only_codeset_keys(cohort: dict) -> set[str]:
 _LEADING_BRACKET = re.compile(r"^\s*\[[^\]]*\]\s*")
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
+# 'DPP-4' and 'DPP4' name one drug class. Splitting on every non-alphanumeric
+# gave {dpp, 4} against {dpp4} -- no shared token at all -- so gold
+# '[TROY intervention] DPP4 inhibitors' scored 0.000 against its real
+# counterpart 'DPP-4 inhibitor' and 0.250 against 'SGLT-2 inhibitors', which
+# shares only the class noun. The scorer paired it with SGLT-2 and read recall
+# 0.07 where the right pair reads 0.62. Only punctuation BETWEEN a letter and a
+# digit is folded: '4-ESRD' (digit then letter) and 'DPP-IV' (no digit) are
+# left as they were.
+_LETTER_DIGIT_PUNCT = re.compile(r"(?<=[a-z])[^a-z0-9\s]+(?=[0-9])")
+
 # 'atc' is a vocabulary label, not a clinical concept: gold's "Apixaban (ATC)"
 # and generated "apixaban" are the same set. Parentheticals are otherwise KEPT:
 # dropping them collapses "Stroke (hemorrhagic)" to "stroke", which then scores
@@ -246,18 +256,64 @@ _STOPWORDS = frozenset(
     {"and", "or", "of", "the", "a", "an", "in", "with", "for", "to", "atc", ""}
 )
 
+# Category nouns: they carry meaning inside a name but cannot identify a set on
+# their own. "Chronic disease" (1244 concepts) shares exactly one token with
+# gold "diseases of the blood" and with "peripheral arterial disease", and its
+# size guarantees the non-zero concept overlap that weak name evidence needs --
+# so it was claiming golds at recall 0.005 and precision 0.002. These tokens are
+# NOT dropped from the token set: "coronary atherosis and other chronic ischemic
+# heart disease" -> "Coronary Artery Disease" is a real pair that needs 'disease'
+# counted alongside 'coronary'. They are only barred from being the *sole*
+# shared token. 'drug' and 'inhibitor' are here for the same reason, both
+# observed: gold "anti-obesity drugs" vs "investigational drug", and gold
+# "alpha-glucosidase inhibitor" vs "SGLT2 inhibitors".
+_GENERIC_TOKENS = frozenset({"disease", "disorder", "drug", "inhibitor"})
+
+
+def _depluralize(token: str) -> str:
+    """Drop a trailing plural 's' so 'inhibitors' and 'inhibitor' share a token.
+
+    Deliberately crude rather than a real stemmer: it runs on both sides of every
+    comparison, so an over-eager fold ('diabetes' -> 'diabete') costs nothing as
+    long as it is consistent. Endings in 'ss', 'us' and 'is' are left alone --
+    'loss', 'mellitus' and 'stenosis' are not plurals.
+
+    :param token: A single lower-case alphanumeric token.
+    :returns: The token with a plural 's' removed, or the token unchanged.
+    """
+    if len(token) > 3 and token.endswith("s") and not token.endswith(("ss", "us", "is")):
+        return token[:-1]
+    return token
+
 
 def normalize_set_name(name: str) -> frozenset[str]:
-    """Tokenise a concept set name for similarity comparison."""
+    """Tokenise a concept set name for similarity comparison.
+
+    :param name: A gold or generated concept set name, optionally bracket-prefixed.
+    :returns: The comparable token set, with letter-digit punctuation folded
+        (``DPP-4`` -> ``dpp4``) and trailing plurals dropped.
+    """
     text = _LEADING_BRACKET.sub("", str(name or "")).lower()
-    return frozenset(t for t in _NON_ALNUM.split(text) if t not in _STOPWORDS)
+    text = _LETTER_DIGIT_PUNCT.sub("", text)
+    # fold first so the stopword list only ever needs the singular of a word
+    folded = (_depluralize(t) for t in _NON_ALNUM.split(text))
+    return frozenset(t for t in folded if t not in _STOPWORDS)
 
 
 def name_similarity(a: str, b: str) -> float:
+    """Jaccard over normalised name tokens, with category nouns barred from carrying a match alone.
+
+    :param a: First concept set name.
+    :param b: Second concept set name.
+    :returns: 0.0 when the names share nothing but category nouns, else the token Jaccard.
+    """
     ta, tb = normalize_set_name(a), normalize_set_name(b)
     if not ta or not tb:
         return 0.0
-    return len(ta & tb) / len(ta | tb)
+    shared = ta & tb
+    if not shared - _GENERIC_TOKENS:
+        return 0.0
+    return len(shared) / len(ta | tb)
 
 
 def jaccard(a: set[int], b: set[int]) -> float:
