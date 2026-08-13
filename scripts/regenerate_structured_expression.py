@@ -73,6 +73,19 @@ def counts(circe: Any) -> dict[str, int]:
     return out
 
 
+def alias_terms_for(study: dict) -> list[str]:
+    """The trial's MeSH intervention terms as the entry-drug mapper expects them.
+
+    Production reads exactly this field and hands it to the mapper as
+    ``alias_candidates``; without it a development-code target ('BI 10773') has
+    no way to reach its ingredient and falls through to embedding search.
+
+    :param study: A study record from the TTE store.
+    :returns: The MeSH terms, or an empty list when the store carries none.
+    """
+    return list((study.get("trialMetadata") or {}).get("interventionMeshTerms") or [])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="Write the result back")
@@ -103,13 +116,29 @@ def main() -> int:
     print(f"model: {model}   apply: {args.apply}\n")
 
     changed = 0
+    without_aliases: list[str] = []
     for study_id, name in selected.items():
         study = service.store.get_study(study_id)
         eligibility = study.get("eligibility") or {}
         before = counts(eligibility.get("structuredExpression") or {})
 
         # Fresh copy: _build_seeded_target_circe pops keys off its input.
-        circe = service._build_seeded_target_circe(json.loads(json.dumps(eligibility)))
+        draft = json.loads(json.dumps(eligibility))
+        # Production injects the trial's MeSH intervention terms right here
+        # (tte_service._process_eligibility, the `_interventionAliases` assignment)
+        # and _build_seeded_target_circe pops them again inside the entry-drug
+        # mapper. Skipping it ran this harness with alias_candidates=None, which
+        # silently disables the MeSH path for a development-code target: EMPA-REG's
+        # 'BI 10773' then fell through to embedding search and its target arm came
+        # back as HIV and cystic-fibrosis drugs. The benchmark must exercise the
+        # same path production does.
+        mesh_terms = alias_terms_for(study)
+        if mesh_terms:
+            draft["_interventionAliases"] = mesh_terms
+        else:
+            without_aliases.append(name)
+
+        circe = service._build_seeded_target_circe(draft)
         after = counts(circe)
 
         moved = after["RangeHighRatio"] - before["RangeHighRatio"]
@@ -122,6 +151,16 @@ def main() -> int:
             eligibility["structuredExpression"] = circe
             service.store.update_study(study_id, {"eligibility": eligibility})
             changed += 1
+
+    if without_aliases:
+        # Loud, not a footnote: a run without aliases measures a different pipeline
+        # than production runs, and the difference only shows on code-named drugs.
+        print(f"\n!! {len(without_aliases)} studies carry no trialMetadata."
+              f"interventionMeshTerms, so the MeSH alias path was INACTIVE for them:")
+        for name in without_aliases:
+            print(f"     {name}")
+        print("   Backfill with scripts/backfill_intervention_mesh_terms.py before "
+              "trusting an entry-drug result from this run.")
 
     print(f"\n{'written' if args.apply else 'dry run'}: {changed} studies")
     if not args.apply:
