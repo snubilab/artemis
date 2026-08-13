@@ -459,7 +459,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
   <div class="tiles" id="adaptTiles"></div>
 
   <section id="adaptation-sites"><div class="sec-head"><h2>Site-level overview</h2>
-    <div class="chart-s">동일한 CIRCE와 vocabulary map을 세 snapshot에 적용한 결과. 색상은 사이트를 고정적으로 나타낸다.</div></div>
+    <div class="chart-s">동일한 CIRCE와 vocabulary map을 세 snapshot에 적용한 결과. 색상은 사이트마다 고정이다.</div></div>
     <div class="card scrolltbl" style="margin-bottom:16px"><table id="adaptSiteTbl"><thead></thead><tbody></tbody></table></div>
     <div class="grid2">
       <div class="card"><div class="chart-t">제안 변경 수</div><div class="chart-s">B는 exact-zero와 descendant evidence가 함께 있어 제안이 가장 많다.</div><svg id="adaptChangeChart" viewBox="0 0 440 240"></svg></div>
@@ -488,7 +488,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
   <div class="sec-head" style="margin-bottom:10px">
     <span class="eyebrow">Issue Log</span>
     <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">발견된 문제점 · 조치사항</h2>
-    <div class="sub">데이터 기반 이슈 로그 — 각 문제의 <b>기존 output → 새 output</b>. 아래 캘린더에서 날짜(하이라이트)를 클릭하면 그 날만 볼 수 있고, <span class="mono">artemis/docs/daily_notes/tte_issue_log.json</span> 편집 후 리빌드하면 반영됩니다.</div>
+    <div class="sub">데이터 기반 이슈 로그. 각 문제의 <b>기존 output → 새 output</b>을 적었습니다. 아래 캘린더에서 날짜(하이라이트)를 클릭하면 그 날만 볼 수 있고, <span class="mono">artemis/docs/daily_notes/tte_issue_log.json</span> 편집 후 리빌드하면 반영됩니다.</div>
   </div>
   <div class="notes-layout">
     <div class="notes-main">
@@ -570,7 +570,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:
   <div class="sec-head" style="margin-bottom:10px">
     <span class="eyebrow">Related Work</span>
     <h2 style="text-transform:none;font-size:20px;margin:4px 0 0">관련 연구</h2>
-    <div class="sub">임계값이 <b>값 조건인지 시간창인지</b> 가르는 문제에 대한 문헌 조사. 인용은 전부 원문을 받아 확인했고, 확인 못 한 부분은 그렇게 적어뒀습니다. <span class="mono">artemis/docs/daily_notes/tte_related_work.json</span> 편집 후 리빌드하면 반영됩니다.</div>
+    <div class="sub">임계값이 <b>값 조건인지 시간창인지</b> 가르는 문제를 다룬 문헌 조사. 인용은 전부 원문을 받아 확인했고, 확인 못 한 부분은 그렇게 적어뒀습니다. <span class="mono">artemis/docs/daily_notes/tte_related_work.json</span> 편집 후 리빌드하면 반영됩니다.</div>
   </div>
   <div id="refs"></div>
 </div><!-- /tab-refs -->
@@ -974,7 +974,7 @@ function taxView(listId, data){
     </div>
     ${hd('이걸 고르는 신호')}${ul(c.signals.positive)}
     ${hd('고르면 안 되는 신호')}${ul(c.signals.negative)}
-    ${hd('위험 — 틀리면 조용히 0명')}<div style="font-size:13.5px;color:var(--ink-2);margin-top:5px">${mdN(c.hazard)}</div>
+    ${hd('위험: 틀리면 조용히 0명')}<div style="font-size:13.5px;color:var(--ink-2);margin-top:5px">${mdN(c.hazard)}</div>
     ${c.families?hd('하위 계열')+tbl(['계열','설명','인식 신호','n'],c.families.map(f=>[
       `<b>${esc(f.id)}</b><br><span style="color:var(--ink-3)">${esc(f.label_ko)}</span>`,
       esc(f.what), f.signals.map(s=>mdN(s)).join('<br>'), `<span class="num">${f.corpus_count}</span>`])):''}
@@ -989,7 +989,7 @@ function taxView(listId, data){
       `<span class="tag ${r.ambiguous?'warn':'ok'}">${esc(r.circe_op)}</span>`,
       `<span class="num ${r.corpus_count?'':'zero'}">${r.corpus_count}</span>`,
       r.example_id?`<span class="mono" style="color:var(--ink-3)">${esc(r.example_id)}</span>`:'—',
-      (r.ambiguous?'<b style="color:var(--status)">중의적 — </b>':'')+mdN(r.note||'')]))}</div>`;
+      (r.ambiguous?'<b style="color:var(--status)">중의적: </b>':'')+mdN(r.note||'')]))}</div>`;
 
   const notation=`<div class="card" style="margin-bottom:16px">
     <div class="chart-t" style="margin:0">표기 변이 목록</div>
