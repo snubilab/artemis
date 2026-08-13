@@ -5898,44 +5898,94 @@ class TTEService:
             "_mapping_metadata": mapped_criterion.get("mapping_metadata"),
         }
 
-    def _exact_ingredient_mapping(self, seed: str) -> dict[str, Any] | None:
-        """Defect B: resolve a drug seed to its standard RxNorm Ingredient by exact
-        (case-insensitive) name, bypassing embedding search. Returns a mapping dict
-        (same shape as the Agent2 path) or None when there is no unique exact match.
+    def _resolve_ingredient_concept_id(self, seed: str) -> int | None:
+        """Resolve a drug name to the single standard Ingredient concept it names.
 
-        Ambiguous (>1) or absent (class name, investigational code, typo) seeds
-        return None so the caller falls through to the existing pipeline unchanged.
+        Three ordered probes, each of them final: the first probe that matches anything
+        decides, and it decides for None as well. RxNorm answers first, so no name that
+        resolves today can be re-routed by a probe below it, and an ambiguous RxNorm name
+        still refuses instead of falling through. That ordering is what makes the two
+        lower probes purely additive -- only names that resolved to nothing can newly
+        resolve -- and `tests/test_ingredient_name_bridges.py` pins it.
+
+        Probe 2 exists because ``standard_concept = 'S'`` Ingredients also live in RxNorm
+        Extension (artenimol, izencitinib, prothrombin complex concentrate); nothing but
+        the vocabulary filter was excluding them. Probe 3 crosses OMOP's own
+        ``Precise Ingredient --Maps to--> Ingredient`` edge, which is how a MeSH salt or
+        ester heading ('Quetiapine Fumarate', 'Sildenafil Citrate') reaches the base
+        ingredient without importing any new data. Measured over the 730-trial NCT cache,
+        the two together reach 8 of the 84 trials the MeSH alias tier could not serve
+        (``scripts/analyze_alias_tier_refusals.py``).
+
+        :param seed: The already-normalized seed text.
+        :returns: The concept_id, or None when no probe yields exactly one match.
         """
         try:
             import psycopg2
 
             from src.settings import settings
 
+            schema = settings.CDM_SCHEMA
+            exact_sql = f"""
+                SELECT concept_id FROM {schema}.concept
+                WHERE LOWER(concept_name) = LOWER(%s)
+                  AND standard_concept = 'S'
+                  AND concept_class_id = 'Ingredient'
+                  AND vocabulary_id = %s
+                  AND invalid_reason IS NULL
+                """
+            bridge_sql = f"""
+                SELECT DISTINCT target.concept_id
+                FROM {schema}.concept source
+                JOIN {schema}.concept_relationship rel ON rel.concept_id_1 = source.concept_id
+                JOIN {schema}.concept target ON target.concept_id = rel.concept_id_2
+                WHERE LOWER(source.concept_name) = LOWER(%s)
+                  AND source.concept_class_id = 'Precise Ingredient'
+                  AND rel.relationship_id = 'Maps to'
+                  AND rel.invalid_reason IS NULL
+                  AND target.standard_concept = 'S'
+                  AND target.concept_class_id = 'Ingredient'
+                  AND target.invalid_reason IS NULL
+                """
+            name = seed.strip()
+            probes = (
+                (exact_sql, (name, "RxNorm")),
+                (exact_sql, (name, "RxNorm Extension")),
+                (bridge_sql, (name,)),
+            )
+
             conn = psycopg2.connect(settings.DATABASE_URL)
             try:
                 with conn.cursor() as cur:
-                    cur.execute(
-                        f"""
-                        SELECT concept_id FROM {settings.CDM_SCHEMA}.concept
-                        WHERE LOWER(concept_name) = LOWER(%s)
-                          AND standard_concept = 'S'
-                          AND concept_class_id = 'Ingredient'
-                          AND vocabulary_id = 'RxNorm'
-                          AND invalid_reason IS NULL
-                        """,
-                        (seed.strip(),),
-                    )
-                    rows = cur.fetchall()
+                    for sql, params in probes:
+                        cur.execute(sql, params)
+                        rows = cur.fetchall()
+                        if not rows:
+                            continue
+                        # Ambiguous -> refuse outright rather than consult a lower probe.
+                        return int(rows[0][0]) if len(rows) == 1 else None
             finally:
                 conn.close()
         except Exception as exc:
-            logging.debug("[TTE] exact-ingredient lookup failed for '%s': %s", seed, exc)
+            logging.debug("[TTE] ingredient lookup failed for '%s': %s", seed, exc)
+            return None
+        return None
+
+    def _exact_ingredient_mapping(self, seed: str) -> dict[str, Any] | None:
+        """Defect B: resolve a drug seed to its standard Ingredient by name, bypassing
+        embedding search. Returns a mapping dict (same shape as the Agent2 path) or None
+        when the name reaches no single ingredient.
+
+        Name resolution itself lives in ``_resolve_ingredient_concept_id``, which also
+        covers the RxNorm Extension and salt-heading spellings. Ambiguous or absent
+        (class name, investigational code, typo) seeds return None so the caller falls
+        through to the existing pipeline unchanged.
+        """
+        concept_id = self._resolve_ingredient_concept_id(seed)
+        if concept_id is None:
             return None
 
-        if len(rows) != 1:
-            return None  # no match or ambiguous -> fall through to embedding search
-
-        candidates = self._fetch_concept_candidates([int(rows[0][0])])
+        candidates = self._fetch_concept_candidates([concept_id])
         if not candidates:
             return None
         from src.agents.conceptset.expression_builder import get_expression_builder

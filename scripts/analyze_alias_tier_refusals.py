@@ -186,8 +186,18 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         conn.close()
 
+    # A bridge only serves a trial if the tier's own "exactly one" rule still holds after
+    # it. A trial carrying two salt headings goes from zero resolving to two and stays
+    # refused -- correctly, since nothing says which arm is the study drug.
     recoverable = lever_extension | lever_precise
-    newly_served = [tr for tr in none_resolve if any(t.lower() in recoverable for t in tr["terms"])]
+    reached = {t.lower() for t in resolving} | recoverable
+    newly_served, newly_ambiguous = [], []
+    for tr in none_resolve:
+        hits = [t for t in tr["terms"] if t.lower() in reached]
+        if len(hits) == 1:
+            newly_served.append(tr)
+        elif len(hits) > 1:
+            newly_ambiguous.append(tr)
 
     print(f"cached trials                                  : {cached_total}")
     print(f"  carrying >=1 MeSH intervention term          : {len(trials)}")
@@ -203,10 +213,14 @@ def main(argv: list[str] | None = None) -> int:
           f"{len(lever_extension)}  {sorted(lever_extension)}")
     print(f"  reachable via Precise Ingredient --Maps to--> Ingredient: "
           f"{len(lever_precise)}  {sorted(lever_precise)}")
-    print(f"\ntrials those two bridges would newly serve      : "
+    print(f"\ntrials those two bridges newly serve            : "
           f"{len(newly_served)}/{len(none_resolve)}")
     for tr in newly_served:
         print(f"    {tr['nct']}  {tr['terms']}")
+    if newly_ambiguous:
+        print(f"  still refused, now as ambiguous rather than empty: {len(newly_ambiguous)}")
+        for tr in newly_ambiguous:
+            print(f"    {tr['nct']}  {tr['terms']}")
 
     if args.json_out:
         payload = {
@@ -219,7 +233,8 @@ def main(argv: list[str] | None = None) -> int:
             "unresolvable_terms": stuck_terms,
             "lever_rxnorm_extension": sorted(lever_extension),
             "lever_precise_ingredient": sorted(lever_precise),
-            "newly_served": [tr["nct"] for tr in newly_served],
+                "newly_served": [tr["nct"] for tr in newly_served],
+            "newly_ambiguous": [tr["nct"] for tr in newly_ambiguous],
         }
         Path(args.json_out).write_text(json.dumps(payload, ensure_ascii=False, indent=2))
         print(f"\nwrote {args.json_out}")

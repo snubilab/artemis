@@ -151,12 +151,18 @@ Settled, do not re-litigate:
   binding constraint is vocabulary coverage, and most of it is not a gap: of the 88
   unresolvable terms, the bulk are not drugs (`Office Visits`, `Watchful Waiting`),
   development codes MeSH indexed verbatim (`SB 223412`), or systematic chemical names —
-  the segment PubChem was already rejected for. Two OMOP-native bridges reach 8 of the 84:
-  `Precise Ingredient --Maps to--> Ingredient` for salt headings like `Quetiapine
-  Fumarate` (6 trials, and 0 of the six-trial store's 241 seeds, so no benchmark effect),
-  and standard Ingredients that live in `RxNorm Extension` (2 trials, but it also newly
-  intercepts the scored seed `prothrombin complex concentrate`). Un-inverting MeSH
-  headings (`Natriuretic Peptide, Brain`) recovers 0. Re-measure with
+  the segment PubChem was already rejected for. Two OMOP-native bridges now run inside
+  `_resolve_ingredient_concept_id` and serve 7 of the 84: `Precise Ingredient --Maps to-->
+  Ingredient` for salt and ester headings (`Quetiapine Fumarate`), and standard
+  Ingredients that live in `RxNorm Extension` (`artenimol`, `izencitinib`). Both sit
+  *below* the RxNorm probe and every probe is final, so only names that resolved to
+  nothing can newly resolve — 33 more MeSH terms resolve and 0 stopped. A bridge can
+  create ambiguity instead of removing it: NCT07531173 carries two salt headings, goes
+  0 → 2 resolving, and stays refused, which is the guard working. Un-inverting MeSH
+  headings (`Natriuretic Peptide, Brain`) recovers 0 and is not implemented. The one
+  scored seed the extension probe intercepts is `prothrombin complex concentrate` (a
+  PLATO exclusion) whose generated set has no gold counterpart and never appears in the
+  eval output, so no score moves. Re-measure with
   `scripts/analyze_alias_tier_refusals.py`.
 
 ## ANTI-PATTERNS
