@@ -4509,6 +4509,13 @@ class TTEService:
         if progress_cb and callable(progress_cb):
             progress_cb({"mapped": 0, "total": total_mappable, "phase": "mapping"})
 
+        # A criterion that fails to map is dropped further down by `if result is not None`.
+        # Dropping it is the right call -- one unmappable line should not cost the study --
+        # but it used to leave nothing behind except a log line, so a cohort could ship
+        # missing an exclusion and read as complete. These records travel out with the
+        # CIRCE payload instead.
+        unmapped_criteria: list[dict[str, Any]] = []
+
         def _map_criterion(index: int, criterion: dict[str, Any], exclusion: bool):
             nonlocal completed_count
             try:
@@ -4521,6 +4528,18 @@ class TTEService:
                 ))
             except Exception as e:
                 logging.warning("Failed to process criterion %s: %s", index, e)
+                with progress_lock:
+                    unmapped_criteria.append({
+                        "criterionId": str(criterion.get("id", "")),
+                        "role": "exclusion" if exclusion else "inclusion",
+                        "label": (
+                            criterion.get("sourceText")
+                            or criterion.get("description")
+                            or ""
+                        ).strip(),
+                        "domain": (criterion.get("domain") or "").strip() or None,
+                        "reason": str(e),
+                    })
                 result = (index, None)
             with progress_lock:
                 completed_count += 1
@@ -4739,6 +4758,9 @@ class TTEService:
             "_criterionMappingMetadata": criterion_mapping_meta,
             "_criterionConceptSetRefs": criterion_concept_set_refs,
             "_ruleIndexMeta": rule_index_meta,
+            # Always present, empty when nothing failed -- an absent key would be
+            # indistinguishable from a clean run on an artifact built before this.
+            "_unmappedCriteria": sorted(unmapped_criteria, key=lambda r: (r["role"], r["criterionId"])),
         }
 
     def _build_combined_treatment_circe(

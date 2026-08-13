@@ -43,6 +43,14 @@ _NOT_A_MODEL_NAME = frozenset({
 # just this one, so retrying or degrading gracefully is the wrong answer.
 _UNSERVABLE_STATUS = frozenset({401, 403, 404})
 
+# Bump by hand on any edit to the prompt, the few-shot examples or the output schema.
+# Both caches key on critic_signature() and neither hashes the prompt, so without this
+# a mapping computed under one prompt replays under another — silently corrupting the
+# exact before/after the cache is supposed to make cheap. This was added while trying a
+# grouped output schema (2026-08-11); that schema was measured and reverted, but the
+# hole it exposed is real and the guard stays.
+_CRITIC_PROMPT_VERSION = "2026-08-10-per-candidate"
+
 
 def critic_signature() -> str:
     """Everything about the critic that changes its answer, as one cache-key part.
@@ -58,15 +66,17 @@ def critic_signature() -> str:
     Self-reflection is included because it filters concepts out of the result, so
     two runs that differ only in that flag are not interchangeable.
 
-    Not included: the prompt text. A prompt edit would also stale these entries, but
-    nothing versions it today and hashing a 9 KB template on every key would cost
-    more than the collision it guards against. Recorded rather than guessed at.
+    The prompt enters as a hand-maintained version string, not a hash. Hashing a 9 KB
+    template on every key would cost more than the collision it guards against, but
+    omitting it entirely meant a prompt edit silently staled nothing and replayed
+    everything — which is precisely the trap the 2026-08-11 schema experiment walked
+    into. _CRITIC_PROMPT_VERSION must be bumped with any prompt edit.
     """
     tier = os.environ.get("AGENT2_CRITIC_MODEL_TIER") or ""
     reflect = os.environ.get("AGENT2_CRITIC_SELF_REFLECT", "true").lower()
     # The domain-resolved model, not the tier string: "auto" means different models
     # for different domains, and the domain is already part of every key.
-    return f"tier={tier}|reflect={reflect}"
+    return f"tier={tier}|reflect={reflect}|prompt={_CRITIC_PROMPT_VERSION}"
 
 
 def select_critic_model(domain_hint: str | None = None) -> str | None:

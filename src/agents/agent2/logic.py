@@ -63,6 +63,71 @@ class ConceptLogician:
                 ordered.append(concept_id)
         return ordered
 
+    def drop_qualitative_findings(self, concept_ids: List[int]) -> List[int]:
+        """Remove Clinical Finding concepts from a Measurement-domain selection.
+
+        A Measurement concept set exists to be compared against a value. SNOMED's
+        `... - finding` concepts sit in `domain_id = Measurement` alongside the LOINC
+        Lab Test and SNOMED Procedure concepts, are equally standard, and so survive
+        every domain filter — but they are qualitative statements about a measurement,
+        not the measurement, and their descendants are findings. `Platelet count -
+        finding` expands to 177 of them; `Platelets [#/volume] in Blood` expands to
+        itself. Against the gold lab set the first scores zero.
+
+        Caller MUST gate this on the Measurement domain. `Clinical Finding` is the
+        correct class for most of the Condition domain — Myocardial infarction is one —
+        so applying it there would delete the mapping instead of repairing it.
+
+        Args:
+            concept_ids: Selected concept IDs for a Measurement-domain criterion.
+
+        Returns:
+            The same IDs in order, minus Clinical Finding members. Returns the input
+            unchanged when every member is a finding (an empty set is a silent gap,
+            which is worse than an imprecise one) or when the database is unreachable.
+        """
+        if not concept_ids:
+            return []
+
+        deduped = self._dedupe_preserve_order(concept_ids)
+        if not _check_db():
+            return deduped
+
+        try:
+            from sqlalchemy import text
+            from src.utils.db import get_db
+
+            finding_query = text(f"""
+                SELECT concept_id
+                FROM {self.schema}.concept
+                WHERE concept_id = ANY(:cids)
+                  AND concept_class_id = 'Clinical Finding'
+                  AND invalid_reason IS NULL
+            """)
+            with next(get_db()) as db:
+                rows = db.execute(finding_query, {"cids": deduped}).fetchall()
+            findings = {row[0] for row in rows}
+        except Exception as exc:
+            logger.debug("[Logician] Finding-class lookup failed: %s", exc)
+            return deduped
+
+        if not findings:
+            return deduped
+
+        kept = [cid for cid in deduped if cid not in findings]
+        if not kept:
+            logger.info(
+                "[Logician] All %d Measurement concepts are Clinical Findings; keeping "
+                "them rather than emptying the set", len(deduped),
+            )
+            return deduped
+
+        logger.info(
+            "[Logician] Dropped %d Clinical Finding concept(s) from a Measurement set: %s",
+            len(findings), sorted(findings),
+        )
+        return kept
+
     def _resolve_ingredient_by_name(
         self, concept_name: str, db: object
     ) -> List[int]:

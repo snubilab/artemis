@@ -22,6 +22,51 @@ Do NOT select concepts from an unrelated clinical domain. For example, "MI" in t
 """
 
 
+# The one authoritative top-N prompt. It used to be written out twice — once in
+# rerank_topn and once in rerank_topn_batch — and the batch copy is the one the
+# pipeline calls, so editing either alone changed unit-test behaviour and nothing else.
+#
+# The gate is the substantive change. "Select the concepts that BEST match" is a
+# superlative, and a superlative over a non-empty candidate list always has an answer:
+# `qqzzxx nonexistent clinical term` came back with three myocardial-infarction
+# concepts, logged as a successful selection. The prompt already offered an empty
+# answer; what it never showed was an example of taking it.
+#
+# The first two lines are the original prompt, unchanged, and they stay that way. A
+# richer rewrite was measured on ARISTOTLE (2026-08-11) and its extra framing — asking
+# whether a candidate "denotes" the term — competed with vocabulary specificity: the
+# reranker swapped LOINC `Platelets [#/volume] in Blood` for SNOMED `Platelet count -
+# finding`, whose name is the more literal match and whose 177 descendants share
+# nothing with the gold lab set. Per-criterion recall on that pair went 0.500 -> 0.000.
+# Everything added here is therefore additive to the original wording, never a
+# replacement for it.
+TOPN_SYSTEM_PROMPT = (
+    "You are an expert medical terminologist.\n"
+    "Select up to {top_n} OMOP Concept IDs from the candidates that "
+    "best match the user's clinical intent. Order by relevance.\n"
+    "Return ONLY a JSON object: "
+    "{{\"query_has_match\": true, \"selected_ids\": [id1, id2, ...]}}\n"
+    "If none fit, return {{\"query_has_match\": false, \"selected_ids\": []}}. "
+    "Selecting nothing is a correct answer, not a failure.\n"
+    "\n"
+    "Example where none fit:\n"
+    "Clinical term: \"qqzzxx nonexistent clinical term\"\n"
+    "Candidates: Myocardial infarction, Acute coronary syndrome\n"
+    "Answer: {{\"query_has_match\": false, \"selected_ids\": []}}"
+)
+
+
+def _refused(response: dict) -> bool:
+    """Whether the model answered "none of these fit".
+
+    Absent means unanswered, not refused: an older model that ignores the gate must
+    keep working. A response that says false while still listing IDs contradicts
+    itself, and the branch that maps nothing is the safe one — the criterion is
+    dropped and recorded rather than silently assigned the wrong concepts.
+    """
+    return response.get("query_has_match") is False
+
+
 class RerankResult(BaseModel):
     selected_concept_id: Optional[int] = Field(description="The Concept ID of the best match, or null if none fit.")
     reasoning: str = Field(description="Brief explanation of why this concept was selected.")
@@ -56,6 +101,14 @@ class ConceptReranker:
         ])
 
         self.chain = self.prompt | self.llm | self.parser
+
+        # Built once. rerank_topn used to reconstruct this template and chain on every
+        # single call, and rerank_topn_batch kept a second copy of the same text.
+        self._topn_prompt = ChatPromptTemplate.from_messages([
+            ("system", TOPN_SYSTEM_PROMPT),
+            ("user", "Clinical term: {user_query}\n\nCandidates:\n{candidates_text}")
+        ])
+        self._topn_chain = self._topn_prompt | self.llm | JsonOutputParser()
 
     def rerank(self, user_query: str, candidates: List[CandidateConcept]) -> Optional[CandidateConcept]:
         """
@@ -118,23 +171,19 @@ class ConceptReranker:
                 f"| Class: {c.concept_class_id} | Vocab: {c.vocabulary_id}\n"
             )
 
-        topn_prompt = ChatPromptTemplate.from_messages([
-            ("system",
-             "You are an expert medical terminologist.\n"
-             "Select up to {top_n} OMOP Concept IDs from the candidates that "
-             "best match the user's clinical intent. Order by relevance.\n"
-             "Return ONLY a JSON object: {{\"selected_ids\": [id1, id2, ...]}}\n"
-             "If none fit, return {{\"selected_ids\": []}}"),
-            ("user", "Clinical term: {user_query}\n\nCandidates:\n{candidates_text}")
-        ])
-
         try:
-            topn_chain = topn_prompt | self.llm | JsonOutputParser()
-            result = topn_chain.invoke({
+            result = self._topn_chain.invoke({
                 "user_query": user_query,
                 "candidates_text": candidates_text,
                 "top_n": top_n,
             })
+
+            if _refused(result):
+                logger.info(
+                    "[Reranker] '%s': no candidate denotes the term (%d offered) — selecting none",
+                    user_query, len(candidates),
+                )
+                return []
 
             selected_ids = result.get("selected_ids", [])
             if not selected_ids:
@@ -254,17 +303,6 @@ class ConceptReranker:
         if not queries_with_candidates:
             return []
 
-        topn_prompt = ChatPromptTemplate.from_messages([
-            ("system",
-             "You are an expert medical terminologist.\n"
-             "Select up to {top_n} OMOP Concept IDs from the candidates that "
-             "best match the user's clinical intent. Order by relevance.\n"
-             'Return ONLY a JSON object: {{"selected_ids": [id1, id2, ...]}}\n'
-             'If none fit, return {{"selected_ids": []}}'),
-            ("user", "Clinical term: {user_query}\n\nCandidates:\n{candidates_text}")
-        ])
-        topn_chain = topn_prompt | self.llm | JsonOutputParser()
-
         # Prepare inputs
         batch_inputs = []
         original_candidates: List[List[CandidateConcept]] = []
@@ -298,7 +336,7 @@ class ConceptReranker:
             return results
 
         try:
-            batch_responses = topn_chain.batch(
+            batch_responses = self._topn_chain.batch(
                 batch_inputs,
                 config={"max_concurrency": max_concurrency},
                 return_exceptions=True,
@@ -310,6 +348,13 @@ class ConceptReranker:
 
                 if isinstance(response, Exception):
                     logger.warning(f"Batch top-N reranking failed for index {orig_idx}: {response}")
+                    continue
+
+                if _refused(response):
+                    logger.info(
+                        "[Reranker] '%s': no candidate denotes the term (%d offered) — selecting none",
+                        queries_with_candidates[orig_idx].get("query", ""), len(candidates),
+                    )
                     continue
 
                 selected_ids = response.get("selected_ids", [])

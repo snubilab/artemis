@@ -78,6 +78,108 @@ logger = logging.getLogger(__name__)
 logger.info(f"[Agent 2] MAX_WORKERS={MAX_WORKERS} (from AGENT2_MAX_WORKERS env var)")
 
 
+def _exact_name_concept(query_text: str, domain_hint: Optional[str]) -> Optional[CandidateConcept]:
+    """Look the query up as a literal standard concept name.
+
+    The vector retriever answers "what is similar", which is not the same question as
+    "what has exactly this name", and it can miss the exact term entirely: asked for
+    'linagliptin' it returned sitagliptin first and left linagliptin out of the top 20.
+    A name equality check is the cheap deterministic answer that case needed.
+
+    :param query_text: the entity text to match against ``concept_name``
+    :param domain_hint: when given, restricts to that ``domain_id`` — this is what
+        separates the LOINC answer 'Ticagrelor' from the RxNorm ingredient
+    :returns: the single matching concept, or ``None`` when there is no match or more
+        than one. Declining on ambiguity mirrors the MeSH alias rule: two candidates
+        mean the name does not identify a concept on its own, so guessing here would
+        reintroduce exactly the confident-wrong-answer failure this function exists to
+        prevent.
+    """
+    if not query_text or not query_text.strip():
+        return None
+
+    sql = """
+        SELECT concept_id, concept_name, domain_id, vocabulary_id, concept_class_id
+        FROM {schema}.concept
+        WHERE LOWER(concept_name) = LOWER(%s)
+          AND standard_concept = 'S'
+          AND invalid_reason IS NULL
+    """
+    params: list[Any] = [query_text.strip()]
+    if domain_hint:
+        sql += " AND domain_id = %s"
+        params.append(domain_hint)
+    sql += " LIMIT 2"  # two is enough to know it is ambiguous
+
+    pool = _get_db_pool()
+    conn = None
+    try:
+        from src.settings import settings
+        conn = pool.getconn() if pool else None
+        if conn is None:
+            import psycopg2
+            conn = psycopg2.connect(settings.DATABASE_URL)
+            borrowed = False
+        else:
+            borrowed = True
+        with conn.cursor() as cur:
+            cur.execute(sql.format(schema=settings.CDM_SCHEMA), params)
+            rows = cur.fetchall()
+    except Exception as e:
+        logger.warning(f"[Agent 2] Exact concept_name lookup failed for {query_text!r}: {e}")
+        return None
+    finally:
+        if conn is not None:
+            if pool and borrowed:
+                pool.putconn(conn)
+            else:
+                conn.close()
+
+    if len(rows) != 1:
+        logger.info(
+            f"[Agent 2] Exact concept_name lookup for {query_text!r} "
+            f"(domain={domain_hint}) → {len(rows)} matches, declining"
+        )
+        return None
+
+    cid, name, domain, vocab, cls = rows[0]
+    logger.info(f"[Agent 2] Exact concept_name match: {query_text!r} → {name} ({cid})")
+    return CandidateConcept(
+        concept_id=cid,
+        concept_name=name,
+        domain_id=domain,
+        vocabulary_id=vocab,
+        concept_class_id=cls,
+        distance=0.0,
+    )
+
+
+def _seeds_after_rerank(
+    candidates: List[CandidateConcept],
+    top_concepts: List[CandidateConcept],
+    exact_concept: Optional[CandidateConcept],
+) -> List[CandidateConcept]:
+    """Decide the seed list once the reranker has spoken.
+
+    The force-include of the retriever's #1 used to run unconditionally, which meant a
+    reranker that rejected every candidate still produced one. That turns "no match"
+    into "confidently wrong", and it is silent: the empty-result branch below it was
+    unreachable, so no concept set in the six trials was ever empty. It is kept here
+    only for the case it was written for — the reranker chose something and the top
+    hit was not in it.
+
+    When the reranker chose nothing, an exact name match may stand in; otherwise the
+    caller gets an empty list and records a gap.
+    """
+    if top_concepts:
+        if candidates and candidates[0].concept_id not in {c.concept_id for c in top_concepts}:
+            return [candidates[0]] + list(top_concepts)
+        return list(top_concepts)
+    if exact_concept is not None:
+        return [exact_concept]
+    return []
+
+
 def _relevance_score(concept, seed_ids: set) -> int:
     """Compute relevance score for a KGConcept for pre-filtering.
 
@@ -420,6 +522,16 @@ class Agent2Workflow:
             # ingredient ancestors and won't match the name-based fallback criteria.
             if domain_hint in ("Drug", None):
                 concept_ids = logician.roll_up_to_rxnorm_ingredients(concept_ids)
+            # The Measurement counterpart of that rollup. SNOMED "... - finding"
+            # concepts are Measurement-domain and standard, so nothing upstream
+            # separates them from the LOINC Lab Test — but they carry no value and
+            # their descendants are findings. Which of the two the reranker picked was
+            # a coin flip (4 of 5 draws at temperature 0 chose the finding), and it
+            # swung one ARISTOTLE criterion's closure between 8 and 184 concepts.
+            # Strictly Measurement: Clinical Finding is the correct class for most of
+            # the Condition domain.
+            if domain_hint == "Measurement":
+                concept_ids = logician.drop_qualitative_findings(concept_ids)
             result.critic_skipped = critic_skipped
             # Persist KG cache after single-query processing
             try:
@@ -667,18 +779,17 @@ class Agent2Workflow:
             f"{[(c.concept_id, c.concept_name) for c in top_concepts]}"
         )
         
-        # Critical Fix: Force include Retriever's #1 candidate (often the boosted common concept)
-        # This ensures that "Boosted" concepts (via _COMMON_RELIABLE_CONCEPTS) never get discarded by the LLM
-        if candidates:
-            best_candidate = candidates[0]
-            # Check by ID to avoid object identity issues
-            selected_ids = {c.concept_id for c in top_concepts}
-            if best_candidate.concept_id not in selected_ids:
-                top_concepts.insert(0, best_candidate) # Add to front
-                logger.debug(f"[Agent 2] Force-included Top-1: {best_candidate.concept_name}")
+        # A reranker that selects nothing has given an answer, not a blank. Only reach
+        # for the literal name when that happens -- it costs a query, and it must not
+        # override a selection the reranker did make.
+        exact_concept = None if top_concepts else _exact_name_concept(query_text, domain_hint)
+        top_concepts = _seeds_after_rerank(candidates, top_concepts, exact_concept)
 
         if not top_concepts:
-            logger.debug("[Agent 2] Reranker returned no match")
+            logger.info(
+                f"[Agent 2][LINEAGE] reranker rejected all {len(candidates)} candidates "
+                f"and {query_text!r} has no exact concept_name match → no seeds"
+            )
             return []
         
         logger.debug(f"[Agent 2] Top-{len(top_concepts)} seeds: "
