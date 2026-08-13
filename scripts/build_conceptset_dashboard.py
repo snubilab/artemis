@@ -21,11 +21,23 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 ARTEMIS_DIR = Path(__file__).resolve().parent.parent
-TEMPLATE = Path.home() / ".claude" / "skills" / "dashboard" / "assets" / "template.html"
-WIKI_PLAN = ARTEMIS_DIR.parent / "omx_wiki" / "dashboard" / "plan.json"
+# Vendored, not read from ~/.claude/skills/. The skill's copy is outside both repos and
+# changed under this script once already (it grew a `litdata` pane the script does not
+# fill), so a rebuild was not reproducible and would have shipped the template's demo
+# rows. Re-vendor deliberately when a template improvement is wanted.
+TEMPLATE = ARTEMIS_DIR / "scripts" / "assets" / "dashboard-template.html"
+# The plan board's authority is the Markdown records, not a JSON export. The previous
+# path (`omx_wiki/dashboard/plan.json`) stopped existing when the knowledge layer moved
+# to docs/wiki/, and `build_plan` answered that with `return []` -- so the board silently
+# lost every row instead of failing. Do not point this at docs/wiki/legacy/plan.json; it
+# is the retired copy and drifts from the records.
+WIKI_DIR = ARTEMIS_DIR.parent / "docs" / "wiki"
+WIKI_RECORDS = WIKI_DIR / "content" / "records"
+WIKI_SCRIPTS = WIKI_DIR / "scripts"
 
 SLUG = {
     "ARISTOTLE": "aristotle",
@@ -152,7 +164,7 @@ PLAN_GROUPS = ("Concept-set quality", "Model routing & measurement integrity")
 
 
 def build_plan(note_dates: set[str]) -> list[dict]:
-    """Reuse the rows already curated on the omx_wiki plan board.
+    """Reuse the rows already curated on the wiki plan board (`docs/wiki/content/records/`).
 
     ``note_dates`` is the set of dates this page's notes pane actually renders. The board
     is shared with other dashboards, so a row can carry a link to a note that exists there
@@ -160,12 +172,18 @@ def build_plan(note_dates: set[str]) -> list[dict]:
     treats the dangling reference as fatal. Dropping the unresolvable link is the fix; the
     row keeps its evidence requirement through the fallback below.
     """
-    if not WIKI_PLAN.exists():
-        return []
-    rows = [
-        dict(r) for r in json.loads(WIKI_PLAN.read_text())
-        if r.get("group", "").startswith(PLAN_GROUPS)
-    ]
+    if str(WIKI_SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(WIKI_SCRIPTS))
+    from wiki_records import load_records  # raises RecordError on a missing/empty set
+
+    plan, _notes, _owners = load_records(WIKI_RECORDS)
+    rows = [dict(r) for r in plan if r.get("group", "").startswith(PLAN_GROUPS)]
+    if not rows:
+        raise SystemExit(
+            f"no plan records under {PLAN_GROUPS} in {WIKI_RECORDS} "
+            f"({len(plan)} records read). The groups were renamed or the records moved; "
+            "shipping an empty plan board silently is what this replaced."
+        )
     for r in rows:
         r["links"] = [
             l for l in (r.get("links") or [])
@@ -946,11 +964,30 @@ def render(a: dict, b: dict, gemma: dict, out: Path) -> None:
     html = tmpl
     # Built first so the plan can drop links to notes this page does not carry.
     notes = build_notes(a, b, gemma, rows)
-    for bid, payload in (
+    blocks = (
         ("framingdata", framing), ("unitdata", units), ("data", rows),
         ("plandata", build_plan({n["date"] for n in notes})), ("notesdata", notes), ("issuesdata", ISSUES),
-    ):
+        # The template ships example rows in this one and hides its tab when it is empty
+        # (its own comment says "leave litdata empty"). Writing [] is how you accept that
+        # offer; leaving it alone publishes a lesson about class imbalance.
+        ("litdata", []),
+    )
+    for bid, payload in blocks:
         html = swap(html, bid, payload)
+
+    # swap() only defends the blocks this script knows about. A template that grows a new
+    # data block would carry its demo payload straight into the published page, which is
+    # how `litdata` arrived. Fail on any block left holding content nobody here wrote.
+    written = {bid for bid, _ in blocks}
+    for bid, body in re.findall(
+        r'<script id="(\w+)" type="application/json">(.*?)</script>', html, re.S
+    ):
+        if bid not in written and body.strip() not in ("", "[]", "{}"):
+            raise SystemExit(
+                f"template block {bid!r} holds {len(body.strip())} bytes this script never "
+                f"writes — it would ship the template's demo data. Add it to `blocks` with "
+                f"a real payload, or with [] if the pane is not used here."
+            )
 
     def sub1(pattern: str, repl: str, label: str) -> None:
         nonlocal html

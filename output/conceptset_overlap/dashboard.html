@@ -26,7 +26,9 @@
     --border:#d6e0e9;--border-strong:#c2cedb;
     --accent:#0e7c86;--accent-ink:#0a5a62;
     /* categorical series hues — VALIDATE (colorblind-safe) before shipping */
-    --g-a:#0e7c86;--g-b:#6d4aa8;--c-0:#2563C4;--c-1:#E07A0F;--c-2:#0E9488;
+    /* --g-* are TAB GROUP hues, never series hues. --g-c is darker than a chart amber would be because
+       the group label renders at opacity .85: measured 7.07:1 solid and 5.04:1 composited on --bg. */
+    --g-a:#0e7c86;--g-b:#6d4aa8;--g-c:#7a3f0d;--c-0:#2563C4;--c-1:#E07A0F;--c-2:#0E9488;
     /* status inks carry TEXT (badges, status pills, best-value, delta) at 12–15px, so they are held to
        4.5:1 on their own -bg AND on --surface. The light set was a chart palette used as type and failed
        both — measured 2.2:1 on the absent badge, 2.9 on partial, 3.5 on pass. */
@@ -39,7 +41,7 @@
     --bg:#0b1118;--surface:#141d26;--surface-2:#1a2530;
     --ink:#e6edf4;--muted:#93a2b1;--faint:#7d8b99;
     --border:#263340;--border-strong:#33424f;
-    --accent:#45b6c2;--accent-ink:#7fd3db;--g-a:#45b6c2;--g-b:#a78be0;
+    --accent:#45b6c2;--accent-ink:#7fd3db;--g-a:#45b6c2;--g-b:#a78be0;--g-c:#d9a441;
     --c-0:#5590D0;--c-1:#C9821F;--c-2:#35A89A;
     --ok:#40cc86;--ok-bg:#123021;--warn:#e0aa3c;--warn-bg:#33280d;
     --good:#40cc86;--bad:#e4695c;--absent:#93a2b1;--absent-bg:#1c2732;
@@ -47,7 +49,7 @@
   }}
   :root[data-theme="dark"]{
     --bg:#0b1118;--surface:#141d26;--surface-2:#1a2530;--ink:#e6edf4;--muted:#93a2b1;--faint:#7d8b99;
-    --border:#263340;--border-strong:#33424f;--accent:#45b6c2;--accent-ink:#7fd3db;--g-a:#45b6c2;--g-b:#a78be0;
+    --border:#263340;--border-strong:#33424f;--accent:#45b6c2;--accent-ink:#7fd3db;--g-a:#45b6c2;--g-b:#a78be0;--g-c:#d9a441;
     --c-0:#5590D0;--c-1:#C9821F;--c-2:#35A89A;
     --ok:#40cc86;--ok-bg:#123021;--warn:#e0aa3c;--warn-bg:#33280d;--good:#40cc86;--bad:#e4695c;--absent:#93a2b1;--absent-bg:#1c2732;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
@@ -55,7 +57,7 @@
   :root[data-theme="light"]{
     --bg:#e9eef3;--surface:#ffffff;--surface-2:#f4f7fa;--ink:#15202b;--muted:#566472;--faint:#5f6b77;
     --border:#d6e0e9;--border-strong:#c2cedb;--accent:#0e7c86;--accent-ink:#0a5a62;
-    --c-0:#2563C4;--c-1:#E07A0F;--c-2:#0E9488;
+    --g-a:#0e7c86;--g-b:#6d4aa8;--g-c:#7a3f0d;--c-0:#2563C4;--c-1:#E07A0F;--c-2:#0E9488;
     --ok:#157a4b;--ok-bg:#e6f5ec;--warn:#855c08;--warn-bg:#f8efd8;--good:#157a4b;--bad:#c0392b;--absent:#5c6873;--absent-bg:#eef2f5;
     --shadow:0 1px 2px rgba(20,35,50,.06),0 4px 16px rgba(20,35,50,.05);
   }
@@ -359,6 +361,50 @@
     border-radius:12px;background:#fff1ef;color:#641c15;box-shadow:0 12px 40px rgba(80,0,0,.35);font:600 15px/1.5 var(--font-sans)}
   #record-fatal strong{display:block;font-size:20px;margin-bottom:8px}#record-fatal pre{white-space:pre-wrap;font:13px/1.45 var(--font-mono)}
 
+  /* ===== Literature survey pane (관련 연구 조사): one card per PROBLEM CATEGORY, papers underneath =====
+     `lit-` prefixed so nothing here collides with the note/plan panes; tokens only, no new colours.
+     Body copy is --muted on --surface (5.6:1 light / 6.5:1 dark, measured) — --faint is NOT used on
+     --surface-2 anywhere below, where it measures 4.46:1 in dark. */
+  .lit-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);
+    border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .lit-card[data-state="미조사"]{border-left-color:var(--warn)}
+  .lit-card[data-state="해당 없음"]{border-left-color:var(--border-strong)}
+  .lit-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .lit-head>div{min-width:0}
+  /* the field's own name for the problem, large; the plain-words explanation under it, small */
+  .lit-name{font-size:17px;font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+  .lit-sub{font-size:14px;color:var(--muted);margin-top:3px;line-height:1.6}
+  .lit-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:none}
+  .lit-id{font-family:var(--font-mono);font-size:12.5px;font-weight:700;color:var(--accent-ink);
+    background:color-mix(in srgb,var(--accent) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);border-radius:999px;padding:3px 10px}
+  @media(max-width:640px){.lit-head{flex-direction:column;align-items:stretch}}
+  .lit-sec{margin-top:13px}
+  .lit-sec-h{color:var(--accent);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+  .lit-card ul{margin:5px 0 0;padding-left:18px;font-size:14.5px;color:var(--muted)}
+  .lit-card li{margin:3px 0;overflow-wrap:anywhere}
+  .lit-empty{font-size:14px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:8px 11px;margin-top:5px}
+  /* a falsified lever renders in the failure colour and ABOVE the citations — the pane's first job is
+     stopping an already-disproved lever from being proposed a second time */
+  .lit-rej{margin-top:5px;border-left:2px solid var(--bad);border-radius:0 8px 8px 0;padding:7px 11px;
+    background:var(--surface-2);font-size:14.5px;color:var(--muted);overflow-wrap:anywhere}
+  .lit-rej+.lit-rej{margin-top:7px}
+  .lit-rej b{color:var(--ink)}
+  .lit-rej .src{color:var(--muted);font-family:var(--font-mono);font-size:12.5px;margin-top:3px}
+  .lit-ref{margin-top:9px;padding-left:11px;border-left:2px solid var(--border-strong);font-size:14.5px;color:var(--muted)}
+  .lit-ref .t{color:var(--ink);font-weight:600;font-size:15px;line-height:1.35}
+  .lit-ref .meta{font-family:var(--font-mono);font-size:12.5px;color:var(--faint);margin-top:2px}
+  .lit-ref .lab{color:var(--faint);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-right:5px}
+  .lit-ref a{overflow-wrap:anywhere;font-size:13px}
+  /* a required field left blank must be VISIBLE, not blank — a ratio with no population gets misquoted */
+  .lit-miss{color:var(--bad);font-weight:600}
+  /* lifecycle badges reuse .status-badge; only the survey vocabulary's own values are added.
+     Same fixed light-mode chip pairs as the existing states (dark ink on a light chip reads in both
+     themes): 5.19:1 / 4.76:1 / 6.68:1 measured. */
+  .status-badge[data-state="미조사"]{color:#855c08;background:#f8efd8;border-color:#dec68d}
+  .status-badge[data-state="조사 완료"]{color:#157a4b;background:#e6f5ec;border-color:#abd9bf}
+  .status-badge[data-state="해당 없음"]{color:#425466;background:#e8eef4;border-color:#b9c7d5}
+
   footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);font-size:13.5px;color:var(--faint)}
   @media(max-width:640px){.page{padding:24px 14px 60px}}
 </style>
@@ -394,6 +440,11 @@
       <button role="tab" aria-selected="false" data-pane="pane-plan" id="tabPlan" data-copy-tab="plan" hidden>Plan</button>
       <button role="tab" aria-selected="false" data-pane="pane-notes" id="tabNotes" data-copy-tab="notes" hidden>Notes</button>
       <button role="tab" aria-selected="false" data-pane="pane-issues" id="tabIssues" data-copy-tab="issues" hidden>Issues</button>
+    </span>
+    <!-- 관련 연구 조사 sits in its own group, NOT in Record: the closing gate holds the Record group to
+         exactly plan/notes/issues, and a survey of problem categories is not a dated record. -->
+    <span class="tabgroup" role="presentation" data-glabel="Research" data-copy-group="research" style="--gc:var(--g-c)">
+      <button role="tab" aria-selected="false" data-pane="pane-lit" id="tabLit" data-copy-tab="literature" hidden>Literature</button>
     </span>
     </div>
 
@@ -575,6 +626,23 @@
         </div>
         <aside class="notes-side" data-dated-narrative-calendar><div id="issuesCal" class="notecal"></div></aside>
       </div>
+    </section>
+  </div>
+
+  <!-- ===== LITERATURE (관련 연구 조사; rows live in <script id="litdata">, rendered by litView) =====
+       ONE RECORD IS A PROBLEM CATEGORY, NOT A PAPER. Papers hang under the problem they speak to; a
+       bibliography with no problem above it is the anti-pattern this pane exists to prevent.
+       Required whenever the dashboard carries the record panes (plan / notes / issues). A pure cost
+       report or A/B result page has no record panes and does not need it — leave litdata empty and the
+       tab stays hidden. -->
+  <div id="pane-lit" class="pane" role="tabpanel" hidden>
+    <section>
+      <h2 data-copy-section="literature">Literature</h2>
+      <div class="chart-s" style="margin-bottom:12px" data-copy="litHelp">One card per problem category —
+        what we measured about it, which levers are already falsified, what is still open, and the
+        verified papers that speak to it. A category with no literature yet is kept visible on purpose:
+        it names what to read next.</div>
+      <div id="litList"></div>
     </section>
   </div>
 
@@ -782,9 +850,9 @@
   "task": "Make LLM_MODEL move the whole framework",
   "goal": "A model switch must not leave the critic, caches or cost on the previous model",
   "status": "done",
-  "date": "2026-07-29",
   "cost": "1 session",
   "priority": "P0",
+  "date": "2026-07-29",
   "links": [
    {
     "pane": "pane-notes",
@@ -799,9 +867,9 @@
   "task": "Constrain local generation, not just strip the preamble",
   "goal": "Stop unbounded reasoning narration making a benchmark unfinishable",
   "status": "done",
-  "date": "2026-07-29",
   "cost": "1 session",
   "priority": "P0",
+  "date": "2026-07-29",
   "links": [
    {
     "pane": "pane-notes",
@@ -816,9 +884,9 @@
   "task": "Bound mapping concurrency by the DB pool",
   "goal": "Uncapped workers silently skip ingredient rollup and change concept sets",
   "status": "done",
-  "date": "2026-07-29",
   "cost": "30m",
   "priority": "P1",
+  "date": "2026-07-29",
   "links": [
    {
     "pane": "pane-notes",
@@ -833,9 +901,9 @@
   "task": "Re-measure rollup skips now the connection leak is closed",
   "goal": "The skips were pool exhaustion from a leak, not contention; the 48 cap may be unnecessary",
   "status": "todo",
-  "date": null,
   "cost": "~1h",
   "priority": "P0",
+  "date": null,
   "note": "7fbeab2 closed the leak (checkedout 1,2,3.. -> 0). Baselines: 39 @16 workers, 209 uncapped"
  },
  {
@@ -843,9 +911,9 @@
   "task": "Close the ingredient-rollup connection leak",
   "goal": "A drained pool silently kept product-level drug concepts that match no drug_exposure rows",
   "status": "done",
-  "date": "2026-07-29",
   "cost": "1h",
   "priority": "P0",
+  "date": "2026-07-29",
   "links": [
    {
     "pane": "pane-notes",
@@ -860,121 +928,128 @@
   "task": "Fire the exact RxNorm-Ingredient match on the entry drug",
   "goal": "A trial's own study drug must not resolve to a different molecule",
   "status": "done",
-  "date": "2026-08-09",
   "cost": "1 session",
   "priority": "P0",
-  "note": "be57342 + 991c11c. Two gates in sequence: TTE_DRUG_ANCHORED_ENTRY defaults False and is set nowhere, and _build_seeded_target_circe passes no expected_domain so `== \"Drug\"` still missed it. Paired arm (86adac9): macro recall 0.567 -> 0.597, zero-overlap 109 -> 104, 5 pairs 0.000 -> 1.000, four untouched trials moved exactly 0.000.",
+  "date": "2026-08-09",
   "links": [
    {
     "pane": "pane-notes",
-    "date": "2026-08-09",
-    "label": "짝지은 2-arm 측정"
+    "date": "2026-08-11",
+    "label": "2026-08-11 session"
    }
-  ]
+  ],
+  "note": "be57342 + 991c11c. Two gates in sequence: TTE_DRUG_ANCHORED_ENTRY defaults False and is set nowhere, and _build_seeded_target_circe passes no expected_domain so `== \"Drug\"` still missed it. Paired arm (86adac9): macro recall 0.567 -> 0.597, zero-overlap 109 -> 104, 5 pairs 0.000 -> 1.000, four untouched trials moved exactly 0.000."
  },
  {
   "group": "Concept-set quality — zero-overlap defects",
   "task": "glimepiride: recover the dropped qualifier, not the molecule",
   "goal": "Stop counting a hypersensitivity criterion as a wrong-entity drug mapping",
   "status": "partial",
-  "date": "2026-08-10",
   "cost": "unknown",
   "priority": "P1",
-  "note": "Diagnosed, fix deliberately not applied. The drop point is _criterion_dict_from_ir_item (tte_service.py:9692) overwriting source_text with entity_text, but restoring the verbatim line would change the mapping query for 429 of 653 criteria — stripping is CORRECT for 292 of them (\"eGFR < 60 (MDRD)\" -> \"eGFR\"). The real defect is stripping a relation, not a qualifier, and a relation-word scan finds exactly one such case across all six trials.",
+  "date": "2026-08-10",
   "links": [
    {
     "pane": "pane-notes",
     "date": "2026-08-10",
     "label": "exact vs 임베딩 귀속"
    }
-  ]
+  ],
+  "note": "Diagnosed, fix deliberately not applied. The drop point is _criterion_dict_from_ir_item (tte_service.py:9692) overwriting source_text with entity_text, but restoring the verbatim line would change the mapping query for 429 of 653 criteria — stripping is CORRECT for 292 of them (\"eGFR < 60 (MDRD)\" -> \"eGFR\"). The real defect is stripping a relation, not a qualifier, and a relation-word scan finds exactly one such case across all six trials."
  },
  {
   "group": "Concept-set quality — zero-overlap defects",
   "task": "Route development codes / synonyms (BI 10773)",
   "goal": "EMPA-REG's entry drug currently maps to an unrelated metabolite",
   "status": "partial",
-  "date": "2026-08-10",
   "cost": "unknown",
   "priority": "P1",
-  "note": "7837274 resolves the seed through the trial's NLM MeSH terms, accepted only when exactly one alias clears the same ingredient test, and all 9 MeSH terms across the six trials do resolve uniquely. But it only fires on the ingestion path: the aliases are written to eligibility[\"_interventionAliases\"] in memory (tte_service.py:3443) and popped at :4381, never persisted — all six stored studies have the key absent, and only 1 of the 8 _recommend_seeded_concept_set call sites passes alias_candidates at all. So every re-mapping path (regenerate_structured_expression.py, the re-recommend endpoint) has no alias to pass. Confirmed on 2026-08-10: after the full production re-map, EMPA-REG's stored entry set is still 1254065 CHF-6366 .beta.-2 metabolite, byte-identical to before. Persist the aliases and read them on the re-map path, then re-check.",
+  "date": "2026-08-10",
   "links": [
    {
     "pane": "pane-notes",
     "date": "2026-08-10",
     "label": "exact vs 임베딩 귀속"
    }
-  ]
+  ],
+  "note": "7837274 resolves the seed through the trial's NLM MeSH terms, accepted only when exactly one alias clears the same ingredient test, and all 9 MeSH terms across the six trials do resolve uniquely. But it only fires on the ingestion path: the aliases are written to eligibility[\"_interventionAliases\"] in memory (tte_service.py:3443) and popped at :4381, never persisted — all six stored studies have the key absent, and only 1 of the 8 _recommend_seeded_concept_set call sites passes alias_candidates at all. So every re-mapping path (regenerate_structured_expression.py, the re-recommend endpoint) has no alias to pass. Confirmed on 2026-08-10: after the full production re-map, EMPA-REG's stored entry set is still 1254065 CHF-6366 .beta.-2 metabolite, byte-identical to before. Persist the aliases and read them on the re-map path, then re-check."
  },
  {
   "group": "Concept-set quality — zero-overlap defects",
   "task": "Run the exact-vs-embedding ablation arm",
   "goal": "Settle whether embeddings fail on proper nouns because same-class drugs sit close",
   "status": "done",
-  "date": "2026-08-10",
   "cost": "1 regeneration",
   "priority": "P2",
-  "note": "Ran on the container (the .venv has no torch, so the embedding path is dead there). 2 of 6 entry seeds changed, both linagliptin; liraglutide/ticagrelor/apixaban were already correct without exact match, so \"embeddings are weak on proper nouns\" does not hold as a general claim. Replicated with the gpt-4o reranker and again with gemma over vLLM — identical concepts, 3/3 deterministic per seed. docs/experiments/2026-08-10_exact_vs_embedding_attribution.md",
+  "date": "2026-08-10",
   "links": [
    {
     "pane": "pane-notes",
     "date": "2026-08-10",
     "label": "exact vs 임베딩 귀속"
    }
-  ]
+  ],
+  "note": "Ran on the container (the .venv has no torch, so the embedding path is dead there). 2 of 6 entry seeds changed, both linagliptin; liraglutide/ticagrelor/apixaban were already correct without exact match, so \"embeddings are weak on proper nouns\" does not hold as a general claim. Replicated with the gpt-4o reranker and again with gemma over vLLM — identical concepts, 3/3 deterministic per seed. docs/experiments/2026-08-10_exact_vs_embedding_attribution.md"
  },
  {
   "group": "Concept-set quality — zero-overlap defects",
   "task": "Exclude gold's censoring-only sets from pairing",
   "goal": "Stop scoring eligibility sets against a CIRCE section the artifact does not produce",
   "status": "done",
-  "date": "2026-08-10",
   "cost": "1 session",
   "priority": "P1",
-  "note": "10034d5. The module header already promised this; nothing enforced it, so all six censoring-only gold sets were paired. Rescored 0.567 -> 0.598 macro, zero-overlap 104 -> 99 over 232 pairs.",
+  "date": "2026-08-10",
   "links": [
    {
     "pane": "pane-notes",
-    "date": "2026-08-09",
-    "label": "짝지은 2-arm 측정"
+    "date": "2026-08-11",
+    "label": "2026-08-11 session"
    }
-  ]
+  ],
+  "note": "10034d5. The module header already promised this; nothing enforced it, so all six censoring-only gold sets were paired. Rescored 0.567 -> 0.598 macro, zero-overlap 104 -> 99 over 232 pairs."
  },
  {
   "group": "Concept-set quality — zero-overlap defects",
   "task": "Report distinct corrections, not pair counts",
   "goal": "Gold's unreferenced duplicates make one fix score as several pairs",
   "status": "done",
-  "date": "2026-08-10",
   "cost": "decision",
   "priority": "P1",
-  "note": "215f200. Decided to KEEP the 14 orphan gold sets in the denominator (the eval asks whether we built gold's concept sets; TROY exports them as a library), and to pay the cost in reporting instead. The entry-drug fix moved 5 pairs where the honest count is 2. Rule pinned in artemis/AGENTS.md EVALUATION. Same failure shape as the banned pooled micro average.",
+  "date": "2026-08-10",
+  "links": [
+   {
+    "pane": "pane-notes",
+    "date": "2026-08-11",
+    "label": "2026-08-11 session"
+   }
+  ],
+  "note": "215f200. Decided to KEEP the 14 orphan gold sets in the denominator (the eval asks whether we built gold's concept sets; TROY exports them as a library), and to pay the cost in reporting instead. The entry-drug fix moved 5 pairs where the honest count is 2. Rule pinned in artemis/AGENTS.md EVALUATION. Same failure shape as the banned pooled micro average."
+ },
+ {
+  "group": "Concept-set quality — zero-overlap defects",
+  "task": "Redesign the critic prompt: select by category, short reasons",
+  "goal": "Critic output length must not scale with the candidate count",
+  "status": "done",
+  "cost": "1 session",
+  "priority": "P1",
+  "date": "2026-08-12",
   "links": [
    {
     "pane": "pane-notes",
     "date": "2026-08-09",
     "label": "짝지은 2-arm 측정"
    }
-  ]
- },
- {
-  "group": "Concept-set quality — zero-overlap defects",
-  "task": "Redesign the critic prompt: select by category, short reasons",
-  "goal": "Critic output length must not scale with the candidate count",
-  "status": "todo",
-  "date": "",
-  "cost": "1 session",
-  "priority": "P1",
-  "note": "CriticResult emits one CriticSelection per candidate (concept_id, relevant, free-text reasoning, confidence, ...), so 90 candidates cost ~3,600 output tokens and force max_tokens=4096. That is what broke 176 of 268 criteria against an 8,192 window. Raising the server context to 32,768 buys headroom but the same wall returns as candidate counts grow."
+  ],
+  "note": "구현·측정 후 되돌림. 출력 2,790->1,287자, 스모크 wall clock 695->237초(2.9배)였으나 ARISTOTLE per-criterion recall이 gate-only 대비 -0.043. 속도를 정확도로 산 거래라 폐기했다. 캐시 키의 _CRITIC_PROMPT_VERSION은 남긴다."
  },
  {
   "group": "Concept-set quality — zero-overlap defects",
   "task": "Check whether Force-included Top-1 causes the linagliptin error",
   "goal": "Decide whether exact match is the only fix or merely a safety net",
   "status": "done",
-  "date": "2026-08-11",
   "cost": "1 session",
   "priority": "P0",
+  "date": "2026-08-11",
   "links": [
    {
     "pane": "pane-notes",
@@ -988,20 +1063,27 @@
   "group": "Concept-set quality — zero-overlap defects",
   "task": "Give the mapper a way to answer 'no match' for a query nothing matches",
   "goal": "A meaningless or out-of-vocabulary criterion must not produce concepts",
-  "status": "todo",
-  "date": "",
+  "status": "done",
   "cost": "1 session",
   "priority": "P0",
-  "note": "A distance-threshold relevance floor was measured and rejected on 2026-08-11: real clinical terms span top-1 distance 38.6-59.5, meaningless strings span 54.8-97.8, and the ranges overlap (a nonsense query at 54.750 sits closer than the real criterion Acute coronary syndrome at 59.457). The open lead is the shape of the question put to the reranker: it is asked a forced choice ('which of these candidates is best') and never asked an explicit 'is any of these the same thing as the query'."
+  "date": "2026-08-12",
+  "links": [
+   {
+    "pane": "pane-notes",
+    "date": "2026-08-09",
+    "label": "짝지은 2-arm 측정"
+   }
+  ],
+  "note": "reranker top-N 프롬프트에 query_has_match + 음성 예시(최소 델타). 6개 시험에서 6개 기준을 기각하고 _unmappedCriteria로 기록. 기각분은 control에서도 gold 대응이 없어 점수 손실 0. 품질 지표 자체는 macro +0.002/+0.006로 0과 구별 불가."
  },
  {
   "group": "Concept-set quality — zero-overlap defects",
   "task": "Measure the PLATO description/sourceText mismatch",
   "goal": "Find how many criteria have a sourceText that names a different criterion",
   "status": "todo",
-  "date": "",
   "cost": "1 session",
   "priority": "P1",
+  "date": "",
   "note": "One PLATO criterion has description 'Contraindication to clopidogrel + Allergy ... + Thrombotic thrombocytopenic purpura' with sourceText 'ST-segment elevation'. Unlike glimepiride this points the mapper at an unrelated concept, so it can move recall directly. Scope unmeasured."
  },
  {
@@ -1009,9 +1091,9 @@
   "task": "Re-map all six studies on the local model",
   "goal": "Score concept-set quality under the model the stack now actually runs",
   "status": "done",
-  "date": "2026-08-10",
   "cost": "~4 h GPU",
   "priority": "P0",
+  "date": "2026-08-10",
   "links": [
    {
     "pane": "pane-notes",
@@ -1026,8 +1108,9 @@
   "task": "Move every LLM call onto the local vLLM server",
   "goal": "No run may be labelled local while an external model produced the numbers",
   "status": "done",
-  "date": "2026-08-10",
   "cost": "1 session",
+  "priority": "P0",
+  "date": "2026-08-10",
   "links": [
    {
     "pane": "pane-notes",
@@ -1035,7 +1118,6 @@
     "label": "exact vs 임베딩 귀속"
    }
   ],
-  "priority": "P0",
   "note": "artemis/.env LLM_MODEL=gpt-4o -> vllm/google/gemma-4-E4B-it. The code already funnelled through resolve_model(); the critic follows LLM_MODEL by default and the reranker uses get_llm. env_file applies at container CREATION, so this needs `docker compose up -d`, not a restart. Verified live: resolved model logged, 19/19 LLM calls to the vLLM host, 0 to OpenRouter."
  },
  {
@@ -1043,8 +1125,9 @@
   "task": "Raise the served context so the critic prompt fits",
   "goal": "A prompt the pipeline routinely builds must not exceed the served window",
   "status": "done",
-  "date": "2026-08-10",
   "cost": "1 restart",
+  "priority": "P0",
+  "date": "2026-08-10",
   "links": [
    {
     "pane": "pane-notes",
@@ -1052,7 +1135,6 @@
     "label": "exact vs 임베딩 귀속"
    }
   ],
-  "priority": "P0",
   "note": "vLLM was serving gemma-4-E4B-it at --max-model-len 8192 while the model supports 131,072. Relaunched at 32,768 (GB10 needs `env -u PYTHONPATH -u PYTHONHOME`). KV cache uses 5.3%, so the longer window costs nothing here. Positive control: a ~5k-token prompt plus a 4,096-token output reservation now passes where it previously 400'd."
  },
  {
@@ -1060,8 +1142,9 @@
   "task": "Restore PHOEBE's recommendation table",
   "goal": "The expansion stage must not be silently absent from every mapping",
   "status": "partial",
-  "date": "2026-08-10",
   "cost": "1 session",
+  "priority": "P2",
+  "date": "2026-08-10",
   "links": [
    {
     "pane": "pane-notes",
@@ -1069,7 +1152,6 @@
     "label": "exact vs 임베딩 귀속"
    }
   ],
-  "priority": "P2",
   "note": "concept_recommended lives in demo_cdm, not the omop_vocab schema PHOEBE_SCHEMA points at, so every call errored and expanded 0 concepts. Pointing the schema at demo_cdm would be worse: the query joins concept from the SAME schema and demo_cdm.concept has 444 rows, so it would return 0 with no error. Added a view omop_vocab.concept_recommended over the physical table (3,768,447 rows); linagliptin now returns 5 recommendations instead of 0. Still unverified inside the pipeline: stage2_pipeline is a different path from the one measured."
  },
  {
@@ -1077,9 +1159,9 @@
   "task": "Align local .venv with requirements.txt and gate against future drift",
   "goal": "A local run must not silently execute without the dependencies the container has",
   "status": "done",
-  "date": "2026-08-11",
   "cost": "1 session",
   "priority": "P0",
+  "date": "2026-08-11",
   "links": [
    {
     "pane": "pane-notes",
@@ -1088,6 +1170,26 @@
    }
   ],
   "note": "requirements.txt is the single source (Dockerfile.tte-api installs from it with uv pip install --system --no-cache -r requirements.txt); .venv was hand-assembled and drifted (torch/pandas/langgraph absent, numpy 2.5.0 vs pinned 1.26.4), which silently killed MedCPT embeddings (5 non-reproducible control runs) and dropped 10 test modules to collection errors while still printing a pass count. Fixed with `uv pip install --python .venv/bin/python -r requirements.txt` (not `uv pip sync`, which deletes pytest since requirements.txt carries no test runner). failed 213 -> 100, passed 1817 -> 2048, collection errors 10 -> 0. New gate tests/test_environment_matches_requirements.py (7 tests) parses requirements.txt and fails naming the per-package consequence."
+ },
+ {
+  "group": "Concept-set quality",
+  "task": "Prefer the LOINC Lab Test for Measurement criteria",
+  "goal": "Platelet count의 recall 손실을 마저 걷어낸다",
+  "status": "todo",
+  "cost": "S",
+  "priority": "P0",
+  "date": "2026-08-12",
+  "note": "drop_qualitative_findings가 closure 폭발(184->7)은 없앴지만 recall은 0.000 그대로다. 리랭커가 LOINC 3007461을 애초에 안 고르기 때문이고, baseline은 그걸 골라 0.500이었다. finding 제거와 짝이 되는 포함 규칙이 logic.py 같은 자리에 필요하다."
+ },
+ {
+  "group": "Concept-set quality",
+  "task": "Catch modifier-matched, wrong-entity mappings",
+  "goal": "관련은 있지만 개체가 다른 매핑을 게이트가 통과시키는 문제",
+  "status": "todo",
+  "cost": "M",
+  "priority": "P0",
+  "date": "2026-08-12",
+  "note": "'History of stroke'가 LOINC 설문 개념으로, gold 'Atrial fibrillation and flutter'가 'Atrial fibrillation ablation'과 짝지어진다. 게이트는 관련 후보가 있으면 '예'라고 답하므로 이 계열을 못 잡는다. zero-overlap 9건의 주된 형태."
  }
 ]
 </script>
@@ -2273,6 +2375,25 @@
   ]
  }
 ]
+</script>
+
+<!-- 관련 연구 조사 — ONE RECORD IS A PROBLEM CATEGORY, NOT A PAPER. Fields, exactly these:
+     {id, name, subtitle, status, measured[], rejected[], open[], literature[], excluded?[]}
+       id         short, stable key (T1, T2 …) — never renumber it; notes cite it.
+       name       what the FIELD calls this problem, in the field's own words (English if the field
+                  writes it in English). Do not mint a label; if no term exists, describe it.
+       subtitle   the same thing in plain words — an explanation, not a translation of the term.
+       status     미조사 | 조사 중 | 조사 완료 | 해당 없음   (조사 중 is the issue pane's word, reused)
+       measured   [{claim,value,source,population}] — what WE measured. `population` is REQUIRED: n and
+                  the filter. A ratio with no population stated is always misquoted later.
+       rejected   [{lever,result,source}] — levers already falsified here. [] only when nothing was tried.
+       open       remaining questions, each saying what intervention would settle it.
+       literature [{title,authors_year,venue,venue_type,year,url,verified,key_method,relevance}].
+                  venue_type: conference | journal | arxiv. `verified` is true ONLY after the URL was
+                  actually fetched — an unverified entry is NOT rendered as a citation.
+       excluded   [{title,why}] — found and discarded, so the next person does not re-find it. -->
+<script id="litdata" type="application/json">
+[]
 </script>
 
 <!-- per-item rows: [{id, bucket, base_A, v0_A, v1_A, ...}]. Replace this block's contents with the real
@@ -4628,6 +4749,78 @@ function planView(tblId,rows){const t=document.getElementById(tblId);if(!t)retur
   const pane=t.closest('.pane'),btn=pane&&document.querySelector(`.tabs button[data-pane="${pane.id}"]`);
   if(btn&&rows.length)btn.hidden=false;}
 
+/* ===== 관련 연구 조사 (literature survey): rows live in JSON, ONE renderer =====
+   ONE RECORD IS A PROBLEM CATEGORY, NOT A PAPER — papers hang under the problem they speak to.
+   Five rules are enforced here, not in prose:
+     1. rejected renders ABOVE literature — the pane's first job is to stop an already-falsified lever
+        from being proposed a second time.
+     2. verified:false is NOT rendered as a citation, and neither is a non-http(s) url (nothing else can
+        have been fetched, and nothing else belongs in an href). Dropped entries are COUNTED on the page,
+        never silently swallowed.
+     3. an empty literature list is never hidden: for a 미조사 category it is the most useful output on
+        the page, so the empty state says which kind of empty it is.
+     4. measured renders claim / value / source / population — a blank source or population shows as a
+        red marker instead of an empty cell, because a ratio with no population gets misquoted later.
+     5. an empty rejected list says so ("no lever tried yet"), which is a different statement from
+        "nothing was rejected".
+   Defensive by contract: no shell, no array, or no categories → return quietly, tab stays hidden. */
+function litView(listId,cats){
+  const el=document.getElementById(listId);if(!el)return;
+  if(!Array.isArray(cats)||!cats.length)return;
+  const C=COPY.lit||{},L=C.labels||{},EMPTY=C.emptyLit||{};
+  const STATUSES=['미조사','조사 중','조사 완료','해당 없음'];
+  const labelStatus=s=>(C.statusLabels&&C.statusLabels[s])||(COPY.record&&COPY.record.statusLabels&&COPY.record.statusLabels[s])||s;
+  const http=u=>/^https?:\/\//i.test(String(u||''));
+  const arr=x=>Array.isArray(x)?x.filter(v=>v&&typeof v==='object'||typeof v==='string'):[];
+  const sec=(h,body)=>`<div class="lit-sec"><div class="lit-sec-h">${mdN(h)}</div>${body}</div>`;
+  const empty=t=>`<div class="lit-empty">${mdN(t)}</div>`;
+  // a required field left blank renders as a red marker, not as blank space
+  const need=(v,miss)=>String(v??'').trim()?mdN(v):`<span class="lit-miss">${mdN(miss)}</span>`;
+  const rejected=rs=>rs.length?rs.map(r=>`<div class="lit-rej"><b>${mdN(r.lever)}</b> — ${mdN(r.result)}`+
+      `<div class="src">${need(r.source,L.missingSource||'source not stated')}</div></div>`).join('')
+    :empty(L.noRejected||'No lever has been tried here yet.');
+  // same .dtwrap/.datatable markup the note tables use — one table style per file
+  const measured=ms=>ms.length?`<div class="dtwrap"><table class="datatable"><thead><tr>`+
+      (C.measuredCols||['Claim','Value','Source','Population']).map(h=>`<th>${mdN(h)}</th>`).join('')+
+      `</tr></thead><tbody>`+ms.map(m=>`<tr><td>${mdN(m.claim)}</td><td>${mdN(m.value)}</td>`+
+      `<td>${need(m.source,L.missingSource||'source not stated')}</td>`+
+      `<td>${need(m.population,L.missingPopulation||'population not stated')}</td></tr>`).join('')+
+      `</tbody></table></div>`
+    :empty(L.noMeasured||'Nothing measured for this category yet.');
+  const refs=(ls,status)=>{
+    const ok=ls.filter(r=>r&&r.verified===true&&http(r.url)),dropped=ls.length-ok.length;
+    /* prose (title/method/relevance/venue) gets the markdown pass; url and the alt-style fields land in
+       ATTRIBUTES and take escN — one quote in a title would otherwise destroy the tag. */
+    const body=ok.length?ok.map(r=>`<div class="lit-ref"><div class="t">${mdN(r.title)}</div>`+
+        `<div class="meta">${escN(r.authors_year||'')} · ${escN(r.venue||'')}`+
+        `${r.venue_type?` (${escN(r.venue_type)}${r.year?', '+escN(r.year):''})`:''}</div>`+
+        `<div style="margin-top:5px"><span class="lab">${mdN(L.method||'Method')}</span> ${mdN(r.key_method)}</div>`+
+        `<div style="margin-top:3px"><span class="lab">${mdN(L.relevance||'Why it matters here')}</span> ${mdN(r.relevance)}</div>`+
+        `<div style="margin-top:4px"><a href="${escN(r.url)}" target="_blank" rel="noopener noreferrer">${escN(r.url)}</a></div>`+
+        `</div>`).join('')
+      :empty(EMPTY[status]||C.noLit||'No verified citation.');
+    return body+(dropped?`<div class="lit-empty"><span class="lit-miss">${mdN(C.dropped?C.dropped(dropped):dropped+' unverified entries are not shown.')}</span></div>`:'');};
+  const excluded=xs=>xs.length?`<details class="note-details"><summary>${mdN(L.excluded||'Found and discarded')} (${xs.length})</summary>`+
+      `<ul>${xs.map(x=>`<li><b>${mdN(x.title)}</b> — ${mdN(x.why)}</li>`).join('')}</ul></details>`:'';
+  el.innerHTML=cats.filter(c=>c&&typeof c==='object').map(c=>{
+    const known=STATUSES.includes(c.status);
+    const open=arr(c.open);
+    return `<article class="lit-card" data-state="${escN(c.status)}">
+      <div class="lit-head">
+        <div><div class="lit-name">${mdN(c.name)}</div><div class="lit-sub">${mdN(c.subtitle)}</div></div>
+        <div class="lit-meta"><span class="lit-id">${escN(c.id)}</span>`+
+        // an unrecognised lifecycle value renders in the failure colour instead of an unstyled chip
+        `<span class="status-badge${known?'':' lit-miss'}" data-state="${escN(c.status)}">${mdN(labelStatus(c.status))}${known?'':' · '+mdN(C.badStatus||'unknown status')}</span></div>
+      </div>`+
+      sec(L.rejected||'Already tried and rejected',rejected(arr(c.rejected)))+
+      sec(L.measured||'What we measured',measured(arr(c.measured)))+
+      sec(L.open||'Open questions',open.length?`<ul>${open.map(o=>`<li>${mdN(o)}</li>`).join('')}</ul>`:empty(L.noOpen||'No open question recorded.'))+
+      sec(L.literature||'Literature',refs(arr(c.literature),c.status))+
+      excluded(arr(c.excluded))+
+    `</article>`;}).join('');
+  const pane=el.closest('.pane'),btn=pane&&document.querySelector(`.tabs button[data-pane="${pane.id}"]`);
+  if(btn)btn.hidden=false;}
+
 function showRecordFatal(error){const panel=document.getElementById('record-fatal');
   panel.hidden=false;panel.innerHTML=`<strong>${mdN(COPY.record&&COPY.record.fatal||'Record data could not be rendered')}</strong><pre>${escN(error&&error.message||error)}</pre>`;}
 try{
@@ -4635,6 +4828,7 @@ try{
   noteView('issues','issuesCal','issuesFilter',ISSUES,NOTE_CONTRACTS['pane-issues']);
   planView('planTbl',JSON.parse(document.getElementById('plandata').textContent));
   scoreView('scoreTbl',JSON.parse(document.getElementById('scoredata').textContent));
+  litView('litList',JSON.parse(document.getElementById('litdata').textContent));
 }catch(error){showRecordFatal(error);queueMicrotask(()=>{throw error;});}
 const _toTop=document.getElementById('toTop');
 if(_toTop){addEventListener('scroll',()=>_toTop.classList.toggle('show',scrollY>400),{passive:true});
