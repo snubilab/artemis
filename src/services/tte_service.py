@@ -4473,6 +4473,28 @@ class TTEService:
         exc_criteria = eligibility.get("exclusionCriteria") or []
         order = 0
 
+        # Three branches below drop a criterion before the mapper is ever called, so
+        # `_unmappedCriteria` -- which only sees mapping exceptions -- cannot record them.
+        # Counting them by hand has produced a different total every time (39/9, 73, 82),
+        # because the buckets overlap: a criterion can be both demographic and a group
+        # label, and which one it lands in depends on branch order rather than on the
+        # criterion. Recording at the branch that does the dropping removes the judgement.
+        skipped_criteria: list[dict[str, Any]] = []
+
+        def _record_skip(criterion: dict[str, Any], role: str, reason: str) -> None:
+            skipped_criteria.append({
+                "criterionId": str(criterion.get("id", "")),
+                "role": role,
+                "label": (
+                    criterion.get("sourceText")
+                    or criterion.get("description")
+                    or ""
+                ).strip(),
+                "domain": (criterion.get("domain") or "").strip() or None,
+                "isGroupLabel": bool(criterion.get("isGroupLabel")),
+                "reason": reason,
+            })
+
         for criterion in inc_criteria:
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
@@ -4483,9 +4505,12 @@ class TTEService:
                         ungrouped_demographic_rules.append((order, demo))
                     else:
                         grouped_demographics.append((order, criterion, demo))
+                else:
+                    _record_skip(criterion, "inclusion", "demographic-no-rule")
                 order += 1
                 continue
             if criterion.get("isGroupLabel"):
+                _record_skip(criterion, "inclusion", "group-label")
                 order += 1
                 continue
             mappable_items.append((criterion, False))
@@ -4494,9 +4519,15 @@ class TTEService:
         for criterion in exc_criteria:
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
+                # Discarded without asking `_build_demographic_rule` whether it could
+                # have been built, so the record is unconditional. On the scored store
+                # these are lines like "Nursing or pregnant" -- exclusions whose loss
+                # widens the cohort past the protocol.
+                _record_skip(criterion, "exclusion", "exclusion-demographic")
                 order += 1
                 continue
             if criterion.get("isGroupLabel"):
+                _record_skip(criterion, "exclusion", "group-label")
                 order += 1
                 continue
             mappable_items.append((criterion, True))
@@ -4799,6 +4830,24 @@ class TTEService:
         primary_key = self._seeded_primary_criteria_key(mapped_target["domain"])
         primary_attrs: dict[str, Any] = {"CodesetId": 1}
 
+        skipped_by_reason: dict[str, int] = {}
+        for record in skipped_criteria:
+            skipped_by_reason[record["reason"]] = skipped_by_reason.get(record["reason"], 0) + 1
+
+        # `total == mapped + unmapped + demographicRules + skipped` is the point of this
+        # block: it is an identity over every branch that consumes a criterion, so adding
+        # a fourth silent `continue` breaks it. Asserted in
+        # tests/test_generation_census_accounts_for_every_criterion.py.
+        generation_census = {
+            "total": len(inc_criteria) + len(exc_criteria),
+            "mappable": len(mappable_items),
+            "mapped": sum(1 for _idx, result in mapped_results if result is not None),
+            "unmapped": len(unmapped_criteria),
+            "demographicRules": len(ungrouped_demographic_rules) + len(grouped_demographics),
+            "skipped": len(skipped_criteria),
+            "skippedByReason": skipped_by_reason,
+        }
+
         return {
             "ConceptSets": concept_sets,
             "PrimaryCriteria": {
@@ -4813,6 +4862,13 @@ class TTEService:
             # Always present, empty when nothing failed -- an absent key would be
             # indistinguishable from a clean run on an artifact built before this.
             "_unmappedCriteria": sorted(unmapped_criteria, key=lambda r: (r["role"], r["criterionId"])),
+            # Same contract: present and empty rather than absent. These are the criteria
+            # that never reached the mapper, so `_unmappedCriteria` structurally cannot
+            # hold them.
+            "_skippedCriteria": sorted(
+                skipped_criteria, key=lambda r: (r["role"], r["criterionId"])
+            ),
+            "_generationCensus": generation_census,
         }
 
     def _build_combined_treatment_circe(
