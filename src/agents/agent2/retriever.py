@@ -15,12 +15,31 @@ class CandidateConcept(BaseModel):
     distance: float  # Vector distance (lower is better)
     adjusted_score: float = 0.0  # After preference scoring (lower is better)
 
-# Vocabulary preferences per domain (lower bonus = higher priority)
+# Vocabulary preferences per domain (lower bonus = higher priority).
+#
+# Only list vocabularies the collection can actually return for that domain. An unlisted
+# vocabulary is NOT neutral -- `_score_candidates` scores it with the default +0.05
+# penalty -- so a listed entry naming a vocabulary that never occurs is dead weight that
+# still reads as a policy. Three such entries were removed after querying the collection:
+# Condition/ICD10CM, Drug/ATC and Procedure/CPT4 have no rows in omop_concepts_medcpt
+# (440,790 concepts), so the pairs their tests defended could never arise.
+#
+# What each domain actually holds, and therefore what these numbers decide:
+#   Condition   SNOMED, HCPCS, OMOP Extension
+#   Drug        RxNorm, RxNorm Extension          <- the only pair the Drug entry decides
+#   Measurement SNOMED, LOINC, HCPCS, OMOP Extension
+#   Procedure   SNOMED, LOINC, HCPCS, OMOP Extension, ICD9Proc
+#   Observation SNOMED, LOINC, HCPCS, OMOP Extension
+#   Device      SNOMED, HCPCS, OMOP Extension, NDC
+#
+# Device stays. `effective_domain = domain_hint or domain` falls back to the CANDIDATE's
+# own domain, so Device rows are scored by these entries whenever a query carries no
+# domain hint -- "no criterion in the store is Device-domain" is not a reason to delete it.
 _VOCAB_PREFERENCE: Dict[str, Dict[str, float]] = {
-    "Condition": {"SNOMED": -0.10, "ICD10CM": 0.05},
-    "Drug":      {"RxNorm": -0.15, "RxNorm Extension": -0.05, "ATC": 0.10},
+    "Condition": {"SNOMED": -0.10},
+    "Drug":      {"RxNorm": -0.15, "RxNorm Extension": -0.05},
     "Measurement": {"LOINC": -0.30, "SNOMED": 0.20},
-    "Procedure": {"SNOMED": -0.15, "CPT4": -0.05, "HCPCS": 0.0},
+    "Procedure": {"SNOMED": -0.15, "HCPCS": 0.0},
     "Observation": {"SNOMED": -0.05, "LOINC": -0.03},
     "Device":    {"SNOMED": -0.05, "HCPCS": -0.03},
 }

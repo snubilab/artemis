@@ -105,22 +105,40 @@ class TestVocabPreferenceMeasurement:
 
 
 class TestVocabPreferenceDrug:
-    """REQ-03: RxNorm should win over ATC for Drug domain."""
+    """REQ-03: RxNorm should win over RxNorm Extension for Drug domain.
 
-    def test_rxnorm_beats_atc(self):
-        """Drug query: RxNorm should rank above ATC at equal distance."""
+    This class used to pit RxNorm against ATC. The collection holds no ATC row in the
+    Drug domain -- `omop_concepts_medcpt` returns only RxNorm and RxNorm Extension there
+    -- so those tests asserted over a candidate the retriever can never produce and could
+    not fail for the reason they claimed. The pair below is the one the Drug entry in
+    `_VOCAB_PREFERENCE` actually decides, and it decides it for real seeds: 'Sitagliptin'
+    resolves to RxNorm 'sitagliptin' with the preference on and to RxNorm Extension
+    'sitagliptin 32.1 MG Oral Tablet' with it off.
+    """
+
+    def test_rxnorm_beats_rxnorm_extension(self):
+        """Drug query: plain RxNorm should rank above RxNorm Extension at equal distance.
+
+        Both candidates carry the SAME name on purpose. The name-match boost is worth
+        -0.15 for an exact hit against -0.08 for a substring, which is larger than the
+        0.10 the vocabulary entries are separated by -- so pairing a bare ingredient
+        against a packaged form ('sitagliptin 32.1 MG Oral Tablet') produces a test that
+        passes even with the Drug preferences deleted outright. RxNorm Extension does
+        carry ingredient-named Drug rows (HEMOGLOBIN among them), so an equal-name pair
+        is the realistic case as well as the sensitive one.
+        """
         candidates = [
             {
-                "concept_id": 1000,
-                "concept_name": "Metformin",
+                "concept_id": 1235495,
+                "concept_name": "sitagliptin",
                 "domain_id": "Drug",
-                "vocabulary_id": "ATC",
+                "vocabulary_id": "RxNorm Extension",
                 "concept_class_id": "Ingredient",
                 "distance": 0.25,
             },
             {
-                "concept_id": 1001,
-                "concept_name": "metformin",
+                "concept_id": 1580747,
+                "concept_name": "sitagliptin",
                 "domain_id": "Drug",
                 "vocabulary_id": "RxNorm",
                 "concept_class_id": "Ingredient",
@@ -128,31 +146,43 @@ class TestVocabPreferenceDrug:
             },
         ]
         retriever = _build_retriever(candidates)
-        results = retriever.search("Metformin", n_results=5, domain_hint="Drug")
+        results = retriever.search("Sitagliptin", n_results=5, domain_hint="Drug")
 
         assert results[0].vocabulary_id == "RxNorm", (
             f"RxNorm should rank first for Drug, got {results[0].vocabulary_id}"
         )
 
-    def test_drug_rxnorm_stronger_than_atc(self):
-        """Verify RxNorm bonus is significantly better than ATC penalty."""
+    def test_drug_prefers_rxnorm_over_the_extension_by_a_clear_margin(self):
+        """The two Drug vocabularies must stay separated, not merely ordered.
+
+        Both carry a bonus, so the gap is what decides an ingredient against a branded or
+        packaged form at equal distance. 0.10 is the current separation; anything smaller
+        lets the distance noise between two near-identical names flip the order.
+        """
         rxnorm_bonus = _VOCAB_PREFERENCE["Drug"]["RxNorm"]
-        atc_penalty = _VOCAB_PREFERENCE["Drug"]["ATC"]
-        gap = atc_penalty - rxnorm_bonus
-        assert gap >= 0.20, f"Drug RxNorm-ATC gap should be >= 0.20, got {gap}"
+        extension_bonus = _VOCAB_PREFERENCE["Drug"]["RxNorm Extension"]
+        # Rounded because the intended 0.10 is 0.09999999999999999 in binary floating
+        # point, and a bare `>=` fails on the very values this is meant to accept.
+        gap = round(extension_bonus - rxnorm_bonus, 6)
+        assert gap >= 0.10, f"Drug RxNorm-Extension gap should be >= 0.10, got {gap}"
 
 
 class TestVocabPreferenceCondition:
-    """REQ-04: SNOMED should win over ICD10CM for Condition domain."""
+    """REQ-04: SNOMED should win over the other Condition vocabularies.
 
-    def test_snomed_beats_icd10cm(self):
-        """Condition query: SNOMED should rank above ICD10CM at equal distance."""
+    Previously asserted against ICD10CM, which the collection holds no Condition row for.
+    What SNOMED actually competes with in that domain is HCPCS and OMOP Extension, and
+    neither is listed in `_VOCAB_PREFERENCE`, so both are scored with the default +0.05.
+    """
+
+    def test_snomed_beats_an_unlisted_condition_vocabulary(self):
+        """Condition query: SNOMED should rank above OMOP Extension at equal distance."""
         candidates = [
             {
                 "concept_id": 2000,
                 "concept_name": "Type 2 diabetes mellitus",
                 "domain_id": "Condition",
-                "vocabulary_id": "ICD10CM",
+                "vocabulary_id": "OMOP Extension",
                 "concept_class_id": "Disorder",
                 "distance": 0.20,
             },

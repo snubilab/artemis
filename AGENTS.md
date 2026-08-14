@@ -143,6 +143,14 @@ Settled, do not re-litigate:
 - **`_VOCAB_PREFERENCE`'s Measurement LOINC −0.30 is not a defect.** It promotes the gold
   concepts (3049187, 46236952 at ranks 1–2); the SNOMED pair it demotes appears in no
   gold file. `tests/test_map_retriever_scoring.py::test_hba1c_loinc_beats_snomed` defends it.
+- **An unlisted vocabulary scores +0.05, not 0.** `_score_candidates` reads
+  `vocab_prefs.get(vocab, 0.05)`, so deleting an entry is only a no-op when the value was
+  already 0.05 or the vocabulary never occurs in that domain. Three entries named
+  vocabularies with no row in `omop_concepts_medcpt` and were removed: Condition/ICD10CM,
+  Drug/ATC, Procedure/CPT4. What each domain really holds is listed at the constant.
+  **Device stays** — `effective_domain = domain_hint or domain` falls back to the
+  candidate's own domain, so Device rows are scored by it on any unhinted query; "no
+  criterion in the store is Device-domain" is not a reason to delete it.
 - **The MeSH alias tier's refusal rate is not its ambiguity guard.** Of the 94 cached
   trials that actually depend on the tier — no arm label, intervention name, or otherName
   spells the generic, the 'BI 10773' shape — it accepts 9, refuses 84 because *no* MeSH
