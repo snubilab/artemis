@@ -122,7 +122,9 @@ def test_should_still_refuse_a_trial_whose_two_salt_headings_both_resolve():
     in the registry says which of the two is the study drug.
     """
     svc = _build_service()
-    mapping = {"name": "x", "expression": {"items": [{}]}, "domain": "Drug", "mapping_metadata": None}
+    mapping = {
+        "name": "x", "expression": {"items": [{}]}, "domain": "Drug", "mapping_metadata": None,
+    }
     with patch.object(svc, "_exact_ingredient_mapping", return_value=mapping):
         assert svc._alias_ingredient_mapping(
             "sponsor-code-1", ["Venlafaxine Hydrochloride", "Duloxetine Hydrochloride"]

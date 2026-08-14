@@ -92,6 +92,10 @@ target-version = ["py310"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+# Top-level `select` was deprecated; ruff 0.16 warns on every invocation until it moves
+# here. Rule set unchanged.
 select = ["E", "F", "I", "N", "W"]
 
 [tool.mypy]

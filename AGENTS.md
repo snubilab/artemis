@@ -126,6 +126,17 @@ silently. Check the switch before concluding a path is broken:
   6-character length gate; leave that gate alone.
 - `abbreviation_expander.py` is a no-op module superseded by the above.
 
+Linting: `.venv/bin/ruff check <paths>`, config in `pyproject.toml` under
+`[tool.ruff.lint]`. **ruff is installed in `.venv` but deliberately NOT in
+`requirements.txt`** — that file is what `Dockerfile.tte-api` builds the container from,
+and a lint-only tool has no business in the runtime image.
+`tests/test_environment_matches_requirements.py` permits this: it iterates the packages
+*declared* in `requirements.txt` and checks their versions, and has no "no extra
+packages" assertion. An earlier session read the gate's docstring as forbidding any
+install and skipped linting an entire session's work on that basis. Lint changed files
+only; `tte_service.py` and `build_conceptset_dashboard.py` carry hundreds of pre-existing
+findings and cleaning them is not a drive-by.
+
 Settled, do not re-litigate:
 
 - **PubChem (`drug_name_normalizer.py` + the 22 GB SQLite) stays unwired.** Across the

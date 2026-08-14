@@ -55,7 +55,8 @@ def load_trials(cache_dir: Path) -> list[dict[str, Any]]:
     for path in sorted(cache_dir.glob("NCT*.json")):
         raw = json.loads(path.read_text())
         browse = (raw.get("derivedSection") or {}).get("interventionBrowseModule") or {}
-        terms = [t for t in ((m.get("term") or "").strip() for m in (browse.get("meshes") or [])) if t]
+        meshes = browse.get("meshes") or []
+        terms = [t for t in ((m.get("term") or "").strip() for m in meshes) if t]
         if not terms:
             continue
         arms_module = (raw.get("protocolSection") or {}).get("armsInterventionsModule") or {}
