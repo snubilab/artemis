@@ -186,6 +186,15 @@ Settled, do not re-litigate:
 
 - Do not move API contract fields without checking Atlas TTE consumers under `../atlas-dev/js/pages/target-trial-emulation/`.
 - Do not read `MappingCandidateItem.score` as a probability or compare it across criteria. It is a per-criterion rank score derived from the retriever's `adjusted_score`, which is normalised per query; `None` means the candidate arrived via KG/ATC expansion and was never scored, which is not the same as scoring badly.
+- **`substance abuse` scores 0 because nothing is generated for it, not because the
+  scorer cannot match it.** Its gold set is three retired SNOMED concepts (436954 D,
+  440069 U, 4279309 D) with no `concept_ancestor` rows, which does make it unmatchable by
+  any set of standard concepts — but the pair's outcome is `no_counterpart` in all five
+  trials that carry it, so there is no generated set to match at all. The scorer now
+  canonicalises retired concepts onto their standard replacements on both sides
+  (`forward_retired_concepts`), which removes that artifact for future gold sets and is
+  worth +0.0003 macro here, i.e. nothing. Fixing this criterion means generating a set
+  for it; do not reach for the scorer again.
 - Do not compare a macro across a change that alters *pairing*. `per_criterion_macro`
   (`scripts/conceptset_overlap_eval.py:472`) averages over `outcome.startswith("matched")`
   only, so a gold set with no generated counterpart leaves the denominator entirely

@@ -91,6 +91,20 @@ class VocabularyLookup(Protocol):
     def maps_to_sources(self, concept_ids: Iterable[int]) -> set[int]:
         """``concept_id_1`` of valid ``Maps to`` rows whose ``concept_id_2`` is given."""
 
+    def standard_replacements(self, concept_ids: Iterable[int]) -> dict[int, set[int]]:
+        """Deprecated id -> the standard concepts it forwards to.
+
+        Not part of Circe. Circe resolves a retired concept to itself and stops, which is
+        correct for running a cohort and wrong for COMPARING two concept sets authored
+        against different vocabulary releases: a gold set built entirely from retired
+        concepts shares nothing with any set built from current ones, whatever either
+        says clinically. Consumers that compare must forward BOTH sides; consumers that
+        reproduce WebAPI must not call this at all.
+
+        Only ids with a non-null ``invalid_reason`` are forwarded, and only through valid
+        ``Maps to`` / ``Concept replaced by`` edges landing on a standard concept.
+        """
+
 
 @dataclass
 class PrefetchedVocabulary:
@@ -105,6 +119,7 @@ class PrefetchedVocabulary:
     concept_invalid_reason: dict[int, str | None] = field(default_factory=dict)
     ancestor_edges: dict[int, set[int]] = field(default_factory=dict)
     maps_to_edges: dict[int, set[int]] = field(default_factory=dict)
+    replacement_edges: dict[int, set[int]] = field(default_factory=dict)
 
     def existing_concept_ids(self, concept_ids: Iterable[int]) -> set[int]:
         return {cid for cid in concept_ids if cid in self.concept_invalid_reason}
@@ -121,6 +136,18 @@ class PrefetchedVocabulary:
         out: set[int] = set()
         for cid in concept_ids:
             out |= self.maps_to_edges.get(cid, set())
+        return out
+
+    def standard_replacements(self, concept_ids: Iterable[int]) -> dict[int, set[int]]:
+        out: dict[int, set[int]] = {}
+        for cid in concept_ids:
+            # A concept absent from CONCEPT is not "valid"; it is unresolvable, and
+            # `.get(cid)` returning None for it would silently exempt it from forwarding.
+            if self.concept_invalid_reason.get(cid, _MISSING) is None:
+                continue
+            targets = self.replacement_edges.get(cid)
+            if targets:
+                out[cid] = set(targets)
         return out
 
 
@@ -310,8 +337,31 @@ class PostgresVocabulary:
                 for target, source in cur.fetchall():
                     maps_to_edges.setdefault(target, set()).add(source)
 
+        # Forwarding targets for the retired ids. Only DIRECT items can be retired: the
+        # descendant branch filters on `invalid_reason IS NULL`, so every id a closure
+        # gains from CONCEPT_ANCESTOR is already valid. That bounds this to `all_ids` and
+        # keeps it one small query rather than a pass over a 100k-concept closure.
+        retired = sorted(cid for cid in all_ids if concept_invalid.get(cid) is not None)
+        replacement_edges: dict[int, set[int]] = {}
+        if retired:
+            cur.execute(
+                f"SELECT cr.concept_id_1, cr.concept_id_2 "
+                f"FROM {self.schema}.concept_relationship cr "
+                f"JOIN {self.schema}.concept t ON t.concept_id = cr.concept_id_2 "
+                f"WHERE cr.relationship_id IN ('Maps to', 'Concept replaced by') "
+                f"AND cr.invalid_reason IS NULL "
+                f"AND t.standard_concept = 'S' "
+                f"AND t.invalid_reason IS NULL "
+                f"AND cr.concept_id_1 = ANY(%s)",
+                (retired,),
+            )
+            for source, target in cur.fetchall():
+                replacement_edges.setdefault(source, set()).add(target)
+
         cur.close()
-        return PrefetchedVocabulary(concept_invalid, ancestor_edges, maps_to_edges)
+        return PrefetchedVocabulary(
+            concept_invalid, ancestor_edges, maps_to_edges, replacement_edges
+        )
 
 
 def items_of_cohort(cohort: dict) -> list[ConceptSetItem]:

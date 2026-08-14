@@ -193,6 +193,54 @@ def resolve_cohort_sets(
     return out
 
 
+def forward_retired_concepts(
+    sets: list[ResolvedSet], lookup: VocabularyLookup | None
+) -> tuple[int, int]:
+    """Rewrite retired concepts to their standard replacements, in place.
+
+    MUST be applied to gold and generated alike, or it becomes a thumb on the scale.
+
+    Circe resolves a retired concept to itself, which is right for running a cohort and
+    wrong for comparing two sets authored against different vocabulary releases. TROY's
+    ``[TROY condition] substance abuse`` is built from three SNOMED concepts that are all
+    retired -- 436954 'Drug abuse' (D), 440069 'Drug dependence' (U), 4279309 'Substance
+    abuse' (D) -- and none carries a CONCEPT_ANCESTOR row, so its closure is exactly those
+    three ids. No set built from current standard concepts can share a single id with it.
+    That pair scored 0.000 recall no matter what the pipeline produced, which measured the
+    vocabulary's age rather than the mapping.
+
+    The retired id is REPLACED, not kept alongside its replacement. Keeping it was the
+    first attempt and it swapped one artifact for another: measured over the six trials,
+    forwarding only ever touches gold (generated sets changed: 0 in every trial, because
+    the pipeline builds from standard concepts and never emits a retired id), so adding
+    the replacement merely grew gold's denominator with ids the pipeline structurally
+    cannot produce. Five of the six pairs that moved moved DOWN. Canonicalising both sides
+    into the standard space is the operation a comparison needs; reproducing what WebAPI
+    would run is `resolve_concept_set`'s job and is deliberately left alone.
+
+    :param sets: Resolved sets, mutated in place.
+    :param lookup: Vocabulary lookup, or None in raw mode (then this is a no-op).
+    :returns: (number of sets changed, number of retired ids replaced).
+    """
+    if lookup is None:
+        return (0, 0)
+    changed = replaced = 0
+    for rs in sets:
+        replacements = lookup.standard_replacements(rs.concept_ids)
+        if not replacements:
+            continue
+        canonical = set(rs.concept_ids)
+        for retired, targets in replacements.items():
+            canonical.discard(retired)
+            canonical |= targets
+        if canonical == rs.concept_ids:
+            continue
+        rs.concept_ids = canonical
+        changed += 1
+        replaced += len(replacements)
+    return (changed, replaced)
+
+
 def censoring_only_codeset_keys(cohort: dict) -> set[str]:
     """:returns: keys of concept sets this cohort references ONLY from CensoringCriteria.
 
@@ -705,6 +753,9 @@ def main(argv: list[str] | None = None) -> int:
         gold_sets = [s for s in all_gold_sets if s.key not in censoring_only]
         out_of_scope = [s for s in all_gold_sets if s.key in censoring_only]
         gen_sets = resolve_cohort_sets(gen, args.mode, lookup)
+        # Both sides, same call, before anything is compared.
+        gold_fwd = forward_retired_concepts(gold_sets, lookup)
+        gen_fwd = forward_retired_concepts(gen_sets, lookup)
         reports.append(
             build_report(
                 label, args.mode, gold_sets, gen_sets, thresholds,
@@ -712,6 +763,10 @@ def main(argv: list[str] | None = None) -> int:
                     "gold_file": gold_path.name,
                     "generated_file": gen_path.name,
                     "generated_md5": _md5(gen_path),
+                    "retired_forwarded": {
+                        "gold_sets_changed": gold_fwd[0], "gold_ids_replaced": gold_fwd[1],
+                        "generated_sets_changed": gen_fwd[0], "generated_ids_replaced": gen_fwd[1],
+                    },
                 },
                 out_of_scope_gold=out_of_scope,
             )
