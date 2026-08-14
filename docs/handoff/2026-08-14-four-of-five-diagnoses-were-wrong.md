@@ -17,9 +17,19 @@ Next steps 6건을 처리한 세션. 1번을 직접 조사하고, 나머지 2~6�
 - 테스트: **100 failed / 2142 passed / 10 skipped** — 실패 100건은 세션 시작 시점과
   동일, 회귀 0. 늘어난 통과분(2118 → 2142)은 전부 이번 세션 신규 테스트
 - 실행 중:
-  - vLLM PID `3708833` — `google/gemma-4-E4B-it`, `:8000`, max-model-len 32768,
-    `--gpu-memory-utilization 0.55`
-  - 컨테이너 `artemis-api` / `ohdsi-webapi` / `broadsea-atlasdb` / `artemis-neo4j-v2` Up
+  - 컨테이너 `artemis-api` / `ohdsi-webapi` / `broadsea-atlasdb` / `artemis-neo4j-v2` /
+    `broadsea-hades` / `broadsea-content` / `tte-atlas-ts` / `tte-proxy` Up
+  - **vLLM은 죽었다.** 세션 중반 PID `3708833`으로 떠 있었으나 세션 말에 확인하니
+    사라졌고 `:8000`에 아무것도 없다. 이번 세션의 어떤 작업도 LLM을 쓰지 않았으므로
+    결과에는 영향이 없다. 재생성을 돌릴 거라면 먼저 띄워야 한다:
+    ```
+    env -u PYTHONPATH -u PYTHONHOME /home/bilab/work/projects/vllm/venv/bin/python \
+      -m vllm.entrypoints.openai.api_server --model google/gemma-4-E4B-it \
+      --served-model-name google/gemma-4-E4B-it --host 0.0.0.0 --port 8000 \
+      --max-model-len 32768 --dtype auto --enforce-eager \
+      --gpu-memory-utilization 0.55 --enable-auto-tool-choice --tool-call-parser gemma4
+    ```
+    (`env -u` 는 GB10 필수 — `docs/debugging/2026-07-29_gb10_vllm_serving_facts.md`)
 - 새 아티팩트:
   - `scripts/analyze_alias_tier_refusals.py` (읽기 전용, 재실행 가능)
   - `scripts/assets/dashboard-template.html` (vendoring된 대시보드 템플릿)
@@ -91,6 +101,24 @@ RxNorm에서 모호한 이름은 여전히 거부하고 아래로 새지 않는�
 만든다). 그래서 덧붙이기는 gold 분모에 파이프라인이 **구조적으로 낼 수 없는** id를
 남겼고 움직인 6쌍 중 **5쌍이 내려갔다**. 치환으로 바꾸니 내려가는 쌍이 사라졌다.
 
+### 재생성은 돌리지 않기로 했다 (사용자 결정, 근거는 측정)
+
+브릿지가 코드에 들어갔으니 재생성해서 확인하는 게 기본값처럼 보이지만, **무엇이 바뀔 수
+있는지를 먼저 재면 재생성이 답할 게 없다.** 채점되는 스토어 `tmp/mesh_fix/studies.json`의
+seed 418개(`sourceText or description` 기준) 중 브릿지로 새로 풀리는 것은 `hemoglobin`
+하나뿐이고, 그것은 Measurement 도메인이라 `expected_domain in ("Drug", None)` 게이트가
+막는다. 즉 재생성해도 6개 시험의 concept set은 같은 것이 나온다. cold 런 3시간을 써서
+0.000 델타를 확인하는 셈이다.
+
+채점기 정규화(`72ecd87`)도 재생성이 필요 없다 — 기존 CIRCE 산출물을 다시 채점하는 것이라
+이미 돌려서 `scoped_mesh_fix_retiredfwd.json`에 있다.
+
+**남는 공백은 명시해 둔다.** 브릿지는 end-to-end로 실행된 적이 없다. 측정한 것은 이름 해결
+수준(`_resolve_ingredient_concept_id`)이고, 회수한 7개 시험은 730개 NCT 캐시 안이라
+벤치마크 밖이다. 그 7개가 실제로 스토어에 들어올 때 확인할 지점은 하나 —
+`_criterionMappingMetadata[*].queryUsed`와 entry drug concept set이 염 표목
+(`Quetiapine Fumarate`)이 아니라 성분(`quetiapine`)으로 나오는지.
+
 ### `Device` 선호는 지우지 않았다
 
 에이전트는 "스토어에 Device 도메인 기준이 0개니 지워도 된다"고 했다. 그러나
@@ -135,6 +163,7 @@ RxNorm에서 모호한 이름은 여전히 거부하고 아래로 새지 않는�
    `_build_seeded_target_circe`에 추가해 73건을 세게 만들기. `_unmappedCriteria`는 건드리지
    말 것(`tests/test_unmapped_criteria_are_recorded.py`가 길이를 고정).
 4. **프로덕션 반영 결정** — `artemis-api`가 옛 `tte_service.py`를 들고 있다.
+   재생성은 하지 않기로 했으므로(위 참조) 이건 배포 타이밍 문제이지 검증 문제가 아니다.
 5. **항목 5는 닫혔다.** 굳이 하려면 원문을 아무도 안 읽는 새 키(`protocolText`)로 저장만
    해서 ADR-032 분류기에 주는 것까지. 질의는 바꾸지 말 것.
 
@@ -184,7 +213,8 @@ for s in ('linagliptin','Quetiapine Fumarate','prothrombin complex concentrate',
 
 ## Gotchas / constraints
 
-- 🔴 **매크로는 matched 쌍만 평균한다** (`conceptset_overlap_eval.py:472`). 짝 없는 gold는
+- 🔴 **매크로는 matched 쌍만 평균한다** (`per_criterion_macro`,
+  `conceptset_overlap_eval.py:497`, 필터는 `:520`). 짝 없는 gold는
   0점이 아니라 **분모에서 빠진다**. 채점기의 짝짓기를 바꾸는 변경은 품질과 무관하게
   매크로를 움직인다. 아크 대 아크(같은 채점기) 비교는 안전하고, mesh_fix 결과는 그 경우다 —
   EMPA-REG 분자가 11.04 → 14.03으로 올랐고 고정 모집단 기준 이득은 +0.079다.
@@ -193,6 +223,10 @@ for s in ('linagliptin','Quetiapine Fumarate','prothrombin complex concentrate',
   이 착오를 이번 세션에 한 번 했다.
 - **채점 아티팩트는 `tmp/mesh_fix/studies.json`에서 나왔다**, `tmp/tte/studies.json`이
   아니다. criterion id가 안 맞는다.
+- **줄번호 두 개가 이번 세션에 밀렸다.** `_VOCAB_PREFERENCE`는 `retriever.py:22`가 아니라
+  **`:38`**이고(앞 핸드오프가 22로 적고 있다), `per_criterion_macro`는
+  `conceptset_overlap_eval.py:472`가 아니라 **`:497`**이다. 앞선 문서들의 그 참조는
+  당시 기준이므로 고치지 않았다.
 - **미등록 어휘는 중립이 아니라 +0.05 페널티다** (`vocab_prefs.get(vocab, 0.05)`).
   `_VOCAB_PREFERENCE`에서 항목을 지우는 건 값이 이미 0.05거나 그 어휘가 해당 도메인에
   없을 때만 no-op이다.

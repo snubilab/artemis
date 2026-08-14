@@ -196,7 +196,7 @@ Settled, do not re-litigate:
   worth +0.0003 macro here, i.e. nothing. Fixing this criterion means generating a set
   for it; do not reach for the scorer again.
 - Do not compare a macro across a change that alters *pairing*. `per_criterion_macro`
-  (`scripts/conceptset_overlap_eval.py:472`) averages over `outcome.startswith("matched")`
+  (`scripts/conceptset_overlap_eval.py:497`) averages over `outcome.startswith("matched")`
   only, so a gold set with no generated counterpart leaves the denominator entirely
   rather than scoring 0. Any change to the scorer's name matching therefore moves the
   macro without moving quality — dropping three badly-scoring pairs out of `matched`
