@@ -78,6 +78,56 @@ DEFAULT_DSN = os.environ.get(
 
 MODES = ("raw", "closure")
 
+# --------------------------------------------------------------------------
+# delta resolution floor
+# --------------------------------------------------------------------------
+
+MACRO_RESOLUTION_FLOOR: float = 0.02
+"""Minimum per-criterion macro delta that counts as a quality claim.
+
+One pick from a 23-pair concept-set pool moves the per-trial macro recall by 1/23
+when the pick is at the boundary.  A reranker drawing SNOMED-finding 4/5 vs LOINC
+1/5 at temperature 0 produced exactly that flip on the same candidate pool in the
+same session.  Control and baseline then agreed to ±0.001 — not stability, the
+same face of the coin.  Six independent draws (or six trials in the same run) are
+needed before the direction of a sub-floor delta can be claimed.
+
+Reference: ``docs/wiki/content/retrieval-preference-scale.md`` (±0.02 floor, 4/5
+vs 1/5 coin-flip); ``docs/wiki/content/records/plan-045.md``.
+"""
+
+
+def delta_verdict(delta: float, n_draws: int = 1) -> str:
+    """Classify a macro delta as a directional quality claim, or refuse it.
+
+    :param delta: Signed delta; positive means the new arm improved.
+    :param n_draws: Independent pipeline draws (remaps) that produced the two arms.
+        A single-draw comparison is the default and the most dangerous case.
+    :returns:
+        ``"improved"`` or ``"regressed"`` when ``|delta| >= MACRO_RESOLUTION_FLOOR``.
+        ``"below floor"`` when below the floor but ``n_draws >= 6`` (number may still
+        be reported, but the floor label must accompany it).
+        ``"unresolved"`` when below the floor *and* ``n_draws < 6`` — the harness must
+        refuse to let this appear as a quality improvement or regression.
+
+    >>> delta_verdict(0.019, n_draws=1)
+    'unresolved'
+    >>> delta_verdict(-0.019, n_draws=1)
+    'unresolved'
+    >>> delta_verdict(0.021, n_draws=1)
+    'improved'
+    >>> delta_verdict(-0.021, n_draws=1)
+    'regressed'
+    >>> delta_verdict(0.008, n_draws=6)
+    'below floor'
+    """
+    if abs(delta) >= MACRO_RESOLUTION_FLOOR:
+        return "improved" if delta > 0 else "regressed"
+    if n_draws >= 6:
+        return "below floor"
+    return "unresolved"
+
+
 # Gold treatment arm <-> the single generated study cohort. The generated
 # pipeline emits one cohort per study; each one's PrimaryCriteria DrugEra was
 # checked to anchor on the study drug (apixaban / linagliptin / empagliflozin /

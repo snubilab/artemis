@@ -25,6 +25,13 @@ import sys
 from pathlib import Path
 
 ARTEMIS_DIR = Path(__file__).resolve().parent.parent
+if str(ARTEMIS_DIR) not in sys.path:
+    sys.path.insert(0, str(ARTEMIS_DIR))
+
+from scripts.conceptset_overlap_eval import (  # noqa: E402
+    MACRO_RESOLUTION_FLOOR,
+    delta_verdict,
+)
 # Vendored, not read from ~/.claude/skills/. The skill's copy is outside both repos and
 # changed under this script once already (it grew a `litdata` pane the script does not
 # fill), so a rebuild was not reproducible and would have shipped the template's demo
@@ -93,8 +100,27 @@ def build_rows(a: dict, b: dict) -> list[dict]:
     return rows
 
 
-def build_units(a: dict, b: dict) -> list[dict]:
-    """One card per trial. Status says whether the arms differ at all for that trial."""
+def _format_delta_claim(delta: float, n_draws: int = 1) -> str:
+    """Format a macro delta annotated with its resolution verdict.
+
+    A single-draw |Δmacro| < 0.02 cannot be a quality claim (plan-045).  The
+    verdict label is appended so the reader cannot miss the resolution status.
+    """
+    verdict = delta_verdict(delta, n_draws=n_draws)
+    if verdict == "unresolved":
+        return f"{delta:+.3f} — 미해상 (단일 추출, ±{MACRO_RESOLUTION_FLOOR:.2f} 해상 한계 미달)"
+    if verdict == "below floor":
+        return f"{delta:+.3f} — 한계 미달 (±{MACRO_RESOLUTION_FLOOR:.2f} 해상 한계)"
+    return f"{delta:+.3f}"
+
+
+def build_units(a: dict, b: dict, n_draws: int = 1) -> list[dict]:
+    """One card per trial. Status says whether the arms differ at all for that trial.
+
+    :param n_draws: Number of independent pipeline draws (remaps) that produced
+        the two arms.  Defaults to 1 (single draw).  A single-draw |Δmacro| < 0.02
+        is labeled unresolved rather than improved/regressed — see plan-045.
+    """
     ta = {t["trial"]: t for t in a["trials"]}
     tb = {t["trial"]: t for t in b["trials"]}
     pa, pb = _pairs(a), _pairs(b)
@@ -113,8 +139,9 @@ def build_units(a: dict, b: dict) -> list[dict]:
         oos = t["out_of_scope_gold"]["sets"]
 
         if moved:
+            rec_delta_str = _format_delta_claim(ra - rb, n_draws=n_draws)
             status, verdict = "partial", (
-                f"**recall {rb:.3f} → {ra:.3f}** ({ra - rb:+.3f}), precision {qb:.3f} → {qa:.3f}. "
+                f"**recall {rb:.3f} → {ra:.3f}** ({rec_delta_str}), precision {qb:.3f} → {qa:.3f}. "
                 f"{len(real)}건의 구별되는 수정"
                 + (f". gold 자체의 중복 {len(dup)}쌍이 같은 수정을 다시 센다." if dup else ".")
             )

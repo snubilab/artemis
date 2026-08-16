@@ -14,8 +14,10 @@ import pytest
 
 from scripts.conceptset_overlap_eval import (
     DEFAULT_THRESHOLDS,
+    MACRO_RESOLUTION_FLOOR,
     ResolvedSet,
     build_report,
+    delta_verdict,
     micro_totals,
     name_similarity,
     normalize_set_name,
@@ -318,3 +320,61 @@ def test_should_record_mode_in_report_output():
 def test_should_reject_unknown_mode_when_resolving_a_cohort():
     with pytest.raises(ValueError):
         resolve_cohort_sets(_cohort(), mode="approximate", lookup=None)
+
+
+# --------------------------------------------------------------------------
+# plan-045: delta resolution floor
+# --------------------------------------------------------------------------
+
+def test_single_draw_delta_below_floor_is_unresolved():
+    """A single-draw |Δmacro| < 0.02 must not be printed as a quality claim.
+
+    Motivation (plan-045): the reranker picked SNOMED-finding 4/5 vs LOINC 1/5
+    at temperature 0 on the same candidate pool.  Control and baseline then agreed
+    ±0.001 — not stability, the same face of the coin.  The two wrong attributions
+    that followed came from reading this as a settled result.
+    """
+    assert delta_verdict(0.019, n_draws=1) == "unresolved"
+    assert delta_verdict(-0.019, n_draws=1) == "unresolved"
+    assert delta_verdict(0.0, n_draws=1) == "unresolved"
+    # exact floor value — at the boundary counts as a claim
+    assert delta_verdict(MACRO_RESOLUTION_FLOOR, n_draws=1) != "unresolved"
+    assert delta_verdict(-MACRO_RESOLUTION_FLOOR, n_draws=1) != "unresolved"
+
+
+def test_single_draw_delta_at_or_above_floor_is_a_directional_claim():
+    assert delta_verdict(0.02, n_draws=1) == "improved"
+    assert delta_verdict(-0.02, n_draws=1) == "regressed"
+    assert delta_verdict(0.5, n_draws=1) == "improved"
+    assert delta_verdict(-0.5, n_draws=1) == "regressed"
+
+
+def test_six_draws_below_floor_is_labeled_below_floor_not_unresolved():
+    """Six draws may still report the number, but the floor label must accompany it."""
+    verdict = delta_verdict(0.008, n_draws=6)
+    assert verdict == "below floor"
+    assert verdict != "unresolved"
+    assert verdict != "improved"
+
+
+def test_six_draws_at_or_above_floor_is_still_a_directional_claim():
+    assert delta_verdict(0.03, n_draws=6) == "improved"
+    assert delta_verdict(-0.03, n_draws=6) == "regressed"
+
+
+def test_the_coin_flip_case_that_caused_two_wrong_attributions():
+    """The +0.008 six-trial recall result from retrieval-preference-scale.md.
+
+    That delta sat under the ±0.02 floor, so recall did not move.  The harness
+    must refuse to label it 'improved', whether from a single draw or six draws.
+    """
+    assert delta_verdict(0.008, n_draws=1) == "unresolved"
+    assert delta_verdict(0.008, n_draws=6) == "below floor"
+    # Neither outcome is 'improved' — the delta is not a quality claim
+    assert delta_verdict(0.008, n_draws=1) not in ("improved", "regressed")
+    assert delta_verdict(0.008, n_draws=6) not in ("improved", "regressed")
+
+
+def test_delta_verdict_floor_constant_matches_documented_value():
+    """The floor is pinned at 0.02 and must not drift silently."""
+    assert MACRO_RESOLUTION_FLOOR == 0.02
