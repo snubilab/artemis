@@ -12,7 +12,8 @@ Next steps 6건을 처리한 세션. 1번을 직접 조사하고, 나머지 2~6�
 
 ## Current state
 
-- 브랜치 `fix/tte-a-drug-anchored-entry` · HEAD `72ecd87` · **PR 없음** (`git remote` 없음)
+- 브랜치 `fix/tte-a-drug-anchored-entry` · HEAD `90ccdb2` · **PR 없음** (`git remote` 없음)
+  — 이 문서를 커밋하면 HEAD는 그 커밋으로 한 칸 더 간다
 - 작업 트리 **깨끗** (uncommitted 0). 루트 저장소도 깨끗 (`main`, `5ef3fd1`)
 - 테스트: **100 failed / 2142 passed / 10 skipped** — 실패 100건은 세션 시작 시점과
   동일, 회귀 0. 늘어난 통과분(2118 → 2142)은 전부 이번 세션 신규 테스트
@@ -48,6 +49,8 @@ Next steps 6건을 처리한 세션. 1번을 직접 조사하고, 나머지 2~6�
 | `df4ba0a` | **대시보드 silent fallback** + 템플릿 고정 + 데모데이터 게이트 |
 | `7aa017c` | **`_VOCAB_PREFERENCE` 사문 항목 삭제** + 발화 불가능 테스트 교체 |
 | `72ecd87` | **채점기 어휘 버전 정규화** (폐기개념 → 표준 대체) |
+| `449a17a` `3f030ed` | 이 핸드오프 + 자기검증 정정(vLLM 상태·줄번호 2건) |
+| `90ccdb2` | **ruff 설치** + 신규 파일 E501 2건 수정 + `[tool.ruff.lint]` 이관 |
 
 ## Key decisions & why
 
@@ -119,6 +122,20 @@ seed 418개(`sourceText or description` 기준) 중 브릿지로 새로 풀리�
 `_criterionMappingMetadata[*].queryUsed`와 entry drug concept set이 염 표목
 (`Quetiapine Fumarate`)이 아니라 성분(`quetiapine`)으로 나오는지.
 
+### 게이트가 막는다고 읽은 것이 막지 않았다
+
+세션 내내 `ruff`를 안 돌렸다. `tests/test_environment_matches_requirements.py`가
+`requirements.txt` 일치를 강제하니 설치하면 안 된다고 판단했기 때문이다. **틀렸다.**
+그 게이트는 `requirements.txt`에 **선언된** 패키지만 순회하며 버전을 확인하고,
+"선언 안 된 패키지가 있으면 안 된다"는 단언이 없다. 설치 후 게이트를 다시 돌려 확인했다
+(7 passed).
+
+docstring이 "requirements.txt는 단일 진실 원천"이라고 강하게 말하길래 읽지 않고 확장
+해석한 것이다. **강한 문구를 만나면 그 문구가 아니라 코드가 무엇을 검사하는지를 볼 것.**
+
+실제 손해는 작았다 — 신규 파일 지적이 E501 2건뿐이었다. 나머지 지적은 전부 편집 전부터
+있던 것이고, 추측이 아니라 편집 전 리비전에 ruff를 다시 돌리고 `git blame`으로 확인했다.
+
 ### `Device` 선호는 지우지 않았다
 
 에이전트는 "스토어에 Device 도메인 기준이 0개니 지워도 된다"고 했다. 그러나
@@ -131,13 +148,39 @@ seed 418개(`sourceText or description` 기준) 중 브릿지로 새로 풀리�
 | 항목 | 핸드오프의 진단 | 실측 |
 | --- | --- | --- |
 | 2 `_VOCAB_PREFERENCE` | "567개 전체 측정 필요" | 도달 범위가 1/3. Measurement 30개 중 10개가 top-3를 바꾸고 채점 쌍에 드는 건 4개 |
-| 3 무기록 드롭 39/9 | "30건이 무기록" | 39도 30도 **어떤 정의로도 재현 불가**. 진짜 수는 **73** (demographic-no-rule 12 + isGroupLabel 61) |
+| 3 무기록 드롭 39/9 | "30건이 무기록" | 39도 30도 **어떤 정의로도 재현 불가**. 진짜 수는 ~~73~~ → **82** (아래 정정) |
 | 4 반복 누락 4종 | "체계적, 규칙 하나로 회수" | 귀무분포 셔플 2000회: 기대 19.10±2.35, 관측 21, **p=0.276** — 기저율이다 |
 | 5 원문 폐기 | "원문형 5/5 vs 맨 약어 0/5" | `eGFR < 60 (Cockcroft-Gault)`는 **이미 스토어에 있는 `description`**이지 버려지는 원문이 아니다. 진짜 프로토콜 문장은 **0/5** |
 | 6 대시보드 staleness | "채점기 반영 필요" | staleness 델타는 분모 아티팩트. arm A−B 격차는 두 채점기에서 **소수점 4자리까지 동일** |
 
 항목 5의 대안이던 "`description`을 seed로"는 공식 채점기로 재니 매크로 recall
 **0.3876 → 0.3171 (−0.0705)**. 하면 손해다.
+
+### 정정 — 항목 3의 "73"도 재현되지 않는다 (후속 세션 2026-08-16, `1f811b9`)
+
+이 문서가 39와 30을 재현 불가로 판정하고 내놓은 **73 역시 재현되지 않는다.** 73은
+`isGroupLabel` 61(`tmp/mesh_fix`)과 demographic-no-rule 12(`tmp/tte`)를 더한 값인데,
+`tmp/tte`의 `isGroupLabel`은 56이라 두 항이 같은 스토어에서 나올 수 없다. 이 문서가
+Gotchas에 직접 적어둔 함정(두 스토어는 criterion id가 안 맞는다)을 그 수치에서 밟았다.
+
+`tmp/mesh_fix/studies.json` 단일 스토어, criterion 653개 기준 실측:
+
+| 경로 | 건수 |
+| --- | ---: |
+| `isGroupLabel` (inc 27 + exc 34) | 61 |
+| demographic-no-rule (inclusion) | 13 |
+| **exclusion-demographic** | **8** |
+| **합계** | **82** |
+
+드롭 경로가 3종이 아니라 **4종**이었다. exclusion 인구통계는 `_build_demographic_rule`을
+**호출조차 하지 않고** 버려지므로(`tte_service.py`, exclusion 루프의 첫 분기) 어떤 집계에도
+없었다. 내용은 `Nursing or pregnant`, `Pre-menopausal women` 같은 **실제 제외 기준**이고,
+제외를 잃으면 코호트가 프로토콜보다 넓어진다 — `_unmappedCriteria`가 막으려던 바로 그
+실패인데 매퍼 이전 단계라 구조적으로 못 본다.
+
+손으로 셀 때마다 답이 달랐던 이유도 여기서 나온다: 4건이 인구통계이면서 동시에
+`isGroupLabel`이라, 어느 통에 넣을지가 **분기 순서**로 결정되지 사람의 정의로 결정되지
+않는다. 그래서 `_skippedCriteria`는 `reason`과 함께 `isGroupLabel`을 같이 싣는다.
 
 ## 측정
 
@@ -159,9 +202,16 @@ seed 418개(`sourceText or description` 기준) 중 브릿지로 새로 풀리�
    CAROLINA excl 9)과 충돌할 수 있다. **사용자가 이번 세션에서 보류하기로 결정.**
 2. **`substance abuse`는 생성이 없다.** 5개 시험 전부 `no_counterpart` — 채점기가 아니라
    추출/매핑 문제. 채점기를 다시 손대지 말 것.
-3. **항목 3 계측** — `_skippedCriteria` + `_generationCensus`를
-   `_build_seeded_target_circe`에 추가해 73건을 세게 만들기. `_unmappedCriteria`는 건드리지
-   말 것(`tests/test_unmapped_criteria_are_recorded.py`가 길이를 고정).
+3. ~~**항목 3 계측**~~ — **완료** (`1f811b9`, 2026-08-16). `_skippedCriteria` +
+   `_generationCensus`가 `_build_seeded_target_circe`에서 나온다. `_unmappedCriteria`는
+   건드리지 않았다. 게이트는 리스트가 아니라 반환되는 항등식
+   `total == mapped + unmapped + demographicRules + skipped`이고, 기록 없는 `continue`가
+   하나 더 생기면 `test_should_balance_the_census_when_every_drop_shape_is_present`가 깨진다.
+   스토어 10개 시험 전부에서 성립 확인. 신규 테스트 10건, 전체 100 F / 2152 P / 10 S (회귀 0).
+   **남은 것: exclusion-demographic 8건은 기록만 됐고 여전히 버려진다.** 고치려면 exclusion
+   분기에서도 `_build_demographic_rule`을 부르고, 제외쪽 `DemographicCriteriaList`를 CIRCE에
+   어떻게 넣을지 설계해야 한다(`_build_grouped_inclusion_rule`은 inclusion 전제). 코호트
+   인원이 실제로 바뀌므로 재생성 + 재채점이 따라온다.
 4. **프로덕션 반영 결정** — `artemis-api`가 옛 `tte_service.py`를 들고 있다.
    재생성은 하지 않기로 했으므로(위 참조) 이건 배포 타이밍 문제이지 검증 문제가 아니다.
 5. **항목 5는 닫혔다.** 굳이 하려면 원문을 아무도 안 읽는 새 키(`protocolText`)로 저장만
@@ -188,6 +238,13 @@ cd /home/bilab/work/projects/Broadsea/artemis
 # alias tier 거부 분해 (읽기 전용, DB 필요)
 .venv/bin/python scripts/analyze_alias_tier_refusals.py
 # 기대: sponsor-silent 94 / accepts 9 / no-resolve 84 / ambiguous 1 / 브릿지 7건 회수
+
+# 린트 — 변경한 파일만
+.venv/bin/ruff check <changed files>
+# 이번 세션 신규 파일은 clean:
+.venv/bin/ruff check scripts/analyze_alias_tier_refusals.py \
+  tests/test_alias_tier_refusal_analysis.py tests/test_ingredient_name_bridges.py \
+  tests/test_retired_concept_forwarding.py src/services/conceptset_closure.py
 ```
 
 **브릿지가 실제 어휘에서 먹는지:**
@@ -240,5 +297,11 @@ for s in ('linagliptin','Quetiapine Fumarate','prothrombin complex concentrate',
 - **임베딩 경로는 실행 간 비결정적이다.** 1뽑기로 ±0.02 미만 델타를 주장하지 말 것.
 - **`artemis/tmp/`는 root 소유.** 호스트에서 store를 못 고친다.
 - 이 저장소는 **remote가 없다** — `gh pr` 계열은 쓸 수 없다.
-- `ruff`는 이 `.venv`에 없고 설치하면 안 된다(환경 게이트가 `requirements.txt` 일치를
-  강제). 이번 세션 코드는 린트를 돌리지 못했다.
+- **`ruff`는 설치돼 있다** (`.venv/bin/ruff`, 0.16.3). 설정은 `pyproject.toml`의
+  `[tool.ruff.lint]`. `requirements.txt`에는 **일부러 넣지 않았다** — 그 파일은
+  `Dockerfile.tte-api`가 런타임 이미지를 만드는 소스다. 환경 게이트는 이걸 허용한다:
+  선언된 패키지만 순회하며 버전을 보고, "선언 안 된 패키지 금지" 검사가 없다.
+  세션 중반까지 나는 게이트가 설치를 막는다고 오판해 린트를 건너뛰었다 —
+  게이트의 docstring이 아니라 **코드가 무엇을 검사하는지**를 봐야 했다.
+  변경한 파일만 린트할 것. `tte_service.py`(263건)와
+  `build_conceptset_dashboard.py`(296건)는 누적 기존분이고 청소는 별건이다.
