@@ -334,6 +334,95 @@ class ConceptLogician:
         """
         return self.roll_up_to_rxnorm_ingredients([concept_id])
 
+    def drop_wrong_entity_class_for_condition(self, concept_ids: List[int]) -> List[int]:
+        """Remove LOINC Survey/Question and Procedure concepts from a Condition-domain selection.
+
+        A Condition criterion records a clinical event a patient has experienced.
+        Two concept classes slip through because their names overlap the criterion text:
+
+        1. LOINC Survey/Question (concept_class_id IN ('Survey', 'Question')):
+           These are questionnaire instruments — "History of stroke [USAUDIT]" — not
+           the clinical event. The reranker says query_has_match=true because the name
+           contains the condition term; the modifier framing ('History of') caused the
+           match, not the condition itself. Plan-044 example: 'History of stroke' mapped
+           to a LOINC Survey concept.
+
+        2. Procedure domain (domain_id = 'Procedure'):
+           A procedure for a condition is not the condition. 'Atrial fibrillation
+           ablation' (catheter ablation) is a Procedure; gold 'Atrial fibrillation and
+           flutter' is a Condition. The shared 'atrial fibrillation' substring is the
+           modifier that fooled the gate. Plan-044 example.
+
+        Caller MUST gate this on the Condition domain. The Survey filter would drop
+        valid questionnaire concepts in Observation criteria; the Procedure filter is
+        inapplicable to Procedure-domain criteria. See drop_qualitative_findings for
+        the Measurement-domain analog.
+
+        Args:
+            concept_ids: Selected concept IDs for a Condition-domain criterion.
+
+        Returns:
+            The same IDs in order, minus wrong-entity members. Returns [] when every
+            member is a wrong-entity concept — the caller falls through to the RAG
+            fallback so the miss is recorded, not silently kept with the wrong entity.
+            Returns the input unchanged when the database is unreachable (fail-open on
+            connectivity; do NOT fail-open when the lookup ran and all are wrong).
+        """
+        if not concept_ids:
+            return []
+
+        deduped = self._dedupe_preserve_order(concept_ids)
+        if not _check_db():
+            return deduped
+
+        try:
+            from sqlalchemy import text
+            from src.utils.db import get_db
+
+            wrong_entity_query = text(f"""
+                SELECT concept_id
+                FROM {self.schema}.concept
+                WHERE concept_id = ANY(:cids)
+                  AND (
+                    concept_class_id IN ('Survey', 'Question')
+                    OR domain_id = 'Procedure'
+                  )
+                  AND invalid_reason IS NULL
+            """)
+            with next(get_db()) as db:
+                rows = db.execute(wrong_entity_query, {"cids": deduped}).fetchall()
+            wrong_entity_ids = {row[0] for row in rows}
+        except Exception as exc:
+            logger.debug("[Logician] Wrong-entity class lookup failed: %s", exc)
+            return deduped
+
+        if not wrong_entity_ids:
+            return deduped
+
+        kept = [cid for cid in deduped if cid not in wrong_entity_ids]
+        if not kept:
+            # All selected concepts are wrong entity type (e.g. sole LOINC Survey for
+            # 'History of stroke', sole Procedure for 'AF ablation').  Keeping them
+            # satisfies the empty-list concern but violates intent: the reranker picked
+            # the wrong entity, not no entity.  Return [] so the caller (via
+            # _recommend_seeded_concept_set) falls through to the RAG fallback and,
+            # if that also fails, the criterion is recorded in _unmappedCriteria via
+            # the existing exception-handling path.  Plan-044 sole-map fix.
+            logger.info(
+                "[Logician] All %d Condition concept(s) are wrong-entity class "
+                "(Survey/Question or Procedure) — dropping entire set to avoid intent "
+                "violation: %s",
+                len(deduped), sorted(deduped),
+            )
+            return []
+
+        logger.info(
+            "[Logician] Dropped %d wrong-entity concept(s) from a Condition set "
+            "(Survey/Question class or Procedure domain): %s",
+            len(wrong_entity_ids), sorted(wrong_entity_ids),
+        )
+        return kept
+
     def prune_empty_concepts(self, concept_ids: List[int]) -> List[int]:
         """
         Filters out concepts not present in patient data tables.

@@ -532,6 +532,15 @@ class Agent2Workflow:
             # the Condition domain.
             if domain_hint == "Measurement":
                 concept_ids = logician.drop_qualitative_findings(concept_ids)
+            # The Condition counterpart: LOINC Survey/Question class concepts and
+            # Procedure-domain concepts are wrong entity types for Condition criteria.
+            # The reranker says query_has_match=true because the concept name shares
+            # a substring with the criterion — the modifier match ("History of",
+            # "ablation") passes the gate while the entity type is wrong.
+            # Plan-044: 'History of stroke' → LOINC Survey; 'Atrial fibrillation
+            # and flutter' → 'Atrial fibrillation ablation' (Procedure).
+            if domain_hint == "Condition":
+                concept_ids = logician.drop_wrong_entity_class_for_condition(concept_ids)
             result.critic_skipped = critic_skipped
             # Persist KG cache after single-query processing
             try:
