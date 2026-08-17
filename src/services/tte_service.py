@@ -4389,7 +4389,9 @@ class TTEService:
             group_type: CIRCE group type string, e.g. "ALL" or "ANY".
             rule_name: Display name for the inclusion rule.
             non_demo_members: List of (criterion, result) tuples for non-demographic criteria.
-            demo_members: List of (criterion, demo_rule) tuples for demographic criteria.
+            demo_members: List of (criterion, demo_rule, role) tuples for demographic criteria,
+                role being "inclusion" or "exclusion" (unused for Groups[] geometry -- the
+                DemographicCriteriaList entry already carries the possibly-inverted Op).
 
         Returns:
             A CIRCE InclusionRule dict ready to append to InclusionRules.
@@ -4402,7 +4404,7 @@ class TTEService:
                 "DemographicCriteriaList": [],
                 "Groups": [],
             })
-        for _crit, demo_rule in demo_members:
+        for _crit, demo_rule, _role in demo_members:
             groups.append({
                 "Type": "ALL",
                 "CriteriaList": [],
@@ -4465,9 +4467,11 @@ class TTEService:
 
         # Collect non-demographic criteria for parallel mapping
         mappable_items: list[tuple[dict[str, Any], bool]] = []  # (criterion, exclusion)
-        # Demographics split into ungrouped (separate rules) vs grouped (merged with siblings)
-        ungrouped_demographic_rules: list[tuple[int, dict[str, Any]]] = []  # (order, rule)
-        grouped_demographics: list[tuple[int, dict[str, Any], dict[str, Any]]] = []  # (order, criterion, rule)
+        # Demographics split into ungrouped (separate rules) vs grouped (merged with siblings).
+        # `role` carries "inclusion"/"exclusion" so the (possibly inverted) rule is attached
+        # under its own criterion's mapping key rather than a hardcoded "inclusion".
+        ungrouped_demographic_rules: list[tuple[int, dict[str, Any], dict[str, Any], str]] = []  # (order, criterion, rule, role)
+        grouped_demographics: list[tuple[int, dict[str, Any], dict[str, Any], str]] = []  # (order, criterion, rule, role)
 
         inc_criteria = eligibility.get("inclusionCriteria") or []
         exc_criteria = eligibility.get("exclusionCriteria") or []
@@ -4502,9 +4506,9 @@ class TTEService:
                 if demo:
                     gid = criterion.get("groupId")
                     if gid is None:
-                        ungrouped_demographic_rules.append((order, demo))
+                        ungrouped_demographic_rules.append((order, criterion, demo, "inclusion"))
                     else:
-                        grouped_demographics.append((order, criterion, demo))
+                        grouped_demographics.append((order, criterion, demo, "inclusion"))
                 else:
                     _record_skip(criterion, "inclusion", "demographic-no-rule")
                 order += 1
@@ -4519,11 +4523,25 @@ class TTEService:
         for criterion in exc_criteria:
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
-                # Discarded without asking `_build_demographic_rule` whether it could
-                # have been built, so the record is unconditional. On the scored store
-                # these are lines like "Nursing or pregnant" -- exclusions whose loss
-                # widens the cohort past the protocol.
-                _record_skip(criterion, "exclusion", "exclusion-demographic")
+                # Give `_build_demographic_rule` the same chance the inclusion loop
+                # gives it (with the operator inverted for exclusion semantics) before
+                # discarding. `eq` has no single-op inversion in CIRCE's Age/NumericRange
+                # Op enum, so it is checked here and recorded under its own reason
+                # rather than falling through to the generic "demographic-no-rule".
+                vc = criterion.get("valueConstraint")
+                op = (vc.get("op") or "").strip().lower() if vc else None
+                if op == "eq":
+                    _record_skip(criterion, "exclusion", "exclusion-demographic-eq-unsupported")
+                else:
+                    demo = self._build_demographic_rule(criterion, exclusion=True)
+                    if demo:
+                        gid = criterion.get("groupId")
+                        if gid is None:
+                            ungrouped_demographic_rules.append((order, criterion, demo, "exclusion"))
+                        else:
+                            grouped_demographics.append((order, criterion, demo, "exclusion"))
+                    else:
+                        _record_skip(criterion, "exclusion", "demographic-no-rule")
                 order += 1
                 continue
             if criterion.get("isGroupLabel"):
@@ -4733,24 +4751,22 @@ class TTEService:
         # Track rule index → criterion IDs mapping for frontend lookups
         rule_criterion_keys: list[list[str]] = []
 
-        # Add ungrouped demographic rules first (in original order among inclusions)
-        ungrouped_demo_idx = 0
-        for criterion in inc_criteria:
-            domain = (criterion.get("domain") or "").strip()
-            if domain in DEMOGRAPHIC_DOMAINS and criterion.get("groupId") is None:
-                if ungrouped_demo_idx < len(ungrouped_demographic_rules):
-                    inclusion_rules.append(ungrouped_demographic_rules[ungrouped_demo_idx][1])
-                    rule_criterion_keys.append([
-                        self._criterion_mapping_key("inclusion", criterion.get("id"))
-                    ])
-                    ungrouped_demo_idx += 1
+        # Add ungrouped demographic rules first, in original order (inclusion and
+        # exclusion origins alike). Iterates the carried tuples directly rather than
+        # re-walking inc_criteria, which cannot see exclusion-origin demographic rules
+        # and depended on lockstep ordering against `ungrouped_demographic_rules`.
+        for _order, criterion, demo_rule, role in sorted(ungrouped_demographic_rules, key=lambda t: t[0]):
+            inclusion_rules.append(demo_rule)
+            rule_criterion_keys.append([
+                self._criterion_mapping_key(role, criterion.get("id"))
+            ])
 
         # Index grouped demographics by groupId for merging below
         from collections import OrderedDict
-        grouped_demo_by_gid: OrderedDict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = OrderedDict()
-        for _order, crit, demo_rule in grouped_demographics:
+        grouped_demo_by_gid: OrderedDict[str, list[tuple[dict[str, Any], dict[str, Any], str]]] = OrderedDict()
+        for _order, crit, demo_rule, role in grouped_demographics:
             gid = crit["groupId"]
-            grouped_demo_by_gid.setdefault(gid, []).append((crit, demo_rule))
+            grouped_demo_by_gid.setdefault(gid, []).append((crit, demo_rule, role))
 
         # Group non-demographic criteria by groupId, then build rules
         grouped: OrderedDict[str | None, list[tuple[dict[str, Any], dict[str, Any] | None, str]]] = OrderedDict()
@@ -4779,7 +4795,7 @@ class TTEService:
                 d = c.get("description", "")
                 if d:
                     all_descriptions.append(d)
-            for c, _r in demo_members:
+            for c, _r, _role in demo_members:
                 d = c.get("description", "")
                 if d:
                     all_descriptions.append(d)
@@ -4798,8 +4814,8 @@ class TTEService:
                 for c, _r, role in successful
             ]
             group_crit_keys += [
-                self._criterion_mapping_key("inclusion", c.get("id"))
-                for c, _r in demo_members
+                self._criterion_mapping_key(role, c.get("id"))
+                for c, _r, role in demo_members
             ]
             rule_criterion_keys.append(group_crit_keys)
 
@@ -4808,15 +4824,15 @@ class TTEService:
             if not demo_members:
                 continue
             group_type = demo_members[0][0].get("groupType", "ALL")
-            descriptions = [c.get("description", "") for c, _r in demo_members if c.get("description")]
+            descriptions = [c.get("description", "") for c, _r, _role in demo_members if c.get("description")]
             group_label = descriptions[0] if len(descriptions) == 1 else " + ".join(descriptions)
 
             inclusion_rules.append(
                 self._build_grouped_inclusion_rule(group_type, group_label, [], demo_members)
             )
             rule_criterion_keys.append([
-                self._criterion_mapping_key("inclusion", c.get("id"))
-                for c, _r in demo_members
+                self._criterion_mapping_key(role, c.get("id"))
+                for c, _r, role in demo_members
             ])
 
         # Build rule-index-keyed metadata for frontend consumption
@@ -5841,9 +5857,18 @@ class TTEService:
         _patch_expression(rule.get("expression", {}))
 
     def _build_demographic_rule(
-        self, criterion: dict[str, Any]
+        self, criterion: dict[str, Any], exclusion: bool = False
     ) -> dict[str, Any] | None:
-        """Build a CIRCE inclusion rule with DemographicCriteriaList for age constraints."""
+        """Build a CIRCE inclusion rule with DemographicCriteriaList for age constraints.
+
+        `exclusion=True` inverts the operator (gt<->lte, gte<->lt) so the resulting
+        rule expresses "not in the excluded range" -- DemographicCriteriaList has no
+        Occurrence axis to flip the way CriteriaList exclusions do, so the inversion
+        has to happen on the operator itself. `eq` has no single-op inversion in
+        CIRCE's Age/NumericRange Op enum, so an exclusion with `op == "eq"` yields
+        no rule; the caller is expected to pre-check `op == "eq"` and record a
+        distinct skip reason rather than relying on this returning None.
+        """
         vc = criterion.get("valueConstraint")
         if not vc or vc.get("value") is None:
             return None
@@ -5854,6 +5879,12 @@ class TTEService:
         circe_op = op_map.get(op)
         if not circe_op:
             return None
+
+        if exclusion:
+            exclusion_inversion = {"gt": "lte", "gte": "lt", "lt": "gte", "lte": "gt"}
+            circe_op = exclusion_inversion.get(circe_op)
+            if not circe_op:
+                return None
 
         label = (
             criterion.get("description")

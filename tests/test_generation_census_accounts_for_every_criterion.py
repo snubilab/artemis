@@ -160,12 +160,12 @@ class TestSkippedCriteriaAreRecorded:
         assert circe["_skippedCriteria"] == []
         assert circe["_generationCensus"]["demographicRules"] == 1
 
-    def test_should_record_the_exclusion_demographic_that_never_reaches_the_mapper(self, service):
-        """The path with no `_build_demographic_rule` call at all.
+    def test_should_record_the_exclusion_demographic_eq_as_unsupported(self, service):
+        """`eq` has no single-op inversion in CIRCE's Age/NumericRange Op enum.
 
-        A buildable constraint is used deliberately: the criterion is discarded before
-        anything asks whether it could have been built, so the record must appear even
-        when the drop was avoidable.
+        Every other op (gt/gte/lt/lte) is now buildable under exclusion via operator
+        inversion; `eq` is the one legitimately unsupported case, and must be recorded
+        under its own reason rather than the generic "demographic-no-rule".
         """
         circe = service._build_seeded_target_circe(
             _eligibility(
@@ -174,7 +174,7 @@ class TestSkippedCriteriaAreRecorded:
                         "id": "exc-preg",
                         "domain": "Demographics",
                         "sourceText": "Nursing or pregnant",
-                        "valueConstraint": {"op": "lt", "value": 55},
+                        "valueConstraint": {"op": "eq", "value": 1},
                     }
                 ],
             )
@@ -183,8 +183,30 @@ class TestSkippedCriteriaAreRecorded:
         assert len(skipped) == 1
         assert skipped[0]["criterionId"] == "exc-preg"
         assert skipped[0]["role"] == "exclusion"
-        assert skipped[0]["reason"] == "exclusion-demographic"
+        assert skipped[0]["reason"] == "exclusion-demographic-eq-unsupported"
         assert "Nursing or pregnant" in skipped[0]["label"]
+
+    def test_should_build_the_exclusion_demographic_when_a_rule_can_be_built(self, service):
+        """The exclusion loop must give `_build_demographic_rule` the same chance
+        the inclusion loop gives it, instead of discarding unconditionally.
+
+        A buildable op ("gt") with a valueConstraint must produce a demographic
+        rule and must NOT be recorded as skipped.
+        """
+        circe = service._build_seeded_target_circe(
+            _eligibility(
+                exclusion=[
+                    {
+                        "id": "exc-age",
+                        "domain": "Demographics",
+                        "description": "Age > 65",
+                        "valueConstraint": {"op": "gt", "value": 65},
+                    }
+                ],
+            )
+        )
+        assert circe["_skippedCriteria"] == []
+        assert circe["_generationCensus"]["demographicRules"] == 1
 
     def test_should_classify_by_branch_order_when_a_criterion_is_both_shapes(self, service):
         """Demographic wins over `isGroupLabel` because its branch runs first.
@@ -229,7 +251,8 @@ class TestGenerationCensusBalances:
         """The gate. A new silent `continue` breaks this identity.
 
         One of each: mapped, unmapped (mapper raises), demographic rule, demographic
-        with no rule, inclusion group label, exclusion group label, exclusion demographic.
+        with no rule, inclusion group label, exclusion group label, exclusion
+        demographic with the unsupported "eq" op.
         """
         circe = service._build_seeded_target_circe(
             _eligibility(
@@ -258,7 +281,12 @@ class TestGenerationCensusBalances:
                         "sourceText": "Renal group",
                         "isGroupLabel": True,
                     },
-                    {"id": "e3", "domain": "Demographics", "sourceText": "Pre-menopausal women"},
+                    {
+                        "id": "e3",
+                        "domain": "Demographics",
+                        "sourceText": "Pre-menopausal women",
+                        "valueConstraint": {"op": "eq", "value": 1},
+                    },
                 ],
             )
         )
@@ -291,7 +319,12 @@ class TestGenerationCensusBalances:
                         "sourceText": "Renal group",
                         "isGroupLabel": True,
                     },
-                    {"id": "e3", "domain": "Demographics", "sourceText": "Pre-menopausal women"},
+                    {
+                        "id": "e3",
+                        "domain": "Demographics",
+                        "sourceText": "Pre-menopausal women",
+                        "valueConstraint": {"op": "eq", "value": 1},
+                    },
                 ],
             )
         )
@@ -299,7 +332,7 @@ class TestGenerationCensusBalances:
         assert by_reason == {
             "demographic-no-rule": 1,
             "group-label": 2,
-            "exclusion-demographic": 1,
+            "exclusion-demographic-eq-unsupported": 1,
         }
         assert sum(by_reason.values()) == circe["_generationCensus"]["skipped"]
         assert sum(by_reason.values()) == len(circe["_skippedCriteria"])
