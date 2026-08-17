@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from src.api.models.tte import (
     DEMOGRAPHIC_DOMAINS,
+    is_demographic_domain_but_not_a_demographic_rule,
     AnalysisArtifactMeta,
     AnalysisStrategyPayload,
     AnalysisConfidenceInterval,
@@ -3616,7 +3617,13 @@ class TTEService:
         for criterion in criteria:
             enriched = deepcopy(criterion)
             domain = (criterion.get("domain") or "").strip()
-            if domain in DEMOGRAPHIC_DOMAINS or criterion.get("isGroupLabel"):
+            is_group_label = bool(criterion.get("isGroupLabel"))
+            vc = criterion.get("valueConstraint")
+            vc_value = vc.get("value") if isinstance(vc, dict) else None
+            demographic_but_mappable = is_demographic_domain_but_not_a_demographic_rule(
+                domain=domain, is_group_label=is_group_label, value_constraint_value=vc_value,
+            )
+            if is_group_label or (domain in DEMOGRAPHIC_DOMAINS and not demographic_but_mappable):
                 updated.append(enriched)
                 continue
             criterion_id = str(criterion.get("id", ""))
@@ -4532,18 +4539,24 @@ class TTEService:
                 op = (vc.get("op") or "").strip().lower() if vc else None
                 if op == "eq":
                     _record_skip(criterion, "exclusion", "exclusion-demographic-eq-unsupported")
-                else:
-                    demo = self._build_demographic_rule(criterion, exclusion=True)
-                    if demo:
-                        gid = criterion.get("groupId")
-                        if gid is None:
-                            ungrouped_demographic_rules.append((order, criterion, demo, "exclusion"))
-                        else:
-                            grouped_demographics.append((order, criterion, demo, "exclusion"))
+                    order += 1
+                    continue
+                demo = self._build_demographic_rule(criterion, exclusion=True)
+                if demo:
+                    gid = criterion.get("groupId")
+                    if gid is None:
+                        ungrouped_demographic_rules.append((order, criterion, demo, "exclusion"))
                     else:
-                        _record_skip(criterion, "exclusion", "demographic-no-rule")
-                order += 1
-                continue
+                        grouped_demographics.append((order, criterion, demo, "exclusion"))
+                    order += 1
+                    continue
+                # `demo` is None: the domain is demographic but no CIRCE
+                # DemographicCriteriaList rule could be built (no usable
+                # valueConstraint). Group labels are still never directly
+                # mappable, so that carve-out is checked first, below; anything
+                # else falls through to ordinary concept-set mapping exactly
+                # like a non-demographic exclusion criterion would, instead of
+                # being unconditionally discarded as "demographic-no-rule".
             if criterion.get("isGroupLabel"):
                 _record_skip(criterion, "exclusion", "group-label")
                 order += 1
@@ -4715,7 +4728,16 @@ class TTEService:
         for criterion in exc_criteria:
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
-                continue
+                # Mirrors the exclusion loop above exactly (same method, same
+                # inputs) so this pass selects precisely the criteria that
+                # landed in `mappable_items` there -- required for
+                # `mapped_idx` to stay aligned with `mapped_results`.
+                vc = criterion.get("valueConstraint")
+                op = (vc.get("op") or "").strip().lower() if vc else None
+                if op == "eq":
+                    continue
+                if self._build_demographic_rule(criterion, exclusion=True):
+                    continue
             if criterion.get("isGroupLabel"):
                 continue
             if mapped_idx < len(mapped_results):
@@ -5916,7 +5938,15 @@ class TTEService:
             or criterion.get("description")
             or f"{'Exclusion' if exclusion else 'Inclusion'} criterion"
         ).strip()
-        criterion_domain = (criterion.get("domain") or "").strip() or None
+        raw_domain = (criterion.get("domain") or "").strip() or None
+        # A demographic-domain criterion reaching this function (via the exclusion-
+        # loop fallthrough) has no real Age/Gender/etc. rule to build, so its raw
+        # domain is a bogus hint here -- "Demographics" is not a CIRCE occurrence-table
+        # key (see SEEDED_DOMAIN_TO_CRITERIA_TYPE), and passing it through would emit
+        # an invalid "DemographicCriteria" CriteriaList key. Null it so the mapper
+        # infers the real domain (e.g. Observation/Condition) from the concept-set
+        # match itself instead.
+        criterion_domain = None if raw_domain in DEMOGRAPHIC_DOMAINS else raw_domain
         mapped_criterion = self._recommend_seeded_concept_set(
             label,
             expected_domain=criterion_domain,

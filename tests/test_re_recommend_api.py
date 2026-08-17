@@ -6,7 +6,9 @@ Coverage:
 1. test_re_recommend_returns_metadata — mock pipeline, verify 200 with CriterionMappingMetadata
 2. test_re_recommend_study_not_found_returns_404 — get_study raises KeyError → 404
 3. test_re_recommend_criterion_not_found_returns_404 — criterion not in eligibility → 404
-4. test_re_recommend_demographic_criterion_returns_400 — domain in DEMOGRAPHIC_DOMAINS → 400
+4. test_re_recommend_demographic_criterion_without_value_constraint_returns_200 — domain in
+   DEMOGRAPHIC_DOMAINS but no valueConstraint → falls through to mapping, 200 (see the
+   demographic-no-rule fallthrough contract in src/api/models/tte.py)
 5. test_re_recommend_with_hint_builds_correct_query — query includes hint text
 6. test_run_mapping_pipeline_for_query_returns_metadata — unit test on helper (no HTTP)
 7. test_run_mapping_pipeline_for_query_empty_candidates — stage2 returns [] → empty metadata
@@ -171,24 +173,45 @@ class TestReRecommendCriterionNotFound:
 
 
 # ---------------------------------------------------------------------------
-# Test 4: Demographic criterion → 400
+# Test 4: Demographic-domain criterion with no structured valueConstraint
 # ---------------------------------------------------------------------------
+#
+# Contract changed: a criterion whose domain is in DEMOGRAPHIC_DOMAINS but that
+# carries no valueConstraint (so no DemographicCriteriaList rule is buildable)
+# and is not a group label now falls through to the same concept-set mapping
+# path as any other criterion, instead of being hard-blocked with 400. This
+# criterion's own description ("Age >= 18") never had a structured
+# valueConstraint captured for it -- domain="Age" alone does not prove the
+# value was structured -- so it is genuinely unmapped today and is the same
+# shape as the still-dropped exclusion-demographic criteria the fallthrough
+# fix targets. See src/api/models/tte.py's
+# is_demographic_domain_but_not_a_demographic_rule for the shared predicate.
 
 
 @_skip_http
 class TestReRecommendDemographicCriterion:
-    """POST re-recommend returns 400 for demographic (non-mappable) criteria."""
+    """POST re-recommend now maps a demographic-domain criterion that has no
+    structured valueConstraint, instead of hard-blocking it with 400."""
 
-    def test_re_recommend_demographic_criterion_returns_400(self) -> None:
-        # Arrange — domain is "Age" which is in DEMOGRAPHIC_DOMAINS
+    def test_re_recommend_demographic_criterion_without_value_constraint_returns_200(self) -> None:
+        # Arrange — domain is "Age" (in DEMOGRAPHIC_DOMAINS) but no
+        # valueConstraint is present, so no DemographicCriteriaList rule can
+        # be built; per the fallthrough contract this is now mappable.
         study = _make_study_dict(
             criterion_id=3,
             domain="Age",
             description="Age >= 18",
             source_text="Patients at least 18 years old",
         )
+        meta = _make_criterion_mapping_metadata()
         mock_service = MagicMock()
         mock_service.get_study.return_value = study
+        # NOTE: the endpoint calls get_tte_service().run_mapping_pipeline_for_query(...)
+        # (no leading underscore) -- src/api/tte.py:284. Test 1 above mocks the wrong
+        # (underscore-prefixed) attribute name and its assertion silently never
+        # exercises the mocked return value; that is a pre-existing, out-of-scope bug
+        # (reproduces identically on the unmodified baseline), not touched here.
+        mock_service.run_mapping_pipeline_for_query.return_value = meta
 
         client = _create_test_client()
 
@@ -200,8 +223,9 @@ class TestReRecommendDemographicCriterion:
             )
 
         # Assert
-        assert response.status_code == 400
-        assert "demographic" in response.json()["detail"].lower()
+        assert response.status_code == 200
+        data = response.json()
+        assert data["rerankMethod"] == "cross_encoder"
 
 
 # ---------------------------------------------------------------------------

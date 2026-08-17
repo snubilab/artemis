@@ -5378,7 +5378,26 @@ def test_criteria_from_ir_preserves_domain_and_value_constraint(tmp_path):
     assert result[2]["valueConstraint"]["value"] == 7.0
 
 
-def test_process_eligibility_skips_demographics_criteria(monkeypatch, tmp_path):
+def test_process_eligibility_reports_mappable_for_demographic_criterion_without_value_constraint(
+    monkeypatch, tmp_path
+):
+    """Contract changed: Criterion.mappable no longer hard-codes False for every
+    DEMOGRAPHIC_DOMAINS criterion. A criterion with a demographic-looking domain
+    but no structured valueConstraint (so no DemographicCriteriaList rule is
+    buildable) is now reported mappable=True, via the shared predicate
+    is_demographic_domain_but_not_a_demographic_rule (src/api/models/tte.py) --
+    the same fallthrough that lets the real exclusion-side "Pre-menopausal
+    women"/"Nursing or pregnant" criteria reach concept-set mapping instead of
+    being silently dropped.
+
+    Known, disclosed asymmetry: the actual generation loop's fallthrough
+    (_build_seeded_target_circe) is deliberately scoped to the EXCLUSION side
+    only (no real inclusion-side instance existed in the data motivating this
+    fix). So for this INCLUSION criterion, .mappable now reports True while
+    generation still records it as "demographic-no-rule" and drops it -- a
+    real, understood gap, not a bug in this test. Extending the fallthrough to
+    the inclusion loop for symmetry is tracked as separate, out-of-scope work.
+    """
     install_process_eligibility_stub(monkeypatch)
     client = build_client(monkeypatch, tmp_path)
     create_response = client.post(
@@ -5400,7 +5419,7 @@ def test_process_eligibility_skips_demographics_criteria(monkeypatch, tmp_path):
     study = client.get(f"/tte/studies/{create_response.json()['id']}").json()
     inc = study["eligibility"]["inclusionCriteria"]
     assert inc[0]["domain"] == "Demographics"
-    assert inc[0]["mappable"] is False
+    assert inc[0]["mappable"] is True
     assert inc[1]["domain"] == "Condition"
     assert inc[1]["mappable"] is True
 

@@ -176,14 +176,22 @@ async def get_mapping_candidates(study_id: int, criterion_id: int) -> CriterionM
             # Fallback 2: treat criterion_id as rule index (0-based) for legacy
             # artifacts that lack ruleIndexMeta. Build mapping on-the-fly from
             # the study's eligibility criteria.
-            from src.api.models.tte import DEMOGRAPHIC_DOMAINS
+            from src.api.models.tte import DEMOGRAPHIC_DOMAINS, is_demographic_domain_but_not_a_demographic_rule
             study = get_tte_service().get_study(study_id)
             eligibility = (study.get("eligibility") if isinstance(study, dict) else study.eligibility) or {}
             mappable_ids: list[str] = []
             for crit in (eligibility.get("inclusionCriteria") or []) + (eligibility.get("exclusionCriteria") or []):
                 domain = (crit.get("domain") or "").strip()
-                if domain in DEMOGRAPHIC_DOMAINS or crit.get("isGroupLabel"):
+                is_group_label = bool(crit.get("isGroupLabel"))
+                if is_group_label:
                     continue
+                if domain in DEMOGRAPHIC_DOMAINS:
+                    vc = crit.get("valueConstraint")
+                    vc_value = vc.get("value") if isinstance(vc, dict) else None
+                    if not is_demographic_domain_but_not_a_demographic_rule(
+                        domain=domain, is_group_label=is_group_label, value_constraint_value=vc_value,
+                    ):
+                        continue
                 cid = crit.get("id")
                 if cid is not None:
                     mappable_ids.append(str(cid))
@@ -222,7 +230,7 @@ async def re_recommend_criterion(
                Use "inclusion" or "exclusion" when inclusion and exclusion criteria share
                the same ID to avoid ambiguity. Defaults to "any" (inclusion searched first).
     """
-    from src.api.models.tte import DEMOGRAPHIC_DOMAINS
+    from src.api.models.tte import DEMOGRAPHIC_DOMAINS, is_demographic_domain_but_not_a_demographic_rule
 
     try:
         study = get_tte_service().get_study(study_id)
@@ -252,8 +260,22 @@ async def re_recommend_criterion(
     domain = (criterion.get("domain") or "") if isinstance(criterion, dict) else (criterion.domain or "")
     description = (criterion.get("description") or "") if isinstance(criterion, dict) else (criterion.description or "")
     source_text = (criterion.get("sourceText") or "") if isinstance(criterion, dict) else (criterion.sourceText or "")
+    is_group_label = bool(criterion.get("isGroupLabel")) if isinstance(criterion, dict) else bool(criterion.isGroupLabel)
+    value_constraint = criterion.get("valueConstraint") if isinstance(criterion, dict) else criterion.valueConstraint
+    if isinstance(value_constraint, dict):
+        vc_value = value_constraint.get("value")
+    elif value_constraint is not None:
+        vc_value = getattr(value_constraint, "value", None)
+    else:
+        vc_value = None
 
-    if domain.strip() in DEMOGRAPHIC_DOMAINS or not description.strip():
+    domain_stripped = domain.strip()
+    if (
+        domain_stripped in DEMOGRAPHIC_DOMAINS
+        and not is_demographic_domain_but_not_a_demographic_rule(
+            domain=domain_stripped, is_group_label=is_group_label, value_constraint_value=vc_value,
+        )
+    ) or not description.strip():
         raise HTTPException(status_code=400, detail="Cannot re-recommend for demographic criterion")
 
     query = f"{source_text or description} {request.hint}".strip()

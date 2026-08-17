@@ -26,6 +26,41 @@ class TTEModel(BaseModel):
 DEMOGRAPHIC_DOMAINS = frozenset({"Demographics", "Demographic", "Age", "Gender", "Race", "Ethnicity"})
 
 
+def is_demographic_domain_but_not_a_demographic_rule(
+    *,
+    domain: str,
+    is_group_label: bool,
+    value_constraint_value: Any,
+) -> bool:
+    """True when a criterion's domain is demographic, it is not a group label, and it
+    carries no usable numeric valueConstraint -- i.e. no real Age/Gender/etc. CIRCE
+    DemographicCriteria rule can be built from it.
+
+    Such a criterion should be treated as an ordinary mappable criterion (routed to
+    concept-set mapping like any non-demographic criterion) instead of being silently
+    dropped or gated as demographic-only. A criterion that DOES carry a real numeric
+    valueConstraint (e.g. ``Age >= 65``) correctly stays demographic-only and this
+    returns False for it.
+
+    This mirrors only the cheap, dependency-free guard
+    ``TTEService._build_demographic_rule`` itself opens with (``not vc or
+    vc.get("value") is None``) -- it does NOT re-derive the full CIRCE rule (operator
+    mapping, exclusion inversion, etc). ``_build_demographic_rule`` lives on
+    ``TTEService`` in ``src/services/tte_service.py``, which this module must not
+    import (that module already imports FROM here; importing back would cycle), so
+    this helper is the one shared, dependency-free predicate both ``tte_service.py``
+    and ``tte.py`` import instead of re-writing the same domain/isGroupLabel/
+    valueConstraint check at each call site (see the exclusion-loop fallthrough in
+    ``TTEService._build_seeded_target_circe`` for the fuller, rule-building version
+    of this same decision).
+    """
+    if is_group_label:
+        return False
+    if (domain or "").strip() not in DEMOGRAPHIC_DOMAINS:
+        return False
+    return value_constraint_value is None
+
+
 # ---------------------------------------------------------------------------
 # Paper download / enrichment status models (SPEC-UI-011)
 # ---------------------------------------------------------------------------
@@ -98,7 +133,16 @@ class Criterion(TTEModel):
     def mappable(self) -> bool:
         if self.isGroupLabel:
             return False
-        return self.domain.strip() not in DEMOGRAPHIC_DOMAINS and bool(self.description.strip())
+        if not self.description.strip():
+            return False
+        domain = self.domain.strip()
+        if domain not in DEMOGRAPHIC_DOMAINS:
+            return True
+        return is_demographic_domain_but_not_a_demographic_rule(
+            domain=domain,
+            is_group_label=self.isGroupLabel,
+            value_constraint_value=(self.valueConstraint.value if self.valueConstraint else None),
+        )
 
 
 class Eligibility(TTEModel):
