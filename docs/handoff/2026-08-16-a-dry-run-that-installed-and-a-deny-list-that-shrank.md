@@ -188,3 +188,101 @@ python3 scripts/sync_my_agent.py --profile hybrid --dry-run
 - `my_agent` 싱크는 target-only 파일을 보존한다. 이번에 보존된 것:
   `claude:literature-search-arxiv:LICENSE_NOTIFICATION.txt`.
 - 두 저장소 모두 **remote가 없다** — `gh pr` 계열 불가.
+
+---
+
+## 후속 (2026-08-17) — 마이그레이션 완료, 그리고 반복되는 회귀 두 건
+
+위 Next steps 1번(마이그레이션 블로커)을 처리했다. **`moai update --templates-only`는
+이제 끝까지 돈다.** 다만 그 과정에서 이 도구가 **매 실행마다** 되돌리는 변경 두 가지를
+발견했다. 아래 둘은 일회성이 아니다.
+
+### 🔴 `moai update`는 실행할 때마다 `CLAUDE.md` 심볼릭 링크를 파괴한다
+
+루트 `CLAUDE.md`는 git에 **mode 120000, 9바이트 심볼릭 링크 → `AGENTS.md`** 로
+기록돼 있다. `AGENTS.md`가 Broadsea 지식베이스(`# BROADSEA PROJECT KNOWLEDGE BASE`)이고
+`CLAUDE.md`는 그 얇은 뷰다.
+
+`moai update`는 이 심볼릭 링크를 **Broadsea 내용이 0인 19KB MoAI 템플릿 실파일**로
+교체한다(`# MoAI Execution Directive`). 즉 실행 직후부터 이 프로젝트의 WHERE TO LOOK,
+CONVENTIONS, ANTI-PATTERNS, TTE EVALUATION RULE, GENERATED-GOLD CACHE RULE이
+Claude 컨텍스트에서 통째로 사라진다. `git status`에는 `T CLAUDE.md`(typechange) 한 줄로만
+보인다.
+
+추적되는 파일이라 복구는 쉽다:
+
+```bash
+git checkout -- CLAUDE.md
+readlink CLAUDE.md      # 기대: AGENTS.md
+head -1 CLAUDE.md       # 기대: # BROADSEA PROJECT KNOWLEDGE BASE
+```
+
+**`moai update`를 돌렸으면 반드시 이 두 줄을 확인할 것.**
+
+### 🔴 `Write()` 비밀정보 deny 제거는 매번 다시 일어난다
+
+앞에서 복원한 `Write(./secrets/**)` 외 3건을 재설치가 **다시 지웠다**. "user
+customizations preserved"와 "3-way merge engine"이 보고돼도 이 항목은 보존 대상이
+아니다. 즉 도구가 이것을 영구 은퇴 목록으로 들고 있다. 다시 복원해 뒀고
+(`Read`/`Write`/`Edit` 각 4건), **다음 `moai update` 뒤에도 같은 확인이 필요하다**:
+
+```bash
+python3 -c "
+import json
+d=json.load(open('.claude/settings.json'))['permissions']['deny']
+for v in ('Read','Write','Edit'):
+    print(v, len([x for x in d if x.startswith(v+'(') and any(s in x for s in ('secrets','ssh','aws','gcloud'))]))
+"   # 기대: Read 4 / Write 4 / Edit 4
+```
+
+### 블로커의 정체 — `.agency/`는 한 번도 채워진 적 없는 스캐폴드였다
+
+`[MIGRATE_MERGE_CONFLICT] tech-preferences.md (Framework: _TBD_)`의 출처는
+`.agency/context/tech-preferences.md`였다. 확인한 사실:
+
+- 그 파일은 **전 항목이 `_TBD_`** 이고, 헤더가 "Fill this file during the first
+  `/agency brief` run via client interview"라고 적고 있다. 그 인터뷰는 실행된 적이 없다
+- `.agency/context/`의 나머지 4개도 같다 (`_TBD_` 19~52개)
+- `.agency/fork-manifest.yaml`은 모든 fork가 `current_generation: 0,
+  divergence_score: 0.0` — 한 번도 진화하지 않았다
+- 대응하는 v3 사본은 **이미 존재하고 더 채워져 있다**:
+  `.moai/project/brand/{brand-voice,target-audience,visual-identity}.md` (Apr 28,
+  agency 원본 Apr 22보다 나중, `_TBD_` 더 적음), 설정은
+  `.moai/config/sections/design.yaml`("Absorbed from agency config (v3.2.0)")
+
+즉 `.agency/`의 모든 항목이 이미 더 나은 v3 사본으로 대체돼 있었고, 마이그레이션은
+플레이스홀더를 실제 값 위에 덮어쓰려다 막힌 것이다. `.agency/`를 `trash-put`으로
+은퇴시키자 재설치가 끝까지 돌았다:
+
+```
+Clean reinstall complete (81 files preserved, 24 deprecated removed)
+Integrity check PASSED (81 PRESERVE-inventory files verified)
+```
+
+백업: `.moai/archive/pre-agency-retire-20260817T081456Z/` (claude · moai-project ·
+moai-config · agency, 6.1M). `.agency/`는 휴지통에도 있다.
+
+### 재설치가 지운 24개
+
+`.claude/agents/moai/`에서 10개(`expert-backend`, `expert-devops`, `expert-frontend`,
+`expert-performance`, `expert-refactoring`, `expert-security`, `manager-project`,
+`manager-quality`, `manager-strategy`, `researcher`), `.claude/commands/agency/` 8개,
+`.claude/rules/agency/constitution.md`, 그리고 스킬 3개(`moai-domain-brand-design`,
+`moai-domain-copywriting`, `moai-workflow-gan-loop`). v3가 이들을 통합 에이전트로
+대체한 결과다. 빈 껍데기로 남은 `.claude/rules/agency/`와 `.claude/commands/agency/`는
+`rmdir`로 정리했다.
+
+**broadsea 전용 룰 4개는 백업과 바이트 동일**로 살아남았다.
+
+### 손대지 않은 것
+
+`.claude/agents/agency/` 6개(builder·copywriter·designer·evaluator·learner·planner)와
+`.claude/skills/agency*` 6개가 남아 있다. 이들이 참조하던 `.agency/context/`는 이제 없으므로
+brand context를 읽는 경로는 깨져 있다. 다만 이건 마이그레이션 블로커와 별개의 정리
+건이고 삭제 범위가 크므로 손대지 않았다. 정리할 거라면 위 백업을 먼저 확인할 것.
+
+### `my_agent` 재싱크
+
+`3cc9e05` → `8cf3f7d`("feat: sync Codex subagent roles"). `--profile hybrid`,
+스킬 codex=78 / claude=78, **Codex subagents 4개 설치**, SessionEnd 훅 양쪽 설치,
+로컬 `.omx/` 보존. Codex와 Claude Code 재시작 필요는 그대로다.
