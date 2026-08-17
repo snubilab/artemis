@@ -309,6 +309,88 @@ class TestDraftPreviewParity:
 
 
 # ---------------------------------------------------------------------------
+# Regression (found post-merge by a full-suite audit, not part of the original
+# 9-item spec): the exclusion-only scope of the generation-loop fallthrough
+# (commit 2ea02b2) means _build_seeded_target_circe's INCLUSION loop still
+# drops a demographic-no-rule criterion unconditionally -- but
+# _apply_draft_concept_set_metadata's skip check, now driven by the shared
+# helper, no longer knows that. For criterion_role="inclusion" it must keep
+# skipping a demographic-no-rule criterion (matching what generation actually
+# does), or the positional-fallback lookup consumes a slot that belongs to
+# the FOLLOWING criterion and silently shifts every concept set after it by
+# one -- confirmed against real LEADER-trial data (tmp/mesh_fix/studies.json
+# study id=4, inclusion criteria id 6/7/8 have exactly this shape).
+# ---------------------------------------------------------------------------
+
+
+class TestInclusionSidePreviewDoesNotStealFollowingConceptSets:
+    def test_inclusion_demographic_no_rule_criterion_is_skipped_not_enriched(self, service):
+        demo = _id63_fixture(id_=6, description="Age and cardiovascular risk factors", source_text="Age")
+        following = {
+            "id": 9,
+            "description": "Type 2 diabetes",
+            "domain": "Condition",
+            "valueConstraint": None,
+            "sourceText": "Type 2 diabetes",
+            "conceptSetId": None,
+            "conceptSetName": "",
+            "isGroupLabel": False,
+            "groupId": None,
+        }
+        concept_sets = [
+            {"id": 0, "name": "Target", "expression": {"items": []}},
+            {"id": 1, "name": "Type 2 diabetes concept set", "expression": {"items": []}},
+        ]
+
+        updated = service._apply_draft_concept_set_metadata(
+            [demo, following], concept_sets, 1, {}, "inclusion", {},
+        )
+
+        assert updated[0].get("conceptSetId") is None, (
+            "an inclusion-side demographic-no-rule criterion must stay unmapped in "
+            "the preview, matching what generation actually does (the fallthrough "
+            "is exclusion-only) -- got a fabricated conceptSetId "
+            f"{updated[0].get('conceptSetId')!r}"
+        )
+        assert updated[1]["conceptSetId"] == 1, (
+            "the criterion AFTER the demographic-no-rule one must receive its own "
+            "concept set (index 1), not be shifted by the demographic criterion "
+            f"consuming a positional slot it should not have; got {updated[1]}"
+        )
+
+    def test_exclusion_demographic_no_rule_criterion_is_still_enriched(self, service):
+        """Regression guard the other direction: the fix above must not
+        accidentally also start skipping the exclusion side, which is exactly
+        what test_f already pins -- restated here with a following sibling to
+        confirm the offset stays correct for exclusion too."""
+        demo = _id63_fixture(id_=63)
+        following = {
+            "id": 64,
+            "description": "Elevated LDL",
+            "domain": "Measurement",
+            "valueConstraint": None,
+            "sourceText": "Elevated LDL",
+            "conceptSetId": None,
+            "conceptSetName": "",
+            "isGroupLabel": False,
+            "groupId": None,
+        }
+        concept_sets = [
+            {"id": 0, "name": "Target", "expression": {"items": []}},
+            {"id": 5, "name": "Pregnancy-related", "expression": {"items": []}},
+            {"id": 6, "name": "LDL concept set", "expression": {"items": []}},
+        ]
+        refs = {service._criterion_mapping_key("exclusion", "63"): 5}
+
+        updated = service._apply_draft_concept_set_metadata(
+            [demo, following], concept_sets, 1, {}, "exclusion", refs,
+        )
+
+        assert updated[0]["conceptSetId"] == 5
+        assert updated[1]["conceptSetId"] == 6
+
+
+# ---------------------------------------------------------------------------
 # (g) -- Criterion.mappable computed_field
 # ---------------------------------------------------------------------------
 

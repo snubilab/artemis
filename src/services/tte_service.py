@@ -3623,7 +3623,14 @@ class TTEService:
             demographic_but_mappable = is_demographic_domain_but_not_a_demographic_rule(
                 domain=domain, is_group_label=is_group_label, value_constraint_value=vc_value,
             )
-            if is_group_label or (domain in DEMOGRAPHIC_DOMAINS and not demographic_but_mappable):
+            # The generation-loop fallthrough this preview mirrors is exclusion-only
+            # (_build_seeded_target_circe's inclusion loop still drops a
+            # demographic-but-mappable criterion unconditionally). If this preview
+            # treated it as mappable on the inclusion side too, the positional
+            # fallback below would consume a slot that belongs to the FOLLOWING
+            # criterion, silently shifting every concept set after it by one.
+            demographic_but_mappable_here = demographic_but_mappable and criterion_role == "exclusion"
+            if is_group_label or (domain in DEMOGRAPHIC_DOMAINS and not demographic_but_mappable_here):
                 updated.append(enriched)
                 continue
             criterion_id = str(criterion.get("id", ""))
