@@ -335,10 +335,11 @@ class ConceptLogician:
         return self.roll_up_to_rxnorm_ingredients([concept_id])
 
     def drop_wrong_entity_class_for_condition(self, concept_ids: List[int]) -> List[int]:
-        """Remove LOINC Survey/Question and Procedure concepts from a Condition-domain selection.
+        """Remove LOINC Survey/Question, Procedure, and history-of-Observation concepts
+        from a Condition-domain selection.
 
         A Condition criterion records a clinical event a patient has experienced.
-        Two concept classes slip through because their names overlap the criterion text:
+        Three concept classes slip through because their names overlap the criterion text:
 
         1. LOINC Survey/Question (concept_class_id IN ('Survey', 'Question')):
            These are questionnaire instruments — "History of stroke [USAUDIT]" — not
@@ -353,10 +354,24 @@ class ConceptLogician:
            flutter' is a Condition. The shared 'atrial fibrillation' substring is the
            modifier that fooled the gate. Plan-044 example.
 
+        3. Observation-domain "history of" concepts (domain_id = 'Observation' AND
+           concept_class_id IN ('Context-dependent', 'Clinical Observation')):
+           Same modifier-match shape as case 1, one layer down: 'History of
+           cerebrovascular accident' (SNOMED, Context-dependent) is a discrete
+           "clinician explicitly documented this history" record, structurally
+           different from — and far more sparsely populated than — the base Condition
+           concept ('Cerebrovascular accident') a cohort's any-time-before-index
+           occurrence check needs. Verified against data/gold/ (2026-08-19): 0 of the
+           763 distinct concept ids referenced across every gold Circe set are
+           Observation-domain Context-dependent or Clinical Observation class; gold's
+           only legitimate Observation-domain use is concept_class_id 'Clinical
+           Finding', untouched by this filter.
+
         Caller MUST gate this on the Condition domain. The Survey filter would drop
         valid questionnaire concepts in Observation criteria; the Procedure filter is
-        inapplicable to Procedure-domain criteria. See drop_qualitative_findings for
-        the Measurement-domain analog.
+        inapplicable to Procedure-domain criteria; the history-of filter would drop
+        valid Clinical Finding concepts in genuine Observation-domain criteria. See
+        drop_qualitative_findings for the Measurement-domain analog.
 
         Args:
             concept_ids: Selected concept IDs for a Condition-domain criterion.
@@ -386,6 +401,10 @@ class ConceptLogician:
                   AND (
                     concept_class_id IN ('Survey', 'Question')
                     OR domain_id = 'Procedure'
+                    OR (
+                      domain_id = 'Observation'
+                      AND concept_class_id IN ('Context-dependent', 'Clinical Observation')
+                    )
                   )
                   AND invalid_reason IS NULL
             """)
@@ -410,15 +429,15 @@ class ConceptLogician:
             # the existing exception-handling path.  Plan-044 sole-map fix.
             logger.info(
                 "[Logician] All %d Condition concept(s) are wrong-entity class "
-                "(Survey/Question or Procedure) — dropping entire set to avoid intent "
-                "violation: %s",
+                "(Survey/Question, Procedure, or Observation history-of) — dropping "
+                "entire set to avoid intent violation: %s",
                 len(deduped), sorted(deduped),
             )
             return []
 
         logger.info(
             "[Logician] Dropped %d wrong-entity concept(s) from a Condition set "
-            "(Survey/Question class or Procedure domain): %s",
+            "(Survey/Question class, Procedure domain, or Observation history-of): %s",
             len(wrong_entity_ids), sorted(wrong_entity_ids),
         )
         return kept

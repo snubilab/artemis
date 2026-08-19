@@ -42,6 +42,15 @@ AF_AND_FLUTTER_CONDITION = 4180790       # Atrial fibrillation and flutter — c
 AF_ABLATION_PROCEDURE = 4070311          # Ablation of atrial fibrillation — Procedure, wrong entity
 ANOTHER_CONDITION = 4329847              # Myocardial infarction — correct, unrelated control
 
+# Real synthea23m OMOP ids (2026-08-19 DB check), used for the Observation/
+# history-of case so the fixture matches an actual gold-vs-mismap pair:
+CVA_CONDITION_REAL = 381316              # "Cerebrovascular accident" — Condition/Disorder, in gold
+HISTORY_OF_CVA_OBSERVATION_REAL = 4077982  # "History of cerebrovascular accident" — Observation/
+                                            # Context-dependent, SNOMED. Verified: 0 of the 763
+                                            # distinct concept ids referenced across data/gold/ are
+                                            # Observation-domain Context-dependent or Clinical
+                                            # Observation class — gold never targets this class.
+
 
 # --------------------------------------------------------------------------- #
 # Core drop behaviour
@@ -108,6 +117,59 @@ class TestDropsProcedureDomainConcepts:
 # --------------------------------------------------------------------------- #
 # Sole-mapping: drop wrong-entity even when it is the only concept
 # --------------------------------------------------------------------------- #
+
+class TestDropsObservationHistoryConcepts:
+    """A third wrong-entity class: SNOMED/LOINC 'History of X' Observation concepts.
+
+    'History of cerebrovascular accident' (Context-dependent, Observation domain) is a
+    discrete "clinician explicitly documented this history" record -- structurally
+    different from, and far more sparsely populated than, the base Condition concept a
+    cohort's any-time-before-index occurrence check actually needs. Same modifier-match
+    shape as the Survey/Procedure cases: the reranker matches on 'cerebrovascular
+    accident', the 'History of' framing is what makes the candidate wrong.
+
+    Verified against data/gold/ (2026-08-19): 763 distinct concept ids referenced across
+    every gold Circe set, 0 of them Observation-domain Context-dependent or Clinical
+    Observation class. Gold's only legitimate Observation-domain use is concept_class_id
+    'Clinical Finding' (17 instances) -- untouched by this filter.
+    """
+
+    def test_should_drop_history_of_observation_from_a_condition_set(self):
+        session = _mock_db_session(rows=[(HISTORY_OF_CVA_OBSERVATION_REAL,)])
+        with patch("src.agents.agent2.logic._check_db", return_value=True), \
+             patch("src.utils.db.get_db", return_value=iter([session])):
+            kept = ConceptLogician().drop_wrong_entity_class_for_condition(
+                [CVA_CONDITION_REAL, HISTORY_OF_CVA_OBSERVATION_REAL]
+            )
+        assert HISTORY_OF_CVA_OBSERVATION_REAL not in kept
+        assert CVA_CONDITION_REAL in kept
+
+    def test_sole_history_of_observation_concept_is_dropped(self):
+        """Mirrors the Survey/Procedure sole-mapping fix: no fail-open-to-wrong-entity."""
+        session = _mock_db_session(rows=[(HISTORY_OF_CVA_OBSERVATION_REAL,)])
+        with patch("src.agents.agent2.logic._check_db", return_value=True), \
+             patch("src.utils.db.get_db", return_value=iter([session])):
+            kept = ConceptLogician().drop_wrong_entity_class_for_condition(
+                [HISTORY_OF_CVA_OBSERVATION_REAL]
+            )
+        assert kept == []
+
+    def test_should_drop_all_three_wrong_entity_classes_in_one_pass(self):
+        session = _mock_db_session(rows=[
+            (HISTORY_OF_STROKE_LOINC_SURVEY,),
+            (AF_ABLATION_PROCEDURE,),
+            (HISTORY_OF_CVA_OBSERVATION_REAL,),
+        ])
+        with patch("src.agents.agent2.logic._check_db", return_value=True), \
+             patch("src.utils.db.get_db", return_value=iter([session])):
+            kept = ConceptLogician().drop_wrong_entity_class_for_condition([
+                STROKE_SNOMED_CONDITION,
+                HISTORY_OF_STROKE_LOINC_SURVEY,
+                AF_ABLATION_PROCEDURE,
+                HISTORY_OF_CVA_OBSERVATION_REAL,
+            ])
+        assert kept == [STROKE_SNOMED_CONDITION]
+
 
 class TestSoleMappingIsDropped:
     """Plan-044 intent gap: the gate must fire even when the reranker returned only one
@@ -201,6 +263,8 @@ class TestQueryShape:
         call_sql = str(session.execute.call_args.args[0])
         assert "Survey" in call_sql
         assert "Procedure" in call_sql
+        assert "Observation" in call_sql
+        assert "Context-dependent" in call_sql
         assert session.execute.call_count == 1
 
 
