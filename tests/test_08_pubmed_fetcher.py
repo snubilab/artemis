@@ -162,6 +162,47 @@ class TestEligibilityExtractor:
         exclusion_text = " ".join(result["exclusion"]).lower()
         assert "upper" in exclusion_text and "limit of normal" in exclusion_text
 
+    def test_extract_eligibility_does_not_truncate_on_bare_follow_up(self):
+        """
+        Given: An exclusion criterion whose own sentence contains the bare
+               word "follow-up" (a compliance clause), with further
+               exclusion criteria written after it
+        When:  extract_eligibility_from_text is called
+        Then:  The criterion is not cut off at "follow-up", and the
+               criteria that follow it are still captured
+
+        Regression: the section-boundary terminator matched bare "follow-up"
+        anywhere in the text, not only a subsequent section heading like
+        "Follow-up Schedule:". CAROLINA's real exclusion section has
+        "...concerning the requirements for follow-up during the study..."
+        mid-sentence (data/papers/NCT01243424/jama_2019_carolina_supplement.pdf,
+        via `pdftotext <pdf> -`, no -layout), which truncated that criterion
+        and dropped the two exclusion criteria written after it — see
+        docs/tte_agent/07_current_status.md, 2026-08-03 entry, "open / carried
+        forward".
+        """
+        from src.agents.agent1.pubmed_fetcher import extract_eligibility_from_text
+
+        text = (
+            "Criteria for inclusion:\n"
+            "Documented diagnosis of type 2 diabetes mellitus\n"
+            "\n"
+            "Criteria for exclusion:\n"
+            "Type 1 diabetes mellitus\n"
+            "Patients considered unreliable by the investigator concerning the\n"
+            "requirements for follow-up during the study and/or compliance with\n"
+            "study drug administration\n"
+            "Has a life expectancy less than 5 years for non-cardiovascular causes\n"
+            "Has cancer other than adequately treated basal cell carcinoma of the skin\n"
+        )
+
+        result = extract_eligibility_from_text(text)
+
+        exclusion_text = " ".join(result["exclusion"]).lower()
+        assert "follow-up" in exclusion_text, "the criterion containing 'follow-up' was truncated away"
+        assert "life expectancy" in exclusion_text, "criterion written after 'follow-up' was dropped"
+        assert "cancer" in exclusion_text, "second criterion written after 'follow-up' was dropped"
+
     def test_extract_eligibility_drops_running_headers(self):
         """
         Given: A protocol PDF whose page header repeats a short line -- a compound

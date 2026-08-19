@@ -30,8 +30,14 @@ DOCUMENTS = {
 }
 
 # study -> (inclusion count, exclusion count, ULN-bearing item count)
+# CAROLINA's exclusion count moved 24 -> 29 on 2026-08-19: the bare "follow-up"
+# section-boundary terminator matched mid-sentence ("...requirements for
+# follow-up during the study...") and truncated the criteria list at that
+# point, dropping 5 real exclusion criteria written after it. Fixed by scoping
+# the terminator to an actual heading phrase (follow-up period/schedule/visit/
+# procedures/assessment) -- see src/agents/agent1/pubmed_fetcher.py.
 BASELINE = {
-    "CAROLINA": (20, 24, 1),
+    "CAROLINA": (20, 29, 1),
     "ARISTOTLE": (8, 21, 1),
     "CARMELINA": (3, 16, 1),
     "EMPA-REG": (0, 15, 1),

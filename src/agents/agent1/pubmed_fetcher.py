@@ -279,7 +279,8 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
         r"definition|clinical\s+event|endpoint|study\s+procedure|study\s+design|"
         r"section\s+[A-Z]|appendix|reference|bibliography|"
         r"supplement|figure|table\s+\d|acknowledgement|"
-        r"randomization|treatment\s+period|follow-up|visit\s+schedule|"
+        r"randomization|treatment\s+period|"
+        r"follow-up\s+(?:period|schedule|visit|procedures?|assessment)|visit\s+schedule|"
         r"inclusion\s+criteria|criteria\s+for\s+inclusion"
         r"|$)"
     )
@@ -303,7 +304,8 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
         r"definition|clinical\s+event|endpoint|study\s+procedure|study\s+design|"
         r"section\s+[A-Z]|appendix|reference|bibliography|"
         r"supplement|figure|table\s+\d|acknowledgement|"
-        r"randomization|treatment\s+period|follow-up|visit\s+schedule|"
+        r"randomization|treatment\s+period|"
+        r"follow-up\s+(?:period|schedule|visit|procedures?|assessment)|visit\s+schedule|"
         r"inclusion\s+criteria|criteria\s+for\s+inclusion"
         r"|$)"
     )
