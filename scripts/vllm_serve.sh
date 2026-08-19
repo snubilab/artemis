@@ -80,7 +80,7 @@ serve() {
         echo "refusing: :$port already serves $(port_model "$port")" >&2
         return 1
     fi
-    echo "serving $model on :$port (util=$util maxlen=$maxlen), ${$(free_gib)} GiB available"
+    echo "serving $model on :$port (util=$util maxlen=$maxlen), $(free_gib) GiB available"
     tmux new-session -d -s "vllm-$port" \
         "$VLLM_PY -m vllm.entrypoints.openai.api_server \
             --model '$model' --served-model-name '$model' \
