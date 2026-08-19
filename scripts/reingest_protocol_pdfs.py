@@ -116,50 +116,60 @@ def main() -> int:
     for study_id, nct_id, name, gold in TARGETS:
         print(f"\n=== {name} (study {study_id}, {nct_id}) — gold RangeHighRatio {gold} ===",
               flush=True)
-        report("before", store.get_study(study_id))
+        try:
+            report("before", store.get_study(study_id))
 
-        resp = service.run_generate_from_nct(study_id, nct_id, force_refresh=True)
-        print(f"  generate_from_nct: status={resp.status} artifact={resp.artifactId}", flush=True)
-        paper = (resp.meta or {}).get("paperStatus") or {}
-        print(f"    paperStatus.source={paper.get('source')} "
-              f"papers={[p.get('name') for p in paper.get('papers_found') or []]} "
-              f"supplement={paper.get('supplement_available')}", flush=True)
-        if resp.status != "completed" or not resp.artifactId:
-            print(f"  FAILED: {resp.summary}")
+            resp = service.run_generate_from_nct(study_id, nct_id, force_refresh=True)
+            print(f"  generate_from_nct: status={resp.status} artifact={resp.artifactId}", flush=True)
+            paper = (resp.meta or {}).get("paperStatus") or {}
+            print(f"    paperStatus.source={paper.get('source')} "
+                  f"papers={[p.get('name') for p in paper.get('papers_found') or []]} "
+                  f"supplement={paper.get('supplement_available')}", flush=True)
+            if resp.status != "completed" or not resp.artifactId:
+                print(f"  FAILED: {resp.summary}")
+                failures += 1
+                continue
+
+            version = int(store.get_study(study_id).get("version") or 1)
+            applied = service.apply_artifact(resp.artifactId, ["eligibility"], version)
+            print(f"  apply_artifact: {applied}", flush=True)
+
+            # process_eligibility produces an artifact and does NOT write through. Skipping
+            # this apply left the study with new criteria, no conceptSetId on any of them
+            # and structuredExpression=None, which then failed generate_seeded_cohorts with
+            # "Eligibility must be processed before generating treatment cohorts" -- an
+            # error naming the step that had just run. Applying it takes ARISTOTLE from
+            # 0 to 39 mapped criteria and 40 Circe concept sets.
+            processed = service.process_eligibility(study_id)
+            if processed.artifactId:
+                version = int(store.get_study(study_id).get("version") or 1)
+                service.apply_artifact(processed.artifactId, ["eligibility"], version)
+                print(f"  process_eligibility applied: {processed.artifactId}", flush=True)
+            else:
+                print(f"  WARNING: process_eligibility returned no artifact ({processed.status})")
+                failures += 1
+
+            total, hits = report("after", store.get_study(study_id))
+            # Guarded on gold: LEADER legitimately expects zero, and counting that as a
+            # failure would set a non-zero exit and suppress the verification that runs
+            # after this script -- the same false-failure shape the report() docstring
+            # describes.
+            if gold > 0 and hits == 0:
+                print(f"  WARNING: {name} still has no ULN-bearing criterion — the PDF text "
+                      f"reached extraction in a dry run, so look at process_eligibility, not the PDF")
+                failures += 1
+            elif gold == 0 and hits > 0:
+                print(f"  WARNING: {name} expected no ratio constraint but produced {hits}")
+                failures += 1
+        except Exception as exc:
+            # One study's draft can be legitimately refused (e.g. _reject_criteria_loss
+            # catching a truncated LLM response that would have emptied a populated
+            # study) or fail for any other reason. That is real signal, not a reason to
+            # lose the other five studies -- a batch tool that dies on the first
+            # exception is why a 9-hour run reported nothing for the studies after it.
+            print(f"  FAILED: {name} raised {type(exc).__name__}: {exc}", flush=True)
             failures += 1
             continue
-
-        version = int(store.get_study(study_id).get("version") or 1)
-        applied = service.apply_artifact(resp.artifactId, ["eligibility"], version)
-        print(f"  apply_artifact: {applied}", flush=True)
-
-        # process_eligibility produces an artifact and does NOT write through. Skipping
-        # this apply left the study with new criteria, no conceptSetId on any of them
-        # and structuredExpression=None, which then failed generate_seeded_cohorts with
-        # "Eligibility must be processed before generating treatment cohorts" -- an
-        # error naming the step that had just run. Applying it takes ARISTOTLE from
-        # 0 to 39 mapped criteria and 40 Circe concept sets.
-        processed = service.process_eligibility(study_id)
-        if processed.artifactId:
-            version = int(store.get_study(study_id).get("version") or 1)
-            service.apply_artifact(processed.artifactId, ["eligibility"], version)
-            print(f"  process_eligibility applied: {processed.artifactId}", flush=True)
-        else:
-            print(f"  WARNING: process_eligibility returned no artifact ({processed.status})")
-            failures += 1
-
-        total, hits = report("after", store.get_study(study_id))
-        # Guarded on gold: LEADER legitimately expects zero, and counting that as a
-        # failure would set a non-zero exit and suppress the verification that runs
-        # after this script -- the same false-failure shape the report() docstring
-        # describes.
-        if gold > 0 and hits == 0:
-            print(f"  WARNING: {name} still has no ULN-bearing criterion — the PDF text "
-                  f"reached extraction in a dry run, so look at process_eligibility, not the PDF")
-            failures += 1
-        elif gold == 0 and hits > 0:
-            print(f"  WARNING: {name} expected no ratio constraint but produced {hits}")
-            failures += 1
 
     return 1 if failures else 0
 
