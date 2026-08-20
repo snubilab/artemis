@@ -15,7 +15,8 @@ from src.utils.llm import get_llm, resolve_model
 from src.models.ir import ARTEMISRequest, CohortDefinition, PrimaryCriteria, Criteria, CohortOutcome, TemporalWindow, ValueConstraint
 from src.agents.agent1.prompts import (
     SYSTEM_PROMPT, DECOMPOSITION_PROMPT,
-    NCT_SYSTEM_PROMPT, NCT_DECOMPOSITION_PROMPT
+    NCT_SYSTEM_PROMPT, NCT_DECOMPOSITION_PROMPT,
+    THRESHOLD_REVIEW_PROMPT
 )
 from src.agents.agent1.nct_fetcher import (
     fetch_trial_data, fetch_or_load_trial_data, 
@@ -129,6 +130,7 @@ class LogicDecomposer:
         enrich_from_pubmed: bool = True,
         design_paper_pdf: Optional[str] = None,
         papers_dir: Optional[str] = None,
+        verify_thresholds: bool = True,
     ) -> ARTEMISRequest:
         """
         Parse a clinical trial protocol from ClinicalTrials.gov into ARTEMIS IR.
@@ -141,7 +143,12 @@ class LogicDecomposer:
             papers_dir: Optional directory containing PDFs (main paper + appendix).
                         Auto-discovers from data/papers/{nct_id}/ if not specified.
                         Priority: appendix/supplement > main paper > PubMed.
-            
+            verify_thresholds: Run Step 7's second LLM pass, which reviews the
+                        output against the original criteria text for a dropped
+                        numeric threshold Step 6's aggregate count can miss when
+                        another criterion over-produces and offsets the total. Costs
+                        one extra LLM call per parse_nct(); disable for cheap/smoke runs.
+
         Returns:
             ARTEMISRequest object with structured representation
         """
@@ -340,6 +347,20 @@ class LogicDecomposer:
                 RuntimeWarning, stacklevel=2
             )
 
+        # Step 7: LLM threshold review — Step 6's count is a study-wide sum, so one
+        # criterion losing its threshold and another over-producing (e.g. Pattern E
+        # attaching a value_constraint to a sub_criterion that never had one) can
+        # cancel out in the total and leave the aggregate check silent. This asks a
+        # second, small, focused pass to read each criterion line against its
+        # generated rule directly, instead of comparing totals.
+        if verify_thresholds:
+            self._llm_review_value_constraints(
+                nct_id,
+                trial_data.inclusion_criteria,
+                trial_data.exclusion_criteria,
+                ir,
+            )
+
         # Expose paper enrichment status for the caller
         self.last_paper_status = paper_status
 
@@ -417,6 +438,79 @@ class LogicDecomposer:
                 count += 1
             count += cls._count_output_value_constraints(getattr(rule, "sub_criteria", None) or [])
         return count
+
+    @classmethod
+    def _flatten_rules_for_review(cls, rules: list, out: list | None = None) -> list[str]:
+        """One line per rule (and each sub_criterion), for the Step 7 review prompt.
+
+        Flattening loses nothing the reviewer needs: it only has to see each rule's
+        own name/source_text/value_constraint, not the tree shape.
+        """
+        if out is None:
+            out = []
+        for rule in rules:
+            name = getattr(rule, "name", "") or ""
+            source_text = getattr(rule, "source_text", None) or ""
+            vc = getattr(rule, "value_constraint", None)
+            vc_repr = "null" if vc is None else f"{vc.op} {vc.value} ({vc.reference_bound})"
+            out.append(f"- name={name!r} source_text={source_text!r} value_constraint={vc_repr}")
+            cls._flatten_rules_for_review(getattr(rule, "sub_criteria", None) or [], out)
+        return out
+
+    def _llm_review_value_constraints(
+        self, nct_id: str, inclusion_criteria: list, exclusion_criteria: list, ir
+    ) -> None:
+        """Step 7: a second, small LLM pass that reads each criterion line against
+        its generated rule directly, catching the per-criterion loss Step 6's
+        study-wide total can mask when another criterion over-produces.
+
+        Fails open: a broken review call (bad JSON, network error, anything) is
+        logged and swallowed, never raised — this is an additional check on top of
+        Step 6, not a replacement, and a review failure must not fail the parse
+        that already succeeded.
+        """
+        all_criteria = list(inclusion_criteria) + list(exclusion_criteria)
+        if not all_criteria:
+            return
+
+        criteria_block = "\n".join(
+            f"{i + 1}. {c}" for i, c in enumerate(all_criteria)
+        )
+        rules_block = "\n".join(
+            self._flatten_rules_for_review(ir.target.inclusion_rules)
+            + self._flatten_rules_for_review(ir.target.exclusion_rules)
+        ) or "(no rules generated)"
+
+        prompt = THRESHOLD_REVIEW_PROMPT.format(
+            criteria_block=criteria_block, rules_block=rules_block
+        )
+
+        try:
+            reviewer = get_llm(
+                model_name=self.model_name, temperature=0.0,
+                response_format={"type": "json_object"},
+            )
+            response = reviewer.invoke([HumanMessage(content=prompt)])
+            data = self._extract_json(response.content)
+            misses = data.get("misses") or []
+        except Exception as exc:
+            logger.debug(
+                "[Agent 1] Step 7 threshold review failed for %s, skipping (fail-open): %s",
+                nct_id, exc,
+            )
+            return
+
+        if misses:
+            import warnings
+            lines = "; ".join(
+                f"line {m.get('criterion_line')}: {m.get('criterion_text')!r} — {m.get('reason')}"
+                for m in misses
+            )
+            warnings.warn(
+                f"[Agent 1] ⚠ Step 7 threshold review flagged {len(misses)} likely "
+                f"dropped threshold(s) in {nct_id}: {lines}",
+                RuntimeWarning, stacklevel=2
+            )
 
     @staticmethod
     def _discover_pdfs(papers_dir: str) -> list:

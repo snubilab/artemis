@@ -510,3 +510,28 @@ Important Rules:
     the measurement to be incorrectly excluded).
 
 Return ONLY the JSON, no explanation.\"\"\""""
+
+THRESHOLD_REVIEW_PROMPT = """You are reviewing another model's extraction, not extracting yourself.
+
+Below are numbered protocol criteria lines, followed by the rules a first pass generated
+from them. Your only job: find criteria whose sentence states a numeric threshold
+(a comparator like >, <, >=, <=, a percentage, a lab unit, "x ULN"/"x LLN", a specific
+number) where the corresponding generated rule has NO value_constraint. Ignore criteria
+that never had a number to begin with (e.g. "informed consent", "type 2 diabetes").
+
+A criterion counts as a MISS only when:
+- the criterion line itself contains a number/comparator/unit, AND
+- none of the rules whose source_text or name plausibly traces back to that line carry
+  a value_constraint with a numeric value.
+
+Do not flag a rule that correctly has no value_constraint for a criterion that never had
+a number. Do not invent a number that is not in the text.
+
+**Criteria** (numbered, as given to the first pass):
+{criteria_block}
+
+**Generated rules** (name, source_text, value_constraint — value_constraint is null when missing):
+{rules_block}
+
+Output JSON: {{"misses": [{{"criterion_line": <int>, "criterion_text": "<verbatim>", "reason": "<why this looks like a dropped threshold>"}}]}}
+Return an empty "misses" list when nothing looks wrong. Output ONLY the JSON."""
