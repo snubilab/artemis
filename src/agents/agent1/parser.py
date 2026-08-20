@@ -311,6 +311,35 @@ class LogicDecomposer:
                 RuntimeWarning, stacklevel=2
             )
 
+        # Step 6: Value-constraint coverage check — warn if the LLM's output carries
+        # fewer numeric thresholds than the deterministic parser found in the input
+        # criteria text. ADR-031-B hands the model its own thresholds pre-parsed so it
+        # only has to copy them; when source_text isn't copied verbatim (the WRONG/RIGHT
+        # example in prompts.py), the downstream substring match fails and
+        # value_constraint silently comes back None even though the annotation was
+        # right there in the prompt. Pattern E can only ever GROW the count (one shared
+        # threshold written onto several sub_criteria), never shrink it, so `<` here is
+        # always a real loss, not a legitimate merge.
+        input_vc_count = (
+            self._count_value_constraints(trial_data.inclusion_criteria)
+            + self._count_value_constraints(trial_data.exclusion_criteria)
+        )
+        output_vc_count = (
+            self._count_output_value_constraints(ir.target.inclusion_rules)
+            + self._count_output_value_constraints(ir.target.exclusion_rules)
+        )
+        if output_vc_count < input_vc_count:
+            import warnings
+            warnings.warn(
+                f"[Agent 1] ⚠ Value-constraint coverage gap: the deterministic parser "
+                f"found {input_vc_count} threshold(s) in {nct_id}'s criteria text, but "
+                f"only {output_vc_count} appear in the output IR. A threshold likely "
+                f"vanished because source_text wasn't copied verbatim onto every "
+                f"sub_criterion sharing it — inspect this run's criteria before trusting "
+                f"its value_constraint fields.",
+                RuntimeWarning, stacklevel=2
+            )
+
         # Expose paper enrichment status for the caller
         self.last_paper_status = paper_status
 
@@ -366,6 +395,28 @@ class LogicDecomposer:
             if annotation:
                 lines.append(annotation)
         return "\n".join(lines) or "  None specified"
+
+    @staticmethod
+    def _count_value_constraints(criteria: list) -> int:
+        """Total thresholds the deterministic parser finds across these criterion lines.
+
+        Ground truth for the Step 6 coverage check in parse_nct(): computed the same
+        way _format_criteria's annotations are, so the two describe the same numbers.
+        """
+        from src.services.value_constraint import parse_value_constraints
+
+        return sum(len(parse_value_constraints(str(c))) for c in criteria)
+
+    @classmethod
+    def _count_output_value_constraints(cls, rules: list) -> int:
+        """Total non-None value_constraint fields across rules, recursing into
+        sub_criteria (Pattern E groups carry their thresholds one level down)."""
+        count = 0
+        for rule in rules:
+            if getattr(rule, "value_constraint", None) is not None:
+                count += 1
+            count += cls._count_output_value_constraints(getattr(rule, "sub_criteria", None) or [])
+        return count
 
     @staticmethod
     def _discover_pdfs(papers_dir: str) -> list:
