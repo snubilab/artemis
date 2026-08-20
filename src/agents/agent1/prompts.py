@@ -426,6 +426,20 @@ so the marker stays in `unit_text` and both rules repeat the whole line verbatim
 ]
 ```
 
+**WRONG vs RIGHT for shared source_text** — the most common failure against this exact
+prompt. For "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN", a short per-analyte
+label as source_text looks tidier but is WRONG:
+```json
+// WRONG — source_text became the analyte's own name, not the protocol's sentence
+{{"name": "ALT elevation", "source_text": "Alanine aminotransferase", "value_constraint": {{"op": "gt", "value": 2.0, "unit_text": "x ULN"}}}}
+// RIGHT — source_text is the full sentence, BYTE-IDENTICAL across all three sub_criteria
+{{"name": "ALT elevation", "source_text": "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN", "value_constraint": {{"op": "gt", "value": 2.0, "unit_text": "x ULN"}}}}
+```
+Do not paraphrase, shorten, or replace it with the clinical term even when the term reads
+as more natural — a later deterministic stage finds each threshold by searching for it as a
+substring inside `source_text`. The WRONG form has nothing to search inside, so
+`value_constraint` is silently discarded downstream, even though you set it correctly here.
+
 Important Rules:
 0. A criterion may be followed by one or more `[value_constraint] {{...}}` lines. Those were
    parsed from the text deterministically, not by you. **Copy each one verbatim and do not
