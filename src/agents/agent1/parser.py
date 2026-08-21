@@ -16,7 +16,7 @@ from src.models.ir import ARTEMISRequest, CohortDefinition, PrimaryCriteria, Cri
 from src.agents.agent1.prompts import (
     SYSTEM_PROMPT, DECOMPOSITION_PROMPT,
     NCT_SYSTEM_PROMPT, NCT_DECOMPOSITION_PROMPT,
-    THRESHOLD_REVIEW_PROMPT
+    THRESHOLD_REVIEW_PROMPT, THRESHOLD_MATCH_PROMPT
 )
 from src.agents.agent1.nct_fetcher import (
     fetch_trial_data, fetch_or_load_trial_data, 
@@ -359,14 +359,20 @@ class LogicDecomposer:
                 nct_id, trial_data.inclusion_criteria, trial_data.exclusion_criteria, ir,
             )
 
-            # Step 8: mechanical repair. No new LLM call -- the constraint numbers
-            # were already parsed deterministically from the same criterion text
-            # before the first LLM call ever ran (ADR-031-B); Step 7 only had to
-            # locate which rule(s) lost them. Only repairs when the repair is
-            # unambiguous (matched-rule count == parsed-constraint count for that
-            # line); otherwise leaves the warning standing rather than guessing
-            # which analyte gets which number — an assigned-to-the-wrong-analyte
-            # threshold is worse than a missing one.
+            # Step 8: repair. The constraint numbers were already parsed
+            # deterministically from the same criterion text before the first LLM
+            # call ever ran (ADR-031-B); neither path here re-extracts or invents a
+            # number, only decides which existing rule it belongs to.
+            #   8a. Free, instant zip: safe exactly when rule-count == constraint-count,
+            #       which holds when every analyte has its own distinct threshold.
+            #   8b. LLM match (one call): the case 8a can't decide safely — most often
+            #       a shared threshold ("ALT or AST > 2X ULN") where analyte-count and
+            #       constraint-count differ on purpose. Given the text, the already-
+            #       correct constraint list, and the candidate rule names, this asks
+            #       which rule gets which constraint index, allowing many-to-one
+            #       sharing. It is a matching decision, not extraction, so it does not
+            #       carry the "shape separated them, not difficulty" extraction failure
+            #       Step 6/7 exist for.
             still_broken = []
             for miss in misses:
                 line = miss.get("criterion_line")
@@ -376,6 +382,12 @@ class LogicDecomposer:
                 original_text = str(all_criteria[line - 1])
                 repaired = self._repair_dropped_threshold(original_text, ir.target.inclusion_rules) \
                     or self._repair_dropped_threshold(original_text, ir.target.exclusion_rules)
+                if not repaired:
+                    repaired = self._llm_match_dropped_threshold(
+                        nct_id, original_text, ir.target.inclusion_rules
+                    ) or self._llm_match_dropped_threshold(
+                        nct_id, original_text, ir.target.exclusion_rules
+                    )
                 if not repaired:
                     still_broken.append(miss)
 
@@ -543,34 +555,15 @@ class LogicDecomposer:
             return []
 
     @staticmethod
-    def _repair_dropped_threshold(original_text: str, rules: list) -> int:
-        """Step 8: mechanically reattach a threshold Step 7 found missing.
+    def _collect_broken_candidates(original_text: str, rules: list) -> list:
+        """Rules (recursing into sub_criteria) with no value_constraint whose
+        `entity_text` or `name` anchors into `original_text`.
 
-        No LLM call. The numbers were already extracted deterministically from
-        `original_text` before the first LLM call ever ran (ADR-031-B /
-        parse_value_constraints) — Step 7's job was only to say WHICH rule lost
-        them, not to re-derive the numbers. This walks `rules` (recursing into
-        sub_criteria) for entries with `value_constraint is None` whose `name` or
-        `entity_text` appears in `original_text` — the broken shape leaves the
-        entity name intact and drops only source_text/value_constraint, so the
+        The broken shape (source_text collapsed to a bare label) leaves the entity
+        name itself intact — only source_text/value_constraint are lost — so the
         entity name is still a reliable anchor back to the line it came from.
-
-        Repairs ONLY when the count of such candidate rules exactly equals the
-        count of constraints `parse_value_constraints` finds in `original_text`.
-        A count mismatch means the mapping from rule to constraint is ambiguous
-        — assigning constraint N to the wrong analyte would silently apply the
-        wrong threshold, which is worse than leaving it missing, so this refuses
-        to guess and returns 0 (the caller's warning stands).
-
-        :returns: how many rules were repaired (0 means: not attempted, or
-            ambiguous — check the warning instead).
+        Shared by both repair paths: 8a's count-match zip and 8b's LLM match.
         """
-        from src.services.value_constraint import parse_value_constraints
-
-        constraints = parse_value_constraints(original_text)
-        if not constraints:
-            return 0
-
         candidates: list = []
 
         def _collect(items: list) -> None:
@@ -582,7 +575,29 @@ class LogicDecomposer:
                 _collect(getattr(rule, "sub_criteria", None) or [])
 
         _collect(rules)
+        return candidates
 
+    @classmethod
+    def _repair_dropped_threshold(cls, original_text: str, rules: list) -> int:
+        """Step 8a: mechanically reattach a threshold Step 7 found missing.
+
+        No LLM call. Safe only when the candidate-rule count exactly equals the
+        parsed-constraint count for this line — i.e. every analyte has its own
+        distinct threshold, in the same order the rules were generated in. A count
+        mismatch (most often a shared threshold, "ALT or AST > 2X ULN") means the
+        mapping is ambiguous; assigning constraint N to the wrong analyte would
+        silently apply the wrong threshold, worse than leaving it missing, so this
+        refuses to guess and returns 0 — the caller falls back to Step 8b.
+
+        :returns: how many rules were repaired (0 means: not attempted here).
+        """
+        from src.services.value_constraint import parse_value_constraints
+
+        constraints = parse_value_constraints(original_text)
+        if not constraints:
+            return 0
+
+        candidates = cls._collect_broken_candidates(original_text, rules)
         if len(candidates) != len(constraints):
             return 0
 
@@ -590,6 +605,74 @@ class LogicDecomposer:
             rule.value_constraint = constraint
             rule.source_text = original_text
         return len(candidates)
+
+    def _llm_match_dropped_threshold(self, nct_id: str, original_text: str, rules: list) -> int:
+        """Step 8b: when 8a can't confirm a safe 1:1 count match — typically a
+        shared threshold, where analyte-count and constraint-count differ on
+        purpose — ask a small, constrained LLM call which existing rule gets which
+        already-correct constraint, allowing many-to-one sharing.
+
+        The LLM never invents, re-derives, or rounds a number: `constraints` is
+        already the correct output of parse_value_constraints(original_text); this
+        call only decides an assignment. That is a matching decision, not
+        extraction, so it does not carry the "shape separated them, not
+        difficulty" extraction failure Step 6/7 exist for.
+
+        Fails open: any error (network, malformed JSON, an out-of-range index)
+        leaves every candidate untouched and returns 0 — Step 7's warning stands.
+        """
+        from src.services.value_constraint import parse_value_constraints
+
+        constraints = parse_value_constraints(original_text)
+        candidates = self._collect_broken_candidates(original_text, rules)
+        if not constraints or not candidates:
+            return 0
+
+        constraints_block = "\n".join(
+            f"{i}: {c.op} {c.value} ({c.reference_bound}"
+            f"{', ' + c.unit_text if c.unit_text else ''})"
+            for i, c in enumerate(constraints)
+        )
+        rules_block = "\n".join(
+            f"{i}: {(getattr(r, 'entity_text', None) or getattr(r, 'name', '') or '')!r}"
+            for i, r in enumerate(candidates)
+        )
+        prompt = THRESHOLD_MATCH_PROMPT.format(
+            original_text=original_text,
+            constraints_block=constraints_block,
+            rules_block=rules_block,
+        )
+
+        try:
+            matcher = get_llm(
+                model_name=self.model_name, temperature=0.0,
+                response_format={"type": "json_object"},
+            )
+            response = matcher.invoke([HumanMessage(content=prompt)])
+            data = self._extract_json(response.content)
+            mapping = data.get("mapping") or []
+        except Exception as exc:
+            logger.debug(
+                "[Agent 1] Step 8b LLM match failed for %s, skipping (fail-open): %s",
+                nct_id, exc,
+            )
+            return 0
+
+        repaired = 0
+        for entry in mapping:
+            rule_index = entry.get("rule_index")
+            constraint_index = entry.get("constraint_index")
+            if not isinstance(rule_index, int) or not isinstance(constraint_index, int):
+                continue
+            if not (0 <= rule_index < len(candidates)) or not (0 <= constraint_index < len(constraints)):
+                continue
+            rule = candidates[rule_index]
+            if rule.value_constraint is not None:
+                continue  # already resolved by an earlier entry — don't overwrite
+            rule.value_constraint = constraints[constraint_index]
+            rule.source_text = original_text
+            repaired += 1
+        return repaired
 
     @staticmethod
     def _discover_pdfs(papers_dir: str) -> list:

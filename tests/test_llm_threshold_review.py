@@ -210,3 +210,73 @@ class TestRepairDroppedThreshold:
             "Documented diagnosis of type 2 diabetes mellitus", rules
         )
         assert repaired == 0
+
+
+class TestLlmMatchDroppedThreshold:
+    """Step 8b: when 8a's count-match zip can't confirm a safe 1:1 mapping (the
+    shared-threshold case 8a deliberately refuses), ask a small LLM call to match
+    rule -> constraint index, allowing many-to-one sharing. The LLM is given the
+    already-correct constraint list and only decides an assignment -- it never
+    re-extracts or invents a number."""
+
+    SHARED = "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN"
+
+    def _rules(self):
+        return [
+            Criteria(name="ALT", domain="Measurement", entity_text="ALT"),
+            Criteria(name="AST", domain="Measurement", entity_text="AST"),
+            Criteria(name="Total Bilirubin", domain="Measurement", entity_text="Total Bilirubin"),
+        ]
+
+    def test_should_resolve_the_shared_threshold_case_8a_refuses(self):
+        """The exact case Step 8a's docstring says it does NOT close: ALT and AST
+        share constraint 0, Total Bilirubin gets its own constraint 1."""
+        d = _decomposer()
+        rules = self._rules()
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(content='''
+        {"mapping": [{"rule_index": 0, "constraint_index": 0},
+                      {"rule_index": 1, "constraint_index": 0},
+                      {"rule_index": 2, "constraint_index": 1}]}
+        ''')
+        with patch("src.agents.agent1.parser.get_llm", return_value=mock_llm):
+            repaired = d._llm_match_dropped_threshold("NCT_TEST", self.SHARED, rules)
+        assert repaired == 3
+        assert rules[0].value_constraint.value == 2.0   # ALT shares AST's threshold
+        assert rules[1].value_constraint.value == 2.0   # AST
+        assert rules[2].value_constraint.value == 1.5   # Bilirubin's own
+        assert all(r.source_text == self.SHARED for r in rules)
+
+    def test_should_ignore_an_out_of_range_index_rather_than_crash(self):
+        d = _decomposer()
+        rules = self._rules()
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(
+            content='{"mapping": [{"rule_index": 99, "constraint_index": 0}]}'
+        )
+        with patch("src.agents.agent1.parser.get_llm", return_value=mock_llm):
+            repaired = d._llm_match_dropped_threshold("NCT_TEST", self.SHARED, rules)
+        assert repaired == 0
+        assert all(r.value_constraint is None for r in rules)
+
+    def test_should_fail_open_when_the_matcher_call_raises(self):
+        d = _decomposer()
+        rules = self._rules()
+        mock_llm = MagicMock()
+        mock_llm.invoke.side_effect = RuntimeError("connection refused")
+        with patch("src.agents.agent1.parser.get_llm", return_value=mock_llm):
+            repaired = d._llm_match_dropped_threshold("NCT_TEST", self.SHARED, rules)
+        assert repaired == 0
+        assert all(r.value_constraint is None for r in rules)
+
+    def test_should_return_zero_when_there_are_no_candidates(self):
+        """All rules already have a constraint -- nothing to match, no call needed."""
+        d = _decomposer()
+        rules = [Criteria(
+            name="ALT", domain="Measurement", entity_text="ALT",
+            value_constraint=ValueConstraint(op="gt", value=2.0),
+        )]
+        with patch("src.agents.agent1.parser.get_llm") as mock_get_llm:
+            repaired = d._llm_match_dropped_threshold("NCT_TEST", self.SHARED, rules)
+        assert repaired == 0
+        mock_get_llm.assert_not_called()

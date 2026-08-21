@@ -535,3 +535,28 @@ a number. Do not invent a number that is not in the text.
 
 Output JSON: {{"misses": [{{"criterion_line": <int>, "criterion_text": "<verbatim>", "reason": "<why this looks like a dropped threshold>"}}]}}
 Return an empty "misses" list when nothing looks wrong. Output ONLY the JSON."""
+
+THRESHOLD_MATCH_PROMPT = """A criterion's numeric thresholds were already extracted correctly by a
+separate deterministic step. What was lost is which analyte/rule each threshold belongs to. Your
+only job is to match them back up — do NOT change, invent, round, or re-derive any number.
+
+**Original criterion text** (verbatim — the source of truth for which analyte shares which threshold):
+{original_text}
+
+**Extracted thresholds** (already correct — you are matching, not re-extracting):
+{constraints_block}
+
+**Rules with no threshold, that need one from the list above** (by analyte name):
+{rules_block}
+
+For each rule, decide which threshold index it should carry. A threshold may be shared by more
+than one rule when the original text groups them with "or" under one comparator — "ALT or AST >
+2X ULN" means BOTH ALT and AST get that same threshold index. A rule gets its OWN threshold only
+when the text states a separate comparator for it — "... or a Total Bilirubin >= 1.5X ULN" is
+Bilirubin's own, different index.
+
+If a rule's analyte does not appear in the original text at all, or you cannot determine its
+threshold with confidence, leave it out of the mapping rather than guessing.
+
+Output JSON: {{"mapping": [{{"rule_index": <int>, "constraint_index": <int>}}]}}
+Output ONLY the JSON."""
