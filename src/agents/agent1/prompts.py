@@ -300,6 +300,21 @@ Pattern F — Conditional criterion ("If [subgroup] → [requirement]"):
   Conditional triggers: "females must", "women of childbearing", "patients with X must also",
   "if the patient has", "for patients who", "in case of", "must use contraception".
 
+Pattern G — Region/subgroup-conditional VALUE (the requirement applies to everyone, but the
+  NUMBER differs by an explicit subgroup): "Age >= 18 years. For Japan only: Age >= 20 years",
+  "eGFR >= 60 mL/min (>= 45 mL/min for patients over 75)", "HbA1c <= 9% (<= 10% in Asia
+  Pacific)". Unlike Pattern F (a requirement that only some patients face at all), here EVERY
+  patient faces the requirement — only the threshold value changes for the named subgroup.
+  CRITICAL: emit ONE Pattern-E-style group (`group_type: "ALL"` if the base requirement is
+  universal, one sub_criterion per subgroup variant), never a single rule carrying only the
+  general-population number. Dropping the subgroup-specific value because there is no single
+  canonical number is the same silent-loss failure as dropping a shared threshold in Pattern
+  E — the general case is not "close enough" to stand in for the subgroup case.
+  Example: "Age >= 18 years. For Japan only: Age >= 20 years" →
+  One Demographics rule with sub_criteria = Age (general, >= 18), Age (Japan, >= 20) — two
+  sub_criteria from two subgroup values, both carrying the full original sentence as
+  source_text (they share one line, same as Pattern E's shared-threshold rule 6).
+
 Output your response as valid JSON matching the ARTEMIS IR schema."""
 
 NCT_DECOMPOSITION_PROMPT = """Convert this clinical trial protocol into the ARTEMIS IR format.
@@ -508,6 +523,15 @@ Important Rules:
     "patients on warfarin must discontinue" → conditional: true
     DO NOT include these as universal InclusionRules (causes all patients without
     the measurement to be incorrectly excluded).
+14. REGION/SUBGROUP-CONDITIONAL VALUE (Pattern G): When a criterion states a DIFFERENT number
+    for a named subgroup while the requirement itself applies to every patient — "Age >= 18
+    years. For Japan only: Age >= 20 years", "eGFR >= 60 (>= 45 for age > 75)" — this is NOT
+    Pattern F (nobody is exempt) and it is NOT a single number to pick. Emit ONE group with a
+    sub_criterion PER VARIANT, each carrying its own value_constraint and a name noting which
+    subgroup it is for (e.g. "Age (general)", "Age (Japan)"). Keeping only the general-
+    population number and dropping the subgroup-specific one is the same silent loss covered
+    by rule 6 for a shared threshold — do not let "there's already a number for this entity"
+    stand in for "every number this line states is captured".
 
 Return ONLY the JSON, no explanation.\"\"\""""
 
