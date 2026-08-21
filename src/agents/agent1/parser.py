@@ -354,12 +354,47 @@ class LogicDecomposer:
         # second, small, focused pass to read each criterion line against its
         # generated rule directly, instead of comparing totals.
         if verify_thresholds:
-            self._llm_review_value_constraints(
-                nct_id,
-                trial_data.inclusion_criteria,
-                trial_data.exclusion_criteria,
-                ir,
+            all_criteria = list(trial_data.inclusion_criteria) + list(trial_data.exclusion_criteria)
+            misses = self._llm_review_value_constraints(
+                nct_id, trial_data.inclusion_criteria, trial_data.exclusion_criteria, ir,
             )
+
+            # Step 8: mechanical repair. No new LLM call -- the constraint numbers
+            # were already parsed deterministically from the same criterion text
+            # before the first LLM call ever ran (ADR-031-B); Step 7 only had to
+            # locate which rule(s) lost them. Only repairs when the repair is
+            # unambiguous (matched-rule count == parsed-constraint count for that
+            # line); otherwise leaves the warning standing rather than guessing
+            # which analyte gets which number — an assigned-to-the-wrong-analyte
+            # threshold is worse than a missing one.
+            still_broken = []
+            for miss in misses:
+                line = miss.get("criterion_line")
+                if not isinstance(line, int) or not (1 <= line <= len(all_criteria)):
+                    still_broken.append(miss)
+                    continue
+                original_text = str(all_criteria[line - 1])
+                repaired = self._repair_dropped_threshold(original_text, ir.target.inclusion_rules) \
+                    or self._repair_dropped_threshold(original_text, ir.target.exclusion_rules)
+                if not repaired:
+                    still_broken.append(miss)
+
+            if misses:
+                print(f"[Agent 1] Step 7/8: {len(misses)} flagged, "
+                      f"{len(misses) - len(still_broken)} auto-repaired, "
+                      f"{len(still_broken)} still need review")
+
+            if still_broken:
+                import warnings
+                lines = "; ".join(
+                    f"line {m.get('criterion_line')}: {m.get('criterion_text')!r} — {m.get('reason')}"
+                    for m in still_broken
+                )
+                warnings.warn(
+                    f"[Agent 1] ⚠ {len(still_broken)} threshold(s) in {nct_id} could not be "
+                    f"auto-repaired (ambiguous match) — needs human review: {lines}",
+                    RuntimeWarning, stacklevel=2
+                )
 
         # Expose paper enrichment status for the caller
         self.last_paper_status = paper_status
@@ -459,19 +494,26 @@ class LogicDecomposer:
 
     def _llm_review_value_constraints(
         self, nct_id: str, inclusion_criteria: list, exclusion_criteria: list, ir
-    ) -> None:
+    ) -> list[dict]:
         """Step 7: a second, small LLM pass that reads each criterion line against
         its generated rule directly, catching the per-criterion loss Step 6's
         study-wide total can mask when another criterion over-produces.
 
+        Detection only — does not warn and does not fix. The caller (parse_nct)
+        decides what to do with the misses: try Step 8's mechanical repair first,
+        warn only for what repair could not resolve.
+
         Fails open: a broken review call (bad JSON, network error, anything) is
-        logged and swallowed, never raised — this is an additional check on top of
-        Step 6, not a replacement, and a review failure must not fail the parse
-        that already succeeded.
+        logged and swallowed, never raised — returns []. This is an additional
+        check on top of Step 6, not a replacement, and a review failure must not
+        fail the parse that already succeeded.
+
+        :returns: the reviewer's "misses" list (each a dict with criterion_line,
+            criterion_text, reason), or [] when nothing was flagged or the call failed.
         """
         all_criteria = list(inclusion_criteria) + list(exclusion_criteria)
         if not all_criteria:
-            return
+            return []
 
         criteria_block = "\n".join(
             f"{i + 1}. {c}" for i, c in enumerate(all_criteria)
@@ -492,25 +534,62 @@ class LogicDecomposer:
             )
             response = reviewer.invoke([HumanMessage(content=prompt)])
             data = self._extract_json(response.content)
-            misses = data.get("misses") or []
+            return data.get("misses") or []
         except Exception as exc:
             logger.debug(
                 "[Agent 1] Step 7 threshold review failed for %s, skipping (fail-open): %s",
                 nct_id, exc,
             )
-            return
+            return []
 
-        if misses:
-            import warnings
-            lines = "; ".join(
-                f"line {m.get('criterion_line')}: {m.get('criterion_text')!r} — {m.get('reason')}"
-                for m in misses
-            )
-            warnings.warn(
-                f"[Agent 1] ⚠ Step 7 threshold review flagged {len(misses)} likely "
-                f"dropped threshold(s) in {nct_id}: {lines}",
-                RuntimeWarning, stacklevel=2
-            )
+    @staticmethod
+    def _repair_dropped_threshold(original_text: str, rules: list) -> int:
+        """Step 8: mechanically reattach a threshold Step 7 found missing.
+
+        No LLM call. The numbers were already extracted deterministically from
+        `original_text` before the first LLM call ever ran (ADR-031-B /
+        parse_value_constraints) — Step 7's job was only to say WHICH rule lost
+        them, not to re-derive the numbers. This walks `rules` (recursing into
+        sub_criteria) for entries with `value_constraint is None` whose `name` or
+        `entity_text` appears in `original_text` — the broken shape leaves the
+        entity name intact and drops only source_text/value_constraint, so the
+        entity name is still a reliable anchor back to the line it came from.
+
+        Repairs ONLY when the count of such candidate rules exactly equals the
+        count of constraints `parse_value_constraints` finds in `original_text`.
+        A count mismatch means the mapping from rule to constraint is ambiguous
+        — assigning constraint N to the wrong analyte would silently apply the
+        wrong threshold, which is worse than leaving it missing, so this refuses
+        to guess and returns 0 (the caller's warning stands).
+
+        :returns: how many rules were repaired (0 means: not attempted, or
+            ambiguous — check the warning instead).
+        """
+        from src.services.value_constraint import parse_value_constraints
+
+        constraints = parse_value_constraints(original_text)
+        if not constraints:
+            return 0
+
+        candidates: list = []
+
+        def _collect(items: list) -> None:
+            for rule in items:
+                if getattr(rule, "value_constraint", None) is None:
+                    anchor = (getattr(rule, "entity_text", None) or getattr(rule, "name", None) or "")
+                    if anchor and anchor.lower() in original_text.lower():
+                        candidates.append(rule)
+                _collect(getattr(rule, "sub_criteria", None) or [])
+
+        _collect(rules)
+
+        if len(candidates) != len(constraints):
+            return 0
+
+        for rule, constraint in zip(candidates, constraints):
+            rule.value_constraint = constraint
+            rule.source_text = original_text
+        return len(candidates)
 
     @staticmethod
     def _discover_pdfs(papers_dir: str) -> list:
