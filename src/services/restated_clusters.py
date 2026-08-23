@@ -59,6 +59,33 @@ def description_stem(description: str | None) -> str:
     return _TRAILING_PARENTHETICAL.sub("", description or "", count=1)
 
 
+def cluster_key(criterion: dict[str, Any]) -> tuple[str, str] | None:
+    """Return the `(domain, stem)` key a criterion clusters under, or None.
+
+    This is conditions 1 through 3 of the `spec.md` §2.5 signal minus its two-or-more
+    threshold: condition 2 decides eligibility, and conditions 1 and 3 supply the key.
+    A criterion carrying any `valueConstraint` has no key at all, which is how the
+    distinct-entity case (`spec.md` §2.3.3) is kept out without inspecting its ids.
+
+    The threshold is what makes this worth exposing separately. Cluster detection needs
+    it -- one criterion is not a duplication. Stability measurement (REQ-006) must not
+    have it: a sentence that has converged emits exactly one criterion, and a sentence
+    that vanished emits none, and both are reported by a thresholded detector as the
+    same nothing.
+
+    Args:
+        criterion: A top-level IR criterion.
+
+    Returns:
+        `(domain, description stem)` when the criterion is eligible to cluster, or None
+        when it carries a `valueConstraint`.
+    """
+    # An absent key and an explicit null are the same thing here.
+    if criterion.get("valueConstraint") is not None:
+        return None
+    return (criterion.get("domain") or "", description_stem(criterion.get("description")))
+
+
 def detect_restated_clusters(
     criteria: list[dict[str, Any]],
     *,
@@ -83,12 +110,11 @@ def detect_restated_clusters(
     """
     by_stem: dict[tuple[str, str], list[Any]] = {}
     for criterion in criteria or []:
-        # Condition 2. An absent key and an explicit null are the same thing here.
-        if criterion.get("valueConstraint") is not None:
+        # Condition 2 rules a constrained criterion out; conditions 1 and 3 key the
+        # bucket together, so a stem shared across two domains never forms a cluster.
+        key = cluster_key(criterion)
+        if key is None:
             continue
-        # Condition 1 keys the bucket alongside condition 3, so a stem shared across
-        # two domains never forms a cluster.
-        key = (criterion.get("domain") or "", description_stem(criterion.get("description")))
         by_stem.setdefault(key, []).append(criterion.get("id"))
 
     return [
