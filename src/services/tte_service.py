@@ -70,6 +70,7 @@ from src.api.models.tte import (
 )
 from src.models.ir import ProvisionalSectionSource, ProvisionalStudyIR
 from src.pipeline.webapi_client import CohortTableReference, WebAPIClient, WebAPIError
+from src.services.restated_clusters import detect_all_restated_clusters
 from src.services.tte_store import TTEStore
 from src.services.value_constraint import build_measurement_value_filter
 from src.utils.exceptions import LLMConfigurationError
@@ -4914,6 +4915,15 @@ class TTEService:
                 skipped_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
             "_generationCensus": generation_census,
+            # SPEC-INFRA-003 REQ-005. Same present-and-empty contract as the two above.
+            # Detection runs over the criteria as they arrived, not over what survived
+            # mapping: a restatement whose duplicate failed to map is still a
+            # restatement, and the point of this record is to show the duplication that
+            # the concept-set fragmentation in `spec.md` §2.2 is downstream of.
+            "_restatedClusters": detect_all_restated_clusters(
+                inclusion_criteria=inc_criteria,
+                exclusion_criteria=exc_criteria,
+            ),
         }
 
     def _build_combined_treatment_circe(
