@@ -305,15 +305,24 @@ Pattern G — Region/subgroup-conditional VALUE (the requirement applies to ever
   "eGFR >= 60 mL/min (>= 45 mL/min for patients over 75)", "HbA1c <= 9% (<= 10% in Asia
   Pacific)". Unlike Pattern F (a requirement that only some patients face at all), here EVERY
   patient faces the requirement — only the threshold value changes for the named subgroup.
-  CRITICAL: emit ONE Pattern-E-style group (`group_type: "ALL"` if the base requirement is
-  universal, one sub_criterion per subgroup variant), never a single rule carrying only the
-  general-population number. Dropping the subgroup-specific value because there is no single
-  canonical number is the same silent-loss failure as dropping a shared threshold in Pattern
-  E — the general case is not "close enough" to stand in for the subgroup case.
+  CRITICAL: emit ONE group with `group_type: "ANY"` — NOT "ALL". "The requirement is
+  universal" describes who faces it, not how the variants combine: the variants are
+  mutually exclusive alternatives (a patient is subject to the general value OR the named
+  subgroup's value, never both), so ANY/OR is what "apply whichever variant matches this
+  patient" means. `group_type: "ALL"` would force every patient to satisfy every variant
+  simultaneously, including the strictest one — a different and stricter requirement than
+  anything the protocol actually states. Emit this as a SINGLE JSON rule object carrying a
+  `sub_criteria` array (one sub_criterion per subgroup variant) — never as two or more
+  separate top-level rules; standalone rules are AND-combined downstream and produce the
+  same wrong strictest-variant-for-everyone result that a mistaken `group_type: "ALL"`
+  would. Dropping the subgroup-specific value because there is no single canonical number
+  is the same silent-loss failure as dropping a shared threshold in Pattern E — the general
+  case is not "close enough" to stand in for the subgroup case.
   Example: "Age >= 18 years. For Japan only: Age >= 20 years" →
-  One Demographics rule with sub_criteria = Age (general, >= 18), Age (Japan, >= 20) — two
-  sub_criteria from two subgroup values, both carrying the full original sentence as
-  source_text (they share one line, same as Pattern E's shared-threshold rule 6).
+  One Demographics rule, group_type "ANY", with sub_criteria = Age (general, >= 18), Age
+  (Japan, >= 20) — two sub_criteria from two subgroup values, both carrying the full
+  original sentence as source_text (they share one line, same as Pattern E's
+  shared-threshold rule 6).
 
 Output your response as valid JSON matching the ARTEMIS IR schema."""
 
@@ -526,12 +535,33 @@ Important Rules:
 14. REGION/SUBGROUP-CONDITIONAL VALUE (Pattern G): When a criterion states a DIFFERENT number
     for a named subgroup while the requirement itself applies to every patient — "Age >= 18
     years. For Japan only: Age >= 20 years", "eGFR >= 60 (>= 45 for age > 75)" — this is NOT
-    Pattern F (nobody is exempt) and it is NOT a single number to pick. Emit ONE group with a
-    sub_criterion PER VARIANT, each carrying its own value_constraint and a name noting which
-    subgroup it is for (e.g. "Age (general)", "Age (Japan)"). Keeping only the general-
-    population number and dropping the subgroup-specific one is the same silent loss covered
-    by rule 6 for a shared threshold — do not let "there's already a number for this entity"
-    stand in for "every number this line states is captured".
+    Pattern F (nobody is exempt) and it is NOT a single number to pick. Emit ONE group with
+    `group_type: "ANY"` (the variants are alternatives a patient satisfies one of, not
+    requirements that all apply together — `group_type: "ALL"` would force every patient to
+    satisfy the strictest variant, which no protocol states) and a sub_criterion PER VARIANT,
+    each carrying its own value_constraint and a name noting which subgroup it is for (e.g.
+    "Age (general)", "Age (Japan)"). This MUST be a single JSON rule object with a
+    `sub_criteria` array — do not emit the variants as separate top-level
+    inclusion_rules/exclusion_rules entries; those are AND-combined downstream and silently
+    force the strictest variant onto every patient, the same wrong result a mistaken
+    `group_type: "ALL"` would produce. Keeping only the general-population number and
+    dropping the subgroup-specific one is the same silent loss covered by rule 6 for a shared
+    threshold — do not let "there's already a number for this entity" stand in for "every
+    number this line states is captured".
+    WRONG — two separate top-level rules (AND-combined downstream, forces Age >= 20 onto
+    every patient including non-Japan):
+    {{"inclusion_rules": [
+      {{"name": "Age (general)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 18.0, "unit_text": "years"}}}},
+      {{"name": "Age (Japan)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 20.0, "unit_text": "years"}}}}
+    ]}}
+    RIGHT — one rule, group_type "ANY", two sub_criteria (OR-combined, so a general patient
+    matching >= 18 is sufficient without also having to satisfy >= 20):
+    {{"inclusion_rules": [
+      {{"name": "Age (region-conditional)", "domain": "Demographics", "entity_text": null, "group_type": "ANY", "sub_criteria": [
+        {{"name": "Age (general)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 18.0, "unit_text": "years"}}}},
+        {{"name": "Age (Japan)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 20.0, "unit_text": "years"}}}}
+      ]}}
+    ]}}
 
 Return ONLY the JSON, no explanation.\"\"\""""
 
