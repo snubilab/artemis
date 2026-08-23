@@ -166,6 +166,44 @@ def mean_included_score(items: list[MappingCandidateItem]) -> float | None:
     return sum(scored) / len(scored) if scored else None
 
 
+def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]) -> str:
+    """Return the CIRCE group Type to emit for a criterion group.
+
+    SPEC-INFRA-003 REQ-004. An exclusion criterion is emitted with
+    `Occurrence {Type: 0, Count: 0}` -- "exactly zero occurrences" -- and CIRCE
+    AND-combines top-level InclusionRules, so N separate ABSENCE rules mean *absent
+    from A and absent from B*, which by De Morgan is absence from the **union**. That
+    is what a protocol sentence listing OR'd exclusion conditions asks for.
+
+    Passing the declared `ANY` through for such a group means "at least one is absent"
+    -- absence from the **intersection**, strictly looser, so a person matching only
+    one member's concept set is retained by a rule meant to exclude them. `ALL` is what
+    reproduces the equivalent separate top-level rules, which is the bar REQ-004 sets.
+
+    The same holds for demographic members even though they invert the operator rather
+    than the Occurrence axis: separate top-level rules AND-combine either way.
+
+    Args:
+        group_type: The group type agent1 declared, "ALL" or "ANY".
+        member_criteria: The criteria that actually contribute to the group expression.
+
+    Returns:
+        "ALL" for a non-empty all-ABSENCE group that declared "ANY"; otherwise
+        `group_type` unchanged. A missing `logicType` is not read as ABSENCE -- an
+        unestablished group keeps the behavior it already had.
+    """
+    if not member_criteria:
+        return group_type
+    if (group_type or "").strip().upper() != "ANY":
+        return group_type
+    if all(
+        (crit.get("logicType") or "").strip().upper() == "ABSENCE"
+        for crit in member_criteria
+    ):
+        return "ALL"
+    return group_type
+
+
 class TTEService:
     """Coordinate TTE draft generation, persistence, and execution placeholders."""
 
@@ -4400,8 +4438,12 @@ class TTEService:
     ) -> dict[str, Any]:
         """Build a single CIRCE InclusionRule from grouped criteria.
 
+        The emitted `Type` is `_effective_group_type` of the declared one, so an
+        all-ABSENCE group means absence from the *union* of its members' concept sets
+        rather than from their intersection (SPEC-INFRA-003 REQ-004).
+
         Args:
-            group_type: CIRCE group type string, e.g. "ALL" or "ANY".
+            group_type: CIRCE group type string as agent1 declared it, "ALL" or "ANY".
             rule_name: Display name for the inclusion rule.
             non_demo_members: List of (criterion, result) tuples for non-demographic criteria.
             demo_members: List of (criterion, demo_rule, role) tuples for demographic criteria,
@@ -4430,10 +4472,16 @@ class TTEService:
         if len(rule_name) > _MAX_RULE_NAME_LENGTH:
             rule_name = rule_name[: _MAX_RULE_NAME_LENGTH - 3] + "..."
 
+        # Judged on the criteria that actually became Groups[] entries above, not on
+        # everything the group started with: a member that failed to map contributes
+        # nothing to the expression, so it cannot decide how the rest combine.
+        member_criteria = [crit for crit, _result in non_demo_members]
+        member_criteria += [crit for crit, _demo_rule, _role in demo_members]
+
         return {
             "name": rule_name,
             "expression": {
-                "Type": group_type,
+                "Type": _effective_group_type(group_type, member_criteria),
                 "CriteriaList": [],
                 "DemographicCriteriaList": [],
                 "Groups": groups,
