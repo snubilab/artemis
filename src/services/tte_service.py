@@ -71,6 +71,10 @@ from src.api.models.tte import (
 from src.models.ir import ProvisionalSectionSource, ProvisionalStudyIR
 from src.pipeline.webapi_client import CohortTableReference, WebAPIClient, WebAPIError
 from src.services.restated_clusters import detect_all_restated_clusters
+from src.services.restated_demographics import (
+    COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
+    collapse_all_restated_demographics,
+)
 from src.services.tte_store import TTEStore
 from src.services.value_constraint import build_measurement_value_filter
 from src.utils.exceptions import LLMConfigurationError
@@ -4562,7 +4566,27 @@ class TTEService:
                 "reason": reason,
             })
 
+        # SPEC-INFRA-003 REQ-001 / REQ-007. Decided once, up front, over the criteria as
+        # they arrived: the collapse is a cardinality invariant over a structurally
+        # defined class, so it has to see the whole role at once rather than one
+        # criterion at a time. No concept-set dependency, so it runs before the mapping
+        # loops rather than after.
+        restated_demographic_drops, restated_demographic_collapses = (
+            collapse_all_restated_demographics(
+                inclusion_criteria=inc_criteria,
+                exclusion_criteria=exc_criteria,
+            )
+        )
+
         for criterion in inc_criteria:
+            # First branch in the loop, ahead of the demographic split: a dropped
+            # criterion must not reach the mapper at all, which is the entire point --
+            # each one it reaches becomes another divergent concept set in the union
+            # the cohort is filtered on (`spec.md` §2.2).
+            if ("inclusion", str(criterion.get("id", ""))) in restated_demographic_drops:
+                _record_skip(criterion, "inclusion", RESTATED_DEMOGRAPHICS_REASON)
+                order += 1
+                continue
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
                 demo = self._build_demographic_rule(criterion)
@@ -4584,6 +4608,15 @@ class TTEService:
             order += 1
 
         for criterion in exc_criteria:
+            # Same first-branch placement as the inclusion loop above, and for the same
+            # reason. This is the side the three enumerated clusters live on
+            # (`spec.md` §2.1) -- an exclusion Demographics criterion carrying no
+            # `valueConstraint` falls through to ordinary concept-set mapping, so
+            # without this branch every restatement still gets its own set.
+            if ("exclusion", str(criterion.get("id", ""))) in restated_demographic_drops:
+                _record_skip(criterion, "exclusion", RESTATED_DEMOGRAPHICS_REASON)
+                order += 1
+                continue
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
                 # Give `_build_demographic_rule` the same chance the inclusion loop
@@ -4972,6 +5005,15 @@ class TTEService:
                 inclusion_criteria=inc_criteria,
                 exclusion_criteria=exc_criteria,
             ),
+            # SPEC-INFRA-003 REQ-001 / REQ-007. Same present-and-empty contract again.
+            # This is a second, independent signal from `_restatedClusters` above, not a
+            # refinement of it: that one reads description stems and so cannot reach
+            # EMPA-REG's pair (`spec.md` §2.5.2), while this one is a cardinality
+            # invariant that never compares descriptions. Each record names its
+            # `survivorRule`, because for EMPA-REG which member should survive is not
+            # settled -- see `restated_demographics.py` and `spec.md` §2.4
+            # ASSUMPTION-1.
+            "_restatedDemographicsCollapse": restated_demographic_collapses,
         }
 
     def _build_combined_treatment_circe(
