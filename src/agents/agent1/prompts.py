@@ -324,6 +324,34 @@ Pattern G — Region/subgroup-conditional VALUE (the requirement applies to ever
   original sentence as source_text (they share one line, same as Pattern E's
   shared-threshold rule 6).
 
+Pattern H — One sentence restating ONE entity (the parenthetical scopes, it does not vary):
+  A criterion whose alternatives are near-synonyms or facets of the SAME clinical entity
+  cluster is ONE criterion, however long the sentence and however many ways it restates the
+  same thing. Emit it flat — one rule, no sub_criteria — and never emit the cluster a second
+  time under a name that differs only by a parenthetical suffix.
+  Example: "Pre-menopausal women (last menstruation <= 1 year prior to informed consent) who
+  are nursing or pregnant or of child-bearing potential and not using an acceptable method of
+  birth control" → ONE Demographics ABSENCE rule. Nursing, pregnant, and unreliable
+  contraception are one pregnancy-risk cluster resolving to one concept set.
+  CRITICAL — this is NOT Pattern G. Pattern G needs a differing NUMBER for a named subgroup
+  ("Age >= 18 years. For Japan only: Age >= 20 years" — 18 against 20). The parenthetical
+  above states no second threshold; it DEFINES the population the whole criterion applies to.
+  A scoping parenthetical read as a subgroup variant produces copies suffixed "(<= 1 year)"
+  and "(General)" from a sentence that named one thing. Each copy is then mapped on its own
+  paraphrased name and the cohort is filtered on the UNION of the divergent sets — measured
+  on this exact sentence: three copies, 4 to 7 concepts each, pairwise overlap as low as
+  zero, union 11, and not one member of that union was the plain Pregnancy or Breast feeding
+  concept. The criterion got looser and less accurate at the same time.
+  CRITICAL — this is NOT Pattern E either. Pattern E needs DISTINCT entities, each of which
+  earns its own concept set. The mechanical test between them: sub-conditions that each carry
+  their OWN value_constraint bound to a different named thing are distinct and keep one
+  concept set each; alternatives that carry NO value_constraint at all and describe the same
+  population are one cluster and collapse to a single flat criterion.
+  Example of the distinct case, unchanged: "ALT (SGPT), AST (SGOT), or alkaline phosphatase
+  >= 3 x upper limit of normal" names three analytes, each carrying its own value_constraint.
+  Pattern E governs it and Pattern H does not touch it — three entities, three concept sets.
+  Collapsing those three is the opposite failure and is just as wrong.
+
 Output your response as valid JSON matching the ARTEMIS IR schema."""
 
 NCT_DECOMPOSITION_PROMPT = """Convert this clinical trial protocol into the ARTEMIS IR format.
@@ -520,9 +548,18 @@ Important Rules:
     you MUST emit a SINGLE rule with `group_type: "ANY"` and `sub_criteria` array.
     Each sub-condition becomes a separate entry in `sub_criteria`.
     The parent rule's `entity_text` should be null (the sub_criteria have their own entity_text).
-    DO NOT emit them as separate top-level inclusion_rules — that creates implicit AND logic
-    requiring ALL conditions simultaneously, which eliminates all patients.
-    This applies to BOTH inclusion and exclusion contexts.
+    DO NOT emit them as separate top-level inclusion_rules — for PRESENCE sub-conditions that
+    creates implicit AND logic requiring ALL of them simultaneously, which eliminates all
+    patients.
+    This applies to exclusion contexts as well, but the reason above is not why. Separate
+    top-level ABSENCE rules AND-combine to "absent from every one of them", which is absence
+    from their UNION — already what an OR-ed exclusion sentence asks for, so they eliminate
+    nobody. Group them for the shape, not to avoid that harm: a downstream stage emits the
+    group type that reproduces absence-from-the-union, so an OR-ed exclusion sentence means
+    the same thing grouped or flat.
+    What grouping does NOT do is merge concept sets — N sub_criteria still map to N concept
+    sets — so grouping is never the remedy for one sentence emitted more than once. That is
+    rule 15.
     Example: "ACS with or without ST-segment elevation" → single rule, sub_criteria=[STEMI, NSTEMI, UA], group_type="ANY"
     Example: "STEMI patients OR NSTE-ACS patients" → single rule, sub_criteria=[STEMI, NSTE-ACS], group_type="ANY"
 13. CONDITIONAL CRITERIA (Pattern F): When a criterion says "[subgroup] must [requirement]"
@@ -562,6 +599,38 @@ Important Rules:
         {{"name": "Age (Japan)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 20.0, "unit_text": "years"}}}}
       ]}}
     ]}}
+15. RESTATED SINGLE ENTITY (Pattern H): When one criterion sentence restates ONE clinical
+    entity cluster — its alternatives are near-synonyms or facets of the same thing rather
+    than separately mappable entities — emit exactly ONE criterion for it, flat, with NO
+    `sub_criteria`, and do not emit that cluster again under a name that differs only by a
+    parenthetical suffix.
+    A parenthetical that scopes or defines the population is NOT a Pattern G subgroup variant.
+    Pattern G requires a DIFFERING NUMBER for a named subgroup ("Age >= 18 years. For Japan
+    only: Age >= 20 years"); "(last menstruation <= 1 year prior to informed consent)" states
+    no second threshold, so there is no variant to emit.
+    The mechanical test against Pattern E: sub-conditions that each carry their OWN
+    `value_constraint` bound to a different named entity are DISTINCT and keep one concept set
+    each (rule 12 governs them, unchanged); alternatives carrying NO `value_constraint` that
+    describe the same population are ONE cluster and collapse to a single flat criterion.
+    WRONG — one sentence emitted three times, the scoping parenthetical read as a Pattern G
+    variant. Each copy is mapped on its own paraphrased name, and the cohort is then filtered
+    on the union of three divergent concept sets:
+    {{"exclusion_rules": [
+      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception", "domain": "Demographics", "logic_type": "ABSENCE"}},
+      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception (<= 1 year)", "domain": "Demographics", "logic_type": "ABSENCE"}},
+      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception (General)", "domain": "Demographics", "logic_type": "ABSENCE"}}
+    ]}}
+    RIGHT — one flat criterion, no sub_criteria, no parenthetical suffix, the whole sentence
+    carried verbatim as source_text:
+    {{"exclusion_rules": [
+      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception", "domain": "Demographics",
+        "source_text": "Pre-menopausal women (last menstruation <= 1 year prior to informed consent) who are nursing or pregnant or of child-bearing potential and not using an acceptable method of birth control",
+        "logic_type": "ABSENCE", "window": {{"start": -9999, "end": 0}}}}
+    ]}}
+    RIGHT (the contrast that must NOT change) — "ALT (SGPT), AST (SGOT), or alkaline
+    phosphatase >= 3 x upper limit of normal" names three DISTINCT analytes, each carrying its
+    own value_constraint. Rule 12 governs it and this rule does not reach it: three entities,
+    three concept sets. Collapsing them is the opposite failure and is just as wrong.
 
 Return ONLY the JSON, no explanation.\"\"\""""
 
