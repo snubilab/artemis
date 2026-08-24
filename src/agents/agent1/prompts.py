@@ -327,8 +327,11 @@ Pattern G — Region/subgroup-conditional VALUE (the requirement applies to ever
 Pattern H — One sentence restating ONE entity (the parenthetical scopes, it does not vary):
   A criterion whose alternatives are near-synonyms or facets of the SAME clinical entity
   cluster is ONE criterion, however long the sentence and however many ways it restates the
-  same thing. Emit it flat — one rule, no sub_criteria — and never emit the cluster a second
-  time under a name that differs only by a parenthetical suffix.
+  same thing. Emit it flat — one rule, no sub_criteria — and emit it exactly ONCE. The rule
+  is a count on the protocol line, not a ban on one way of naming a copy: one line
+  describing one cluster yields one rule, whatever a second rule would be called. A
+  variant-looking suffix, a role tag, a reworded name that foregrounds a facet the first
+  name left out, and a byte-identical repeat are all the same violation.
   Example: "Pre-menopausal women (last menstruation <= 1 year prior to informed consent) who
   are nursing or pregnant or of child-bearing potential and not using an acceptable method of
   birth control" → ONE Demographics ABSENCE rule. Nursing, pregnant, and unreliable
@@ -510,6 +513,14 @@ Important Rules:
      This includes rules like "No T1DM", "No prior transplant", "No renal dialysis" etc.
 3. COMPLETENESS IS MANDATORY: You MUST capture EVERY SINGLE criterion listed above.
    Do NOT omit or summarize any criteria. Each distinct medical concept must be represented.
+   EXCEPTION — Pattern H override: "each distinct medical concept must be represented" counts
+   CONCEPTS, not the words a line spends on one. When a single criterion line names several
+   near-synonyms or facets of ONE clinical cluster (pregnant, nursing, of child-bearing
+   potential, not using birth control — one pregnancy-risk cluster), representing it means ONE
+   rule naming that cluster. It does NOT mean one rule per phrase in the line, and it does NOT
+   license a second rule to pick up a facet the first rule's name happened to leave out. The
+   whole line rides on that one rule's `source_text`, so nothing is dropped by not restating
+   it. Rule 15 governs; read it before splitting a line.
    EXCEPTION — Pattern E override: When multiple criteria represent alternative qualification paths
    (any one of them qualifies the patient, e.g., "MI OR stroke OR revascularization OR CHF"),
    they MUST be grouped into a SINGLE rule with sub_criteria and group_type="ANY" (see Rule 12).
@@ -602,8 +613,22 @@ Important Rules:
 15. RESTATED SINGLE ENTITY (Pattern H): When one criterion sentence restates ONE clinical
     entity cluster — its alternatives are near-synonyms or facets of the same thing rather
     than separately mappable entities — emit exactly ONE criterion for it, flat, with NO
-    `sub_criteria`, and do not emit that cluster again under a name that differs only by a
-    parenthetical suffix.
+    `sub_criteria`.
+    COUNT PER PROTOCOL LINE, NOT PER NAME. This is a cardinality rule, not a ban on one way
+    of naming a copy. Before you emit a rule, ask which numbered line above it came from. If
+    that line describes one cluster and you have already emitted a rule for it, do not emit
+    another — and do not resolve the urge to emit another by renaming it. What the second
+    rule would be CALLED is irrelevant; all four of these are the same violation, not four
+    separate cases to be avoided one at a time:
+      - a suffix that reads like a subgroup variant — "(<= 1 year)", "(General)";
+      - a suffix that tags the section, role, or domain — "(Exclusion)", "(Demographics)";
+      - no suffix at all, but a reworded name foregrounding a facet the first name omitted —
+        "Pregnancy/Nursing/Uncontrolled Contraception" followed by "Pre-menopausal
+        women/Nursing/Pregnant/Uncontrolled Contraception";
+      - a byte-identical repeat of the rule you already emitted.
+    A renamed duplicate is not a second criterion; it is a duplicate with a different name.
+    It is mapped on its own paraphrased name to its own divergent concept set, and the cohort
+    is filtered on the union, exactly as if you had suffixed it.
     A parenthetical that scopes or defines the population is NOT a Pattern G subgroup variant.
     Pattern G requires a DIFFERING NUMBER for a named subgroup ("Age >= 18 years. For Japan
     only: Age >= 20 years"); "(last menstruation <= 1 year prior to informed consent)" states
@@ -619,6 +644,14 @@ Important Rules:
       {{"name": "Pregnancy/Nursing/Uncontrolled Contraception", "domain": "Demographics", "logic_type": "ABSENCE"}},
       {{"name": "Pregnancy/Nursing/Uncontrolled Contraception (<= 1 year)", "domain": "Demographics", "logic_type": "ABSENCE"}},
       {{"name": "Pregnancy/Nursing/Uncontrolled Contraception (General)", "domain": "Demographics", "logic_type": "ABSENCE"}}
+    ]}}
+    WRONG — the same violation with the suffixes removed. One line, emitted twice: once under
+    the cluster name, then again under a rewording that foregrounds the population facet the
+    first name left out. No suffix makes this different from the block above; it is two rules
+    from one line, mapped to two divergent concept sets, unioned:
+    {{"exclusion_rules": [
+      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception", "domain": "Demographics", "logic_type": "ABSENCE"}},
+      {{"name": "Pre-menopausal women/Nursing/Pregnant/Uncontrolled Contraception", "domain": "Demographics", "logic_type": "ABSENCE"}}
     ]}}
     RIGHT — one flat criterion, no sub_criteria, no parenthetical suffix, the whole sentence
     carried verbatim as source_text:
