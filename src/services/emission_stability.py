@@ -27,14 +27,19 @@ vanished emits none, and a thresholded detector reports both as the same nothing
 the shared key without the threshold, and hence `VANISHED` being a verdict of its own
 rather than a flavour of stable.
 
-**Enumerated watches.** One shape has no stem to key on -- a heading emitted as a
-criterion alongside a merged-content criterion (`spec.md` §2.5.2), whose two descriptions
-share no stem, which is why the §2.5 signal does not flag it either. `spec.md` §2.5.2
-resolves this by enumeration rather than by loosening the signal, and `description_watch`
-is that escape hatch. Note the asymmetry with the detector: AC-013 forbids the *detector*
-from keying on trial identity, because a lookup table there would pass every output
-assertion and still be the wrong mechanism. A watch list is the opposite -- naming the
-sentences under measurement is its entire job, and AC-008 names them for it.
+**Why the AC-008 watches are not keyed that way.** The `(domain, stem)` key is stable
+across runs of the *same* prompt, which is what the paragraph above needs. It is not
+stable across a prompt change, and a prompt change is precisely what AC-008 measures on
+either side of. M4-iteration-1 reworded CAROLINA's tail and EMPA-REG's lead; the stem
+watch and the enumerated `description_watch` keyed on the old wording both counted zero,
+and the report read VANISHED -- the verdict naming a lost exclusion -- for one sentence
+that was unchanged and one that had converged. So `SPEC_2_1_WATCHES` is keyed on the
+cluster's topic vocabulary instead (`topic_watch`), which a rewording carries with it.
+
+Note the asymmetry with the detector: AC-013 forbids the *detector* from keying on trial
+identity, because a lookup table there would pass every output assertion and still be the
+wrong mechanism. A watch list is the opposite -- naming the sentences under measurement is
+its entire job, and AC-008 names them for it.
 
 The pipeline invocation is injected, so this module holds no I/O and no service imports.
 `scripts/measure_emission_stability.py` supplies the live `run_once`.
@@ -146,6 +151,85 @@ def description_watch(
         if (criterion.get("domain") or "") != domain:
             return False
         return regex.search(criterion.get("description") or "") is not None
+
+    return SentenceWatch(label=label, study_id=study_id, role=role, matches=matches)
+
+
+def topic_watch(
+    *,
+    label: str,
+    study_id: int,
+    role: str,
+    domain: str,
+    topics: Sequence[str],
+) -> SentenceWatch:
+    """Build a watch keyed on what a sentence is about, not on how one run worded it.
+
+    Both narrower constructors key on observed phrasing -- `stem_watch` on exact equality
+    against a stem, `description_watch` on a pattern written from a description that had
+    already been seen. That is correct where a watch is derived from a run and consumed
+    against it, which is what `watches_from_clusters` does. It is wrong for the AC-008
+    watches, which are written once and then asked to compare a run against a run made
+    after a prompt change -- the one circumstance in which the phrasing is expected to
+    move.
+
+    It moved, and both narrow keys missed: post-M4-iteration-1 the model rewrote
+    CAROLINA's tail (`Not using contraception` -> `Uncontrolled Contraception`) and
+    EMPA-REG's lead (`Pre-menopausal women...` -> `Pregnancy/...`). Each watch counted
+    zero and the report read VANISHED -- the verdict for a lost exclusion -- for one
+    sentence that was unchanged and one that had converged to exactly the single criterion
+    AC-003 asks for. A watch keyed on pre-fix phrasing can only ever report whether the
+    old bug's exact wording is gone, which is not the question AC-008 asks.
+
+    The topic key survives that, because a rewording of a clinical cluster keeps the
+    cluster's vocabulary: the model may write "Pregnancy", "Pregnant", or "pregnancy
+    status", but a criterion about this sentence does not stop mentioning pregnancy.
+
+    Precision rests on three gates, not on the topic terms alone: the study, the role, and
+    the domain all have to match before any term is looked for. Note the limit that leaves
+    -- across the three trials measured, the Demographics exclusion bucket holds nothing
+    *but* this cluster, so those runs cannot distinguish this key from a bare
+    domain-and-role key. The topic terms are what stops an unrelated Demographics
+    exclusion (an age cut-off, say) from being counted as this sentence in a fourth trial,
+    and the test suite covers that case because the live runs cannot.
+
+    Deliberately not gated on `valueConstraint`, matching `description_watch` and unlike
+    `stem_watch`. That gate belongs to the §2.5 signal and this watch is outside it;
+    inheriting it would make a criterion that acquired a constraint drop silently out of
+    the count, which is a change worth seeing rather than hiding.
+
+    Args:
+        label: Human-readable name of the sentence, carried into the report.
+        study_id: The study whose criteria are searched.
+        role: "inclusion" or "exclusion".
+        domain: Required exact-match domain, so a topic term cannot reach across domains.
+        topics: Substrings identifying the clinical cluster, matched case-insensitively
+            against the criterion `description`; any one of them matching is a hit. Use
+            truncated stems ("pregnan", not "pregnancy") so inflections are covered
+            without enumerating them. Must be non-empty.
+
+    Returns:
+        A watch counting every criterion in the study, role, and domain whose description
+        carries at least one topic term.
+
+    Raises:
+        ValueError: When `topics` is empty. Such a watch matches every criterion in the
+            domain while its label claims one sentence, so it would report the size of the
+            domain bucket -- a plausible number, wrong for a reason no reader of the report
+            could see.
+    """
+    terms = tuple(topic.lower() for topic in topics)
+    if not terms:
+        raise ValueError(
+            f"watch {label!r} needs at least one topic term; an empty set matches every "
+            f"criterion in domain {domain!r} and would report the bucket, not the sentence"
+        )
+
+    def matches(criterion: dict[str, Any]) -> bool:
+        if (criterion.get("domain") or "") != domain:
+            return False
+        description = (criterion.get("description") or "").lower()
+        return any(term in description for term in terms)
 
     return SentenceWatch(label=label, study_id=study_id, role=role, matches=matches)
 
@@ -375,31 +459,63 @@ def watches_from_clusters(
     ]
 
 
+# The vocabulary of the one clinical cluster all three `spec.md` §2.1 sentences describe:
+# pregnancy, nursing, and unreliable contraception in pre-menopausal women. Truncated
+# stems, so inflections ("Pregnancy", "Pregnant", "pregnancy status") are covered without
+# being enumerated -- enumerating surface forms is what broke the previous watches.
+#
+# The list is deliberately wider than the descriptions observed so far. Every term past
+# the first four is a rewording the model has not produced yet but plainly could, and the
+# cost of carrying one is nothing: a term only ever fires inside an already-matched study,
+# role, and domain.
+PREGNANCY_CLUSTER_TOPICS: tuple[str, ...] = (
+    "pregnan",
+    "nursing",
+    "contracept",
+    "menopaus",
+    "child-bearing",
+    "childbearing",
+    "breast feeding",
+    "breastfeeding",
+    "lactat",
+    "birth control",
+)
+
 # The three sentences AC-008 names, from `spec.md` §2.1. Study ids match the reingest
-# entry point's target table. Two are keyed on the §2.5 stem; the third has no stem to
-# key on (§2.5.2) and is enumerated instead, which is the disposition §2.5.2 already
-# chose for it.
+# entry point's target table.
+#
+# All three are topic watches. They were a stem watch, a stem watch, and an enumerated
+# description watch until M4-iteration-1 rephrased two of the three sentences out from
+# under their keys; both then counted zero and the report named a converged sentence and
+# an unchanged one as VANISHED. The measurement had to be redone by reading the run stores
+# directly. A watch that only recognizes pre-fix phrasing cannot answer AC-008's question,
+# because a prompt change moving the phrasing is the event it is deployed to observe.
+#
+# Rekeying does not disturb the stored pre-fix baseline: replayed over the pre-fix
+# descriptions these watches score 3, 2, and 2, the same numbers the old watches recorded,
+# so the two columns AC-008 prints side by side still compare two runs rather than two
+# instruments. `tests/test_infra_003_emission_watch_phrasing.py` pins both sides.
 SPEC_2_1_WATCHES: tuple[SentenceWatch, ...] = (
-    stem_watch(
+    topic_watch(
         label="CARMELINA exclusion #10",
         study_id=9,
         role="exclusion",
         domain="Demographics",
-        stem="Pregnancy/Nursing/Uncontrolled Contraception",
+        topics=PREGNANCY_CLUSTER_TOPICS,
     ),
-    stem_watch(
+    topic_watch(
         label="CAROLINA exclusion #17",
         study_id=10,
         role="exclusion",
         domain="Demographics",
-        stem="Pre-menopausal women/Nursing/Pregnant/Not using contraception",
+        topics=PREGNANCY_CLUSTER_TOPICS,
     ),
-    description_watch(
+    topic_watch(
         label="EMPA-REG exclusion #11",
         study_id=8,
         role="exclusion",
         domain="Demographics",
-        pattern=r"^Pre-menopausal women\b",
+        topics=PREGNANCY_CLUSTER_TOPICS,
     ),
 )
 
