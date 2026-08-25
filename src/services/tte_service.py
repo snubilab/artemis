@@ -75,6 +75,10 @@ from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
     collapse_all_restated_demographics,
 )
+from src.services.restated_distinctness import (
+    COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
+    collapse_all_restated_criteria,
+)
 from src.services.tte_store import TTEStore
 from src.services.value_constraint import build_measurement_value_filter
 from src.utils.exceptions import LLMConfigurationError
@@ -4578,6 +4582,21 @@ class TTEService:
             )
         )
 
+        # SPEC-INFRA-004 REQ-001 / REQ-007 / REQ-011. The same defect in every other domain,
+        # gated on a distinctness key rather than on a relaxed domain test. Runs here for the
+        # same reason the Demographics collapse does -- it partitions a whole stem group at
+        # once and has no concept-set dependency -- and the two never contend for a criterion
+        # because REQ-013 gates this path on the complement of `is_restatable_demographic`,
+        # so the eligible sets are complementary by construction rather than by coincidence.
+        (
+            restated_distinctness_drops,
+            restated_distinctness_collapses,
+            restated_intact_groups,
+        ) = collapse_all_restated_criteria(
+            inclusion_criteria=inc_criteria,
+            exclusion_criteria=exc_criteria,
+        )
+
         for criterion in inc_criteria:
             # First branch in the loop, ahead of the demographic split: a dropped
             # criterion must not reach the mapper at all, which is the entire point --
@@ -4585,6 +4604,13 @@ class TTEService:
             # the cohort is filtered on (`spec.md` §2.2).
             if ("inclusion", str(criterion.get("id", ""))) in restated_demographic_drops:
                 _record_skip(criterion, "inclusion", RESTATED_DEMOGRAPHICS_REASON)
+                order += 1
+                continue
+            # Recorded under its own reason rather than merged with the branch above: the
+            # two paths make different decisions on different grounds, and a census that
+            # attributed both to one reason would hide which signal did the dropping.
+            if ("inclusion", str(criterion.get("id", ""))) in restated_distinctness_drops:
+                _record_skip(criterion, "inclusion", RESTATED_DISTINCTNESS_REASON)
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
@@ -4615,6 +4641,13 @@ class TTEService:
             # without this branch every restatement still gets its own set.
             if ("exclusion", str(criterion.get("id", ""))) in restated_demographic_drops:
                 _record_skip(criterion, "exclusion", RESTATED_DEMOGRAPHICS_REASON)
+                order += 1
+                continue
+            # Same placement and the same reason as the inclusion loop's second branch. This
+            # is the side the bulk of the generalized clusters live on -- CAROLINA's ten
+            # sibling clusters and EMPA-REG's six-member liver group are all exclusions.
+            if ("exclusion", str(criterion.get("id", ""))) in restated_distinctness_drops:
+                _record_skip(criterion, "exclusion", RESTATED_DISTINCTNESS_REASON)
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
@@ -5014,6 +5047,19 @@ class TTEService:
             # settled -- see `restated_demographics.py` and `spec.md` §2.4
             # ASSUMPTION-1.
             "_restatedDemographicsCollapse": restated_demographic_collapses,
+            # SPEC-INFRA-004 REQ-007. Same present-and-empty contract again. Kept separate
+            # from `_restatedDemographicsCollapse` rather than merged into it: the two paths
+            # use different grouping units -- whole-role against per-(role, domain, stem) --
+            # so a merged list would carry records whose fields mean different things, and a
+            # reader could not tell which rule produced which record.
+            "_restatedDistinctnessCollapse": restated_distinctness_collapses,
+            # SPEC-INFRA-004 REQ-011. The report is the deliverable here, not the collapse.
+            # A genuine duplicate the key cannot reach -- CAROLINA {22,59}, whose members
+            # read `Investigational drug` and `Investigational Medicinal/Medical Product` --
+            # must be visible in the artifact rather than silently absent, or the next
+            # investigation re-derives it from scratch, which is how that pair reached
+            # SPEC-INFRA-004 mis-classified in the first place.
+            "_restatedIntactGroups": restated_intact_groups,
         }
 
     def _build_combined_treatment_circe(

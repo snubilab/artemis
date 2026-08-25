@@ -187,6 +187,28 @@ def _withheld_reason(considered: list[dict[str, Any]], classes: list[dict[str, A
     return WITHHELD_EMPTY_SOURCE_TEXT
 
 
+def considered_by_generalized_path(criteria: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return the criteria this path may act on — REQ-013's gate, in one place.
+
+    The gate is the **complement of the predicate**, never `domain != "Demographics"`. Both
+    achieve disjointness, but the domain form over-excludes: CAROLINA inclusion
+    `Age >= 70 years` {4,33} is Demographics *and* carries a non-null `valueConstraint`, so
+    `SPEC-INFRA-003`'s gate 2 rejects it — under a domain exclusion that genuine duplicate
+    would be collapsed by neither path. Disjointness alone is not the requirement;
+    disjointness *without orphans* is.
+
+    Exposed rather than inlined so the disjointness criterion asserts against the gate the
+    collapse actually uses, instead of re-deriving an equivalent one in the test.
+
+    Args:
+        criteria: Top-level criteria, in document order.
+
+    Returns:
+        Those for which `is_restatable_demographic` is false, in document order.
+    """
+    return [c for c in criteria or [] if not is_restatable_demographic(c)]
+
+
 def analyze_restated_groups(
     criteria: list[dict[str, Any]],
     *,
@@ -227,7 +249,7 @@ def analyze_restated_groups(
     for (domain, stem), members in by_stem.items():
         if len(members) < 2:
             continue
-        considered = [c for c in members if not is_restatable_demographic(c)]
+        considered = considered_by_generalized_path(members)
         classes = [_describe_class(k, v) for k, v in partition_by_distinctness(considered).items()]
         collapses = any(cls["collapsible"] for cls in classes)
         groups.append(
@@ -243,3 +265,92 @@ def analyze_restated_groups(
             }
         )
     return groups
+
+
+_INTACT_FIELDS = ("role", "domain", "stem", "criterionIds", "consideredIds", "classes", "reason")
+
+
+def collapse_restated_criteria(
+    criteria: list[dict[str, Any]],
+    *,
+    role: str,
+) -> tuple[set[tuple[str, str]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Collapse one role's restated criteria, one survivor per distinctness class.
+
+    The reduction is **per class**, which is the whole difference between fixing the defect
+    and re-creating `SPEC-INFRA-003`'s regression. A stem group holding N classes yields N
+    survivors: EMPA-REG's `Liver disease` group holds six criteria in three classes and must
+    yield three, not one.
+
+    Args:
+        criteria: Top-level criteria for a single role of a single study, in document order.
+            Order is load-bearing — the survivor is each class's first member, and "first" is
+            only meaningful because nothing here sorts.
+        role: "inclusion" or "exclusion". Recorded on every record and used in the drop keys,
+            so a collapse never spans roles and two criteria carrying the same id in
+            different roles never collide.
+
+    Returns:
+        A `(drop_keys, records, intact)` triple. `drop_keys` holds `(role, criterion id as
+        str)` for every criterion to drop, keyed to match `_record_skip`'s string ids.
+        `records` holds one dict per collapsed class. `intact` holds one dict per stem group
+        of two or more members that nothing collapsed, carrying the per-member keys and the
+        withheld reason — REQ-011's deliverable, so a genuine duplicate the key cannot reach
+        is visible in the artifact rather than silently absent.
+    """
+    drop_keys: set[tuple[str, str]] = set()
+    records: list[dict[str, Any]] = []
+    intact: list[dict[str, Any]] = []
+
+    for group in analyze_restated_groups(criteria, role=role):
+        if not group["collapses"]:
+            intact.append({field: group[field] for field in _INTACT_FIELDS})
+            continue
+        for cls in group["classes"]:
+            # A collapsing group may still hold classes of one, or a class withheld under
+            # REQ-004. Those members are untouched rather than swept in with the rest.
+            if not cls["collapsible"]:
+                continue
+            drop_keys |= {(role, str(i)) for i in cls["droppedIds"]}
+            records.append(
+                {
+                    "role": role,
+                    "domain": group["domain"],
+                    "stem": group["stem"],
+                    "distinctnessKey": cls["distinctnessKey"],
+                    "survivorId": cls["survivorId"],
+                    "droppedIds": cls["droppedIds"],
+                    "survivorRule": SURVIVOR_RULE,
+                    "reason": COLLAPSE_REASON,
+                }
+            )
+    return drop_keys, records, intact
+
+
+def collapse_all_restated_criteria(
+    *,
+    inclusion_criteria: list[dict[str, Any]],
+    exclusion_criteria: list[dict[str, Any]],
+) -> tuple[set[tuple[str, str]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Collapse restated criteria across both roles of one study.
+
+    Args:
+        inclusion_criteria: The study's top-level inclusion criteria, in document order.
+        exclusion_criteria: The study's top-level exclusion criteria, in document order.
+
+    Returns:
+        A `(drop_keys, records, intact)` triple merging both roles, inclusion first. The
+        roles are collapsed independently, so a stem shared between an inclusion and an
+        exclusion criterion forms two groups rather than one and never collapses across them.
+    """
+    inc_keys, inc_records, inc_intact = collapse_restated_criteria(
+        inclusion_criteria, role="inclusion"
+    )
+    exc_keys, exc_records, exc_intact = collapse_restated_criteria(
+        exclusion_criteria, role="exclusion"
+    )
+    return (
+        inc_keys | exc_keys,
+        inc_records + exc_records,
+        inc_intact + exc_intact,
+    )
