@@ -469,3 +469,55 @@ class TestEnumeratedOrGroup:
         collapsed = _collapse_hierarchical_groups(text)
         assert collapsed.count("[OR-GROUP]") == 1
         assert "myocardial" in collapsed and "stroke" in collapsed
+
+
+class TestParenthesizedEnumeratedItems:
+    """PLATO's design paper (plato_design_ahj2009.pdf, Table I) enumerates
+    alternatives as '(a)', '(b)', '(c)' -- a leading paren before the letter --
+    rather than the bare 'a)' / 'a.' forms the numbered-list regex already
+    handled. Because Step 1 didn't strip the leading paren, Step 2's
+    continuation heuristic (added for CARMELINA's '(SGPT)' wrap) treated each
+    new enumerated item's '(' as a mid-sentence wrap and glued (b), (c), (d)
+    onto (a). The merged string then fed the LLM's Age>=60 value-constraint
+    extraction, producing the corrupted unitText 'y of age (b) Previous MI'
+    (PLATO's known Age>=60 anomaly, out of scope of SPEC-INFRA-003 per
+    spec.md Section 4).
+    """
+
+    PLATO_RISK_FACTORS = (
+        "3. One of the following:\n"
+        "(a) ≥60 y of age\n"
+        "(b) Previous MI or CABG\n"
+        "(c) CAD with ≥50% stenosis\n"
+        "in ≥2 vessels\n"
+        "(d) Previous ischemic stroke,\n"
+        "TIA (hospital-based diagnosis),\n"
+        "carotid stenosis (≥50%),\n"
+        "or cerebral revascularization\n"
+        "(e) Diabetes mellitus\n"
+        "(f) Peripheral artery disease\n"
+        "(g) Chronic renal dysfunction\n"
+    )
+
+    def test_leading_paren_letter_items_are_not_glued_together(self):
+        result = _regex_parse_criteria(self.PLATO_RISK_FACTORS)
+        age_item = next((i for i in result if "60" in i and "age" in i.lower()), None)
+        assert age_item is not None, f"no age item found in {result}"
+        assert "Previous MI" not in age_item, f"(b)'s text leaked into (a)'s item: {age_item!r}"
+
+    def test_each_leading_paren_letter_item_is_its_own_entry(self):
+        result = _regex_parse_criteria(self.PLATO_RISK_FACTORS)
+        assert any(i.startswith("Previous MI or CABG") for i in result), result
+        assert any("Diabetes mellitus" in i for i in result), result
+
+    def test_the_carmelina_wrap_is_still_rejoined_after_this_fix(self):
+        # Non-regression: '(SGPT)' is not a single letter/digit/roman marker,
+        # so it must still be treated as a mid-sentence continuation.
+        text = (
+            "3) Active liver disease or impaired hepatic function, defined by serum levels of either ALT\n"
+            "(SGPT), AST (SGOT), or alkaline phosphatase (AP) >=3 x upper limit of normal (ULN) as\n"
+            "determined at Visit 1.\n"
+        )
+        result = _regex_parse_criteria(text)
+        assert len(result) == 1, f"expected one criterion, got {result}"
+        assert "ALT" in result[0] and "AST" in result[0]

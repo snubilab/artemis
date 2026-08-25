@@ -532,7 +532,7 @@ def _regex_parse_criteria(text: str) -> List[str]:
     has_dash_bullets = bool(re.search(r"(?m)^\s*[-*]\s+", text))
     has_o_bullets = bool(re.search(r"(?m)^\s*o\s+\S", text))
     has_numbered = bool(re.search(
-        r"(?m)^\s*(?:\d+[.)]\s+|[a-z][.)]\s+|(?:i{1,3}|iv|vi{0,3})[.)]\s+)",
+        r"(?m)^\s*\(?(?:\d{1,2}[.)]|[a-z][.)]|(?:i{1,3}|iv|vi{0,3})[.)])\s+",
         text, re.IGNORECASE,
     ))
     has_multi_newlines = text.strip().count("\n") >= 2
@@ -552,7 +552,7 @@ def _regex_parse_criteria(text: str) -> List[str]:
     normalized = re.sub(r"(?m)^\s*o\s+(?=\S)", "\n", normalized)
     # Replace numbered lists: 1., 2., 1), 2), a., b., a), b), i., ii., iii.
     normalized = re.sub(
-        r"(?m)^\s*(?:\d+[.)]\s+|[a-z][.)]\s+|(?:i{1,3}|iv|vi{0,3})[.)]\s+)",
+        r"(?m)^\s*\(?(?:\d{1,2}[.)]|[a-z][.)]|(?:i{1,3}|iv|vi{0,3})[.)])\s+",
         "\n",
         normalized,
         flags=re.IGNORECASE,
