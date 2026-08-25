@@ -214,7 +214,9 @@ class TestFixtureThreeIsNotOrphaned:
             inclusion_criteria=criteria(carolina, "inclusion"),
             exclusion_criteria=criteria(carolina, "exclusion"),
         )
-        claimed = {str(i) for r in demo_records for i in ([r["survivorId"]] + list(r["droppedIds"]))}
+        claimed = {
+            str(i) for r in demo_records for i in ([r["survivorId"]] + list(r["droppedIds"]))
+        }
         age_group = [
             c
             for c in criteria(carolina, "inclusion")
