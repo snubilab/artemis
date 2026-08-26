@@ -41,7 +41,7 @@ BASELINE = {
     "ARISTOTLE": (8, 21, 1),
     "CARMELINA": (3, 16, 1),
     "EMPA-REG": (0, 15, 1),
-    "PLATO": (18, 12, 1),
+    "PLATO": (24, 12, 1),
     "LEADER": (17, 14, 0),
 }
 
