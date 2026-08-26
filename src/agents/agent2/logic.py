@@ -442,6 +442,131 @@ class ConceptLogician:
         )
         return kept
 
+    # @MX:ANCHOR: [AUTO] Observation-domain entity-class filter, fan_in=1 (wired
+    # in workflow.py, gated on domain_hint == "Observation")
+    # @MX:REASON: SPEC-INFRA-005 — Observation was the last of the three domains
+    # (Condition, Measurement, Observation) missing a post-selection entity-class
+    # filter; two CAROLINA criteria mapped to wrong OMOP concepts as a result.
+    def drop_wrong_entity_class_for_observation(self, concept_ids: List[int]) -> List[int]:
+        """Remove SNOMED Substance/Procedure-class concepts, and non-sole
+        LOINC Survey/Question-class concepts, from an Observation-domain selection.
+
+        An Observation criterion records a clinical status. Two wrong-entity shapes
+        slip through because Observation's hard ChromaDB domain filter has no
+        downstream specificity gate (unlike Condition and Measurement):
+
+        1. SNOMED Substance / Procedure class (concept_class_id IN ('Substance',
+           'Procedure')): a chemical/enzyme-name concept or a clinical-activity
+           concept is never the correct entity type for a clinical-status
+           Observation criterion. SPEC-INFRA-005
+           root cause: CAROLINA (NCT01243424) 'Elevated ALT or AST' was extracted
+           with domain: "Observation" (a distinct, out-of-scope defect — see
+           spec.md §4 item B), so the hard `where={"domain_id": "Observation"}`
+           filter in batch_search() excluded gold's Measurement-domain lab-test
+           codes outright, and these Substance/Procedure-class SNOMED concepts won
+           the rerank unpenalized. Live-DB verified (2026-08-26): 0 of the 763
+           distinct concept ids referenced across every gold Circe set carry
+           domain_id = 'Observation' AND concept_class_id IN ('Substance',
+           'Procedure') — gold's only Observation-domain class is 'Clinical
+           Finding' (17 instances), untouched by this filter. Unconditional
+           exclusion is safe.
+
+        2. LOINC Survey / Question class (concept_class_id IN ('Survey',
+           'Question')), CONDITIONAL — dropped only when a competing non-Survey/
+           Question Observation-domain candidate exists in the same selection.
+           Unlike drop_wrong_entity_class_for_condition, this class is NOT
+           blanket-excluded: Observation legitimately contains patient-reported
+           Survey/Question concepts sometimes (see that function's docstring).
+           Live-DB verified against the actual CAROLINA 'Cigarette smoking'
+           wrong mapping: of 4 candidates, 3 are 'Clinical Observation' class and
+           only 1 is 'Survey' class — not homogeneous. This filter therefore
+           narrows rather than empties that set; gold's Observation smoking
+           concepts remain unreachable in the vector index regardless (spec.md
+           §2.3/§4 item C, out of scope for this SPEC).
+
+        Caller MUST gate this on the Observation domain. The Survey/Question
+        conditional-drop would be meaningless for Condition (which excludes that
+        class unconditionally) or Measurement (which has no such class present).
+
+        Args:
+            concept_ids: Selected concept IDs for an Observation-domain criterion.
+
+        Returns:
+            The same IDs in order, minus wrong-entity members. Returns [] when
+            every member is wrong-entity (Substance/Procedure, or Survey/Question
+            with a competing non-Survey/Question candidate present) — the caller
+            falls through to the RAG fallback so the miss is recorded, not
+            silently kept with the wrong entity. Returns the input unchanged when
+            the database is unreachable (fail-open on connectivity only).
+        """
+        if not concept_ids:
+            return []
+
+        deduped = self._dedupe_preserve_order(concept_ids)
+        if not _check_db():
+            return deduped
+
+        try:
+            from sqlalchemy import text
+            from src.utils.db import get_db
+
+            classification_query = text(f"""
+                SELECT concept_id, domain_id, concept_class_id
+                FROM {self.schema}.concept
+                WHERE concept_id = ANY(:cids)
+                  AND invalid_reason IS NULL
+            """)
+            with next(get_db()) as db:
+                rows = db.execute(classification_query, {"cids": deduped}).fetchall()
+            classified = {row[0]: (row[1], row[2]) for row in rows}
+        except Exception as exc:
+            logger.debug("[Logician] Observation entity-class lookup failed: %s", exc)
+            return deduped
+
+        substance_or_procedure = {
+            cid for cid, (domain, cls) in classified.items()
+            if domain == "Observation" and cls in ("Substance", "Procedure")
+        }
+        after_unconditional = [cid for cid in deduped if cid not in substance_or_procedure]
+
+        survey_or_question = {
+            cid for cid in after_unconditional
+            if classified.get(cid, (None, None))[1] in ("Survey", "Question")
+        }
+        non_survey_remaining = [cid for cid in after_unconditional if cid not in survey_or_question]
+
+        if survey_or_question and non_survey_remaining:
+            # A competing non-Survey/Question candidate exists — drop the
+            # Survey/Question members (mirrors the "no fail-open-to-wrong-entity
+            # when it's the only thing that survived" spirit of REQ-005, without
+            # blanket-excluding a class Observation legitimately uses).
+            kept = non_survey_remaining
+            dropped = substance_or_procedure | survey_or_question
+        else:
+            # No competing candidate — Survey/Question is the sole class present
+            # (or absent entirely). Keep it rather than empty the set; a
+            # patient-reported instrument may legitimately be the only signal.
+            kept = after_unconditional
+            dropped = substance_or_procedure
+
+        if not kept:
+            logger.info(
+                "[Logician] All %d Observation concept(s) are wrong-entity class "
+                "(Substance, Procedure, or non-sole Survey/Question) — dropping "
+                "entire set to avoid intent violation: %s",
+                len(deduped), sorted(deduped),
+            )
+            return []
+
+        if dropped:
+            logger.info(
+                "[Logician] Dropped %d wrong-entity concept(s) from an Observation "
+                "set (Substance/Procedure class, or non-sole Survey/Question "
+                "class): %s",
+                len(dropped), sorted(dropped),
+            )
+        return kept
+
     def prune_empty_concepts(self, concept_ids: List[int]) -> List[int]:
         """
         Filters out concepts not present in patient data tables.

@@ -541,6 +541,16 @@ class Agent2Workflow:
             # and flutter' → 'Atrial fibrillation ablation' (Procedure).
             if domain_hint == "Condition":
                 concept_ids = logician.drop_wrong_entity_class_for_condition(concept_ids)
+            # The Observation counterpart: SNOMED Substance/Procedure-class
+            # concepts (a chemical/enzyme name, or a clinical activity) are wrong
+            # entity types for a clinical-status Observation criterion; a
+            # non-sole LOINC Survey/Question-class concept is conditionally
+            # wrong (Observation legitimately contains patient-reported
+            # instruments sometimes — not blanket-excluded the way Condition
+            # excludes Survey/Question). SPEC-INFRA-005: CAROLINA (NCT01243424)
+            # 'Elevated ALT or AST' and 'Cigarette smoking' zero-overlap root cause.
+            if domain_hint == "Observation":
+                concept_ids = logician.drop_wrong_entity_class_for_observation(concept_ids)
             result.critic_skipped = critic_skipped
             # Persist KG cache after single-query processing
             try:
