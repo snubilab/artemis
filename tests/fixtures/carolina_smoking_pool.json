@@ -1,0 +1,1450 @@
+{
+  "query": "Cigarette smoking",
+  "domain_hint": "Observation",
+  "gold_concept_ids": [
+    903651,
+    903652
+  ],
+  "candidates": [
+    {
+      "concept_id": 2617854,
+      "name": "Current tobacco smoker (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 59.712772369384766
+    },
+    {
+      "concept_id": 1469816,
+      "name": "Smoking consumption --during pregnancy",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 60.00263977050781
+    },
+    {
+      "concept_id": 903662,
+      "name": "Very heavy cigarette smoker (more or equal to 40 cigarettes per day)",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 60.79482650756836
+    },
+    {
+      "concept_id": 903661,
+      "name": "Heavy cigarette smoker (20-39 cigarettes per day)",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 60.97578811645508
+    },
+    {
+      "concept_id": 903659,
+      "name": "Light cigarette smoker (1-9 cigarettes per day)",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 61.582176208496094
+    },
+    {
+      "concept_id": 4053269,
+      "name": "Cigarette maker (machine)",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 61.69932556152344
+    },
+    {
+      "concept_id": 903660,
+      "name": "Moderate cigarette smoker (10-19 cigarettes per day)",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 61.77843475341797
+    },
+    {
+      "concept_id": 3004518,
+      "name": "Cigarettes smoked current (pack per day) - Reported",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 62.38182830810547
+    },
+    {
+      "concept_id": 903658,
+      "name": "Trivial cigarette smoker (0-1 cigarettes per day)",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 62.64732360839844
+    },
+    {
+      "concept_id": 3003421,
+      "name": "Cigarettes smoked total (pack per year) - Reported",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 63.156341552734375
+    },
+    {
+      "concept_id": 903657,
+      "name": "Cigarette smoker",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 64.75804138183594
+    },
+    {
+      "concept_id": 3012697,
+      "name": "History of Tobacco use",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 64.87232971191406
+    },
+    {
+      "concept_id": 4010323,
+      "name": "Cigarette smoke",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 64.99574279785156
+    },
+    {
+      "concept_id": 2617855,
+      "name": "Current smokeless tobacco user (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 65.0117416381836
+    },
+    {
+      "concept_id": 2617856,
+      "name": "Current tobacco non-user (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 65.5459213256836
+    },
+    {
+      "concept_id": 903652,
+      "name": "Findings of tobacco or its derivatives use or exposure",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 65.5660171508789
+    },
+    {
+      "concept_id": 1450766,
+      "name": "Smokes cigarette daily",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 65.56719970703125
+    },
+    {
+      "concept_id": 1450767,
+      "name": "Never smoked cigarettes",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 65.77993774414062
+    },
+    {
+      "concept_id": 4026923,
+      "name": "Smokes in bed",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 66.19053649902344
+    },
+    {
+      "concept_id": 1242863,
+      "name": "Smoke",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 66.39631652832031
+    },
+    {
+      "concept_id": 4059774,
+      "name": "Father smokes",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Context-dependent",
+      "distance": 66.83831024169922
+    },
+    {
+      "concept_id": 1449147,
+      "name": "Reduced smoking during pregnancy",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 66.86463165283203
+    },
+    {
+      "concept_id": 1470007,
+      "name": "Temporary smoking cessation [Time]",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 67.16049194335938
+    },
+    {
+      "concept_id": 3022110,
+      "name": "History of Tobacco use Narrative",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 67.40037536621094
+    },
+    {
+      "concept_id": 903655,
+      "name": "Electronic cigarette smoker",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 67.84173583984375
+    },
+    {
+      "concept_id": 4001198,
+      "name": "Smoking-pipe maker",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 67.88230895996094
+    },
+    {
+      "concept_id": 1988679,
+      "name": "Regularly exposed to other people's smoke",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Survey",
+      "distance": 67.97309875488281
+    },
+    {
+      "concept_id": 1450770,
+      "name": "Uses smokeless tobacco daily",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 68.00059509277344
+    },
+    {
+      "concept_id": 2617806,
+      "name": "Tobacco (smoke) use cessation intervention, counseling (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 68.20252990722656
+    },
+    {
+      "concept_id": 4023640,
+      "name": "Cigarette maker",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 68.50257110595703
+    },
+    {
+      "concept_id": 903654,
+      "name": "Tobacco or its derivatives user",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 68.51673126220703
+    },
+    {
+      "concept_id": 1616974,
+      "name": "Smoked at least one cigarette containing tobacco in past 3 months",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 68.7485580444336
+    },
+    {
+      "concept_id": 1077379,
+      "name": "Maternal tobacco smoking consumption during pregnancy",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 68.99217987060547
+    },
+    {
+      "concept_id": 2617807,
+      "name": "Tobacco (smoke) use cessation intervention not counseled (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 69.04360961914062
+    },
+    {
+      "concept_id": 3028801,
+      "name": "Tobacco abuse [CCC]",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Survey",
+      "distance": 69.18579864501953
+    },
+    {
+      "concept_id": 1617710,
+      "name": "How often have you used any tobacco product in past 12 months",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 69.20389556884766
+    },
+    {
+      "concept_id": 903656,
+      "name": "Passive smoker",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 69.22379302978516
+    },
+    {
+      "concept_id": 4050338,
+      "name": "Tobacco processor",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 69.2925033569336
+    },
+    {
+      "concept_id": 903653,
+      "name": "Never used tobacco or its derivatives",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 69.34383392333984
+    },
+    {
+      "concept_id": 1450771,
+      "name": "Occasional smokeless tobacco user",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 69.4031982421875
+    },
+    {
+      "concept_id": 903651,
+      "name": "Currently doesn't use tobacco or its derivatives",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 69.476318359375
+    },
+    {
+      "concept_id": 1243780,
+      "name": "Electronic cigarette liquid without nicotine",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 69.57795715332031
+    },
+    {
+      "concept_id": 763753,
+      "name": "Hickory smoke flavoring",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 69.57842254638672
+    },
+    {
+      "concept_id": 4026862,
+      "name": "Tobacco preparer AND/OR tobacco product maker",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 69.75206756591797
+    },
+    {
+      "concept_id": 1243782,
+      "name": "Electronic cigarette liquid",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 69.75725555419922
+    },
+    {
+      "concept_id": 903664,
+      "name": "Cigar smoker",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 69.82282257080078
+    },
+    {
+      "concept_id": 1077377,
+      "name": "Stopped smoking after first trimester",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 69.96006774902344
+    },
+    {
+      "concept_id": 903666,
+      "name": "Smokeless tobacco user",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 69.9763412475586
+    },
+    {
+      "concept_id": 4009853,
+      "name": "Second hand cigarette smoke",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 70.18147277832031
+    },
+    {
+      "concept_id": 1450768,
+      "name": "Never used smokeless tobacco",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 70.2148208618164
+    },
+    {
+      "concept_id": 1077376,
+      "name": "Stopped smoking in first trimester",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 70.22807312011719
+    },
+    {
+      "concept_id": 1617232,
+      "name": "Smoked more than 10 cigarettes per day in past 3 months",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 70.40526580810547
+    },
+    {
+      "concept_id": 3046963,
+      "name": "Use of tobacco products at least daily [Minimum Data Set]",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Survey",
+      "distance": 70.44281005859375
+    },
+    {
+      "concept_id": 2617450,
+      "name": "SMOKING AND TOBACCO USE CESSATION COUNSELING VISIT; INTENSIVE MINUTES (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 70.48793029785156
+    },
+    {
+      "concept_id": 801386,
+      "name": "Tobacco screening not performed or tobacco cessation intervention not provided during the measurement period or in the six months prior to the measurement period",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 70.49832153320312
+    },
+    {
+      "concept_id": 4046693,
+      "name": "Screening smoke",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 70.58257293701172
+    },
+    {
+      "concept_id": 903665,
+      "name": "Hookah smoker",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 70.6326904296875
+    },
+    {
+      "concept_id": 4055151,
+      "name": "Assault by cigarette burn",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 70.66487884521484
+    },
+    {
+      "concept_id": 4037429,
+      "name": "Smoked salmon",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 70.70370483398438
+    },
+    {
+      "concept_id": 1091421,
+      "name": "Electronic cigarette status",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 70.79278564453125
+    },
+    {
+      "concept_id": 1314465,
+      "name": "Most recent tobacco status is not tobacco free",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 70.82132720947266
+    },
+    {
+      "concept_id": 1243781,
+      "name": "Electronic cigarette liquid containing nicotine",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 71.05303192138672
+    },
+    {
+      "concept_id": 4026890,
+      "name": "Smoked trout",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 71.13282012939453
+    },
+    {
+      "concept_id": 1447342,
+      "name": "Maternal history of harmful pattern of tobacco use",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Context-dependent",
+      "distance": 71.2098617553711
+    },
+    {
+      "concept_id": 937680,
+      "name": "Patient identified as tobacco user did not receive tobacco cessation intervention during the measurement period or in the six months prior to the measurement period (counseling and/or pharmacotherapy)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 71.24881744384766
+    },
+    {
+      "concept_id": 762821,
+      "name": "Drug interaction with tobacco",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 71.44004821777344
+    },
+    {
+      "concept_id": 4054495,
+      "name": "Accident caused by smoke from conflagration in commercial premises",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 71.44027709960938
+    },
+    {
+      "concept_id": 937683,
+      "name": "Patient not screened for tobacco use",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 71.86871337890625
+    },
+    {
+      "concept_id": 606828,
+      "name": "Education about cessation of e-cigarette use",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 71.94294738769531
+    },
+    {
+      "concept_id": 600776,
+      "name": "Lack of support for smoking cessation",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 71.94464874267578
+    },
+    {
+      "concept_id": 4021161,
+      "name": "Smoking effects education",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 71.99913024902344
+    },
+    {
+      "concept_id": 4026863,
+      "name": "Tobacco preparer",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 72.00457000732422
+    },
+    {
+      "concept_id": 1077391,
+      "name": "Use of nicotine",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 72.07125091552734
+    },
+    {
+      "concept_id": 1314464,
+      "name": "Most recent tobacco status is tobacco free",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 72.08966064453125
+    },
+    {
+      "concept_id": 4010813,
+      "name": "Tobacco smoke",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 72.11318969726562
+    },
+    {
+      "concept_id": 2617852,
+      "name": "Tobacco use cessation intervention, counseling (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 72.27049255371094
+    },
+    {
+      "concept_id": 762491,
+      "name": "Tobacco usage screening not done",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Context-dependent",
+      "distance": 72.28826141357422
+    },
+    {
+      "concept_id": 937682,
+      "name": "Patient identified as a tobacco user received tobacco cessation intervention during the measurement period or in the six months prior to the measurement period (counseling and/or pharmacotherapy)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 72.39159393310547
+    },
+    {
+      "concept_id": 915749,
+      "name": "Patients who abstained from smoking prior to anesthesia on the day of surgery or procedure",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 72.48567199707031
+    },
+    {
+      "concept_id": 937686,
+      "name": "Patient screened for tobacco use and identified as a tobacco user",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 72.68417358398438
+    },
+    {
+      "concept_id": 4051390,
+      "name": "Foreman - tobacco processor",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 72.69508361816406
+    },
+    {
+      "concept_id": 764383,
+      "name": "Enrollment in smoking cessation program",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 72.73587799072266
+    },
+    {
+      "concept_id": 937685,
+      "name": "Patient screened for tobacco use and identified as a tobacco non-user",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 72.7623062133789
+    },
+    {
+      "concept_id": 443063,
+      "name": "Accident caused by smoke from conflagration in private dwelling",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 72.83750915527344
+    },
+    {
+      "concept_id": 4062357,
+      "name": "Pregnancy smoking education",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 72.99408721923828
+    },
+    {
+      "concept_id": 2617449,
+      "name": "SMOKING AND TOBACCO USE CESSATION COUNSELING VISIT; INTERMEDIATE 3 MINUTES UP TO 10 MINUTES (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 73.15412139892578
+    },
+    {
+      "concept_id": 3038685,
+      "name": "Second hand smoke exposure CPHS",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Claims Attachment",
+      "distance": 73.19408416748047
+    },
+    {
+      "concept_id": 3039561,
+      "name": "Tobacco use status CPHS",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Claims Attachment",
+      "distance": 73.20140838623047
+    },
+    {
+      "concept_id": 4037270,
+      "name": "Smoked poached cod",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 73.3517074584961
+    },
+    {
+      "concept_id": 4021160,
+      "name": "Smoking cessation education",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 73.40986633300781
+    },
+    {
+      "concept_id": 4090847,
+      "name": "Stop smoking monitoring verbal invite",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 73.4386978149414
+    },
+    {
+      "concept_id": 903663,
+      "name": "Pipe smoker",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 73.51580047607422
+    },
+    {
+      "concept_id": 1617736,
+      "name": "Smoked cigarette within 30M after waking in past 3 months",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 73.54559326171875
+    },
+    {
+      "concept_id": 2617853,
+      "name": "Tobacco use cessation intervention not counseled, reason not specified (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 73.56664276123047
+    },
+    {
+      "concept_id": 1246656,
+      "name": "Nicotine user before confirmation of pregnancy",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 74.00792694091797
+    },
+    {
+      "concept_id": 4025226,
+      "name": "Smoked poached haddock",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 74.06499481201172
+    },
+    {
+      "concept_id": 4035984,
+      "name": "Tobacco conditioner operator",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 74.1039047241211
+    },
+    {
+      "concept_id": 4086133,
+      "name": "Stop smoking monitoring delete",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 74.13899230957031
+    },
+    {
+      "concept_id": 4073066,
+      "name": "Accident caused directly by smoking materials",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 74.21705627441406
+    },
+    {
+      "concept_id": 4024934,
+      "name": "Smoked mackerel",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 74.33441162109375
+    },
+    {
+      "concept_id": 439609,
+      "name": "Accident caused by clothes on fire from cigarette",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 74.38639831542969
+    },
+    {
+      "concept_id": 4090359,
+      "name": "Stop smoking monitoring second letter",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 74.4497299194336
+    },
+    {
+      "concept_id": 915750,
+      "name": "Patients who did not abstain from smoking prior to anesthesia on the day of surgery or procedure",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 74.46060943603516
+    },
+    {
+      "concept_id": 4024768,
+      "name": "Smoked processed cheese",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 74.48521423339844
+    },
+    {
+      "concept_id": 3038246,
+      "name": "Tobacco prevention referred CPHS",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Claims Attachment",
+      "distance": 74.54652404785156
+    },
+    {
+      "concept_id": 1246643,
+      "name": "Cannabis-filled electronic cigarette user",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 74.58553314208984
+    },
+    {
+      "concept_id": 903667,
+      "name": "Chewing tobacco user",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 74.78960418701172
+    },
+    {
+      "concept_id": 1077382,
+      "name": "Stopped using nicotine after first trimester",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 75.0126724243164
+    },
+    {
+      "concept_id": 1244554,
+      "name": "Smoking cessation consultation",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 75.0147476196289
+    },
+    {
+      "concept_id": 4054148,
+      "name": "Accident caused by ignition of clothing from smoking materials",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 75.0322494506836
+    },
+    {
+      "concept_id": 4090846,
+      "name": "Stop smoking monitor default",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 75.09735107421875
+    },
+    {
+      "concept_id": 4053745,
+      "name": "Meat and fish smoker",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 75.1729965209961
+    },
+    {
+      "concept_id": 4022245,
+      "name": "Hides lit cigarettes in pockets",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 75.1741714477539
+    },
+    {
+      "concept_id": 4085459,
+      "name": "Stop smoking monitoring first letter",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 75.29463958740234
+    },
+    {
+      "concept_id": 1246423,
+      "name": "Provision of written information about smokeless tobacco cessation",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 75.37549591064453
+    },
+    {
+      "concept_id": 760854,
+      "name": "Tobacco cessation information declined",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Context-dependent",
+      "distance": 75.49234771728516
+    },
+    {
+      "concept_id": 4085461,
+      "name": "Stop smoking monitoring telephone invite",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 75.81364440917969
+    },
+    {
+      "concept_id": 1246020,
+      "name": "Provision of written information about second hand smoke exposure",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 75.83859252929688
+    },
+    {
+      "concept_id": 438629,
+      "name": "Accident caused by smoke from conflagration in public building",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 76.28117370605469
+    },
+    {
+      "concept_id": 762822,
+      "name": "Adverse drug interaction with tobacco",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Disorder",
+      "distance": 76.4610595703125
+    },
+    {
+      "concept_id": 2617553,
+      "name": "Newly diagnosed chronic obstructive pulmonary disease (copd) patient documented to have received smoking cessation intervention, within 3 months of diagnosis (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 76.69440460205078
+    },
+    {
+      "concept_id": 764030,
+      "name": "Referral to tobacco use quit line",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 76.7452163696289
+    },
+    {
+      "concept_id": 1244632,
+      "name": "Smoked food",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 76.85196685791016
+    },
+    {
+      "concept_id": 1077381,
+      "name": "Stopped using nicotine in first trimester",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 76.89533996582031
+    },
+    {
+      "concept_id": 4085460,
+      "name": "Stop smoking monitoring third letter",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 77.00811767578125
+    },
+    {
+      "concept_id": 2617554,
+      "name": "Newly diagnosed chronic obstructive pulmonary disease (copd) patient not documented to have received smoking cessation intervention, within 3 months of diagnosis (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 77.06224822998047
+    },
+    {
+      "concept_id": 763751,
+      "name": "Hickory smoked food",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 77.18836975097656
+    },
+    {
+      "concept_id": 4021969,
+      "name": "Drops unextinguished cigarettes",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 77.2381820678711
+    },
+    {
+      "concept_id": 937679,
+      "name": "Documentation of medical reason(s) for not providing tobacco cessation intervention on the date of the encounter or within the previous 12 months if identified as a tobacco user (e.g., limited life expectancy, other medical reason) (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 77.30571746826172
+    },
+    {
+      "concept_id": 1246657,
+      "name": "Date ceased using nicotine",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 77.33214569091797
+    },
+    {
+      "concept_id": 4052084,
+      "name": "Cigar maker (machine)",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Social Context",
+      "distance": 77.35092163085938
+    },
+    {
+      "concept_id": 3038250,
+      "name": "Tobacco use counselled Family member/caregiver CPHS",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Claims Attachment",
+      "distance": 77.3702163696289
+    },
+    {
+      "concept_id": 1616643,
+      "name": "Tobacco, Alcohol, Prescription medications, and other Substance use assessment [TAPS]",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Survey",
+      "distance": 77.64873504638672
+    },
+    {
+      "concept_id": 4123859,
+      "name": "Does not sip drink",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 77.77086639404297
+    },
+    {
+      "concept_id": 764027,
+      "name": "Referral to tobacco use cessation clinic",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 77.91216278076172
+    },
+    {
+      "concept_id": 4038728,
+      "name": "Use of protection for sex",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 77.9326400756836
+    },
+    {
+      "concept_id": 762882,
+      "name": "Documentation of smoking cessation medication action plan",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 78.00419616699219
+    },
+    {
+      "concept_id": 4132133,
+      "name": "Cigar smoking tobacco",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 78.15023040771484
+    },
+    {
+      "concept_id": 4128509,
+      "name": "Does sip drink",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 78.20790100097656
+    },
+    {
+      "concept_id": 1077380,
+      "name": "Nicotine user during pregnancy",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 78.31008911132812
+    },
+    {
+      "concept_id": 4027353,
+      "name": "Pattern of alcohol consumption through week",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 78.40763854980469
+    },
+    {
+      "concept_id": 1617287,
+      "name": "Tobacco, Alcohol, Prescription medications, and other Substance use screen [TAPS]",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Survey",
+      "distance": 78.4092025756836
+    },
+    {
+      "concept_id": 3040574,
+      "name": "Tobacco prevention referred Family member/caregiver CPHS",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Claims Attachment",
+      "distance": 78.43335723876953
+    },
+    {
+      "concept_id": 3044530,
+      "name": "Tobacco use counselled CPHS",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Claims Attachment",
+      "distance": 78.51063537597656
+    },
+    {
+      "concept_id": 4090849,
+      "name": "Stop smoking monitoring check done",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 78.68212127685547
+    },
+    {
+      "concept_id": 764028,
+      "name": "Referral to tobacco use cessation counselor",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 78.77360534667969
+    },
+    {
+      "concept_id": 4027634,
+      "name": "Pattern of drinking",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 79.00823974609375
+    },
+    {
+      "concept_id": 4097924,
+      "name": "Nicotine adverse reaction",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Disorder",
+      "distance": 79.00886535644531
+    },
+    {
+      "concept_id": 4051242,
+      "name": "Family history: Occupational lung disease",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Context-dependent",
+      "distance": 79.37535858154297
+    },
+    {
+      "concept_id": 903669,
+      "name": "Moist tobacco user",
+      "domain_id": "Observation",
+      "vocabulary_id": "OMOP Extension",
+      "concept_class_id": "Clinical Finding",
+      "distance": 79.4771957397461
+    },
+    {
+      "concept_id": 3027199,
+      "name": "History of Alcohol use",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 79.5202865600586
+    },
+    {
+      "concept_id": 4123858,
+      "name": "Unable to sip drink",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 79.54930877685547
+    },
+    {
+      "concept_id": 4123852,
+      "name": "Does drink",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 79.5759048461914
+    },
+    {
+      "concept_id": 801387,
+      "name": "Documentation of medical reason(s) for not screening for tobacco use (e.g., limited life expectancy, other medical reason) (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 79.60736083984375
+    },
+    {
+      "concept_id": 937684,
+      "name": "Documentation of medical reason(s) for not screening for tobacco use (e.g., limited life expectancy, other medical reason) (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 79.60736083984375
+    },
+    {
+      "concept_id": 764029,
+      "name": "Referral to tobacco use cessation counseling program",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Procedure",
+      "distance": 79.61219787597656
+    },
+    {
+      "concept_id": 4121067,
+      "name": "Able to sip drink",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 79.84510803222656
+    },
+    {
+      "concept_id": 4036085,
+      "name": "Frequency of snuff use",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 79.8657455444336
+    },
+    {
+      "concept_id": 1617592,
+      "name": "At least one drink in past 3 months",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 79.9561767578125
+    },
+    {
+      "concept_id": 4038568,
+      "name": "Age at starting drinking",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 80.10830688476562
+    },
+    {
+      "concept_id": 937681,
+      "name": "Documentation of medical reason(s) for not providing tobacco cessation intervention on the date of the encounter or within the previous 12 months (e.g., limited life expectancy, other medical reason) (Deprecated)",
+      "domain_id": "Observation",
+      "vocabulary_id": "HCPCS",
+      "concept_class_id": "HCPCS",
+      "distance": 80.1107406616211
+    },
+    {
+      "concept_id": 4027644,
+      "name": "Unable to abstain from drinking",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 80.14813232421875
+    },
+    {
+      "concept_id": 4027352,
+      "name": "Pattern of drinking through day",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Observable Entity",
+      "distance": 80.18345642089844
+    },
+    {
+      "concept_id": 1447240,
+      "name": "No evidence of substance use disorder",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Context-dependent",
+      "distance": 80.23429107666016
+    },
+    {
+      "concept_id": 3026671,
+      "name": "History of Alcohol use Narrative",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 80.28777313232422
+    },
+    {
+      "concept_id": 3026846,
+      "name": "Alcohol or substance abuse symptoms with physiological dependence indicator",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Claims Attachment",
+      "distance": 80.40797424316406
+    },
+    {
+      "concept_id": 4128819,
+      "name": "Finding of frequency of drinking",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 80.48155212402344
+    },
+    {
+      "concept_id": 4024935,
+      "name": "Grilled smoked mackerel",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Substance",
+      "distance": 80.52318572998047
+    },
+    {
+      "concept_id": 3654357,
+      "name": "Exposure to carbon monoxide due to fire",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Event",
+      "distance": 80.53958129882812
+    },
+    {
+      "concept_id": 4052946,
+      "name": "Alcohol consumption unknown",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 80.54281616210938
+    },
+    {
+      "concept_id": 1001725,
+      "name": "Substance use disorder severity",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Clinical Observation",
+      "distance": 80.58541107177734
+    },
+    {
+      "concept_id": 432456,
+      "name": "Alcohol intake - finding",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 80.63581848144531
+    },
+    {
+      "concept_id": 4052459,
+      "name": "Ex-heavy drinker - (7-9u/day)",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 80.63619232177734
+    },
+    {
+      "concept_id": 1001925,
+      "name": "Are you feeling bothered, upset, or worried at this point in your pregnancy about whether the baby might be affected by alcohol, cigarettes, or drugs that you have taken [NuPDQ]",
+      "domain_id": "Observation",
+      "vocabulary_id": "LOINC",
+      "concept_class_id": "Survey",
+      "distance": 80.65750885009766
+    },
+    {
+      "concept_id": 3657445,
+      "name": "Vapourisation - action",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Qualifier Value",
+      "distance": 80.658203125
+    },
+    {
+      "concept_id": 4121062,
+      "name": "Does not drink",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 80.83453369140625
+    },
+    {
+      "concept_id": 765320,
+      "name": "Patient declines smoking cessation information",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Context-dependent",
+      "distance": 80.98455810546875
+    },
+    {
+      "concept_id": 4123851,
+      "name": "Unable to drink",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 81.03761291503906
+    },
+    {
+      "concept_id": 4023178,
+      "name": "Drinking finding",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 81.10413360595703
+    },
+    {
+      "concept_id": 4074035,
+      "name": "Current drinker",
+      "domain_id": "Observation",
+      "vocabulary_id": "SNOMED",
+      "concept_class_id": "Clinical Finding",
+      "distance": 81.11149597167969
+    }
+  ]
+}
