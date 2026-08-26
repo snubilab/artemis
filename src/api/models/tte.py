@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
 
+from src.utils.llm import _is_vllm_model
+
 
 def utc_now_iso() -> str:
     """Return a UTC ISO-8601 timestamp compatible with the ATLAS UI."""
@@ -24,6 +26,25 @@ class TTEModel(BaseModel):
 
 
 DEMOGRAPHIC_DOMAINS = frozenset({"Demographics", "Demographic", "Age", "Gender", "Race", "Ethnicity"})
+
+
+def _reject_non_local_model_override(value: str | None) -> str | None:
+    """Refuse a per-request model override that isn't a local vLLM model.
+
+    ``model`` reaches ``TTEService`` as ``model_name`` and ``get_llm()`` honors it
+    literally, bypassing ``settings.LLM_MODEL`` entirely — that escape hatch is the
+    TTE UI's model-comparison selector (``GET /tte/models`` lists remote OpenAI/
+    Azure/OpenRouter entries alongside the local fleet for exactly this). Without
+    this check, that same field lets any caller bill a hosted provider directly
+    from a public-facing endpoint with no server-side control over which provider
+    or how much. Restrict it to what ``get_llm()`` would otherwise select on its
+    own.
+    """
+    if value is not None and not _is_vllm_model(value):
+        raise ValueError(
+            f"model override {value!r} must be a local vLLM model ('vllm/...') or omitted"
+        )
+    return value
 
 
 def is_demographic_domain_but_not_a_demographic_rule(
@@ -304,7 +325,12 @@ class GenerateRequest(TTEModel):
         max_length=2000,
         validation_alias=AliasChoices("naturalLanguageDescription", "natural_language_description"),
     )
-    model: str | None = None  # Optional LLM model override
+    model: str | None = None  # Optional LLM model override — local vLLM only
+
+    @field_validator("model")
+    @classmethod
+    def _validate_model(cls, v: str | None) -> str | None:
+        return _reject_non_local_model_override(v)
 
 
 class NCTGenerateRequest(TTEModel):
@@ -315,7 +341,12 @@ class NCTGenerateRequest(TTEModel):
         validation_alias=AliasChoices("nctId", "nct_id"),
     )
     forceRefresh: bool = False
-    model: str | None = None  # Optional LLM model override
+    model: str | None = None  # Optional LLM model override — local vLLM only
+
+    @field_validator("model")
+    @classmethod
+    def _validate_model(cls, v: str | None) -> str | None:
+        return _reject_non_local_model_override(v)
 
 
 class GenerationSuggestion(TTEModel):

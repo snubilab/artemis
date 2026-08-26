@@ -731,6 +731,63 @@ def test_generate_returns_structured_draft(monkeypatch, tmp_path):
         assert payload["meta"]["fallbackReason"] is None
 
 
+def test_generate_rejects_non_local_model_override(monkeypatch, tmp_path):
+    """A remote model name (e.g. from a stale UI selection) must not reach get_llm().
+
+    request.model is a per-request override that bypasses settings.LLM_MODEL entirely
+    (see _reject_non_local_model_override in src/api/models/tte.py) — this is the
+    boundary that keeps a public-facing endpoint from billing a hosted provider on the
+    caller's say-so.
+    """
+    client = build_client(monkeypatch, tmp_path)
+
+    response = client.post(
+        "/tte/generate",
+        json={
+            "naturalLanguageDescription": (
+                "Compare dapagliflozin vs DPP4 inhibitors for MACE in adults with T2DM"
+            ),
+            "model": "gpt-4o",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_generate_accepts_local_vllm_model_override(monkeypatch, tmp_path):
+    """The legitimate escape hatch (an explicit local vLLM model) still works."""
+    client = build_client(monkeypatch, tmp_path)
+
+    response = client.post(
+        "/tte/generate",
+        json={
+            "naturalLanguageDescription": (
+                "Compare dapagliflozin vs DPP4 inhibitors for MACE in adults with T2DM"
+            ),
+            "model": "vllm/google/gemma-4-E4B-it",
+        },
+    )
+
+    assert response.status_code == 200
+
+
+def test_generate_from_nct_rejects_non_local_model_override(monkeypatch, tmp_path):
+    """NCTGenerateRequest.model is validated the same way as GenerateRequest.model.
+
+    Pydantic validates the request body before the route handler runs, so this never
+    reaches the NCT-fetch pipeline — no fetch/network mocking needed here.
+    """
+    client = build_client(monkeypatch, tmp_path)
+    study_id = create_analysis_ready_study(client)
+
+    response = client.post(
+        f"/tte/studies/{study_id}/generate-from-nct",
+        json={"nctId": "NCT01234567", "model": "gpt-4o-mini"},
+    )
+
+    assert response.status_code == 422
+
+
 class FakeWebAPIClient:
     def __init__(self, *args, source_key=None, results_schema=None, **kwargs):
         self.source_key = source_key
