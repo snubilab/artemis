@@ -9,6 +9,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from src.utils.llm import get_llm
 from src.models.ir import ARTEMISRequest, CohortDefinition, Criteria
 from src.agents.planner.prompts import PLANNER_SYSTEM_PROMPT, DECOMPOSITION_PROMPT
+from src.services.value_constraint import parse_value_constraint
 
 
 class CriteriaPlanner:
@@ -78,11 +79,20 @@ class CriteriaPlanner:
             return criterion
         
         # Call LLM
+        # Fail-open on missing source_text (plan-audit D14): a pre-this-field
+        # study has source_text=None. Pass an empty string rather than falling
+        # back to entity_text, which ir.py documents as normalized and capable
+        # of having already lost the threshold entirely — grounding the LLM in
+        # text that structurally cannot carry the constraint would silently
+        # reintroduce the ungrounded-guess hazard this grounding fix exists to
+        # close. An empty Source Text resolves to value_constraint_text: null
+        # via the prompt's own instruction, which REQ-007 then turns into None.
         prompt = DECOMPOSITION_PROMPT.format(
             name=criterion.name,
             entity_text=criterion.entity_text,
             domain=criterion.domain,
-            logic_type=criterion.logic_type
+            logic_type=criterion.logic_type,
+            source_text=criterion.source_text or ""
         )
         
         messages = [
@@ -98,13 +108,31 @@ class CriteriaPlanner:
                 # Build sub-criteria list
                 sub_criteria = []
                 for sc_data in result["sub_criteria"]:
+                    # REQ-004/REQ-005: a sub-criterion's value_constraint is
+                    # determined from its OWN text (the grounding requirement
+                    # above), never unconditionally copied from the parent
+                    # (decomposer.py:107, pre-fix). REQ-007 fail-open: any
+                    # missing field, unparseable phrase, or unexpected error
+                    # here leaves value_constraint as None — never the
+                    # parent's (possibly wrong) value, never a raised
+                    # exception that aborts the whole decomposition.
+                    value_constraint = None
+                    try:
+                        raw_text = sc_data.get("value_constraint_text")
+                        if raw_text:
+                            value_constraint = parse_value_constraint(raw_text)
+                    except Exception as vc_exc:
+                        print(f"  ⚠ value_constraint parse failed for "
+                              f"{sc_data.get('entity_text', '')!r}: {vc_exc}")
+                        value_constraint = None
+
                     sc = Criteria(
                         name=sc_data.get("name", "Unnamed"),
                         domain=sc_data.get("domain", criterion.domain),
                         entity_text=sc_data.get("entity_text", ""),
                         logic_type=criterion.logic_type,  # Inherit parent's logic
                         window=criterion.window,  # Inherit parent's window
-                        value_constraint=criterion.value_constraint,  # Inherit parent's value filter
+                        value_constraint=value_constraint,
                     )
                     sub_criteria.append(sc)
                 

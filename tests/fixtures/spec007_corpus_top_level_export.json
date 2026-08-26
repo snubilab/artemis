@@ -1,0 +1,722 @@
+{
+  "CAROLINA": {
+    "target": {
+      "inclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Type 2 Diabetes Mellitus",
+          "entity_text": "Type 2 Diabetes Mellitus",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 1,
+          "name": "BMI <= 45 kg/m\u00b2",
+          "entity_text": "Body Mass Index",
+          "domain": "Measurement",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 2,
+          "name": "HbA1c range for treatment naive or mono-/dual therapy",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 3,
+          "name": "HbA1c upper bound for treatment naive or mono-/dual therapy",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 4,
+          "name": "HbA1c range for sulphonylurea/glinide therapy",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 5,
+          "name": "HbA1c upper bound for sulphonylurea/glinide therapy",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 6,
+          "name": "Pre-existing cardiovascular disease or other risk factors",
+          "entity_text": "",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 11,
+          "name": "Age between 40 and 85 years",
+          "entity_text": "Age",
+          "domain": "Demographics",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 12,
+          "name": "Stable anti-diabetic background",
+          "entity_text": "Anti-diabetic drugs",
+          "domain": "Drug",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        }
+      ],
+      "exclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Inappropriateness of glimepiride treatment for renal safety",
+          "entity_text": "Renal Safety Issues",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 4,
+          "name": "Treatment with other antidiabetic drugs",
+          "entity_text": "",
+          "domain": "Drug",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 10,
+          "name": "Type 1 diabetes",
+          "entity_text": "Type 1 Diabetes Mellitus",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 11,
+          "name": "Acute coronary syndrome within 6 weeks",
+          "entity_text": "Acute Coronary Syndrome",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 14,
+          "name": "Acute liver disease or impaired hepatic function",
+          "entity_text": "Acute Liver Disease",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 19,
+          "name": "Acute or chronic metabolic acidosis",
+          "entity_text": "Metabolic Acidosis",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 20,
+          "name": "Alcohol or drug abuse",
+          "entity_text": "Substance Abuse",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 28,
+          "name": "Change in thyroid hormones treatment",
+          "entity_text": "Thyroid Hormones",
+          "domain": "Drug",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 33,
+          "name": "Congestive heart failure class III or IV",
+          "entity_text": "Congestive Heart Failure",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 34,
+          "name": "Current or planned systemic corticoid treatment",
+          "entity_text": "Systemic Corticoids",
+          "domain": "Drug",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 35,
+          "name": "Hereditary galactose intolerance",
+          "entity_text": "Hereditary Galactose Intolerance",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 39,
+          "name": "Known hypersensitivity to any components",
+          "entity_text": "Hypersensitivity",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 45,
+          "name": "Participation in another trial with IMP",
+          "entity_text": "Clinical Trial Participation",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 46,
+          "name": "Pre-planned coronary artery revascularization",
+          "entity_text": "Coronary Artery Revascularization",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 49,
+          "name": "Previous or planned bariatric surgery",
+          "entity_text": "Bariatric Surgery",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 54,
+          "name": "Stroke or TIA within 3 months",
+          "entity_text": "Stroke or Transient Ischemic Attack",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 57,
+          "name": "Treatment with anti-obesity drug",
+          "entity_text": "Anti-obesity Drugs",
+          "domain": "Drug",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 64,
+          "name": "Uncontrolled hyperglycemia",
+          "entity_text": "Uncontrolled Hyperglycemia",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        }
+      ]
+    }
+  },
+  "ARISTOTLE": {
+    "target": {
+      "inclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Atrial fibrillation or atrial flutter",
+          "entity_text": "Atrial fibrillation",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 3,
+          "name": "Stroke risk factors",
+          "entity_text": "",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        }
+      ],
+      "exclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Conditions requiring anticoagulation other than AF",
+          "entity_text": "Prosthetic heart valve",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 1,
+          "name": "AF attributable to a reversible cause",
+          "entity_text": "Reversible atrial fibrillation",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 8,
+          "name": "Moderate or severe mitral stenosis",
+          "entity_text": "Mitral stenosis",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 9,
+          "name": "Need for aspirin > 165 mg/day or both aspirin and clopidogrel",
+          "entity_text": "Aspirin",
+          "domain": "Drug",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 12,
+          "name": "Severe renal insufficiency (serum creatinine > 2.5 mg/dL)",
+          "entity_text": "Serum creatinine",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 13,
+          "name": "Severe renal insufficiency (creatinine clearance < 25 mL/min)",
+          "entity_text": "Creatinine clearance",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 14,
+          "name": "Stroke within 7 days",
+          "entity_text": "Stroke",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        }
+      ]
+    }
+  },
+  "CARMELINA": {
+    "target": {
+      "inclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Documented diagnosis of T2DM",
+          "entity_text": "Type 2 Diabetes Mellitus",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 1,
+          "name": "Age criteria",
+          "entity_text": "Age",
+          "domain": "Demographics",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 2,
+          "name": "BMI criteria",
+          "entity_text": "Body Mass Index",
+          "domain": "Measurement",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 3,
+          "name": "HbA1c lower bound (>=6.5%)",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 4,
+          "name": "HbA1c upper bound (no >=10%)",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 5,
+          "name": "High risk of CV events",
+          "entity_text": "",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 8,
+          "name": "Drug-na\u00efve or pre-treated with antidiabetic medication",
+          "entity_text": "",
+          "domain": "Drug",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 11,
+          "name": "Stable antidiabetic background medication",
+          "entity_text": "Antidiabetic medication",
+          "domain": "Drug",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        }
+      ],
+      "exclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Active liver disease or impaired hepatic function",
+          "entity_text": "",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 4,
+          "name": "Acute coronary syndrome <= 2 months",
+          "entity_text": "Acute Coronary Syndrome",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 7,
+          "name": "Bariatric surgery or intervention",
+          "entity_text": "Bariatric surgery",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 12,
+          "name": "Alcohol or drug abuse",
+          "entity_text": "Alcohol or drug abuse",
+          "domain": "Observation",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 21,
+          "name": "eGFR < 15 ml/min/1.73 m2",
+          "entity_text": "Estimated Glomerular Filtration Rate",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 22,
+          "name": "Hypersensitivity or allergy to investigational products",
+          "entity_text": "Hypersensitivity or allergy",
+          "domain": "Observation",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 28,
+          "name": "Participation in another trial",
+          "entity_text": "Participation in another trial",
+          "domain": "Observation",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 29,
+          "name": "Unreliable patients or life expectancy < 5 years",
+          "entity_text": "Unreliable patients or life expectancy < 5 years",
+          "domain": "Observation",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 35,
+          "name": "Pre-planned coronary artery re-vascularisation",
+          "entity_text": "Coronary artery re-vascularisation",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 38,
+          "name": "Stroke or TIA <= 3 months",
+          "entity_text": "Stroke or Transient Ischemic Attack",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 41,
+          "name": "Treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors",
+          "entity_text": "",
+          "domain": "Drug",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 45,
+          "name": "Type 1 diabetes mellitus",
+          "entity_text": "Type 1 Diabetes Mellitus",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        }
+      ]
+    }
+  },
+  "EMPA-REG": {
+    "target": {
+      "inclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Diagnosis of Type 2 Diabetes Mellitus",
+          "entity_text": "Type 2 Diabetes Mellitus",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 1,
+          "name": "Age >= 18 years",
+          "entity_text": "Age",
+          "domain": "Demographics",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 2,
+          "name": "Body Mass Index <= 45",
+          "entity_text": "Body Mass Index",
+          "domain": "Measurement",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 3,
+          "name": "HbA1c lower bound (>=7%)",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 4,
+          "name": "HbA1c upper bound (no >=10%)",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 5,
+          "name": "High cardiovascular risk",
+          "entity_text": "High cardiovascular risk",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 12,
+          "name": "Diet and exercise regimen",
+          "entity_text": "Diet and exercise regimen",
+          "domain": "Observation",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        }
+      ],
+      "exclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Acute coronary syndrome, stroke or TIA within 2 months",
+          "entity_text": "",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 4,
+          "name": "Alcohol or drug abuse within 3 months",
+          "entity_text": "Alcohol or drug abuse",
+          "domain": "Observation",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 7,
+          "name": "Uncontrolled endocrine disorder except type 2 diabetes",
+          "entity_text": "Uncontrolled endocrine disorder",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 16,
+          "name": "Bariatric surgery within the past two years",
+          "entity_text": "Bariatric surgery",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 21,
+          "name": "Blood dyscrasias or disorders causing hemolysis",
+          "entity_text": "Blood dyscrasias",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 27,
+          "name": "Estimated glomerular filtration rate <30 ml/min/1.73 m2",
+          "entity_text": "Glomerular Filtration Rate",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 28,
+          "name": "Indication of liver disease",
+          "entity_text": "",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 32,
+          "name": "Medical history of cancer within the last 5 years",
+          "entity_text": "Cancer",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 40,
+          "name": "Participation in another trial with an investigational drug within 30 days",
+          "entity_text": "Participation in another trial",
+          "domain": "Observation",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 41,
+          "name": "Planned cardiac surgery or angioplasty within 3 months",
+          "entity_text": "",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 44,
+          "name": "Treatment with anti-obesity drugs 3 months prior",
+          "entity_text": "Anti-obesity drugs",
+          "domain": "Drug",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 50,
+          "name": "Treatment with systemic steroids at time of informed consent",
+          "entity_text": "Systemic steroids",
+          "domain": "Drug",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 51,
+          "name": "Uncontrolled hyperglycemia with glucose >240 mg/dL",
+          "entity_text": "Glucose",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        }
+      ]
+    }
+  },
+  "PLATO": {
+    "target": {
+      "inclusion": [
+        {
+          "position_in_rule_list": 0,
+          "name": "Age 18 years or older",
+          "entity_text": "Age",
+          "domain": "Demographics",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        }
+      ],
+      "exclusion": [
+        {
+          "position_in_rule_list": 12,
+          "name": "Invasive procedure for current ACS episode",
+          "entity_text": "angioplasty",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        }
+      ]
+    }
+  },
+  "LEADER": {
+    "target": {
+      "inclusion": [
+        {
+          "position_in_rule_list": 19,
+          "name": "Asymptomatic cardiac ischemia",
+          "entity_text": "Asymptomatic cardiac ischemia",
+          "domain": "Condition",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        },
+        {
+          "position_in_rule_list": 20,
+          "name": "HbA1c \u22657.0%",
+          "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+          "domain": "Measurement",
+          "logic_type": "PRESENCE",
+          "rule_type": "inclusion"
+        }
+      ],
+      "exclusion": [
+        {
+          "position_in_rule_list": 10,
+          "name": "Calcitonin \u226550 ng/L",
+          "entity_text": "Calcitonin",
+          "domain": "Measurement",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 11,
+          "name": "Chronic heart failure NYHA class IV",
+          "entity_text": "Chronic heart failure NYHA class IV",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 12,
+          "name": "Current continuous renal replacement therapy",
+          "entity_text": "Continuous renal replacement therapy",
+          "domain": "Procedure",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        },
+        {
+          "position_in_rule_list": 50,
+          "name": "Type 1 diabetes",
+          "entity_text": "Type 1 diabetes",
+          "domain": "Condition",
+          "logic_type": "ABSENCE",
+          "rule_type": "exclusion"
+        }
+      ]
+    }
+  }
+}

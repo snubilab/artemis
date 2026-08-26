@@ -1,0 +1,1059 @@
+{
+  "[\"CAROLINA\", \"target\", \"inclusion\", [0, \"Type 2 Diabetes Mellitus\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Type 2 Diabetes Mellitus",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [1, \"Body Mass Index\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Measurement",
+    "entity_text": "Body Mass Index",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [2, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [3, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [4, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [5, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [6, \"Pre-existing cardiovascular disease or other risk factors\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [11, \"Age\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Demographics",
+    "entity_text": "Age",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Anti-diabetic drugs",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [0, \"Metformin\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Metformin",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [1, \"Glipizide\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Glipizide",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [2, \"Sitagliptin\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Sitagliptin",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [3, \"Empagliflozin\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Empagliflozin",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [4, \"Liraglutide\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Liraglutide",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [0, \"Renal Safety Issues\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Renal Safety Issues",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [0, \"Renal Safety Issues\"], [0, \"Chronic Kidney Disease\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Chronic Kidney Disease",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [0, \"Renal Safety Issues\"], [1, \"Acute Kidney Injury\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Acute Kidney Injury",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [0, \"Renal Safety Issues\"], [2, \"Elevated Serum Creatinine\"]]": {
+    "study": "CAROLINA",
+    "domain": "Measurement",
+    "entity_text": "Elevated Serum Creatinine",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [0, \"Renal Safety Issues\"], [3, \"Elevated Blood Urea Nitrogen\"]]": {
+    "study": "CAROLINA",
+    "domain": "Measurement",
+    "entity_text": "Elevated Blood Urea Nitrogen",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [4, \"Treatment with other antidiabetic drugs\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [10, \"Type 1 Diabetes Mellitus\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Type 1 Diabetes Mellitus",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [11, \"Acute Coronary Syndrome\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Acute Coronary Syndrome",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Acute Liver Disease",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [0, \"Acute Hepatitis\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Acute Hepatitis",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [1, \"Acute Liver Failure\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Acute Liver Failure",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [2, \"Acute Alcoholic Liver Disease\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Acute Alcoholic Liver Disease",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [3, \"Acute Drug-Induced Liver Injury\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Acute Drug-Induced Liver Injury",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Metabolic Acidosis",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [0, \"Lactic acidosis\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Lactic acidosis",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [1, \"Diabetic ketoacidosis\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Diabetic ketoacidosis",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [2, \"Renal tubular acidosis\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Renal tubular acidosis",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [3, \"Uremic acidosis\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Uremic acidosis",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [20, \"Substance Abuse\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Substance Abuse",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [20, \"Substance Abuse\"], [0, \"Alcohol Use Disorder\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Alcohol Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [20, \"Substance Abuse\"], [1, \"Opioid Use Disorder\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Opioid Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [20, \"Substance Abuse\"], [2, \"Cannabis Use Disorder\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Cannabis Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [28, \"Thyroid Hormones\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Thyroid Hormones",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [28, \"Thyroid Hormones\"], [0, \"Levothyroxine\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Levothyroxine",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [28, \"Thyroid Hormones\"], [1, \"Liothyronine\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Liothyronine",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [28, \"Thyroid Hormones\"], [2, \"Methimazole\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Methimazole",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [28, \"Thyroid Hormones\"], [3, \"Propylthiouracil\"]]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Propylthiouracil",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [33, \"Congestive Heart Failure\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Congestive Heart Failure",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [34, \"Systemic Corticoids\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Systemic Corticoids",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [35, \"Hereditary Galactose Intolerance\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Hereditary Galactose Intolerance",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Hypersensitivity",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [0, \"Anaphylactic reaction\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Anaphylactic reaction",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [1, \"Allergic reaction\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Allergic reaction",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [2, \"Drug-induced rash\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Drug-induced rash",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [3, \"Serum sickness\"]]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Serum sickness",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [45, \"Clinical Trial Participation\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Procedure",
+    "entity_text": "Clinical Trial Participation",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [46, \"Coronary Artery Revascularization\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Procedure",
+    "entity_text": "Coronary Artery Revascularization",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [49, \"Bariatric Surgery\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Procedure",
+    "entity_text": "Bariatric Surgery",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [54, \"Stroke or Transient Ischemic Attack\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Stroke or Transient Ischemic Attack",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [57, \"Anti-obesity Drugs\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Drug",
+    "entity_text": "Anti-obesity Drugs",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], null]": {
+    "study": "CAROLINA",
+    "domain": "Condition",
+    "entity_text": "Uncontrolled Hyperglycemia",
+    "kind": "parent"
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [0, \"Glycated hemoglobin (HbA1c) above target threshold (e.g., > 7.0%)\"]]": {
+    "study": "CAROLINA",
+    "domain": "Observation",
+    "entity_text": "Glycated hemoglobin (HbA1c) above target threshold (e.g., > 7.0%)",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [1, \"Fasting plasma glucose (FPG) above target threshold (e.g., > 126 mg/dL)\"]]": {
+    "study": "CAROLINA",
+    "domain": "Observation",
+    "entity_text": "Fasting plasma glucose (FPG) above target threshold (e.g., > 126 mg/dL)",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [2, \"Random plasma glucose above target threshold (e.g., > 200 mg/dL with symptoms)\"]]": {
+    "study": "CAROLINA",
+    "domain": "Observation",
+    "entity_text": "Random plasma glucose above target threshold (e.g., > 200 mg/dL with symptoms)",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"ARISTOTLE\", \"target\", \"inclusion\", [0, \"Atrial fibrillation\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Condition",
+    "entity_text": "Atrial fibrillation",
+    "kind": "parent"
+  },
+  "[\"ARISTOTLE\", \"target\", \"inclusion\", [3, \"Stroke risk factors\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Condition",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"ARISTOTLE\", \"target\", \"exclusion\", [0, \"Prosthetic heart valve\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Condition",
+    "entity_text": "Prosthetic heart valve",
+    "kind": "parent"
+  },
+  "[\"ARISTOTLE\", \"target\", \"exclusion\", [1, \"Reversible atrial fibrillation\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Condition",
+    "entity_text": "Reversible atrial fibrillation",
+    "kind": "parent"
+  },
+  "[\"ARISTOTLE\", \"target\", \"exclusion\", [8, \"Mitral stenosis\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Condition",
+    "entity_text": "Mitral stenosis",
+    "kind": "parent"
+  },
+  "[\"ARISTOTLE\", \"target\", \"exclusion\", [9, \"Aspirin\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Drug",
+    "entity_text": "Aspirin",
+    "kind": "parent"
+  },
+  "[\"ARISTOTLE\", \"target\", \"exclusion\", [12, \"Serum creatinine\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Measurement",
+    "entity_text": "Serum creatinine",
+    "kind": "parent"
+  },
+  "[\"ARISTOTLE\", \"target\", \"exclusion\", [13, \"Creatinine clearance\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Measurement",
+    "entity_text": "Creatinine clearance",
+    "kind": "parent"
+  },
+  "[\"ARISTOTLE\", \"target\", \"exclusion\", [14, \"Stroke\"], null]": {
+    "study": "ARISTOTLE",
+    "domain": "Condition",
+    "entity_text": "Stroke",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [0, \"Type 2 Diabetes Mellitus\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "Type 2 Diabetes Mellitus",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [1, \"Age\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Demographics",
+    "entity_text": "Age",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [2, \"Body Mass Index\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Measurement",
+    "entity_text": "Body Mass Index",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [3, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [4, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [5, \"High risk of CV events\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [8, \"Drug-na\\u00efve or pre-treated with antidiabetic medication\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Drug",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Drug",
+    "entity_text": "Antidiabetic medication",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [0, \"Metformin\"]]": {
+    "study": "CARMELINA",
+    "domain": "Drug",
+    "entity_text": "Metformin",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [1, \"Glipizide\"]]": {
+    "study": "CARMELINA",
+    "domain": "Drug",
+    "entity_text": "Glipizide",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [2, \"Sitagliptin\"]]": {
+    "study": "CARMELINA",
+    "domain": "Drug",
+    "entity_text": "Sitagliptin",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [3, \"Empagliflozin\"]]": {
+    "study": "CARMELINA",
+    "domain": "Drug",
+    "entity_text": "Empagliflozin",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [4, \"Liraglutide\"]]": {
+    "study": "CARMELINA",
+    "domain": "Drug",
+    "entity_text": "Liraglutide",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [0, \"Active liver disease or impaired hepatic function\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Measurement",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [4, \"Acute Coronary Syndrome\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "Acute Coronary Syndrome",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [7, \"Bariatric surgery\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Procedure",
+    "entity_text": "Bariatric surgery",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [12, \"Alcohol or drug abuse\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Alcohol or drug abuse",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [12, \"Alcohol or drug abuse\"], [0, \"Alcohol Use Disorder\"]]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "Alcohol Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [12, \"Alcohol or drug abuse\"], [1, \"Opioid Use Disorder\"]]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "Opioid Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [12, \"Alcohol or drug abuse\"], [2, \"Cannabis Use Disorder\"]]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "Cannabis Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [12, \"Alcohol or drug abuse\"], [3, \"Cocaine Use Disorder\"]]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "Cocaine Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [21, \"Estimated Glomerular Filtration Rate\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Measurement",
+    "entity_text": "Estimated Glomerular Filtration Rate",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Hypersensitivity or allergy",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [0, \"Anaphylactic reaction\"]]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Anaphylactic reaction",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [1, \"Urticaria or allergic dermatitis\"]]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Urticaria or allergic dermatitis",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [2, \"Adverse drug reaction (non-specific)\"]]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Adverse drug reaction (non-specific)",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [28, \"Participation in another trial\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Participation in another trial",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [29, \"Unreliable patients or life expectancy < 5 years\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Unreliable patients or life expectancy < 5 years",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [29, \"Unreliable patients or life expectancy < 5 years\"], [0, \"Life expectancy < 5 years\"]]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Life expectancy < 5 years",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [29, \"Unreliable patients or life expectancy < 5 years\"], [1, \"Patient reliability score below threshold (if defined)\"]]": {
+    "study": "CARMELINA",
+    "domain": "Observation",
+    "entity_text": "Patient reliability score below threshold (if defined)",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [35, \"Coronary artery re-vascularisation\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Procedure",
+    "entity_text": "Coronary artery re-vascularisation",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [38, \"Stroke or Transient Ischemic Attack\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "Stroke or Transient Ischemic Attack",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [41, \"Treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Drug",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"CARMELINA\", \"target\", \"exclusion\", [45, \"Type 1 Diabetes Mellitus\"], null]": {
+    "study": "CARMELINA",
+    "domain": "Condition",
+    "entity_text": "Type 1 Diabetes Mellitus",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [0, \"Type 2 Diabetes Mellitus\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Type 2 Diabetes Mellitus",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [1, \"Age\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Demographics",
+    "entity_text": "Age",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [2, \"Body Mass Index\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Measurement",
+    "entity_text": "Body Mass Index",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [3, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [4, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "High cardiovascular risk",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [0, \"Hypertension\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Hypertension",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [1, \"Diabetes Mellitus\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Diabetes Mellitus",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [2, \"Dyslipidemia\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Dyslipidemia",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [3, \"Myocardial Infarction\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Myocardial Infarction",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [4, \"Cerebrovascular Accident\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Cerebrovascular Accident",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [5, \"Current Smoker\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Observation",
+    "entity_text": "Current Smoker",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"inclusion\", [12, \"Diet and exercise regimen\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Observation",
+    "entity_text": "Diet and exercise regimen",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [0, \"Acute coronary syndrome, stroke or TIA within 2 months\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [4, \"Alcohol or drug abuse\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Observation",
+    "entity_text": "Alcohol or drug abuse",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [4, \"Alcohol or drug abuse\"], [0, \"Alcohol Use Disorder\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Alcohol Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [4, \"Alcohol or drug abuse\"], [1, \"Opioid Use Disorder\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Opioid Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [4, \"Alcohol or drug abuse\"], [2, \"Cannabis Use Disorder\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Cannabis Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [4, \"Alcohol or drug abuse\"], [3, \"Cocaine Use Disorder\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Cocaine Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [4, \"Alcohol or drug abuse\"], [4, \"Stimulant Use Disorder\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Stimulant Use Disorder",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Uncontrolled endocrine disorder",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [0, \"Hypothyroidism, uncontrolled\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Hypothyroidism, uncontrolled",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [1, \"Hyperthyroidism, uncontrolled\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Hyperthyroidism, uncontrolled",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [2, \"Diabetes insipidus, uncontrolled\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Diabetes insipidus, uncontrolled",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [3, \"Cushing's syndrome\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Cushing's syndrome",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [4, \"Addison's disease\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Addison's disease",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [16, \"Bariatric surgery\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Procedure",
+    "entity_text": "Bariatric surgery",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [21, \"Blood dyscrasias\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Blood dyscrasias",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [21, \"Blood dyscrasias\"], [0, \"Anemia\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Anemia",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [21, \"Blood dyscrasias\"], [1, \"Thrombocytopenia\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Thrombocytopenia",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [21, \"Blood dyscrasias\"], [2, \"Leukemia\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Leukemia",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [21, \"Blood dyscrasias\"], [3, \"Hemolytic Anemia\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Hemolytic Anemia",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [27, \"Glomerular Filtration Rate\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Measurement",
+    "entity_text": "Glomerular Filtration Rate",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [28, \"Indication of liver disease\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Measurement",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Cancer",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [0, \"Malignant neoplasm of breast\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Malignant neoplasm of breast",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [1, \"Malignant neoplasm of bronchus or lung\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Malignant neoplasm of bronchus or lung",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [2, \"Malignant neoplasm of colon or rectum\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Malignant neoplasm of colon or rectum",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [3, \"Malignant neoplasm of prostate\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Malignant neoplasm of prostate",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [4, \"Malignant neoplasm of skin\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Condition",
+    "entity_text": "Malignant neoplasm of skin",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [40, \"Participation in another trial\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Observation",
+    "entity_text": "Participation in another trial",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [41, \"Planned cardiac surgery or angioplasty within 3 months\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Procedure",
+    "entity_text": "",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Drug",
+    "entity_text": "Anti-obesity drugs",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [0, \"GLP-1 receptor agonists\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Drug",
+    "entity_text": "GLP-1 receptor agonists",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [1, \"Orlistat\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Drug",
+    "entity_text": "Orlistat",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [2, \"Phentermine/topiramate\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Drug",
+    "entity_text": "Phentermine/topiramate",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [3, \"Liraglutide\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Drug",
+    "entity_text": "Liraglutide",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [4, \"Semaglutide\"]]": {
+    "study": "EMPA-REG",
+    "domain": "Drug",
+    "entity_text": "Semaglutide",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [50, \"Systemic steroids\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Drug",
+    "entity_text": "Systemic steroids",
+    "kind": "parent"
+  },
+  "[\"EMPA-REG\", \"target\", \"exclusion\", [51, \"Glucose\"], null]": {
+    "study": "EMPA-REG",
+    "domain": "Measurement",
+    "entity_text": "Glucose",
+    "kind": "parent"
+  },
+  "[\"PLATO\", \"target\", \"inclusion\", [0, \"Age\"], null]": {
+    "study": "PLATO",
+    "domain": "Demographics",
+    "entity_text": "Age",
+    "kind": "parent"
+  },
+  "[\"PLATO\", \"target\", \"exclusion\", [12, \"angioplasty\"], null]": {
+    "study": "PLATO",
+    "domain": "Procedure",
+    "entity_text": "angioplasty",
+    "kind": "parent"
+  },
+  "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], null]": {
+    "study": "LEADER",
+    "domain": "Condition",
+    "entity_text": "Asymptomatic cardiac ischemia",
+    "kind": "parent"
+  },
+  "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [0, \"Silent myocardial ischemia\"]]": {
+    "study": "LEADER",
+    "domain": "Condition",
+    "entity_text": "Silent myocardial ischemia",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [1, \"Stable angina pectoris (without current symptoms)\"]]": {
+    "study": "LEADER",
+    "domain": "Condition",
+    "entity_text": "Stable angina pectoris (without current symptoms)",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [2, \"Ischemic cardiomyopathy (asymptomatic)\"]]": {
+    "study": "LEADER",
+    "domain": "Condition",
+    "entity_text": "Ischemic cardiomyopathy (asymptomatic)",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [3, \"Non-ST elevation myocardial infarction (stable)\"]]": {
+    "study": "LEADER",
+    "domain": "Condition",
+    "entity_text": "Non-ST elevation myocardial infarction (stable)",
+    "kind": "sub",
+    "value_constraint": null
+  },
+  "[\"LEADER\", \"target\", \"inclusion\", [20, \"Hemoglobin A1c/Hemoglobin.total in Blood\"], null]": {
+    "study": "LEADER",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "kind": "parent"
+  },
+  "[\"LEADER\", \"target\", \"exclusion\", [10, \"Calcitonin\"], null]": {
+    "study": "LEADER",
+    "domain": "Measurement",
+    "entity_text": "Calcitonin",
+    "kind": "parent"
+  },
+  "[\"LEADER\", \"target\", \"exclusion\", [11, \"Chronic heart failure NYHA class IV\"], null]": {
+    "study": "LEADER",
+    "domain": "Condition",
+    "entity_text": "Chronic heart failure NYHA class IV",
+    "kind": "parent"
+  },
+  "[\"LEADER\", \"target\", \"exclusion\", [12, \"Continuous renal replacement therapy\"], null]": {
+    "study": "LEADER",
+    "domain": "Procedure",
+    "entity_text": "Continuous renal replacement therapy",
+    "kind": "parent"
+  },
+  "[\"LEADER\", \"target\", \"exclusion\", [50, \"Type 1 diabetes\"], null]": {
+    "study": "LEADER",
+    "domain": "Condition",
+    "entity_text": "Type 1 diabetes",
+    "kind": "parent"
+  }
+}

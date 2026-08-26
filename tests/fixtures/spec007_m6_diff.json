@@ -1,0 +1,1063 @@
+{
+  "changed_domain": [],
+  "missing_after": [
+    {
+      "key": "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [1, \"Glipizide\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Glipizide",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [2, \"Sitagliptin\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Sitagliptin",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [3, \"Empagliflozin\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Empagliflozin",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [4, \"Liraglutide\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Liraglutide",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [0, \"Renal Safety Issues\"], [3, \"Elevated Blood Urea Nitrogen\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Measurement",
+        "entity_text": "Elevated Blood Urea Nitrogen",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [0, \"Acute Hepatitis\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Acute Hepatitis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [1, \"Acute Liver Failure\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Acute Liver Failure",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [2, \"Acute Alcoholic Liver Disease\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Acute Alcoholic Liver Disease",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [3, \"Acute Drug-Induced Liver Injury\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Acute Drug-Induced Liver Injury",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [0, \"Lactic acidosis\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Lactic acidosis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [1, \"Diabetic ketoacidosis\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Diabetic ketoacidosis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [2, \"Renal tubular acidosis\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Renal tubular acidosis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [3, \"Uremic acidosis\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Uremic acidosis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [28, \"Thyroid Hormones\"], [2, \"Methimazole\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Methimazole",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [28, \"Thyroid Hormones\"], [3, \"Propylthiouracil\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Propylthiouracil",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [0, \"Anaphylactic reaction\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Anaphylactic reaction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [1, \"Allergic reaction\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Allergic reaction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [2, \"Drug-induced rash\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Drug-induced rash",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [3, \"Serum sickness\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Serum sickness",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [0, \"Glycated hemoglobin (HbA1c) above target threshold (e.g., > 7.0%)\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Observation",
+        "entity_text": "Glycated hemoglobin (HbA1c) above target threshold (e.g., > 7.0%)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [1, \"Fasting plasma glucose (FPG) above target threshold (e.g., > 126 mg/dL)\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Observation",
+        "entity_text": "Fasting plasma glucose (FPG) above target threshold (e.g., > 126 mg/dL)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [2, \"Random plasma glucose above target threshold (e.g., > 200 mg/dL with symptoms)\"]]",
+      "before": {
+        "study": "CAROLINA",
+        "domain": "Observation",
+        "entity_text": "Random plasma glucose above target threshold (e.g., > 200 mg/dL with symptoms)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [1, \"Glipizide\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Drug",
+        "entity_text": "Glipizide",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [2, \"Sitagliptin\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Drug",
+        "entity_text": "Sitagliptin",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [3, \"Empagliflozin\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Drug",
+        "entity_text": "Empagliflozin",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [4, \"Liraglutide\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Drug",
+        "entity_text": "Liraglutide",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [12, \"Alcohol or drug abuse\"], [3, \"Cocaine Use Disorder\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Condition",
+        "entity_text": "Cocaine Use Disorder",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [0, \"Anaphylactic reaction\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Observation",
+        "entity_text": "Anaphylactic reaction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [1, \"Urticaria or allergic dermatitis\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Observation",
+        "entity_text": "Urticaria or allergic dermatitis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [2, \"Adverse drug reaction (non-specific)\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Observation",
+        "entity_text": "Adverse drug reaction (non-specific)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [29, \"Unreliable patients or life expectancy < 5 years\"], [0, \"Life expectancy < 5 years\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Observation",
+        "entity_text": "Life expectancy < 5 years",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [29, \"Unreliable patients or life expectancy < 5 years\"], [1, \"Patient reliability score below threshold (if defined)\"]]",
+      "before": {
+        "study": "CARMELINA",
+        "domain": "Observation",
+        "entity_text": "Patient reliability score below threshold (if defined)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [3, \"Myocardial Infarction\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Myocardial Infarction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [4, \"Cerebrovascular Accident\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Cerebrovascular Accident",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [5, \"Current Smoker\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Observation",
+        "entity_text": "Current Smoker",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [4, \"Alcohol or drug abuse\"], [3, \"Cocaine Use Disorder\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Cocaine Use Disorder",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [4, \"Alcohol or drug abuse\"], [4, \"Stimulant Use Disorder\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Stimulant Use Disorder",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [0, \"Hypothyroidism, uncontrolled\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Hypothyroidism, uncontrolled",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [1, \"Hyperthyroidism, uncontrolled\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Hyperthyroidism, uncontrolled",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [2, \"Diabetes insipidus, uncontrolled\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Diabetes insipidus, uncontrolled",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [3, \"Cushing's syndrome\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Cushing's syndrome",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [4, \"Addison's disease\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Addison's disease",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [0, \"Malignant neoplasm of breast\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Malignant neoplasm of breast",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [1, \"Malignant neoplasm of bronchus or lung\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Malignant neoplasm of bronchus or lung",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [2, \"Malignant neoplasm of colon or rectum\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Malignant neoplasm of colon or rectum",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [3, \"Malignant neoplasm of prostate\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Malignant neoplasm of prostate",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [4, \"Malignant neoplasm of skin\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Malignant neoplasm of skin",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [1, \"Orlistat\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Drug",
+        "entity_text": "Orlistat",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [2, \"Phentermine/topiramate\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Drug",
+        "entity_text": "Phentermine/topiramate",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [3, \"Liraglutide\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Drug",
+        "entity_text": "Liraglutide",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [4, \"Semaglutide\"]]",
+      "before": {
+        "study": "EMPA-REG",
+        "domain": "Drug",
+        "entity_text": "Semaglutide",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [1, \"Stable angina pectoris (without current symptoms)\"]]",
+      "before": {
+        "study": "LEADER",
+        "domain": "Condition",
+        "entity_text": "Stable angina pectoris (without current symptoms)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [2, \"Ischemic cardiomyopathy (asymptomatic)\"]]",
+      "before": {
+        "study": "LEADER",
+        "domain": "Condition",
+        "entity_text": "Ischemic cardiomyopathy (asymptomatic)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [3, \"Non-ST elevation myocardial infarction (stable)\"]]",
+      "before": {
+        "study": "LEADER",
+        "domain": "Condition",
+        "entity_text": "Non-ST elevation myocardial infarction (stable)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    }
+  ],
+  "new_in_after": [
+    {
+      "key": "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [1, \"Sulfonylureas\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Sulfonylureas",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [2, \"GLP-1 receptor agonists\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "GLP-1 receptor agonists",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"inclusion\", [12, \"Anti-diabetic drugs\"], [3, \"SGLT2 inhibitors\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "SGLT2 inhibitors",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [0, \"Renal Safety Issues\"], [3, \"Decreased Estimated Glomerular Filtration Rate\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Measurement",
+        "entity_text": "Decreased Estimated Glomerular Filtration Rate",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [11, \"Acute Coronary Syndrome\"], [0, \"ST-segment elevation myocardial infarction\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "ST-segment elevation myocardial infarction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [11, \"Acute Coronary Syndrome\"], [1, \"Non-ST-segment elevation myocardial infarction\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Non-ST-segment elevation myocardial infarction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [11, \"Acute Coronary Syndrome\"], [2, \"Unstable angina\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Unstable angina",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [0, \"Acute hepatitis\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Acute hepatitis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [1, \"Acute liver failure\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Acute liver failure",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [14, \"Acute Liver Disease\"], [2, \"Acute cholangitis\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Acute cholangitis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [0, \"High Anion Gap Metabolic Acidosis\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "High Anion Gap Metabolic Acidosis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [19, \"Metabolic Acidosis\"], [1, \"Normal Anion Gap Metabolic Acidosis\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Normal Anion Gap Metabolic Acidosis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [28, \"Thyroid Hormones\"], [2, \"Anti-thyroid drugs\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Anti-thyroid drugs",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [33, \"Congestive Heart Failure\"], [0, \"Congestive Heart Failure, NYHA Class III\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Congestive Heart Failure, NYHA Class III",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [33, \"Congestive Heart Failure\"], [1, \"Congestive Heart Failure, NYHA Class IV\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Congestive Heart Failure, NYHA Class IV",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [34, \"Systemic Corticoids\"], [0, \"Glucocorticoids\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Glucocorticoids",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [0, \"Allergic reaction\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Allergic reaction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [1, \"Anaphylaxis\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Anaphylaxis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [39, \"Hypersensitivity\"], [2, \"Drug hypersensitivity reaction\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Drug hypersensitivity reaction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [49, \"Bariatric Surgery\"], [0, \"Gastric bypass\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Procedure",
+        "entity_text": "Gastric bypass",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [49, \"Bariatric Surgery\"], [1, \"Sleeve gastrectomy\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Procedure",
+        "entity_text": "Sleeve gastrectomy",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [49, \"Bariatric Surgery\"], [2, \"Other bariatric surgery\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Procedure",
+        "entity_text": "Other bariatric surgery",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [57, \"Anti-obesity Drugs\"], [0, \"GLP-1 Receptor Agonist\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "GLP-1 Receptor Agonist",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [57, \"Anti-obesity Drugs\"], [1, \"Orlistat\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Orlistat",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [57, \"Anti-obesity Drugs\"], [2, \"Phentermine/Topiramate\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Phentermine/Topiramate",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [57, \"Anti-obesity Drugs\"], [3, \"Bupropion/Naltrexone\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Drug",
+        "entity_text": "Bupropion/Naltrexone",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [0, \"Hyperglycemia\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Condition",
+        "entity_text": "Hyperglycemia",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [1, \"Elevated HbA1c\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Measurement",
+        "entity_text": "Elevated HbA1c",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CAROLINA\", \"target\", \"exclusion\", [64, \"Uncontrolled Hyperglycemia\"], [2, \"Elevated Fasting Plasma Glucose\"]]",
+      "after": {
+        "study": "CAROLINA",
+        "domain": "Measurement",
+        "entity_text": "Elevated Fasting Plasma Glucose",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"ARISTOTLE\", \"target\", \"exclusion\", [14, \"Stroke\"], [0, \"Ischemic stroke\"]]",
+      "after": {
+        "study": "ARISTOTLE",
+        "domain": "Condition",
+        "entity_text": "Ischemic stroke",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"ARISTOTLE\", \"target\", \"exclusion\", [14, \"Stroke\"], [1, \"Hemorrhagic stroke\"]]",
+      "after": {
+        "study": "ARISTOTLE",
+        "domain": "Condition",
+        "entity_text": "Hemorrhagic stroke",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [1, \"Sulfonylurea\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Drug",
+        "entity_text": "Sulfonylurea",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [2, \"DPP-4 inhibitor\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Drug",
+        "entity_text": "DPP-4 inhibitor",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [3, \"SGLT2 inhibitor\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Drug",
+        "entity_text": "SGLT2 inhibitor",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"inclusion\", [11, \"Antidiabetic medication\"], [4, \"GLP-1 receptor agonist\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Drug",
+        "entity_text": "GLP-1 receptor agonist",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [0, \"Anaphylaxis\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Condition",
+        "entity_text": "Anaphylaxis",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [1, \"Allergic reaction\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Condition",
+        "entity_text": "Allergic reaction",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [2, \"Urticaria\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Condition",
+        "entity_text": "Urticaria",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [22, \"Hypersensitivity or allergy\"], [3, \"Angioedema\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Condition",
+        "entity_text": "Angioedema",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [29, \"Unreliable patients or life expectancy < 5 years\"], [0, \"Patient reliability assessment\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Observation",
+        "entity_text": "Patient reliability assessment",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"CARMELINA\", \"target\", \"exclusion\", [29, \"Unreliable patients or life expectancy < 5 years\"], [1, \"Life expectancy\"]]",
+      "after": {
+        "study": "CARMELINA",
+        "domain": "Observation",
+        "entity_text": "Life expectancy",
+        "kind": "sub",
+        "value_constraint": {
+          "op": "lt",
+          "value": 5.0,
+          "reference_bound": "absolute"
+        }
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [3, \"Current smoker\"]]",
+      "after": {
+        "study": "EMPA-REG",
+        "domain": "Observation",
+        "entity_text": "Current smoker",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"inclusion\", [5, \"High cardiovascular risk\"], [4, \"Chronic Kidney Disease\"]]",
+      "after": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Chronic Kidney Disease",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [0, \"Thyroid dysfunction (e.g., uncontrolled hypothyroidism or hyperthyroidism)\"]]",
+      "after": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Thyroid dysfunction (e.g., uncontrolled hypothyroidism or hyperthyroidism)",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [1, \"Adrenal insufficiency or Cushing's syndrome\"]]",
+      "after": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Adrenal insufficiency or Cushing's syndrome",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [2, \"Type 1 Diabetes Mellitus or other specified diabetes mellitus\"]]",
+      "after": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Type 1 Diabetes Mellitus or other specified diabetes mellitus",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [7, \"Uncontrolled endocrine disorder\"], [3, \"Hyperparathyroidism or hypoparathyroidism\"]]",
+      "after": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Hyperparathyroidism or hypoparathyroidism",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [32, \"Cancer\"], [0, \"Malignant neoplasm\"]]",
+      "after": {
+        "study": "EMPA-REG",
+        "domain": "Condition",
+        "entity_text": "Malignant neoplasm",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"EMPA-REG\", \"target\", \"exclusion\", [44, \"Anti-obesity drugs\"], [1, \"Appetite suppressants\"]]",
+      "after": {
+        "study": "EMPA-REG",
+        "domain": "Drug",
+        "entity_text": "Appetite suppressants",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [1, \"Coronary artery disease\"]]",
+      "after": {
+        "study": "LEADER",
+        "domain": "Condition",
+        "entity_text": "Coronary artery disease",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    },
+    {
+      "key": "[\"LEADER\", \"target\", \"inclusion\", [19, \"Asymptomatic cardiac ischemia\"], [2, \"Ischemia detected by stress test\"]]",
+      "after": {
+        "study": "LEADER",
+        "domain": "Condition",
+        "entity_text": "Ischemia detected by stress test",
+        "kind": "sub",
+        "value_constraint": null
+      }
+    }
+  ],
+  "total_before": 163,
+  "total_after": 160
+}
