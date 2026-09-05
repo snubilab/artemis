@@ -57,7 +57,16 @@ def service(monkeypatch) -> TTEService:
     def fake_recommend(seed_text: str, **kwargs: Any) -> dict[str, Any]:
         if seed_text.strip() == "empagliflozin":
             return _stub_concept_set("empagliflozin", 1594973, "Drug")
-        return _stub_concept_set(seed_text.strip(), 201826)
+        # Answer in the domain the criterion asked about. These tests are about the
+        # collapse reaching the CIRCE build, not about domains, and the stub used to
+        # return a Condition concept for every seed -- so a `Measurement` criterion such
+        # as "Alanine aminotransferase" came back as a Condition set. That is the exact
+        # shape `circe_lint.domain_mismatched_criteria` refuses to deliver and that
+        # `_refuse_domain_contradiction` now refuses to build, so the stub was standing
+        # in for an answer the pipeline would never accept.
+        return _stub_concept_set(
+            seed_text.strip(), 201826, kwargs.get("expected_domain") or "Condition"
+        )
 
     monkeypatch.setattr(svc, "_recommend_seeded_concept_set", fake_recommend)
     return svc

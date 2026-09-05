@@ -492,10 +492,19 @@ CRITERIA_TYPE_DOMAINS: dict[str, frozenset[str]] = {
 _DOMAIN_ABBREVIATIONS = {"Meas": "Measurement", "Obs": "Observation"}
 
 
-def _concept_set_domains(concept_set: dict[str, Any]) -> set[str]:
+def concept_set_domains(concept_set: dict[str, Any]) -> set[str]:
     """Every OMOP domain the set's concepts can be read from, compound ids split.
 
     An item with no readable ``DOMAIN_ID`` contributes nothing rather than a guess.
+
+    Public because the generator asks the same question one step earlier, before a
+    criterion is emitted (``TTEService._refuse_domain_contradiction``): the delivery gate
+    and the generator must read a concept set's domains the same way or the generator can
+    emit a shape the gate then rejects.
+
+    :param concept_set: anything carrying ``expression.items[].concept.DOMAIN_ID`` —
+        a CIRCE ``ConceptSets`` entry or a mapper answer in the same shape.
+    :returns: the domain ids, with compound ids such as ``Condition/Meas`` split into both.
     """
     domains: set[str] = set()
     for item in (concept_set.get("expression") or {}).get("items") or []:
@@ -551,18 +560,11 @@ def _walk_criteria_entries(node: dict[str, Any]) -> list[dict[str, Any]]:
     return entries
 
 
-def domain_mismatched_criteria(expression: dict[str, Any]) -> list[str]:
-    """Locators for criteria whose concept set shares no domain with their CDM table.
+def _criterion_locations(expression: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """``(where, criterion entry)`` for every criterion in the expression.
 
-    Each finding reads ``"<where>: <CriteriaType> over codeset <id> <name!r> (<domains>)"``
-    so the gate output names the rule, the criterion and the offending domain without
-    the reader reopening the file.
-
-    Silent — by design — on the three cases the file cannot settle: a criterion type
-    absent from :data:`CRITERIA_TYPE_DOMAINS`, a ``CodesetId`` with no matching
-    ``ConceptSets`` entry, and a set whose concepts carry no ``DOMAIN_ID``. A set that
-    mixes domains and includes the criterion's own is sound and is not flagged: one
-    matching item is enough for the join to return rows.
+    ``where`` is the rule name for an ``InclusionRules`` entry and the section name
+    otherwise, so a finding can name the rule without the reader reopening the file.
     """
     locations: list[tuple[str, dict[str, Any]]] = []
 
@@ -585,8 +587,43 @@ def domain_mismatched_criteria(expression: dict[str, Any]) -> list[str]:
         if isinstance(entry, dict):
             locations.append(("CensoringCriteria", entry))
 
+    return locations
+
+
+def criteria_types_by_codeset(expression: dict[str, Any]) -> dict[Any, set[str]]:
+    """``CodesetId`` -> the CIRCE criteria types that read it, across the whole expression.
+
+    A concept set may be read by more than one criterion, and a set read by two different
+    CDM tables has no single domain. Callers that must decide what a set is *for* — not
+    only whether it is wrong — read that here rather than re-deriving it, so the criteria
+    walk and :data:`CRITERIA_TYPE_DOMAINS` stay the one authority on the question.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: codeset id -> criteria type names; a set nothing references is absent, which
+        is distinct from a set referenced by an unmodelled type.
+    """
+    by_codeset: dict[Any, set[str]] = {}
+    for _where, entry in _criterion_locations(expression):
+        for criteria_type, codeset_id in _criterion_references(entry):
+            by_codeset.setdefault(codeset_id, set()).add(criteria_type)
+    return by_codeset
+
+
+def domain_mismatched_criteria(expression: dict[str, Any]) -> list[str]:
+    """Locators for criteria whose concept set shares no domain with their CDM table.
+
+    Each finding reads ``"<where>: <CriteriaType> over codeset <id> <name!r> (<domains>)"``
+    so the gate output names the rule, the criterion and the offending domain without
+    the reader reopening the file.
+
+    Silent — by design — on the three cases the file cannot settle: a criterion type
+    absent from :data:`CRITERIA_TYPE_DOMAINS`, a ``CodesetId`` with no matching
+    ``ConceptSets`` entry, and a set whose concepts carry no ``DOMAIN_ID``. A set that
+    mixes domains and includes the criterion's own is sound and is not flagged: one
+    matching item is enough for the join to return rows.
+    """
     findings: list[str] = []
-    for where, entry in locations:
+    for where, entry in _criterion_locations(expression):
         for criteria_type, codeset_id in _criterion_references(entry):
             allowed = CRITERIA_TYPE_DOMAINS.get(criteria_type)
             if allowed is None:
@@ -594,7 +631,7 @@ def domain_mismatched_criteria(expression: dict[str, Any]) -> list[str]:
             concept_set = _find_concept_set(expression, codeset_id)
             if concept_set is None:
                 continue
-            domains = _concept_set_domains(concept_set)
+            domains = concept_set_domains(concept_set)
             if not domains or domains & allowed:
                 continue
             findings.append(

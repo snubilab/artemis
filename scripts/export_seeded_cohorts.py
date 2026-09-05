@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -130,6 +131,44 @@ def _collect_build_failures(generated: Any) -> dict[str, str]:
     return found
 
 
+class _OwnRecordsOnly(logging.Filter):
+    """Admit this project's own log records and nothing else.
+
+    ``src.services.tte_service`` reports through the bare ``logging.*`` module functions,
+    which land on the root logger, while the rest of ``src`` uses
+    ``getLogger(__name__)``. Both are ours; every other logger name belongs to a library.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.name == "root" or record.name.startswith("src.")
+
+
+def _configure_logging() -> None:
+    """Send this export's own INFO lines to stderr.
+
+    Nothing configured logging here, so the root logger kept its default WARNING level
+    and every ``logging.info`` this run makes was discarded. The one that matters is
+    ``_build_emittable_expression``'s "Ended N washout rule(s) a day before index": a
+    correction that rewrites what is delivered and, without this, reports it into
+    nothing. Establishing whether it had fired meant diffing the emitted files against a
+    previous export.
+
+    The filter, not a level change, is what keeps library chatter out. Raising the root
+    level is unavoidable — the records we want are emitted on the root logger — so the
+    unwanted ones are dropped at the handler instead. No library logger's level is
+    touched, so anything else configuring them still decides what they do.
+    """
+    root = logging.getLogger()
+    if any(isinstance(f, _OwnRecordsOnly) for h in root.handlers for f in h.filters):
+        return
+    root.setLevel(logging.INFO)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    handler.addFilter(_OwnRecordsOnly())
+    root.addHandler(handler)
+
+
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--store", required=True, type=Path, help="Explicit studies.json path")
@@ -152,6 +191,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_arg_parser().parse_args(argv)
+    _configure_logging()
 
     try:
         store_path = resolve_store_path(args.store)

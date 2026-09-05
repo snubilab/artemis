@@ -6252,6 +6252,7 @@ class TTEService:
             workflow=workflow,
         )
         criteria_key = self._seeded_criteria_key(criterion_domain or mapped_criterion["domain"])
+        self._refuse_domain_contradiction(criteria_key, mapped_criterion, label)
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
         # Flat merge, so Unit lands as a sibling of ValueAsNumber rather than
@@ -6312,6 +6313,55 @@ class TTEService:
             },
             "_mapping_metadata": mapped_criterion.get("mapping_metadata"),
         }
+
+    @staticmethod
+    def _refuse_domain_contradiction(
+        criteria_key: str, mapped_criterion: dict[str, Any], label: str
+    ) -> None:
+        """Raise when the mapped concept set cannot be read from the criterion's own table.
+
+        A criterion carries two independent answers about its domain: the one it declares,
+        which picks the CDM table, and the one the mapper returns with the concept set.
+        Nothing compared them, so a mapper answer from another domain was written into a
+        criterion that cannot read it and the rule matched no row at all.
+
+        CAROLINA is the measured case. Store study 10, `exclusionCriteria` id 25 declares
+        `domain = "Condition"` for "Hypersensitivity to investigational product or
+        glimepiride", but its `sourceText` had already lost the head noun down to
+        "Glimepiride", so the mapper answered with glimepiride Drug products. The emitted
+        `ConditionOccurrence` rule returns 0 persons where the same criterion over a
+        Condition set returns 5,975 of 10,093 -- and because it is an ABSENCE rule,
+        matching nothing means the exclusion is never applied to anybody.
+
+        This is `circe_lint.domain_mismatched_criteria` applied one step earlier, against
+        the same `CRITERIA_TYPE_DOMAINS` table, so the generator stops producing what the
+        delivery gate will reject. Raising rather than emitting is deliberate: the caller
+        records the criterion in `_unmappedCriteria` with this reason and drops it, which
+        leaves the rule honestly absent instead of present and vacuous.
+
+        Silent on the two cases the mapping cannot settle, for the same reason the
+        delivery gate is: a criteria type absent from the table, and a concept set whose
+        items carry no readable `DOMAIN_ID`.
+
+        :param criteria_key: the CIRCE criteria type the rule will be emitted under.
+        :param mapped_criterion: the mapper's answer, in the `_recommend_seeded_concept_set` shape.
+        :param label: the seed the mapper was asked about, for the recorded reason.
+        :raises ValueError: when the set's domains and the table's are disjoint.
+        """
+        from src.utils.circe_lint import CRITERIA_TYPE_DOMAINS, concept_set_domains
+
+        allowed = CRITERIA_TYPE_DOMAINS.get(criteria_key)
+        if allowed is None:
+            return
+        domains = concept_set_domains(mapped_criterion)
+        if not domains or domains & allowed:
+            return
+        raise ValueError(
+            f"criterion domain contradiction: {criteria_key} reads "
+            f"{'/'.join(sorted(allowed))} but the concept set mapped for {label!r} "
+            f"holds only {', '.join(sorted(domains))} concepts, so the rule would match "
+            f"nothing"
+        )
 
     def _resolve_ingredient_concept_id(self, seed: str) -> int | None:
         """Resolve a drug name to the single standard Ingredient concept it names.
@@ -6497,7 +6547,50 @@ class TTEService:
         ingredient) are left untouched. Mutates base in place.
 
         Uses one batched name lookup (not one query per set) to stay cheap.
+
+        A name match alone does not justify the rewrite, and matching on it alone caused
+        two measured defects on the 2026-09-06 delivery store. Two gates now stand in
+        front of it; neither subsumes the other, and each is needed for a different one
+        of those defects (`tests/test_repair_stale_drug_concept_sets.py`).
+
+        DOMAIN. The replacement is always a Drug concept, so the rewrite is only right
+        for a set the criteria actually read from a drug table. Studies 1/4/5/6 name a
+        set `Calcitonin` that a `Measurement` criterion reads with `ValueAsNumber >= 50`
+        -- LEADER's medullary-thyroid-carcinoma screen -- and the repair replaced its lab
+        tests with RxNorm ingredient 42900359, so the emitted rule joined
+        `measurement.measurement_concept_id` against a drug product and matched nothing.
+        A scan finds 0 domain-mismatched criteria in the store and exactly 1 in every
+        emitted file, so the export introduced it. The gate reads
+        `circe_lint.CRITERIA_TYPE_DOMAINS`, the same table the delivery gate reads, so
+        the generator cannot produce a shape the delivery gate will reject. When two
+        criteria read one set from different tables there is no rewrite that is right for
+        both, so it declines rather than being made right for one of them; an unmodelled
+        criteria type and a set nothing references are both declines for the same reason,
+        that the base does not say which table the set is for.
+
+        CLOSURE. Studies 4/5/6 hold `liraglutide` = `[842602, 842604, 40170911]`, the
+        ingredient plus the Saxenda and Victoza Marketed Products, and the repair
+        collapsed it to the ingredient alone -- which `concept_ancestor` does not link to
+        either product, so the emitted set resolved strictly narrower than the stored one
+        and dropped two genuine liraglutide products. Measured against the whole store, a
+        matched set falls into one of three cases and only the middle one is ambiguous:
+
+        - every stored concept is the ingredient or one of its descendants: the roll-up
+          cannot lose anything, so it proceeds (PLATO's `Reteplase`, `Factor VIII`,
+          `Fibrinogen` -- unchanged by this gate);
+        - no stored concept is: the set is not about the drug it is named after, which is
+          the stale shape this repair exists for, so it proceeds;
+        - some are and some are not: a curated superset and a half-stale set look the
+          same from here. It declines and warns rather than guessing, which is what the
+          five narrowed sets on this store needed -- `liraglutide` and PLATO's
+          `Alteplase`, `Tenecteplase`, `Streptokinase` and `Factor IX`.
+
+        An `isExcluded` item declines for a related reason: a flat ingredient roll-up
+        cannot express a subtraction, so replacing the set would silently re-include what
+        the exclusion removed.
         """
+        from src.utils.circe_lint import CRITERIA_TYPE_DOMAINS, criteria_types_by_codeset
+
         concept_sets = base.get("ConceptSets") or []
         names = {
             (cs.get("name") or "").strip().lower()
@@ -6506,6 +6599,103 @@ class TTEService:
         }
         if not names:
             return
+        unique = self._unique_ingredient_ids_by_name(names)
+        if not unique:
+            return
+
+        read_by = criteria_types_by_codeset(base)
+
+        # Pass 1: the two cheap gates, plus the ids whose subsumption pass 2 must settle.
+        candidates: list[tuple[dict[str, Any], int, list[int]]] = []
+        pairs: set[tuple[int, int]] = set()
+        for cs in concept_sets:
+            name = (cs.get("name") or "").strip()
+            cid = unique.get(name.lower())
+            if cid is None:
+                continue
+            items = cs.get("expression", {}).get("items", []) or []
+            if len(items) == 1 and items[0].get("concept", {}).get("CONCEPT_ID") == cid:
+                continue  # already the right single ingredient
+
+            criteria_types = read_by.get(cs.get("id"))
+            if not criteria_types:
+                logging.info(
+                    "[TTE] concept-set repair declines %r: no criterion reads it, so the "
+                    "base does not say which CDM table it is for", name,
+                )
+                continue
+            allowed: set[str] | None = None
+            for criteria_type in criteria_types:
+                domains = CRITERIA_TYPE_DOMAINS.get(criteria_type)
+                if domains is None:
+                    allowed = None
+                    break
+                allowed = set(domains) if allowed is None else (allowed & set(domains))
+            if not allowed or "Drug" not in allowed:
+                logging.info(
+                    "[TTE] concept-set repair declines %r: read by %s, which cannot hold "
+                    "the Drug concept the repair would put there",
+                    name, ", ".join(sorted(criteria_types)),
+                )
+                continue
+
+            if any(item.get("isExcluded") for item in items):
+                logging.warning(
+                    "[TTE] concept-set repair declines %r: it carries an excluded item "
+                    "that an ingredient roll-up cannot express", name,
+                )
+                continue
+
+            stored_ids = [
+                item.get("concept", {}).get("CONCEPT_ID")
+                for item in items
+                if isinstance(item.get("concept", {}).get("CONCEPT_ID"), int)
+            ]
+            candidates.append((cs, cid, stored_ids))
+            pairs.update((cid, sid) for sid in stored_ids if sid != cid)
+
+        if not candidates:
+            return
+
+        subsumed = self._subsumed_concept_pairs(pairs)
+        if subsumed is None:
+            logging.warning(
+                "[TTE] concept-set repair declined for %d set(s): the subsumption lookup "
+                "failed, so a rewrite could not be shown to be lossless", len(candidates),
+            )
+            return
+
+        # Pass 2: the closure gate, then the rewrite.
+        for cs, cid, stored_ids in candidates:
+            name = (cs.get("name") or "").strip()
+            inside = [sid for sid in stored_ids if sid == cid or (cid, sid) in subsumed]
+            outside = [sid for sid in stored_ids if sid not in inside]
+            if inside and outside:
+                logging.warning(
+                    "[TTE] concept-set repair declines %r: %d of its %d concepts are "
+                    "outside ingredient %d's closure (%s) while the rest are inside, so "
+                    "the set is either a curated superset or half stale and the roll-up "
+                    "would drop them",
+                    name, len(outside), len(stored_ids), cid,
+                    ", ".join(str(sid) for sid in outside),
+                )
+                continue
+            expr = self._ingredient_rollup_expression(cid, cs.get("name", ""))
+            if expr and expr.get("items"):
+                cs["expression"] = expr
+
+    def _unique_ingredient_ids_by_name(self, names: set[str]) -> dict[str, int]:
+        """Lower-cased concept name -> the ONE standard RxNorm Ingredient it names.
+
+        One batched query rather than one per set. A name matching zero or more than one
+        ingredient is absent from the result: an ambiguous name is not a resolution.
+
+        :param names: lower-cased concept-set names to look up.
+        :returns: name -> concept_id; empty on any database error, which leaves every
+            concept set exactly as it was.
+        """
+        if not names:
+            return {}
         try:
             import psycopg2
 
@@ -6531,33 +6721,76 @@ class TTEService:
                 conn.close()
         except Exception as exc:
             logging.debug("[TTE] concept-set repair lookup failed: %s", exc)
-            return
+            return {}
 
         by_name: dict[str, list[int]] = {}
         for lname, cid in rows:
             by_name.setdefault(lname, []).append(int(cid))
-        unique = {k: v[0] for k, v in by_name.items() if len(v) == 1}
-        if not unique:
-            return
+        return {k: v[0] for k, v in by_name.items() if len(v) == 1}
 
+    def _subsumed_concept_pairs(
+        self, pairs: set[tuple[int, int]]
+    ) -> set[tuple[int, int]] | None:
+        """Which of the given ``(ancestor, descendant)`` pairs ``concept_ancestor`` holds.
+
+        One batched query for every pair the caller is asking about. Identity is NOT
+        assumed here — the caller decides what a concept being itself means — so the
+        answer is only what the vocabulary says.
+
+        :param pairs: candidate ``(ancestor_concept_id, descendant_concept_id)`` pairs.
+        :returns: the subset the vocabulary confirms, or None on any database error.
+            None is distinct from an empty set: it means "not established", and a caller
+            that would destroy content on the strength of this answer must decline.
+        """
+        if not pairs:
+            return set()
+        try:
+            import psycopg2
+
+            from src.settings import settings
+
+            ancestors = [a for a, _ in pairs]
+            descendants = [d for _, d in pairs]
+            conn = psycopg2.connect(settings.DATABASE_URL)
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""
+                        SELECT ancestor_concept_id, descendant_concept_id
+                        FROM {settings.CDM_SCHEMA}.concept_ancestor
+                        WHERE ancestor_concept_id = ANY(%s)
+                          AND descendant_concept_id = ANY(%s)
+                        """,
+                        (ancestors, descendants),
+                    )
+                    rows = cur.fetchall()
+            finally:
+                conn.close()
+        except Exception as exc:
+            logging.debug("[TTE] concept-set subsumption lookup failed: %s", exc)
+            return None
+        found = {(int(a), int(d)) for a, d in rows}
+        return {p for p in pairs if p in found}
+
+    def _ingredient_rollup_expression(
+        self, concept_id: int, name: str
+    ) -> dict[str, Any] | None:
+        """The Atlas concept-set expression for one ingredient, rolled up.
+
+        :param concept_id: the standard Ingredient the set is to be re-mapped onto.
+        :param name: the concept set's own name, passed through for the builder's log.
+        :returns: the Atlas expression, or None when the concept cannot be fetched.
+        """
         from src.agents.conceptset.expression_builder import get_expression_builder
 
-        builder = get_expression_builder()
-        for cs in concept_sets:
-            cid = unique.get((cs.get("name") or "").strip().lower())
-            if cid is None:
-                continue
-            items = cs.get("expression", {}).get("items", [])
-            if len(items) == 1 and items[0].get("concept", {}).get("CONCEPT_ID") == cid:
-                continue  # already the right single ingredient
-            candidates = self._fetch_concept_candidates([cid])
-            if not candidates:
-                continue
-            expr = builder.build_expression(
-                candidates, roll_up=True, criterion_name=cs.get("name", "")
-            ).expression.to_atlas_json()
-            if expr.get("items"):
-                cs["expression"] = expr
+        candidates = self._fetch_concept_candidates([concept_id])
+        if not candidates:
+            return None
+        return (
+            get_expression_builder()
+            .build_expression(candidates, roll_up=True, criterion_name=name)
+            .expression.to_atlas_json()
+        )
 
     def _fetch_drug_forms(self, ingredient_ids: list[int]) -> list:
         """Ingredient-by-dose-form concepts under the given ingredients.
