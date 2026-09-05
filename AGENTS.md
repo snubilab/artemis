@@ -218,6 +218,12 @@ Settled, do not re-litigate:
   gold sets, no-counterpart scored 0) or quote nothing.
 - Do not measure a mapping change against a warm criterion cache. The cache key is built from the *unexpanded* seed and it stores the whole mapping metadata, so a fixed run replays the old concept set and reads as "no change". Use `CRITERION_CACHE_ENABLED=false` or a fresh `CRITERION_CACHE_DB_PATH`.
 - Do not report a patient count from a trial benchmark CDM as evidence of pipeline quality; see EVALUATION above.
+- Per-arm CIRCE for hospital/site delivery is produced only by `scripts/export_seeded_cohorts.py`
+  with an explicit `--store`; a `TTE_STORE_PATH` mismatch aborts the run rather than silently
+  overriding it. `scripts/verify_circe_delivery.py` must pass on the export directory before
+  anything is sent. The 2026-08-31 delivery (`output/circe_be/2026-08-31/`) — stale-store export,
+  62 no-op inclusion rules, a wrong EMPA-REG entry concept set — is the counterexample both gates
+  exist to catch.
 - Do not infer a measurement's unit from its value distribution. An exclusion threshold sits in the abnormal tail by design, so "outside the observed range" is what a *correct* threshold looks like; the molar cases that must be refused score better than the decimal cases that must be accepted. Achilles 1815 is a sound detector and an unsound repairer.
 - Do not retype a wire-format constant (for example the `[OR-GROUP]` prefix, join, and separator). Import it from its owning module; `tests/test_dry_or_group_contract.py` fails if a second copy appears, and a guessed format silently makes every probe against it return `False`.
 - Do not treat a passing unit test on a predicate as proof its caller honours the predicate. `restates_or_group_alternative` correctly refuses to call an OR group a duplicate, and `enricher._merge_criteria` then drops it anyway via the legacy `SequenceMatcher`.
