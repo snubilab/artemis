@@ -4175,6 +4175,27 @@ class TTEService:
             # Update the existing WebAPI definition with fresh CIRCE in case a previous run
             # stored a wrong expression (e.g. arm_name bug). Uses name-based PUT update.
             if seed_text:
+                # Two failures with different meanings used to share one handler. A
+                # failed expression BUILD means no deliverable exists for this arm --
+                # that is the one that went missing on 2026-09-05, when a raise here
+                # became a silently absent comparator file, a manifest listing five of
+                # six, and a delivery gate exiting 0. A failed WebAPI UPDATE leaves the
+                # already-attached definition standing, which is what "best-effort" was
+                # written for. Only the second stays swallowed.
+                try:
+                    expression = expression_builder()
+                except Exception as exc:
+                    return SeededCohortGenerationItem(
+                        section=section,
+                        itemKey=item_key,
+                        role=role,
+                        label=label,
+                        status="failed",
+                        seedText=seed_text,
+                        cohortDefinitionId=int(existing_cohort_id),
+                        reason="expression_build_failed",
+                        error=f"{type(exc).__name__}: {exc}",
+                    )
                 try:
                     definition_name = self._seeded_cohort_definition_name(
                         study_id=study_id,
@@ -4182,7 +4203,6 @@ class TTEService:
                         role=role,
                         label=label,
                     )
-                    expression = expression_builder()
                     definition = client.create_cohort_definition(
                         definition_name,
                         expression,
@@ -4833,39 +4853,32 @@ class TTEService:
         mapped_results.sort(key=lambda x: x[0])
         next_codeset_id = 2
 
-        # Build an ordered list of (criterion, result, role) for all mappable items.
-        ordered_pairs: list[tuple[dict[str, Any], dict[str, Any] | None, str]] = []
-        mapped_idx = 0
-        for criterion in inc_criteria:
-            domain = (criterion.get("domain") or "").strip()
-            if domain in DEMOGRAPHIC_DOMAINS:
-                continue
-            if criterion.get("isGroupLabel"):
-                continue
-            if mapped_idx < len(mapped_results):
-                _, result = mapped_results[mapped_idx]
-                mapped_idx += 1
-                ordered_pairs.append((criterion, result, "inclusion"))
-
-        for criterion in exc_criteria:
-            domain = (criterion.get("domain") or "").strip()
-            if domain in DEMOGRAPHIC_DOMAINS:
-                # Mirrors the exclusion loop above exactly (same method, same
-                # inputs) so this pass selects precisely the criteria that
-                # landed in `mappable_items` there -- required for
-                # `mapped_idx` to stay aligned with `mapped_results`.
-                vc = criterion.get("valueConstraint")
-                op = (vc.get("op") or "").strip().lower() if vc else None
-                if op == "eq":
-                    continue
-                if self._build_demographic_rule(criterion, exclusion=True):
-                    continue
-            if criterion.get("isGroupLabel"):
-                continue
-            if mapped_idx < len(mapped_results):
-                _, result = mapped_results[mapped_idx]
-                mapped_idx += 1
-                ordered_pairs.append((criterion, result, "exclusion"))
+        # Pair each mapped result back with the criterion it was mapped FROM.
+        #
+        # `mappable_items` already is the selection that reached the mapper, and
+        # `_map_criterion` carries its own index back, so pairing on that index is
+        # exact by construction. This used to re-derive the selection here with a
+        # second copy of the filter branches and pair positionally, which made the
+        # pairing only as good as the agreement between two separately maintained
+        # walks. They stopped agreeing: the restated-collapse drops
+        # (SPEC-INFRA-003 / SPEC-INFRA-004) were added to the selection loops above
+        # and not to the re-walk, so every criterion after the first drop was
+        # re-paired with a neighbour's concept set -- 6 of 9 grouped rules in
+        # EMPA-REG and 14 of 18 in CAROLINA in the 2026-08-27 store, wiring liver
+        # enzymes under a malignancy rule and eGFR under a stroke rule. Nothing
+        # failed: the concept sets were individually correct and every count still
+        # balanced, so the defect was only visible by reading the emitted rules.
+        # A filter added to the selection loops can no longer desynchronise this,
+        # because there is no second walk left to desynchronise from.
+        results_by_index = dict(mapped_results)
+        ordered_pairs: list[tuple[dict[str, Any], dict[str, Any] | None, str]] = [
+            (
+                criterion,
+                results_by_index.get(index),
+                "exclusion" if exclusion else "inclusion",
+            )
+            for index, (criterion, exclusion) in enumerate(mappable_items)
+        ]
 
         # Collect per-criterion mapping metadata. Role-aware keys avoid collisions
         # because imported criteria commonly reuse numeric IDs across inclusion
@@ -5138,6 +5151,8 @@ class TTEService:
         base: dict[str, Any],
         eligibility: dict[str, Any],
         study: dict[str, Any] | None = None,
+        *,
+        force_disease_entry: bool = False,
     ) -> dict[str, Any]:
         """If PrimaryCriteria uses a Drug domain, swap it to a disease
         ConditionOccurrence.
@@ -5153,7 +5168,18 @@ class TTEService:
         # TTE_DRUG_ANCHORED_ENTRY is set, skip the drug->disease swap entirely and
         # keep the base's DrugEra entry so cohorts match gold's new-user design.
         # Default off -> no behavior change unless explicitly enabled.
-        if self._drug_anchored_entry():
+        #
+        # `force_disease_entry` exempts the derived (placebo) comparator, and only it.
+        # That arm's defining rule requires zero occurrences of the treatment drug, so
+        # keeping the drug entry asks for people who both entered on a drug and never
+        # took it -- an empty cohort. The collision is recorded in
+        # `docs/wiki/content/drug-anchored-placebo-comparator-guard.md`, which names
+        # this swap as the outstanding fix; the 2026-08-31 delivery avoided it by
+        # exporting placebo comparators with the flag off, and this restores that same
+        # composition without turning the flag off for the treatment arm. The ACTIVE
+        # comparator never reaches here -- it enters on a genuinely different drug and
+        # stays drug-anchored.
+        if self._drug_anchored_entry() and not force_disease_entry:
             return base
         pc = base.get("PrimaryCriteria") or {}
         criteria_list = pc.get("CriteriaList") or []
@@ -5267,6 +5293,39 @@ class TTEService:
         )
         return base
 
+    @staticmethod
+    def _intervention_alias_candidates(study: dict[str, Any] | None) -> list[str] | None:
+        """The trial's MeSH intervention terms, as the entry-drug mapper expects them.
+
+        Production injects exactly this field before mapping the target; a caller that
+        omits it silently disables the MeSH alias tier, which is the only tier that can
+        reach an ingredient from a development code.
+        """
+        metadata = (study or dict()).get("trialMetadata") or dict()
+        terms = metadata.get("interventionMeshTerms") or []
+        return list(terms) or None
+
+    @staticmethod
+    def _resolved_entry_concept_set(base: dict[str, Any]) -> dict[str, Any] | None:
+        """The drug entry concept set a base already carries, when it actually resolved.
+
+        Returns None when the base does not enter on a drug, when its entry points at no
+        concept set, or when that set is empty. An empty set is not an answer, so the
+        caller must still fall back to resolving the arm name.
+        """
+        sets_by_id: dict[Any, dict[str, Any]] = {}
+        for concept_set in base.get("ConceptSets") or []:
+            if isinstance(concept_set, dict):
+                sets_by_id[concept_set.get("id")] = concept_set
+        for crit in (base.get("PrimaryCriteria") or {}).get("CriteriaList") or []:
+            for domain, body in crit.items():
+                if domain not in ("DrugEra", "DrugExposure") or not isinstance(body, dict):
+                    continue
+                concept_set = sets_by_id.get(body.get("CodesetId"))
+                if concept_set and (concept_set.get("expression") or {}).get("items"):
+                    return concept_set
+        return None
+
     def _build_disease_based_treatment_circe(
         self,
         eligibility: dict[str, Any],
@@ -5291,6 +5350,27 @@ class TTEService:
 
         base.pop("_criterionMappingMetadata", None)
         base = self._swap_primary_to_disease(base, eligibility, study=study)
+
+        if self._drug_anchored_entry():
+            # The entry IS the study drug, and the store already answered that question:
+            # its PrimaryCriteria concept set was resolved at generation time by the
+            # target mapping, which had the trial's MeSH intervention terms in hand.
+            # Re-deriving it here from `arm_name` alone throws that context away -- a
+            # development code such as "BI 10773" matches no RxNorm ingredient, and no
+            # alias either without those terms, so the seed falls through to embedding
+            # search and a plausible wrong drug is accepted in silence. That is how the
+            # 2026-08-31 delivery came to enter on bictegravir and a Trikafta pack
+            # instead of empagliflozin, and why the two arms of one study disagreed
+            # about what the study drug was. Prefer the stored answer; fall through to
+            # name resolution only when the store has none.
+            if self._resolved_entry_concept_set(base) is not None:
+                self._repair_stale_drug_concept_sets(base)
+                return base
+            logging.warning(
+                "[TTE] Drug-anchored entry: no resolved entry concept set in the store "
+                "for '%s'; falling back to name resolution. Verify the emitted entry "
+                "before delivery.", arm_name.strip(),
+            )
 
         mapped_drug = self._recommend_seeded_concept_set(arm_name.strip(), expected_domain="Drug")
         criteria_key = self._seeded_criteria_key(mapped_drug["domain"])
@@ -5368,9 +5448,44 @@ class TTEService:
             base = self._build_seeded_target_circe(deepcopy(eligibility))
 
         base.pop("_criterionMappingMetadata", None)
-        base = self._swap_primary_to_disease(base, eligibility, study=study)
 
-        mapped_drug = self._recommend_seeded_concept_set(arm_name.strip(), expected_domain="Drug")
+        # Read the stored drug entry BEFORE the swap: afterwards the entry is a
+        # Condition and there is no drug set left to reuse.
+        stored_drug_entry = (
+            self._resolved_entry_concept_set(base) if self._drug_anchored_entry() else None
+        )
+        base = self._swap_primary_to_disease(
+            base, eligibility, study=study, force_disease_entry=True
+        )
+
+        # `arm_name` here is the TREATMENT drug -- this cohort excludes its users -- and
+        # the store already holds that drug's resolved concept set as its entry, put
+        # there at generation time with the trial's MeSH intervention terms in hand.
+        # Re-deriving it from the name alone is the same defect already fixed on the
+        # treatment path, and on a development code such as "BI 10773" it does not even
+        # return a wrong answer: it raises, the arm produces no file, and the export
+        # ships one arm short. Prefer the stored answer; fall back to name resolution
+        # only when there is none, and give that fallback the aliases production uses.
+        #
+        # Gated on drug-anchored entry because that is the mode in which the stored
+        # entry IS the study drug. Under a disease anchor the entry is a
+        # ConditionOccurrence, `_resolved_entry_concept_set` returns None, and this
+        # falls through unchanged. The ACTIVE comparator
+        # (`_build_drug_anchored_comparator_circe`) deliberately resolves a DIFFERENT
+        # drug and is not touched.
+        mapped_drug: dict[str, Any] | None = None
+        if stored_drug_entry is not None:
+            mapped_drug = dict(
+                name=stored_drug_entry.get("name") or arm_name.strip(),
+                domain="Drug",
+                expression=deepcopy(stored_drug_entry.get("expression") or dict()),
+            )
+        if mapped_drug is None:
+            mapped_drug = self._recommend_seeded_concept_set(
+                arm_name.strip(),
+                expected_domain="Drug",
+                alias_candidates=self._intervention_alias_candidates(study),
+            )
         criteria_key = self._seeded_criteria_key(mapped_drug["domain"])
         washout_days = int((time_params or {}).get("washoutPeriod") or 180)
 

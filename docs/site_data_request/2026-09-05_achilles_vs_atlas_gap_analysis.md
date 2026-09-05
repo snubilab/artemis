@@ -12,7 +12,7 @@
 
 **Entry 모집단 예측은 잘 맞고, rule 단위 예측은 크게 빗나가며, 빗나간 이유의 대부분은 ACHILLES의 한계가 아니라 병원에 넘어간 코호트 정의 파일 자체의 결함이다.** 동아대에서 entry 모집단은 관측치의 1.19–2.36배 안에 들어왔고(EMPA-REG treatment는 0을 정확히 맞혔다), rule 단위로는 리포트가 있는 117개 중 50개가 "ACHILLES는 있다는데 ATLAS는 0" 이었다. 그런데 그 50개 중 48개는 예측이 틀린 게 아니다. 다중 개념 제외 rule이 전부 `Type: ANY`로 작성되어 `ANY(NOT A, NOT B, …) = NOT(A AND B AND …)`가 되었고, 나열된 개념을 **전부 동시에** 가진 사람만 제외한다. 실제로 그런 rule 53개 중 52개가 정확히 100.00%에서 멈췄고, 나머지 하나(`carolina_treatment` #22)는 99.99% — 5개 개념을 모두 가진 단 1명만 걸러졌다. 전체 137개 rule 중 62개(45%)가 이 상태로, 사실상 아무도 거르지 못한다.
 
-**단, 이 62개는 현재 파이프라인의 결함이 아니다 — 반면 `BI 10773` entry 결함은 현재 것이다(§6).** 납품 파일 6개는 컨테이너 scratch 산출물과 md5가 일치하고, 그 생성 스크립트 3종은 `TTE_STORE_PATH` 환경변수에 밀려 **의도한 `tte_six_post007_full` store 대신 서비스의 live 기본 store를 읽었다.** live store의 rule 구조(20/20/27개, no-op 9/9/13개)가 납품본에 그대로 옮겨와 있고, 정작 쓰려던 store에는 no-op이 사실상 없으며(0/0/1) EMPA-REG entry도 empagliflozin(45774751)으로 이미 고쳐져 있다. 관련 수정은 전부 납품일 이전에 머지되었다. 실제로 store를 명시해 재-export해 보면 no-op은 62개 → 2개로 사라진다. **그러나 `BI 10773` 쓰레기 entry 집합은 재-export해도 그대로 재생산된다** — export 경로가 store의 개념집합을 쓰지 않고 arm 이름 `"BI 10773"`을 그때그때 다시 해석하기 때문이며, 이쪽은 낡은 artifact가 아니라 **현행 코드의 결함**이다(§6-1). 다만 수정된 store는 rule 집합이 더 크고 다르므로(EMPA-REG 20→29, CAROLINA 27→37) **재-export 후 인원은 이 분석으로 예측할 수 없고 사이트 재실행이 필요하다.** 아래 예측 품질 결론(entry 적중, rule 오차의 no-op 지배, 거짓음성 0건)은 실제로 병원에서 돌아간 정의를 대상으로 한 것이므로 그대로 유효하다.
+**단, 이 62개는 현재 파이프라인의 결함이 아니다 — 반면 `BI 10773` entry 결함은 현재 것이다(§6).** 납품 파일 6개는 컨테이너 scratch 산출물과 md5가 일치하고, 그 생성 스크립트 3종은 `TTE_STORE_PATH` 환경변수에 밀려 **의도한 `tte_six_post007_full` store 대신 서비스의 live 기본 store를 읽었다.** live store의 rule 구조(20/20/27개, no-op 9/9/13개)가 납품본에 그대로 옮겨와 있고, 정작 쓰려던 store에는 no-op이 사실상 없으며(0/0/1) EMPA-REG entry도 empagliflozin(45774751)으로 이미 고쳐져 있다. 관련 수정은 전부 납품일 이전에 머지되었다. 실제로 store를 명시해 재-export해 보면 no-op은 62개 → 2개로 사라진다 — **다만 수정 store 자체가 EMPA-REG·CAROLINA에서 rule↔개념집합 연결이 어긋나 있어(§6-2), 재-export 원본으로 바로 쓸 수 있는 것은 CARMELINA뿐이다.** **그러나 `BI 10773` 쓰레기 entry 집합은 재-export해도 그대로 재생산된다** — export 경로가 store의 개념집합을 쓰지 않고 arm 이름 `"BI 10773"`을 그때그때 다시 해석하기 때문이며, 이쪽은 낡은 artifact가 아니라 **현행 코드의 결함**이다(§6-1). 다만 수정된 store는 rule 집합이 더 크고 다르므로(EMPA-REG 20→29, CAROLINA 27→37) **재-export 후 인원은 이 분석으로 예측할 수 없고 사이트 재실행이 필요하다.** 아래 예측 품질 결론(entry 적중, rule 오차의 no-op 지배, 거짓음성 0건)은 실제로 병원에서 돌아간 정의를 대상으로 한 것이므로 그대로 유효하다.
 
 반대 방향 오류, 즉 "ACHILLES가 0이라 했는데 실제로는 있었다"는 **117개 중 0건**이다. 예측이 0을 말할 때는 믿어도 된다는 뜻이고, EMPA-REG treatment가 그 사례다 — entry 개념집합 `BI 10773`(codeset 57)에 empagliflozin(45774751)이 아예 없어 세 병원 모두 0개 매칭이며 ATLAS Total Events도 0이었다.
 
@@ -364,13 +364,61 @@ entry 개념집합만 export 시점에 다시 매핑되어 live store와 다르�
 | `empa-reg_comparator` | 30 | **0** | DrugEra | `[45774751 empagliflozin]` |
 | `empa-reg_treatment` | 29 | **0** | DrugEra | **`[702171, 859730, 1201447, 1201518, 1254065]`** |
 
-**no-op은 사라진다.** 62개 → 2개(CAROLINA 두 arm의 `Presence of Diabetes Diagnosis + Use of Anti-diabetic Medication` 잔여 1건씩). ④에서 예상한 대로다.
+**no-op은 사라진다.** 62개 → 2개(CAROLINA 두 arm의 `Presence of Diabetes Diagnosis + Use of Anti-diabetic Medication` 잔여 1건씩). ④에서 예상한 대로다. **다만 이 잔여 1건은 극성 결함이 아니라 연결 결함이다 — 그 rule은 간효소 집합 두 개를 물고 있다(§6-2).**
 
 **`BI 10773` entry 집합은 사라지지 않는다.** `empa-reg_treatment`의 재-export 결과는 2026-08-31 납품본과 **개념집합이 완전히 동일하다**(정렬 후 `[702171, 859730, 1201447, 1201518, 1254065]` 대 동일). 수정된 store의 PrimaryCriteria에는 `[45774751 empagliflozin]`이 들어 있는데도 그렇다 — `_build_seeded_target_circe`(`artemis/src/services/tte_service.py:4499`)가 store의 PrimaryCriteria 집합을 재사용하지 않고 arm 이름 문자열 `"BI 10773"`에서 약물을 **export 시점에 다시 해석**하기 때문이다. 해석 순서는 `_exact_ingredient_mapping`(6252행) → `_alias_ingredient_mapping`(6284행) → embedding fallback이고, `"BI 10773"`은 앞의 두 단계를 통과하지 못해 embedding까지 내려간다. 소스 주석(6292행)이 바로 이 사례를 적어 두었다 — embedding search가 `1254065 CHF-6366 .beta.-2 metabolite`를 답으로 냈다는 기록이다.
 
 `empa-reg_comparator`가 `[45774751]`로 나오는 것은 대조 arm이 이 이름 해석 경로를 타지 않기 때문이며, 같은 study에서 arm에 따라 entry 집합이 갈리는 것이 이 결함의 서명이다.
 
 > **참고: 플래그를 끄면 entry 자체가 달라진다.** `TTE_DRUG_ANCHORED_ENTRY`를 설정하지 않고 export하면(`reexport_probe/`) 여섯 arm 전부가 disease-anchored(`ConditionOccurrence`)로 나온다 — treatment arm 포함. 즉 약물 기점 entry는 플래그로만 켜진다.
+
+### 6-2. 수정된 store의 rule↔개념셋 연결 검사
+
+§6-1은 수정 store를 재-export 원본으로 쓰자는 결론을 향하지만, 그 전에 store 자체가 **rule 이름이 약속한 개념집합을 실제로 물고 있는지**를 확인해야 한다. 검사 방법: leaf가 2개 이상인 grouped rule마다 이름을 `" + "`로 쪼개고, 각 criterion이 참조하는 개념집합 이름이 그 조각들 중 하나와 토큰을 공유하는지 본다. 공유하지 않으면 flag. 스크립트는 `artemis/output/site_gap/2026-09-05/rule_wiring_check.py`.
+
+criterion 단위 `conceptSetName` 메타데이터는 이 검사에 쓰지 않았다 — live store에서 이미 낡아 있고(실제 emit된 rule은 옳은데 메타데이터만 어긋난 사례가 다수), **실제로 emit된 `CodesetId` → `ConceptSets[].name` 연결만이 유효한 측정**이다.
+
+**병원이 돌린 파일은 연결이 옳다.** 납품 comparator 6종:
+
+| trial | flagged / grouped | flag의 성격 |
+|---|---:|---|
+| aristotle | 1 / 5 | `AF` ↔ `Postoperative atrial fibrillation` — 약어 |
+| carmelina | 2 / 12 | `UACR` ↔ `Urine Albumin Creatinine Ratio`, `ALT/AST/AP` ↔ 정식 효소명 — 약어 |
+| carolina | 1 / 15 | `Biguanides` ↔ `Metformin`, `Sulfonylureas` ↔ `Glipizide` 등 — 계열 ↔ 대표약 |
+| empa-reg | 3 / 11 | `Smoking` ↔ `Tobacco use`, `ALT/AST` ↔ 정식명, 암종 ↔ `Melanoma/Leukemia/Lymphoma` — 동의어 |
+| plato | 0 / 6 | — |
+| leader | 0 / 0 | grouped rule 없음 |
+
+flag 8건을 전부 눈으로 확인했고 **모두 동의어·약어·계열명이다. 오연결은 없다.** 즉 §2·§6에서 지적한 두 결함(no-op, `BI 10773` entry) 외에 납품 파일에 추가 결함은 없다.
+
+**수정 store(2026-08-27)는 study 8·10에서 연결이 어긋나 있다.**
+
+| study | flagged / grouped | 판정 |
+|---|---:|---|
+| 8 EMPA-REG | **6 / 9** | 오연결 |
+| 9 CARMELINA | 1 / 5 | 동의어뿐 — 정상 |
+| 10 CAROLINA | **14 / 18** | 오연결 |
+| 1–7 | 각 최대 1건 | 동의어뿐 — 정상 |
+
+실제 사례:
+
+- `"High risk of CV events (Stroke) + Myocardial infarction > 6 months"` → `[Percutaneous Coronary Intervention, Estimated glomerular filtration rate]`
+- `"Malignant neoplasm of breast + lung + …"` → `[Investigational drug trial, Cardiac surgery, Angioplasty]`
+- `"Presence of Diabetes Diagnosis + Use of Anti-diabetic Medication"` → `[Alanine aminotransferase, Aspartate aminotransferase]`, 두 leaf 모두 `Occurrence {Type: 0, Count: 0}`
+
+마지막 것이 §6-1의 "잔여 no-op 1건"이다. **그 rule은 극성 결함이 아니라 연결 결함이었다** — 이름은 당뇨 진단·약물의 presence를 약속하는데 간효소 집합 두 개가 absence로 물려 있다. §6-1에서 "잔여 no-op"이라 부른 것을 여기서 정정한다.
+
+**어긋남의 모양: 일정한 index shift가 아니라 광범위한 오연결.** criterion이 자기 조각(offset 0)이 아니라 어느 조각과 맞는지 세어 보면 —
+
+- study 8: 39개 중 offset 0이 19개, +1이 1개, **어느 조각과도 안 맞음 19개**
+- study 10: 63개 중 offset 0이 9개, offset −2·−1·+1·+2·+3에 흩어진 것이 17개, **어느 조각과도 안 맞음 37개**
+- study 9(CARMELINA): 11개 중 offset 0이 9개, 안 맞음 2개 — 정상
+
+균일한 +1 이동이었다면 offset 분포가 한 값에 몰렸을 텐데 그렇지 않고, study 10에서는 63개 중 37개가 **자기 rule의 어느 조각과도 무관한 집합**을 참조한다. 즉 이웃 rule의 집합을 끌어다 쓴 것에 가깝다.
+
+**후보 원인 (재현으로 확정하지 않음).** `_apply_draft_concept_set_metadata`(`artemis/src/services/tte_service.py:3702-3707`)가 id로 개념집합을 찾지 못하면 `concept_sets[start_index + mappable_offset]` 위치 기반 fallback을 탄다. 이 코드는 2026-07-22 baseline부터 있었으나 어긋남은 criteria 삭제·병합 변경(`bdd7da2`, `1ccfbba`, 2026-08-25/26) 이후인 **2026-08-27 재생성분의 study 8·10에서만** 나타난다. 인과는 확인하지 못했다.
+
+**결론: 수정 store는 CARMELINA에 한해서만 재-export 원본으로 쓸 수 있다.** EMPA-REG과 CAROLINA는 파이프라인에서 이 연결 결함을 고치고 **재생성한 뒤에야** 재납품 대상이 된다. §6-1의 재-export 산출물(`reexport_probe_flag1/`)도 이 store에서 나온 것이므로, EMPA-REG·CAROLINA 쪽 rule 내용은 그대로 신뢰하면 안 된다 — no-op이 사라졌다는 사실만 유효하다.
 
 ### 이 절이 바꾸는 것과 바꾸지 않는 것
 
@@ -397,6 +445,7 @@ entry 개념집합만 export 시점에 다시 매핑되어 live store와 다르�
 9. **동아대 5명·1명·44명·60명의 개인 단위 검증은 하지 않았다.** 어떤 환자가 왜 통과했는지는 확인 범위 밖이다.
 10. **§6의 커밋 4건(`23570e6`, `01eee1e`, `7837274`, `8692a55`)과 ledger HEAD `745ea83`은 직접 확인하지 않았다.** 이번 작업은 git 명령이 금지되어 조율자가 확인한 내용을 그대로 인용했다. §6의 나머지 — md5 6건, 컨테이너 환경변수, 두 store의 rule·no-op·entry 집합, rule 이름 순서 일치 — 는 전부 디스크에서 직접 재확인했고, 그 과정에서 조율자 보고의 `0/0/0`을 `0/0/1`로 정정했다.
 11. **재-export는 이제 실측으로 확인되었고, 이전 판의 추론 절반이 틀렸다.** 앞선 판은 "재-export하면 두 결함이 모두 사라진다"고 적었으나, `reexport_probe_flag1/` 산출물이 이를 반증했다 — no-op은 62개 → 2개로 사라지지만 `BI 10773` entry 집합은 납품본과 동일하게 재생산된다(§6-1). 남은 미검증 사항은 이것이다: **재-export 정의로 사이트에서 다시 돌린 결과는 없다.** §6-1의 인원 방향("줄어들 가능성이 크다")은 rule 구조에서 나온 추론이며 실측이 아니다.
+12. **§6-2의 원인 후보(`_apply_draft_concept_set_metadata`의 위치 기반 fallback)는 재현으로 확정하지 않았다.** 연결이 어긋났다는 사실과 그 범위는 측정했지만, 그 코드 경로가 실제로 이 어긋남을 만들었는지는 확인하지 못했다. 인용한 커밋 `bdd7da2`·`1ccfbba`도 §한계 10과 같은 이유로 미확인이다. 또한 flag 건수는 토큰화 방식에 민감하다 — study 10은 "조각 중 아무거나 일치" 기준으로 14/18, "자기 조각과 일치" 기준으로 17/18이며 조율자 보고는 16/18이었다. **어긋남의 존재와 규모는 세 기준 모두에서 같은 결론이지만, 특정 건수를 인용할 때는 기준을 함께 밝혀야 한다.**
 
 ---
 

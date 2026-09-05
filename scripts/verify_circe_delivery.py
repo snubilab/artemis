@@ -19,6 +19,21 @@ Checks per file:
 (d) if a ``manifest.json`` sits beside the files, its recorded md5s match the
     files on disk and its ``store_sha256`` matches the ``--store`` file
 
+And one check across files rather than per file:
+
+(f) no rule requires zero occurrences of a concept set that intersects the
+    cohort's own entry set. Such a rule empties the cohort by construction, and
+    every other per-file check reads one property in isolation, so none of them
+    can see it. CARMELINA shipped that shape and passed.
+
+(e) every arm a mapped study declares in the store produced a file. Checks (a)
+    to (d) all read a file that exists, so a delivery that is SHORT an arm
+    passes all of them -- which is what happened on 2026-09-05, when a five-file
+    export with a silently dropped EMPA-REG comparator exited 0. Only studies
+    that produced at least one file are checked, so a deliberate single-study
+    export still passes; the expected arm set comes from the store's own
+    ``treatmentArms``, so a genuinely single-arm study needs no opt-out.
+
 The 2026-08-31 delivery (``artemis/output/circe_be/2026-08-31/``) is the
 counterexample this gate exists to catch — see ``AGENTS.md``.
 """
@@ -36,9 +51,11 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.utils.circe_lint import (  # noqa: E402
+    contradictory_absence_rules,
     entry_concept_ids,
     entry_concept_set_name,
     entry_matches_expected,
+    missing_arm_roles,
     noop_exclusion_rules,
     rule_names,
 )
@@ -150,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
 
     rows: list[dict[str, Any]] = []
     any_fail = False
+    produced_roles_by_study: dict[int, set[str]] = {}
 
     for path in circe_files:
         parsed = _split_filename(path)
@@ -167,6 +185,10 @@ def main(argv: list[str] | None = None) -> int:
 
         with path.open(encoding="utf-8") as fh:
             expression = json.load(fh)
+
+        skeleton_study_id = slug_to_id.get(slug)
+        if skeleton_study_id in studies_by_id:
+            produced_roles_by_study.setdefault(skeleton_study_id, set()).add(role)
 
         rules = rule_names(expression)
         if len(rules) < 2 and args.allow_skeleton:
@@ -191,6 +213,7 @@ def main(argv: list[str] | None = None) -> int:
             any_fail = True
             continue
         study = studies_by_id[study_id]
+        produced_roles_by_study.setdefault(study_id, set()).add(role)
         comparison_mode = study.get("comparisonMode") or ""
         store_structured = (study.get("eligibility") or {}).get("structuredExpression") or {}
         store_rule_names = rule_names(store_structured)
@@ -237,6 +260,14 @@ def main(argv: list[str] | None = None) -> int:
                 f"store={store_domain} {sorted(store_concept_ids)}"
             )
 
+        # (f) a rule that excludes what the cohort enters on -- an empty cohort.
+        contradictions = contradictory_absence_rules(expression)
+        if contradictions:
+            reasons.append(
+                f"contradictory absence rules ({len(contradictions)}): "
+                f"{', '.join(contradictions)}"
+            )
+
         # (d) manifest cross-check, if present
         if manifest is not None:
             manifest_entry = next(
@@ -260,6 +291,26 @@ def main(argv: list[str] | None = None) -> int:
                 "reasons": reasons or [f"entry: {case}; rules: {rules_detail}"],
             }
         )
+
+    # (e) arm completeness, across files rather than per file.
+    id_to_slug = {study_id: slug for slug, study_id in slug_to_id.items()}
+    for study_id in sorted(produced_roles_by_study):
+        study = studies_by_id[study_id]
+        missing = missing_arm_roles(study, produced_roles_by_study[study_id])
+        for role in missing:
+            slug = id_to_slug.get(study_id, str(study_id))
+            rows.append(
+                {
+                    "file": f"{slug}_{role}.circe.json",
+                    "status": "MISSING",
+                    "reasons": [
+                        f"study {study_id} declares arm {role!r} "
+                        f"({[a.get('name') for a in study.get('treatmentArms') or []]}) "
+                        "but no file was produced for it"
+                    ],
+                }
+            )
+            any_fail = True
 
     print(f"{'file':<40}  {'status':<8}  reasons")
     for row in rows:

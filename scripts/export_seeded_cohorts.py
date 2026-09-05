@@ -100,6 +100,36 @@ def _file_md5(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _collect_build_failures(generated: Any) -> dict[str, str]:
+    """Map arm role -> recorded build error, from the generation diagnostics.
+
+    The service reports a failed expression build as an item with
+    ``status == "failed"`` and an ``error``. Reading it here is what makes an
+    omitted arm legible after the fact instead of merely absent; the structure is
+    walked rather than indexed so a diagnostics reshape degrades to "no detail"
+    instead of masking the violation with a traceback.
+    """
+    found: dict[str, str] = {}
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if node.get("status") == "failed" and node.get("error"):
+                role = str(node.get("role") or "")
+                if role and role not in found:
+                    found[role] = str(node["error"])
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, (list, tuple)):
+            for value in node:
+                walk(value)
+
+    try:
+        walk(json.loads(json.dumps(generated, default=str)))
+    except Exception:
+        return found
+    return found
+
+
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--store", required=True, type=Path, help="Explicit studies.json path")
@@ -135,9 +165,12 @@ def main(argv: list[str] | None = None) -> int:
     from src.services.tte_service import TTEService
     from src.services.tte_store import TTEStore
     from src.utils.circe_lint import (
+        contradictory_absence_rules,
         entry_concept_ids,
         entry_concept_set_name,
         entry_matches_expected,
+        expected_arm_roles,
+        missing_arm_roles,
         noop_exclusion_rules,
         rule_names,
     )
@@ -150,6 +183,7 @@ def main(argv: list[str] | None = None) -> int:
 
     violations: list[dict[str, Any]] = []
     manifest_files: list[dict[str, Any]] = []
+    manifest_studies: list[dict[str, Any]] = []
 
     for study_id in args.study_ids:
         study = service.store.get_study(study_id)
@@ -181,14 +215,17 @@ def main(argv: list[str] | None = None) -> int:
             "src.pipeline.webapi_client.WebAPIClient.create_cohort_definition",
             _capture,
         ):
-            service._build_seeded_cohort_artifact_payload(study_id, study)
+            generated = service._build_seeded_cohort_artifact_payload(study_id, study)
+        build_failures = _collect_build_failures(generated)
 
         treatment = next((c for c in captured if "Treatment -" in c["name"]), None)
         comparator = next((c for c in captured if "Comparator -" in c["name"]), None)
 
+        produced_roles: set[str] = set()
         for role, item in (("treatment", treatment), ("comparator", comparator)):
             if not item:
                 continue
+            produced_roles.add(role)
             expression = deepcopy(item["expression"])
             file_path = out_dir / f"{slug}_{role}.circe.json"
             with file_path.open("w", encoding="utf-8") as fh:
@@ -216,6 +253,20 @@ def main(argv: list[str] | None = None) -> int:
                         "reason": "noop_rules",
                         "detail": f"{len(noops)} no-op rule(s): {', '.join(noops)}",
                     }
+                )
+            contradictions = contradictory_absence_rules(expression)
+            if contradictions:
+                violations.append(
+                    dict(
+                        study_id=study_id,
+                        slug=slug,
+                        arm=role,
+                        reason="contradictory_absence",
+                        detail=(
+                            "rule(s) exclude a concept set intersecting the entry set, "
+                            "so the cohort is empty: " + ", ".join(contradictions)
+                        ),
+                    )
                 )
             if not entry_ok:
                 violations.append(
@@ -246,6 +297,39 @@ def main(argv: list[str] | None = None) -> int:
                 }
             )
 
+        # An arm that produced no file is the same class of violation as a bad file:
+        # the delivery is not what it claims to be. Before this check the exporter
+        # happily wrote a manifest listing five files for three two-arm studies, and
+        # the gate — which only ever reads files that exist — exited 0 on it.
+        for role in missing_arm_roles(study, produced_roles):
+            detail = (
+                f"study declares arm {role!r} "
+                f"({[a.get('name') for a in study_arms]}) but no cohort was produced"
+            )
+            recorded = build_failures.get(role)
+            if recorded:
+                detail += f"; build failed: {recorded}"
+            violations.append(
+                {
+                    "study_id": study_id,
+                    "slug": slug,
+                    "arm": role,
+                    "reason": "missing_arm",
+                    "detail": detail,
+                }
+            )
+
+        manifest_studies.append(
+            {
+                "study_id": study_id,
+                "study_name": study_name,
+                "slug": slug,
+                "arm_names": [a.get("name") for a in study_arms],
+                "expected_arms": expected_arm_roles(study),
+                "produced_arms": sorted(produced_roles),
+            }
+        )
+
     if violations:
         print("EXPORT REJECTED — violations found (no manifest written):", file=sys.stderr)
         print(
@@ -271,6 +355,7 @@ def main(argv: list[str] | None = None) -> int:
         "env_TTE_STORE_PATH": os.environ.get("TTE_STORE_PATH"),
         "TTE_DRUG_ANCHORED_ENTRY": os.environ.get("TTE_DRUG_ANCHORED_ENTRY"),
         "git_head": _git_head(repo_dir),
+        "studies": manifest_studies,
         "files": manifest_files,
     }
     manifest_path = out_dir / "manifest.json"
