@@ -81,6 +81,7 @@ from src.services.restated_distinctness import (
 )
 from src.services.tte_store import TTEStore
 from src.services.value_constraint import build_measurement_value_filter
+from src.utils.circe_lint import end_entry_colliding_washouts_before_index
 from src.utils.exceptions import LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
 
@@ -4157,6 +4158,35 @@ class TTEService:
             items.append(item)
         return self._finalize_seeded_section_diagnostic("outcomes", items)
 
+    @staticmethod
+    def _build_emittable_expression(expression_builder: Any) -> dict[str, Any]:
+        """Build one seeded CIRCE and apply the corrections it must not be emitted without.
+
+        Every seeded expression this service produces -- target, treatment, comparator,
+        outcome -- converges on `_materialize_seeded_cohort_item`, and this is the only
+        place all four builders meet. Two properties make it the right home for the
+        entry-colliding washout correction rather than the criterion->CIRCE emission in
+        `_build_seeded_eligibility_rule`:
+
+        - Studies 1/8/9/10 all carry a prebuilt `structuredExpression`, so the arm
+          builders deepcopy it and `_build_seeded_eligibility_rule` is never called on
+          the delivery path at all. A fix there would need an LLM regeneration to reach
+          a delivered file; here a plain re-export is enough.
+        - The entry a rule collides with is not final until the arm builder has
+          repointed it. CAROLINA's active comparator enters on glimepiride, which the
+          store's target entry is not, so its `Glimepiride` washout only becomes a
+          collision after that repoint. The collision is a property of the assembled
+          expression, and this is the first point at which the expression is assembled.
+        """
+        expression = expression_builder()
+        moved = end_entry_colliding_washouts_before_index(expression)
+        if moved:
+            logging.info(
+                "[TTE] Ended %d washout rule(s) a day before index (their concept set "
+                "contains the entry drug): %s", len(moved), ", ".join(moved),
+            )
+        return expression
+
     def _materialize_seeded_cohort_item(
         self,
         *,
@@ -4183,7 +4213,7 @@ class TTEService:
                 # already-attached definition standing, which is what "best-effort" was
                 # written for. Only the second stays swallowed.
                 try:
-                    expression = expression_builder()
+                    expression = self._build_emittable_expression(expression_builder)
                 except Exception as exc:
                     return SeededCohortGenerationItem(
                         section=section,
@@ -4251,7 +4281,7 @@ class TTEService:
             role=role,
             label=label,
         )
-        expression = expression_builder()
+        expression = self._build_emittable_expression(expression_builder)
         try:
             definition = client.create_cohort_definition(
                 definition_name,

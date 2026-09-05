@@ -201,3 +201,73 @@ class TestTheCheckDoesNotFireOnSoundDefinitions:
             ],
         }
         assert contradictory_absence_rules(circe) == ["No drug nested"]
+
+
+class TestTheCheckReadsTheWindowBoundary:
+    """The check is concept-set overlap AND the index day falling inside the window.
+
+    A washout that stops the day BEFORE index does not count the entry exposure, and
+    that is not an intuition -- it is arm 3 of the WebAPI experiment recorded in
+    `contradictory_absence_rules`' docstring: `[-365, index-1]` returns the full
+    10,093-person population where `[-365, index]` returns 0. Everything else stays
+    flagged, including a window that runs PAST index, one that stops exactly ON it,
+    and an absence rule carrying no window at all.
+    """
+
+    @staticmethod
+    def _circe(end):
+        criterion = {
+            "Criteria": {"DrugExposure": {"CodesetId": 1}},
+            "Occurrence": {"Type": 0, "Count": 0},
+        }
+        if end is not None:
+            criterion["StartWindow"] = {"Start": {"Days": 365, "Coeff": -1}, "End": end}
+        return {
+            "ConceptSets": [
+                {
+                    "id": 1,
+                    "name": "DPP-4 inhibitors",
+                    "expression": {"items": [{"concept": {"CONCEPT_ID": 40239216}}]},
+                },
+            ],
+            "PrimaryCriteria": {"CriteriaList": [{"DrugEra": {"CodesetId": 1}}]},
+            "InclusionRules": [
+                {
+                    "name": "Prior DPP-4 use",
+                    "expression": {
+                        "Type": "ALL",
+                        "CriteriaList": [criterion],
+                        "Groups": [],
+                    },
+                }
+            ],
+        }
+
+    def test_should_not_flag_a_washout_that_ends_the_day_before_index(self):
+        circe = self._circe({"Days": 1, "Coeff": -1})
+        assert contradictory_absence_rules(circe) == []
+
+    def test_should_still_flag_a_washout_that_ends_on_the_index_day(self):
+        circe = self._circe({"Days": 0, "Coeff": 1})
+        assert contradictory_absence_rules(circe) == ["Prior DPP-4 use"]
+
+    def test_should_still_flag_a_window_that_runs_past_the_index_day(self):
+        circe = self._circe({"Days": 365, "Coeff": 1})
+        assert contradictory_absence_rules(circe) == ["Prior DPP-4 use"]
+
+    def test_should_still_flag_an_absence_rule_carrying_no_window(self):
+        """No StartWindow means unbounded, which contains the index day."""
+        assert contradictory_absence_rules(self._circe(None)) == ["Prior DPP-4 use"]
+
+    def test_should_still_flag_an_unbounded_end_with_no_day_count(self):
+        """`End: {Coeff: 1}` with no Days is +infinity, not the index day."""
+        circe = self._circe({"Coeff": 1})
+        assert contradictory_absence_rules(circe) == ["Prior DPP-4 use"]
+
+    def test_should_still_flag_a_day_before_index_end_rebased_on_the_index_end_date(self):
+        """`UseIndexEnd` compares against the end of the index era, so `index-1` there
+        is not provably before the index start day. Only the provable case is exempt."""
+        circe = self._circe({"Days": 1, "Coeff": -1})
+        window = circe["InclusionRules"][0]["expression"]["CriteriaList"][0]["StartWindow"]
+        window["UseIndexEnd"] = True
+        assert contradictory_absence_rules(circe) == ["Prior DPP-4 use"]

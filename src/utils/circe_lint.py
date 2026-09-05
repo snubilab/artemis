@@ -243,8 +243,18 @@ def missing_arm_roles(study: dict[str, Any], produced_roles: Any) -> list[str]:
 # the gate rather than at a hospital.
 
 
-def _absence_leaves_under_conjunction(node: dict[str, Any]) -> list[dict[str, Any]]:
-    """Absence leaves reachable through ``ALL`` nodes only.
+#: The ``StartWindow.End`` of a washout that stops the day before the index date.
+#: ``{"Days": 1, "Coeff": -1}`` is index-1; ``{"Days": 0, "Coeff": 1}`` is index+0.
+INDEX_EXCLUSIVE_END = {"Days": 1, "Coeff": -1}
+
+
+def _absence_entries_under_conjunction(node: dict[str, Any]) -> list[dict[str, Any]]:
+    """Absence criteria ENTRIES reachable through ``ALL`` nodes only.
+
+    An entry is the dict carrying ``Criteria``, ``StartWindow`` and ``Occurrence``
+    together -- the whole entry rather than just its ``Criteria`` body, because the
+    window boundary is what separates a prior-use washout from a self-contradiction
+    and it lives one level up from the concept-set reference.
 
     ``ANY`` means at least one alternative holds, so a single unsatisfiable
     alternative does not empty the rule; descending into one would produce false
@@ -256,10 +266,78 @@ def _absence_leaves_under_conjunction(node: dict[str, Any]) -> list[dict[str, An
     for entry in node.get("CriteriaList") or []:
         occurrence = entry.get("Occurrence") or {}
         if (occurrence.get("Type"), occurrence.get("Count")) == _ABSENT_OCCURRENCE:
-            found.append(entry.get("Criteria") or entry)
+            found.append(entry)
     for group in node.get("Groups") or []:
-        found.extend(_absence_leaves_under_conjunction(group))
+        found.extend(_absence_entries_under_conjunction(group))
     return found
+
+
+def _leaf_codeset_id(entry: dict[str, Any]) -> Any:
+    """The ``CodesetId`` a criteria entry references, or ``None``.
+
+    Tolerates an entry handed in already unwrapped (no ``Criteria`` key), which is
+    the shape some hand-written fixtures use.
+    """
+    body_source = entry.get("Criteria")
+    if not isinstance(body_source, dict):
+        body_source = entry
+    for _domain, body in body_source.items():
+        if isinstance(body, dict) and "CodesetId" in body:
+            return body["CodesetId"]
+    return None
+
+
+def _effective_end_days(entry: dict[str, Any]) -> float | None:
+    """Days from the index date to the end of the entry's ``StartWindow``.
+
+    ``None`` when that offset is not provable from the file: no window (unbounded),
+    no explicit ``Days`` (also unbounded), a non-numeric value, or a window rebased
+    by ``UseIndexEnd`` / ``UseEventEnd`` onto an era end date whose distance from the
+    index date the file does not record. Every unprovable case is treated by the
+    callers as "may contain the index day", so uncertainty never silences the check
+    and never triggers a rewrite.
+    """
+    window = entry.get("StartWindow")
+    if not isinstance(window, dict):
+        return None
+    if window.get("UseIndexEnd") or window.get("UseEventEnd"):
+        return None
+    end = window.get("End")
+    if not isinstance(end, dict):
+        return None
+    days, coeff = end.get("Days"), end.get("Coeff")
+    if isinstance(days, bool) or isinstance(coeff, bool):
+        return None
+    if not isinstance(days, (int, float)) or not isinstance(coeff, (int, float)):
+        return None
+    return days * coeff
+
+
+def _colliding_absence_entries(
+    expression: dict[str, Any], rule: dict[str, Any], entry_ids: set[int]
+) -> list[dict[str, Any]]:
+    """Absence entries in one rule whose excluded set shares a concept with the entry.
+
+    Overlap is tested on the literal concept ids of both sets: a descendant-level test
+    would need the vocabulary, and this module is deliberately I/O-free.
+    """
+    colliding: list[dict[str, Any]] = []
+    for leaf_entry in _absence_entries_under_conjunction(rule.get("expression") or {}):
+        codeset_id = _leaf_codeset_id(leaf_entry)
+        if codeset_id is None:
+            continue
+        concept_set = _find_concept_set(expression, codeset_id)
+        if concept_set is None:
+            continue
+        excluded = {
+            item["concept"]["CONCEPT_ID"]
+            for item in (concept_set.get("expression") or {}).get("items") or []
+            if isinstance(item.get("concept"), dict)
+            and isinstance(item["concept"].get("CONCEPT_ID"), int)
+        }
+        if excluded & entry_ids:
+            colliding.append(leaf_entry)
+    return colliding
 
 
 def contradictory_absence_rules(expression: dict[str, Any]) -> list[str]:
@@ -282,9 +360,14 @@ def contradictory_absence_rules(expression: dict[str, Any]) -> list[str]:
         absence of the same drug, [-365, index]      0 persons
         absence of the same drug, [-365, index-1] 10093 persons
 
-    So the boundary is exactly the index day, and a washout ending at `index+0` on a
-    concept set containing the entry drug empties the cohort. Do not narrow this check
-    to `End.Days > 0` on the intuition that a washout is harmless; re-run
+    So the boundary is exactly the index day. THE ONE EXEMPTION IS THE ONE ARM 3
+    MEASURED: a window that provably ends BEFORE the index day counts no entry
+    exposure and returns the full population, so it is a sound prior-use washout and
+    is not flagged. Everything else still is -- a window ending exactly ON index
+    (`End.Days == 0`, the shape that shipped), a window running past it, an absence
+    rule with no window at all, and any window whose end offset the file does not
+    make provable. Do not widen that exemption to `End.Days > 0` on the intuition
+    that a washout is harmless; re-run
     `output/site_gap/2026-09-05/circe_index_window_experiment.py` first.
     """
     _entry_domain, entry_ids = entry_concept_ids(expression)
@@ -292,24 +375,56 @@ def contradictory_absence_rules(expression: dict[str, Any]) -> list[str]:
         return []
     flagged: list[str] = []
     for rule in expression.get("InclusionRules") or []:
-        for leaf in _absence_leaves_under_conjunction(rule.get("expression") or {}):
-            codeset_id = None
-            for _domain, body in leaf.items():
-                if isinstance(body, dict) and "CodesetId" in body:
-                    codeset_id = body["CodesetId"]
-                    break
-            if codeset_id is None:
+        for leaf_entry in _colliding_absence_entries(expression, rule, entry_ids):
+            end_days = _effective_end_days(leaf_entry)
+            if end_days is not None and end_days < 0:
                 continue
-            concept_set = _find_concept_set(expression, codeset_id)
-            if concept_set is None:
-                continue
-            excluded = {
-                item["concept"]["CONCEPT_ID"]
-                for item in (concept_set.get("expression") or {}).get("items") or []
-                if isinstance(item.get("concept"), dict)
-                and isinstance(item["concept"].get("CONCEPT_ID"), int)
-            }
-            if excluded & entry_ids:
-                flagged.append(rule.get("name", ""))
-                break
+            flagged.append(rule.get("name", ""))
+            break
     return flagged
+
+
+def end_entry_colliding_washouts_before_index(expression: dict[str, Any]) -> list[str]:
+    """Move an absence window that ends ON the index day back to the day before it.
+
+    Mutates ``expression`` in place and returns the names of the rules changed.
+
+    Under a drug-anchored entry every entrant necessarily has a class exposure on the
+    index day, because the index event IS an exposure to a drug in that class. A
+    class-level washout whose concept set contains the entry drug therefore excludes
+    people for the very event that admitted them, and the cohort is empty -- which is
+    what `contradictory_absence_rules` reports and what arm 2 of the WebAPI experiment
+    measured. Ending the window at `index-1` restores the intended reading ("no prior
+    use of this class BEFORE the patient starts the study drug") and, per arm 3,
+    the full population.
+
+    Two things this deliberately does NOT do:
+
+    - It does not subtract the study drug from its own class concept set. A patient
+      who used linagliptin six months before index is not a new user and must stay
+      excluded; removing the drug from the class set would admit prior users of the
+      study drug and break the new-user design.
+    - It does not touch a window running PAST the index day. That is not a boundary
+      off-by-one -- it excludes people for taking the drug AFTER entry, which is a
+      different rule with a different meaning (the 2026-08-31 `No <drug>` placebo
+      collision had this shape, `[-180, +365]`). Silently moving it would rewrite the
+      rule and leave `contradictory_absence_rules` with nothing left to fire on.
+
+    Scope is the collision itself: an absence leaf reachable through `ALL` nodes only,
+    whose excluded concept set shares a concept id with the entry set, and whose
+    window provably ends on the index date. A study with no such rule does not move.
+    """
+    _entry_domain, entry_ids = entry_concept_ids(expression)
+    if not entry_ids:
+        return []
+    changed: list[str] = []
+    for rule in expression.get("InclusionRules") or []:
+        moved = False
+        for leaf_entry in _colliding_absence_entries(expression, rule, entry_ids):
+            if _effective_end_days(leaf_entry) != 0:
+                continue
+            leaf_entry["StartWindow"]["End"] = dict(INDEX_EXCLUSIVE_END)
+            moved = True
+        if moved:
+            changed.append(rule.get("name", ""))
+    return changed
