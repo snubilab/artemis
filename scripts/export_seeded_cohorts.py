@@ -166,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     from src.services.tte_store import TTEStore
     from src.utils.circe_lint import (
         contradictory_absence_rules,
+        domain_mismatched_criteria,
         entry_concept_ids,
         entry_concept_set_name,
         entry_matches_expected,
@@ -268,6 +269,21 @@ def main(argv: list[str] | None = None) -> int:
                         ),
                     )
                 )
+            domain_mismatches = domain_mismatched_criteria(expression)
+            if domain_mismatches:
+                violations.append(
+                    dict(
+                        study_id=study_id,
+                        slug=slug,
+                        arm=role,
+                        reason="criterion_domain_mismatch",
+                        detail=(
+                            "criteri(a) whose concept set shares no domain with the CDM "
+                            "table they read, so they match nothing: "
+                            + "; ".join(domain_mismatches)
+                        ),
+                    )
+                )
             if not entry_ok:
                 violations.append(
                     {
@@ -292,6 +308,7 @@ def main(argv: list[str] | None = None) -> int:
                     "md5": _file_md5(file_path),
                     "rule_count": len(rule_names(expression)),
                     "noop_rule_count": len(noops),
+                    "domain_mismatch_count": len(domain_mismatches),
                     "entry_domain": file_domain,
                     "entry_concept_ids": sorted(file_concept_ids),
                 }

@@ -18,6 +18,16 @@ Checks per file:
     "glimepiride", not linagliptin)
 (d) if a ``manifest.json`` sits beside the files, its recorded md5s match the
     files on disk and its ``store_sha256`` matches the ``--store`` file
+(g) every criterion's concept set shares at least one OMOP domain with the CDM
+    table that criterion reads. A ``ConditionOccurrence`` criterion over a Drug
+    concept set joins ``condition_occurrence.condition_concept_id`` against drug
+    products and matches nothing; as an ABSENCE rule that means everyone
+    satisfies it and the exclusion is never applied. CAROLINA shipped that shape
+    ("Glimepiride", codeset 56) and passed checks (a) to (f), because none of
+    them reads a criterion's domain against its own concept set. Measured
+    against WebAPI rather than reasoned — see
+    ``src.utils.circe_lint.domain_mismatched_criteria`` and
+    ``output/site_gap/2026-09-06/plan048_domain_repair/``.
 
 And one check across files rather than per file:
 
@@ -52,6 +62,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.utils.circe_lint import (  # noqa: E402
     contradictory_absence_rules,
+    domain_mismatched_criteria,
     entry_concept_ids,
     entry_concept_set_name,
     entry_matches_expected,
@@ -266,6 +277,15 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"contradictory absence rules ({len(contradictions)}): "
                 f"{', '.join(contradictions)}"
+            )
+
+        # (g) a criterion whose concept set shares no domain with the CDM table it
+        # reads -- the join matches nothing, so an absence rule excludes nobody.
+        domain_mismatches = domain_mismatched_criteria(expression)
+        if domain_mismatches:
+            reasons.append(
+                f"criterion domain mismatch ({len(domain_mismatches)}): "
+                f"{'; '.join(domain_mismatches)}"
             )
 
         # (d) manifest cross-check, if present

@@ -428,3 +428,177 @@ def end_entry_colliding_washouts_before_index(expression: dict[str, Any]) -> lis
         if moved:
             changed.append(rule.get("name", ""))
     return changed
+
+
+# --- criterion domain vs concept-set domain ---------------------------------
+#
+# A CIRCE criterion names the CDM table it reads. `ConditionOccurrence` joins
+# `condition_occurrence.condition_concept_id` against the codeset; that column holds
+# Condition-domain concepts and nothing else. Point such a criterion at a Drug concept
+# set and the join matches no row — the rule is inert, and nothing in the file says so.
+#
+# CAROLINA shipped exactly that: `InclusionRules[22]` "Glimepiride", a
+# `ConditionOccurrence` absence criterion over a concept set holding `1597756
+# glimepiride`. Because it is an ABSENCE rule, matching nothing means EVERY patient
+# satisfies it, so the exclusion is simply never applied and the cohort silently
+# carries people it claims to exclude. That direction is the quiet one: a rule that
+# empties a cohort is noticed at the first generation, a rule that excludes nobody
+# never is.
+#
+# MEASURED, not reasoned — WebAPI 2.15.1, source SYNTHEA (`synthea_cdm`), six cohort
+# definitions each with its own design hash and "Cache is absent ... Calculating" in
+# the WebAPI log (`output/site_gap/2026-09-06/plan048_domain_repair/`):
+#
+#     entry only, no rule                                   10093 persons
+#     acetaminophen via DrugExposure        (matching)       3339 persons
+#     acetaminophen via ConditionOccurrence (MISMATCHED)        0 persons
+#     Gingivitis    via ConditionOccurrence (matching)       5975 persons
+#
+# Arm 4 is the control that makes arm 3's zero mean something: the same criterion type
+# over a Condition-domain set returns people, so `ConditionOccurrence` rules work and
+# only the domain disagreement empties one. All four agree exactly with an independent
+# SQL count over the same CDM. The arms are PRESENCE rules because zero-versus-non-zero
+# is illegible under an absence rule, where matching nothing admits everyone.
+#
+# The check is deliberately conservative — a delivery gate is expensive to be wrong in.
+# It fires only when EVERY concept in the set is outside the criterion's domains, and
+# stays silent on an unmodelled criterion type, a dangling codeset reference, and a set
+# with no readable domain. Each of those is an unknown, and a claim the check cannot
+# establish from the file alone would be an unobserved defect claim.
+
+#: The OMOP `domain_id` values a CIRCE criterion's own CDM table can hold. A criterion
+#: type absent from this map is not checked rather than guessed at.
+CRITERIA_TYPE_DOMAINS: dict[str, frozenset[str]] = {
+    "ConditionOccurrence": frozenset({"Condition"}),
+    "ConditionEra": frozenset({"Condition"}),
+    "DrugExposure": frozenset({"Drug"}),
+    "DrugEra": frozenset({"Drug"}),
+    "DoseEra": frozenset({"Drug"}),
+    "ProcedureOccurrence": frozenset({"Procedure"}),
+    "Measurement": frozenset({"Measurement"}),
+    "Observation": frozenset({"Observation"}),
+    "DeviceExposure": frozenset({"Device"}),
+    "VisitOccurrence": frozenset({"Visit"}),
+    "VisitDetail": frozenset({"Visit"}),
+    "Specimen": frozenset({"Specimen"}),
+    # The death record carries a cause concept, which the vocabulary files under
+    # either Condition or Observation.
+    "Death": frozenset({"Condition", "Observation"}),
+}
+
+#: OMOP writes compound domains with abbreviations ("Condition/Meas",
+#: "Measurement/Obs"). Expanded so a `Condition/Meas` concept — a real shape, 8
+#: concepts in this vocabulary — counts for BOTH tables it is routed to.
+_DOMAIN_ABBREVIATIONS = {"Meas": "Measurement", "Obs": "Observation"}
+
+
+def _concept_set_domains(concept_set: dict[str, Any]) -> set[str]:
+    """Every OMOP domain the set's concepts can be read from, compound ids split.
+
+    An item with no readable ``DOMAIN_ID`` contributes nothing rather than a guess.
+    """
+    domains: set[str] = set()
+    for item in (concept_set.get("expression") or {}).get("items") or []:
+        raw = (item.get("concept") or {}).get("DOMAIN_ID")
+        if not isinstance(raw, str):
+            continue
+        for part in raw.split("/"):
+            part = part.strip()
+            if part:
+                domains.add(_DOMAIN_ABBREVIATIONS.get(part, part))
+    return domains
+
+
+def _criterion_references(body: dict[str, Any]) -> list[tuple[str, Any]]:
+    """``(criteria_type, codeset_id)`` for every reference in one criterion body.
+
+    Accepts both CIRCE shapes: an ``InclusionRules`` entry wrapping its body under
+    ``Criteria``, and a ``PrimaryCriteria`` / ``CensoringCriteria`` entry that is the
+    body itself.
+    """
+    inner = body.get("Criteria")
+    if not isinstance(inner, dict):
+        inner = body
+    found: list[tuple[str, Any]] = []
+    for criteria_type, payload in inner.items():
+        if isinstance(payload, dict) and "CodesetId" in payload:
+            found.append((criteria_type, payload["CodesetId"]))
+    return found
+
+
+def _walk_criteria_entries(node: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every criterion entry under a group expression, descending nested groups.
+
+    ``CorrelatedCriteria`` is followed too. No such node appears in the six files
+    delivered so far, but CIRCE emits them and a gate that quietly skipped one would
+    be a hole rather than a conservative choice.
+    """
+    entries: list[dict[str, Any]] = []
+    for entry in node.get("CriteriaList") or []:
+        if not isinstance(entry, dict):
+            continue
+        entries.append(entry)
+        body = entry.get("Criteria")
+        body = body if isinstance(body, dict) else entry
+        for payload in body.values():
+            if isinstance(payload, dict) and isinstance(
+                payload.get("CorrelatedCriteria"), dict
+            ):
+                entries.extend(_walk_criteria_entries(payload["CorrelatedCriteria"]))
+    for group in node.get("Groups") or []:
+        if isinstance(group, dict):
+            entries.extend(_walk_criteria_entries(group))
+    return entries
+
+
+def domain_mismatched_criteria(expression: dict[str, Any]) -> list[str]:
+    """Locators for criteria whose concept set shares no domain with their CDM table.
+
+    Each finding reads ``"<where>: <CriteriaType> over codeset <id> <name!r> (<domains>)"``
+    so the gate output names the rule, the criterion and the offending domain without
+    the reader reopening the file.
+
+    Silent — by design — on the three cases the file cannot settle: a criterion type
+    absent from :data:`CRITERIA_TYPE_DOMAINS`, a ``CodesetId`` with no matching
+    ``ConceptSets`` entry, and a set whose concepts carry no ``DOMAIN_ID``. A set that
+    mixes domains and includes the criterion's own is sound and is not flagged: one
+    matching item is enough for the join to return rows.
+    """
+    locations: list[tuple[str, dict[str, Any]]] = []
+
+    primary = expression.get("PrimaryCriteria") or {}
+    for entry in primary.get("CriteriaList") or []:
+        if isinstance(entry, dict):
+            locations.append(("PrimaryCriteria", entry))
+
+    additional = expression.get("AdditionalCriteria")
+    if isinstance(additional, dict):
+        for entry in _walk_criteria_entries(additional):
+            locations.append(("AdditionalCriteria", entry))
+
+    for rule in expression.get("InclusionRules") or []:
+        rule_name = rule.get("name", "")
+        for entry in _walk_criteria_entries(rule.get("expression") or {}):
+            locations.append((rule_name, entry))
+
+    for entry in expression.get("CensoringCriteria") or []:
+        if isinstance(entry, dict):
+            locations.append(("CensoringCriteria", entry))
+
+    findings: list[str] = []
+    for where, entry in locations:
+        for criteria_type, codeset_id in _criterion_references(entry):
+            allowed = CRITERIA_TYPE_DOMAINS.get(criteria_type)
+            if allowed is None:
+                continue
+            concept_set = _find_concept_set(expression, codeset_id)
+            if concept_set is None:
+                continue
+            domains = _concept_set_domains(concept_set)
+            if not domains or domains & allowed:
+                continue
+            findings.append(
+                f"{where}: {criteria_type} over codeset {codeset_id} "
+                f"{concept_set.get('name')!r} ({', '.join(sorted(domains))})"
+            )
+    return findings
