@@ -62,6 +62,36 @@ def conditions_for(nct_id: str, cache_dir: Path, *, fetch: bool) -> list[str] | 
     return _conditions_of(response.json())
 
 
+def write_store(store_path: Path, doc: dict) -> None:
+    """Write the store back the way the service writes it.
+
+    Three properties, each of which the service's own ``TTEStore._write`` has and a
+    plain ``write_text`` does not:
+
+    * **The same file lock.** ``TTEStore`` guards every mutation with a lock at
+      ``<store>.lock``; this takes the same one through the same factory, so a
+      backfill cannot interleave with a running service and lose one side's write.
+    * **Atomic.** The payload lands in a sibling ``.tmp`` and is renamed over the
+      store, so an interrupted run leaves the original intact rather than a truncated
+      52MB file.
+    * **``ensure_ascii=True``.** The service escapes non-ASCII; writing it raw made the
+      store differ from what the next service write would produce -- 609 escaped
+      sequences re-encoded and the file 2,768 bytes smaller with content *added*. That
+      is churn, not corruption, but it makes any later diff of the store unreadable.
+
+    :param store_path: the ``studies.json`` to replace.
+    :param doc: the full store document to serialize.
+    """
+    sys.path.insert(0, str(REPO_ROOT))
+    from src.services.tte_store import _make_file_lock
+
+    with _make_file_lock(store_path):
+        tmp_path = store_path.with_suffix(".tmp")
+        with tmp_path.open("w", encoding="utf-8") as handle:
+            json.dump(doc, handle, ensure_ascii=True, indent=2)
+        tmp_path.replace(store_path)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -139,7 +169,7 @@ def main(argv: list[str] | None = None) -> int:
         backup = store_path.with_name(f"{store_path.stem}.pre-conditions-{stamp}.json")
         shutil.copy2(store_path, backup)
         print(f"\nbackup: {backup}")
-        store_path.write_text(json.dumps(doc, ensure_ascii=False, indent=2))
+        write_store(store_path, doc)
     print(f"written: {len(filled)} studies")
     return 0
 
