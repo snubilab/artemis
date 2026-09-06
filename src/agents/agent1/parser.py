@@ -2,6 +2,7 @@
 Agent 1 (Logic Decomposer) - NLU Parser.
 Converts natural language clinical queries or NCT protocols to ARTEMIS IR using LLM.
 """
+import os
 import json
 import logging
 from typing import Optional
@@ -36,6 +37,29 @@ from src.agents.agent1.paper_url_mapper import (
     download_papers_for_doi,
     build_paper_urls,
 )
+
+
+def _ir_cache_enabled() -> bool:
+    """Whether the Agent 1 IR cache may be read or written.
+
+    Set ``AGENT1_IR_CACHE_ENABLED=false`` to force every extraction through the live
+    model. The cache exists for deterministic replay, which is exactly what has to be
+    switched off to measure whether the pipeline is reproducible on its own: a run that
+    replays cached IR cannot answer that question, and moving the cache files aside to
+    find out is a manual step that is easy to forget to undo.
+
+    Same name shape, same default and the same comparison as ``CRITERION_CACHE_ENABLED``
+    in ``src/agents/agent2/criterion_cache.py`` — the two caches are now switched the
+    same way, so a cold run is two variables and no file surgery.
+
+    Note the comparison is against "true", not against "false": anything else — "0",
+    "yes", a typo, an empty string — disables the cache. That errs toward a slower run
+    rather than a run that silently replayed cached results while claiming to be cold,
+    and it matches the existing switch rather than introducing a second convention.
+
+    :returns: True only when the variable is unset or set to "true" (case-insensitive).
+    """
+    return os.environ.get("AGENT1_IR_CACHE_ENABLED", "true").lower() == "true"
 
 
 def _normalize_trial_data_for_stable_hash(trial_data: "TrialData") -> "TrialData":
@@ -270,19 +294,22 @@ class LogicDecomposer:
             prompt_hash,
         )
 
-        if cache_file.exists():
+        cache_enabled = _ir_cache_enabled()
+        if cache_enabled and cache_file.exists():
             print(f"[Agent 1] 📦 Cache HIT: {cache_file.name}")
             with open(cache_file) as f:
                 data = json.load(f)
         else:
-            print(f"[Agent 1] 🔄 Cache MISS → calling LLM")
+            reason = "disabled" if not cache_enabled else "MISS"
+            print(f"[Agent 1] 🔄 Cache {reason} → calling LLM")
             response = self.llm.invoke(messages)
             data = self._extract_json(response.content)
-            # Save to cache for deterministic replay
-            cache_dir.mkdir(parents=True, exist_ok=True)
-            with open(cache_file, "w") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            print(f"[Agent 1] 💾 Cached: {cache_file.name}")
+            if cache_enabled:
+                # Save to cache for deterministic replay
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                with open(cache_file, "w") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                print(f"[Agent 1] 💾 Cached: {cache_file.name}")
 
         # Write optional metadata alongside the cache file (does not affect cache key)
         if not meta_file.exists():
