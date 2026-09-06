@@ -23,6 +23,7 @@ keep meaning "as ingested from CT.gov" for the before/after to stay readable.
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sys
@@ -108,7 +109,37 @@ def report(label: str, study: dict) -> tuple[int, int]:
     return len(rows), len(ratio)
 
 
+LOG_FORMAT = "%(levelname)s %(name)s: %(message)s"
+HANDLER_NAME = "reingest"
+
+
+def configure_logging() -> None:
+    """Route the pipeline's own INFO records to stderr.
+
+    ``_invoke_and_extract`` logs the prompt/completion split on every LLM call so a
+    shrinking token budget is visible before it runs out. Nothing here configured
+    logging, so the effective level was WARNING with no handler and every one of those
+    records was discarded -- while ``logger.error`` still reached stderr through
+    ``logging.lastResort``. The failure was visible and the warning that precedes it
+    was not, which is the wrong half to lose.
+
+    Scoped to the ``src`` logger rather than the root: raising the root to INFO also
+    turns on httpx, urllib3 and neo4j, and this log is already hard enough to read.
+    Idempotent, because ``main()`` may run more than once in a process and a second
+    handler would print every count twice.
+    """
+    pipeline = logging.getLogger("src")
+    if any(h.get_name() == HANDLER_NAME for h in pipeline.handlers):
+        return
+    handler = logging.StreamHandler(sys.stderr)
+    handler.set_name(HANDLER_NAME)
+    handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    pipeline.addHandler(handler)
+    pipeline.setLevel(logging.INFO)
+
+
 def main() -> int:
+    configure_logging()
     store = TTEStore(os.environ["TTE_STORE_PATH"])
     service = TTEService(store)
     failures = 0
