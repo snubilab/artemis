@@ -57,6 +57,31 @@ class LLMRateLimitError(LLMError):
         self.retry_after = retry_after
 
 
+class LLMTruncationError(LLMError):
+    """The completion stopped at the token ceiling, not at an end-of-answer token.
+
+    Its own class because the remedy is its own: a truncated body is a *prefix* of a
+    valid answer, so no amount of parser tolerance can recover it and no prompt
+    change fixes it either -- the model needs room. Raising ``ValueError`` here would
+    put it in the same bucket as malformed generation, which is exactly the confusion
+    that let a 16,384-token ceiling read as "the model cannot hold a JSON schema".
+
+    :param prompt_tokens: tokens the request consumed, when the provider reported it.
+    :param completion_tokens: tokens generated before the ceiling stopped it.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        prompt_tokens: Optional[int] = None,
+        completion_tokens: Optional[int] = None,
+        **kwargs,
+    ):
+        super().__init__(message, **kwargs)
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
+
+
 # ============================================================================
 # Database Errors
 # ============================================================================

@@ -3,8 +3,10 @@ LLM utility for ARTEMIS 3.1.
 Supports Azure AI Foundry (priority), OpenRouter, Google Gemini, and OpenAI.
 """
 import json
+import logging
 import re
 import threading
+from collections.abc import Mapping
 from typing import Any, List, Optional
 
 from openai import OpenAI
@@ -14,7 +16,100 @@ from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, System
 from langchain_core.outputs import ChatResult, ChatGeneration, LLMResult
 from langchain_core.callbacks import BaseCallbackHandler, CallbackManagerForLLMRun
 from src.settings import settings
-from src.utils.exceptions import LLMConfigurationError
+from src.utils.exceptions import LLMConfigurationError, LLMTruncationError
+
+logger = logging.getLogger(__name__)
+
+# The provider's word for "I stopped because the budget ran out", not because the
+# answer ended. OpenAI-compatible servers (vLLM included) spell it this way.
+TRUNCATED_FINISH_REASON = "length"
+
+
+def _response_metadata(response: Any) -> Mapping[str, Any]:
+    """``response.response_metadata`` when it is really a mapping, else empty.
+
+    The type check is load-bearing, not defensive habit. This runs in front of every
+    extraction call, including the ones tests drive with ``unittest.mock.Mock`` --
+    whose auto-created attributes are truthy Mocks, so an unguarded ``.get(...).items()``
+    raised ``TypeError: 'Mock' object is not iterable`` and turned an observability
+    helper into a new failure mode for nine previously passing tests. A provider that
+    reports nothing must read as "no information", never as an error.
+    """
+    metadata = getattr(response, "response_metadata", None)
+    return metadata if isinstance(metadata, Mapping) else {}
+
+
+def finish_reason(response: Any) -> str | None:
+    """Why the provider stopped generating, or None when it did not say.
+
+    ``langchain_openai`` puts the field on the ChatGeneration's ``generation_info``
+    and ``langchain_core`` merges that into the message's ``response_metadata`` --
+    including through :class:`ReasoningStrippedChatModel`, which hands the inner
+    result's generations straight back. So one read here covers every OpenAI-shaped
+    provider in this codebase.
+    """
+    reason = _response_metadata(response).get("finish_reason")
+    return reason if isinstance(reason, str) else None
+
+
+def token_usage(response: Any) -> dict[str, int]:
+    """Prompt/completion token counts the provider reported, or an empty dict."""
+    usage = _response_metadata(response).get("token_usage")
+    if not isinstance(usage, Mapping):
+        return {}
+    return {str(k): v for k, v in usage.items() if isinstance(v, int)}
+
+
+def raise_if_truncated(response: Any, *, what: str) -> None:
+    """Fail loudly when the completion was cut off at the token ceiling.
+
+    A truncated body is a *prefix* of the answer, so every caller that feeds it to a
+    JSON parser gets a syntax error describing the wrong thing. Measured on a cold
+    six-study re-extraction (2026-09-06) against vLLM ``google/gemma-4-E4B-it`` with
+    ``max_model_len`` 16384: PLATO reported ``Expecting value: line 754 column 16``
+    and CAROLINA ``Unterminated string starting at: line 523 column 24``. Neither is
+    a generation defect -- both stopped at exactly ``max_model_len`` minus the prompt.
+
+    Silence was the actual bug. ``finish_reason`` was already on the response and no
+    caller read it, so a budget exhaustion and a schema failure were indistinguishable
+    while needing opposite fixes.
+
+    :param response: the message returned by ``BaseChatModel.invoke``.
+    :param what: short name of the call, used in the message ("Agent 1 NCT extraction").
+    :raises LLMTruncationError: when the provider reported ``finish_reason="length"``.
+    """
+    reason = finish_reason(response)
+    usage = token_usage(response)
+    prompt_tokens = usage.get("prompt_tokens")
+    completion_tokens = usage.get("completion_tokens")
+
+    if reason != TRUNCATED_FINISH_REASON:
+        logger.debug(
+            "[llm] %s finished: reason=%s prompt=%s completion=%s",
+            what, reason, prompt_tokens, completion_tokens,
+        )
+        return
+
+    budget = ""
+    if prompt_tokens is not None or completion_tokens is not None:
+        total = (prompt_tokens or 0) + (completion_tokens or 0)
+        budget = (
+            f" The provider reported prompt={prompt_tokens} completion={completion_tokens} "
+            f"total={total} token(s)."
+        )
+    message = (
+        f"{what} was cut off at the token ceiling (finish_reason='length'): the model "
+        f"stopped mid-answer because prompt + completion reached the server's "
+        f"max_model_len, not because the answer ended.{budget} The body is a prefix of "
+        f"a valid response, so no parse of it can succeed -- this is an exhausted "
+        f"output budget, not malformed generation. Shorten the prompt, raise the "
+        f"server's max_model_len, or split the request."
+    )
+    logger.error("[llm] %s", message)
+    raise LLMTruncationError(
+        message, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
+    )
+
 
 # Azure pricing (per token, USD)
 _MODEL_COSTS: dict[str, dict[str, float]] = {

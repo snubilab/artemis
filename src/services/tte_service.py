@@ -626,7 +626,21 @@ class TTEService:
             generated_study = self._generate_with_trial_agent(description, model_name=model_name)
             generation_mode = "trial_agent"
         except Exception as exc:
-            generated_study = self._heuristic_draft(description)
+            # _heuristic_draft refuses a description it could not read anything from,
+            # so this can now raise. Close the job before the raise leaves, or it sits
+            # at "running" forever and the failure reads as a hang.
+            try:
+                generated_study = self._heuristic_draft(description)
+            except ValueError as refusal:
+                self.store.update_job(
+                    job["id"],
+                    {
+                        "status": "failed",
+                        "finishedAt": utc_now_iso(),
+                        "error": f"{exc} | {refusal}",
+                    },
+                )
+                raise
             fallback_reason = str(exc)
 
         generated_payload = TTEStudy.model_validate(generated_study).model_dump()
@@ -740,9 +754,22 @@ class TTEService:
                 "Cached artifact payload was copied into a new draft artifact for this study.",
             ]
         else:
-            generated_study, generation_mode, fallback_reason, paper_status_obj = (
-                self._generate_with_trial_agent_from_nct(normalized_nct_id, model_name=model_name)
-            )
+            try:
+                generated_study, generation_mode, fallback_reason, paper_status_obj = (
+                    self._generate_with_trial_agent_from_nct(
+                        normalized_nct_id, model_name=model_name
+                    )
+                )
+            except Exception as exc:
+                self.store.update_job(
+                    job["id"],
+                    {
+                        "status": "failed",
+                        "finishedAt": utc_now_iso(),
+                        "error": str(exc),
+                    },
+                )
+                raise
             paper_status = paper_status_obj.model_dump() if paper_status_obj is not None else None
             generated_payload = TTEStudy.model_validate(generated_study).model_dump()
             proposed_changes = self._build_draft_generation_proposed_changes(generated_payload)
@@ -9945,7 +9972,16 @@ class TTEService:
             generated_study = self._study_from_ir(study_ir, f"Imported from {nct_id}", source="nct")
             generation_mode = "trial_agent"
         except Exception as exc:
-            generated_study = self._heuristic_draft(f"Target trial emulation from {nct_id}")
+            # The heuristic has nothing to work with here: what it would be handed is
+            # a synthesised label, not a question, so it refuses (see _heuristic_draft)
+            # and the extraction failure -- the truncation, the parse error, whatever
+            # it was -- is what the caller sees instead of a zero-criteria draft.
+            try:
+                generated_study = self._heuristic_draft(
+                    f"Target trial emulation from {nct_id}"
+                )
+            except ValueError:
+                raise exc
             generated_study["description"] = f"Imported from {nct_id}"
             generated_study.setdefault("outcomes", {}).setdefault("primary", {})["source"] = "nct"
             fallback_reason = str(exc)
@@ -10354,8 +10390,37 @@ class TTEService:
         }
 
     def _heuristic_draft(self, description: str) -> dict[str, Any]:
+        """Build a draft study from a natural-language question.
+
+        Refuses when the parse recovered no structure. ``_parse_description`` only
+        finds a comparator, an outcome, or a population when the sentence actually
+        contains one; ``treatment`` is its catch-all and falls back to the whole input,
+        so a non-empty treatment is never evidence that anything was understood. With
+        all three empty, every field of the returned study is either a constant default
+        or the input echoed into an arm name -- zero eligibility criteria, a target of
+        "Target population to be specified", an undefined outcome.
+
+        That shell is what a failed NCT extraction used to become: the caller hands
+        this method ``f"Target trial emulation from {nct_id}"``, which contains no
+        comparator, outcome, or population, and the result was recorded as a completed
+        draft proposal. Refusing here means an extraction failure stays a failure.
+
+        The path is kept, not removed: ``generate_draft`` and ``run_generate_draft``
+        pass a real question ("compare X vs Y for Z in P") and get a real draft back.
+
+        :param description: the natural-language study description.
+        :returns: a draft study payload.
+        :raises ValueError: nothing was recovered from ``description``.
+        """
         normalized = " ".join(description.strip().split())
         parsed = self._parse_description(normalized)
+        if not (parsed["comparator"] or parsed["outcome"] or parsed["population"]):
+            raise ValueError(
+                f"Heuristic draft refused for {normalized!r}: no comparator, outcome, or "
+                f"population could be read from it, so the draft would be a shell with "
+                f"zero eligibility criteria and an unspecified target. A shell recorded "
+                f"as a completed proposal is a failed generation wearing a success."
+            )
         study_type = "comparative" if parsed["comparator"] else "single_arm"
         study_name = self._build_study_name(parsed)
         eligibility_name = parsed["population"] or "Target population to be specified"

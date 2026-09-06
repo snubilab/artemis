@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
-from src.utils.llm import get_llm, resolve_model
+from src.utils.llm import get_llm, raise_if_truncated, resolve_model, token_usage
 from src.models.ir import ARTEMISRequest, CohortDefinition, PrimaryCriteria, Criteria, CohortOutcome, TemporalWindow, ValueConstraint
 from src.agents.agent1.prompts import (
     SYSTEM_PROMPT, DECOMPOSITION_PROMPT,
@@ -139,11 +139,8 @@ class LogicDecomposer:
         ]
         
         # Call LLM
-        response = self.llm.invoke(messages)
-        
-        # Parse JSON from response
-        data = self._extract_json(response.content)
-        
+        data = self._invoke_and_extract(messages, what="Agent 1 free-text extraction")
+
         # Convert to ARTEMIS IR objects
         return self._build_artemis_request(data)
     
@@ -302,8 +299,9 @@ class LogicDecomposer:
         else:
             reason = "disabled" if not cache_enabled else "MISS"
             print(f"[Agent 1] 🔄 Cache {reason} → calling LLM")
-            response = self.llm.invoke(messages)
-            data = self._extract_json(response.content)
+            data = self._invoke_and_extract(
+                messages, what=f"Agent 1 NCT extraction for {nct_id}"
+            )
             if cache_enabled:
                 # Save to cache for deterministic replay
                 cache_dir.mkdir(parents=True, exist_ok=True)
@@ -1167,6 +1165,40 @@ class LogicDecomposer:
             )
             return trial_data, PaperStatus(source="nct_only")
     
+    def _invoke_and_extract(self, messages: list, what: str) -> dict:
+        """One LLM call, checked for truncation before anything tries to parse it.
+
+        Both extraction entry points go through here so the check cannot be added to
+        one and forgotten on the other -- and it was the NCT path that failed. A
+        response stopped at ``max_model_len`` is a prefix of the answer, so handing it
+        to ``_extract_json`` produces a JSON syntax error describing the wrong problem:
+        the cold six-study run of 2026-09-06 read PLATO's exhausted budget as
+        ``Expecting value: line 754 column 16`` and CAROLINA's as ``Unterminated
+        string starting at: line 523 column 24``.
+
+        The observed token split is logged on every call, truncated or not, so the
+        headroom is visible while it is still shrinking rather than only once it is
+        gone.
+
+        :param messages: the chat turns to send.
+        :param what: short name of this call, used in the log and error message.
+        :returns: the parsed JSON payload.
+        :raises LLMTruncationError: the completion hit the token ceiling.
+        :raises ValueError: the model finished but the body is not JSON.
+        """
+        response = self.llm.invoke(messages)
+        usage = token_usage(response)
+        if usage:
+            logger.info(
+                "[Agent 1] %s token usage: prompt=%s completion=%s total=%s",
+                what,
+                usage.get("prompt_tokens"),
+                usage.get("completion_tokens"),
+                usage.get("total_tokens"),
+            )
+        raise_if_truncated(response, what=what)
+        return self._extract_json(response.content)
+
     def _extract_json(self, content: str) -> dict:
         """Extract and parse JSON from LLM response content."""
         # Handle markdown code blocks
