@@ -18,6 +18,17 @@ Checks per file:
     "glimepiride", not linagliptin)
 (d) if a ``manifest.json`` sits beside the files, its recorded md5s match the
     files on disk and its ``store_sha256`` matches the ``--store`` file
+(h) a disease-anchored comparator entry is the trial's OWN registered condition.
+    Check (c) accepts ANY ``ConditionOccurrence`` entry on a comparator, because the
+    swap itself is legitimate -- so it passed LEADER's comparator entering on
+    ``LV systolic or diastolic dysfunction`` (one of several alternative
+    cardiovascular-risk qualifiers) instead of type 2 diabetes, which is a fraction of
+    the trial population. The expected anchor comes from
+    ``src.utils.disease_anchor.expected_anchor_concept_ids``, the same function the
+    generator chooses with, against ``trialMetadata.conditions``. A study with no
+    registered condition FAILS rather than passing unchecked -- backfill it with
+    ``scripts/backfill_registered_conditions.py``.
+
 (g) every criterion's concept set shares at least one OMOP domain with the CDM
     table that criterion reads. A ``ConditionOccurrence`` criterion over a Drug
     concept set joins ``condition_occurrence.condition_concept_id`` against drug
@@ -70,6 +81,7 @@ from src.utils.circe_lint import (  # noqa: E402
     noop_exclusion_rules,
     rule_names,
 )
+from src.utils.disease_anchor import DiseaseAnchorError, expected_anchor_concept_ids
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
 DEFAULT_MAP = "carmelina=9,empa-reg=8,carolina=10,aristotle=3,plato=2,leader=1"
@@ -270,6 +282,26 @@ def main(argv: list[str] | None = None) -> int:
                 f"entry mismatch: file={file_domain} {sorted(file_concept_ids)} "
                 f"store={store_domain} {sorted(store_concept_ids)}"
             )
+
+        # (h) a disease-anchored comparator must enter on the trial's registered
+        # condition, not on whichever Condition rule the file happens to carry.
+        if entry_ok and file_domain == "ConditionOccurrence" and (
+            (file_domain, file_concept_ids) != (store_domain, store_concept_ids)
+        ):
+            registered = (study.get("trialMetadata") or {}).get("conditions")
+            try:
+                expected_anchor = expected_anchor_concept_ids(store_structured, registered)
+            except DiseaseAnchorError as exc:
+                reasons.append(f"disease anchor unverifiable: {exc}")
+            else:
+                if file_concept_ids != expected_anchor:
+                    reasons.append(
+                        "disease anchor mismatch: file enters on "
+                        f"{file_entry_name!r} {sorted(file_concept_ids)} but the trial's "
+                        f"registered condition ({', '.join(repr(c) for c in registered or [])}) "
+                        f"resolves to {sorted(expected_anchor)}"
+                    )
+                    case = "FAIL"
 
         # (f) a rule that excludes what the cohort enters on -- an empty cohort.
         contradictions = contradictory_absence_rules(expression)

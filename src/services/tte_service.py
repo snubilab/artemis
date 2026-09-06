@@ -82,6 +82,7 @@ from src.services.restated_distinctness import (
 from src.services.tte_store import TTEStore
 from src.services.value_constraint import build_measurement_value_filter
 from src.utils.circe_lint import end_entry_colliding_washouts_before_index
+from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
 from src.utils.exceptions import LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
 
@@ -260,33 +261,6 @@ class TTEService:
     DRUG_LIKE_TARGET_LABEL_FAILURE_MESSAGE = (
         "Target population label appears to be a treatment/drug label; provide a "
         "patient-population target or correct the structured criteria first."
-    )
-    LEADER_NCT_ID = "NCT01179048"
-    ARISTOTLE_NCT_ID = "NCT00412984"
-    PLATO_NCT_ID = "NCT00391872"
-
-    # Disease-based PrimaryCriteria anchor concepts per study.
-    # Used when swapping Drug-based PrimaryCriteria to disease-based.
-    DISEASE_ANCHOR_CONCEPTS: dict[str, tuple[tuple[int, str], ...]] = {
-        "NCT01179048": ((201826, "Type 2 diabetes mellitus"),),
-        "NCT00391872": ((4270024, "Acute non-ST segment elevation myocardial infarction"),),
-        "NCT00412984": ((313217, "Atrial fibrillation"),),
-    }
-    ARISTOTLE_OUTCOME_ANCHOR_CONCEPTS: tuple[tuple[int, str], ...] = (
-        (381316, "Cerebrovascular accident"),
-    )
-    PLATO_OUTCOME_ANCHOR_CONCEPTS: tuple[tuple[int, str], ...] = (
-        (4329847, "Myocardial infarction"),
-    )
-    LEADER_OUTCOME_ANCHOR_CONCEPTS: tuple[tuple[int, str], ...] = (
-        (761790, "Nonpyogenic cerebral venous thrombosis with stroke"),
-        (4006295, "Nonparalytic stroke"),
-        (4099974, "Completed stroke"),
-        (4270024, "Acute non-ST segment elevation myocardial infarction"),
-        (4310996, "Ischemic stroke"),
-        (35609033, "Haemorrhagic stroke"),
-        (312327, "Acute myocardial infarction"),
-        (372924, "Cerebral artery occlusion"),
     )
 
     def __init__(self, store: TTEStore):
@@ -2644,48 +2618,6 @@ class TTEService:
             self._get_eligibility_structured_expression(eligibility)
         )
 
-    def _is_leader_trial(self, study: dict[str, Any] | None) -> bool:
-        metadata = (study or {}).get("trialMetadata") or {}
-        nct_id = " ".join(str(metadata.get("nctId") or "").upper().split()).strip()
-        return nct_id == self.LEADER_NCT_ID
-
-    def _is_aristotle_trial(self, study: dict[str, Any] | None) -> bool:
-        metadata = (study or {}).get("trialMetadata") or {}
-        nct_id = " ".join(str(metadata.get("nctId") or "").upper().split()).strip()
-        return nct_id == self.ARISTOTLE_NCT_ID
-
-    def _is_plato_trial(self, study: dict[str, Any] | None) -> bool:
-        metadata = (study or {}).get("trialMetadata") or {}
-        nct_id = " ".join(str(metadata.get("nctId") or "").upper().split()).strip()
-        return nct_id == self.PLATO_NCT_ID
-
-    def _force_generic_benchmark_eval(self) -> bool:
-        env_toggle = " ".join(
-            str(os.getenv("TTE_FORCE_GENERIC_BENCHMARK_EVAL") or "").lower().split()
-        ).strip()
-        if env_toggle in {"1", "true", "yes", "on"}:
-            return True
-
-        flag_path = os.getenv("TTE_FORCE_GENERIC_BENCHMARK_EVAL_FLAG")
-        if flag_path:
-            return Path(flag_path).exists()
-
-        store_path = Path(os.getenv("TTE_STORE_PATH", "/app/tmp/tte/studies.json"))
-        return store_path.parent.joinpath("force_generic_benchmark_eval.flag").exists()
-
-    def _uses_benchmark_compatibility_path(self, study: dict[str, Any] | None) -> bool:
-        if self._force_generic_benchmark_eval():
-            return False
-        return self._is_aristotle_trial(study) or self._is_plato_trial(study)
-
-    def _is_leader_primary_outcome_label(self, label: str) -> bool:
-        normalized = " ".join(str(label or "").lower().split())
-        return (
-            "cardiovascular death" in normalized
-            and "myocardial infarction" in normalized
-            and "stroke" in normalized
-        )
-
     def _build_fixed_condition_circe(
         self,
         *,
@@ -2829,72 +2761,6 @@ class TTEService:
             "PrimaryCriteriaLimit": {"Type": "First"},
         }
         return base
-
-    def _build_benchmark_compat_target_circe(
-        self,
-        eligibility: dict[str, Any],
-        treatment_arms: list[dict[str, Any]],
-    ) -> dict[str, Any]:
-        arm_name = " ".join(
-            str(((treatment_arms or [{}])[0] or {}).get("name") or "").split()
-        ).strip()
-        if not arm_name:
-            target_name = " ".join(str(eligibility.get("targetCohortName") or "").split()).strip()
-            arm_name = target_name
-        if not arm_name:
-            raise ValueError(
-                "A primary treatment arm or targetCohortName is required for benchmark-compatible target routing"
-            )
-        circe = self._build_benchmark_compat_drug_primary_circe(eligibility, arm_name)
-        return self._prune_plato_benchmark_inclusion_rules(circe)
-
-    def _build_benchmark_compat_primary_outcome_circe(
-        self,
-        study: dict[str, Any] | None,
-        label: str,
-    ) -> dict[str, Any]:
-        if self._is_aristotle_trial(study):
-            return self._build_fixed_condition_circe(
-                label=label,
-                concepts=self.ARISTOTLE_OUTCOME_ANCHOR_CONCEPTS,
-                prior_days=365,
-                capture_all_events=True,
-            )
-        if self._is_plato_trial(study):
-            return self._build_fixed_condition_circe(
-                label=label,
-                concepts=self.PLATO_OUTCOME_ANCHOR_CONCEPTS,
-                prior_days=365,
-                capture_all_events=True,
-            )
-        return self._build_seeded_condition_circe(label, expected_domain="Condition", capture_all_events=True)
-
-    def _prune_plato_benchmark_inclusion_rules(
-        self,
-        circe: dict[str, Any],
-    ) -> dict[str, Any]:
-        adjusted = deepcopy(circe)
-        drop_terms = (
-            "pregnancy",
-            "contraceptive",
-            "sterilization",
-            "treatment with warfarin",
-            "treatment with heparin",
-            "treatment with enoxaparin",
-            "treatment with dabigatran",
-            "treatment with rivaroxaban",
-            "treatment with apixaban",
-            "treatment with edoxaban",
-        )
-        adjusted["InclusionRules"] = [
-            rule
-            for rule in adjusted.get("InclusionRules") or []
-            if not any(
-                term in " ".join(str(rule.get("name") or "").lower().split())
-                for term in drop_terms
-            )
-        ]
-        return adjusted
 
     def _get_target_display_label(self, eligibility: dict[str, Any] | None) -> str:
         structured_expression = self._get_eligibility_structured_expression(eligibility)
@@ -4102,26 +3968,16 @@ class TTEService:
             label=primary_label,
             seed_text=primary_label,
             existing_cohort_id=primary.get("cohortId"),
-            expression_builder=lambda: (
-                self._build_fixed_condition_circe(
-                    label=primary_label,
-                    concepts=self.LEADER_OUTCOME_ANCHOR_CONCEPTS,
-                    prior_days=365,
-                    capture_all_events=True,
-                )
-                if (
-                    self._is_leader_trial(study)
-                    and not self._force_generic_benchmark_eval()
-                    and self._is_leader_primary_outcome_label(primary_label)
-                )
-                else self._build_benchmark_compat_primary_outcome_circe(study, primary_label)
-                if self._uses_benchmark_compatibility_path(study)
-                else self._build_seeded_condition_circe(
-                    primary_label,
-                    expected_domain=primary_domain,
-                    pre_fetched_candidates=primary_pre_fetched,
-                    capture_all_events=True,
-                )
+            # The primary outcome is resolved from the trial's own outcome label for
+            # every study alike. Three trials used to be routed by NCT id to a fixed
+            # concept list instead, so their outcome cohort was authored by hand
+            # rather than derived from the trial -- the same identity-keyed
+            # special-casing that was removed from the entry anchor.
+            expression_builder=lambda: self._build_seeded_condition_circe(
+                primary_label,
+                expected_domain=primary_domain,
+                pre_fetched_candidates=primary_pre_fetched,
+                capture_all_events=True,
             ),
         )
         if primary_item.status == "created" and primary_item.cohortDefinitionId is not None:
@@ -4281,8 +4137,16 @@ class TTEService:
             role=role,
             label=label,
         )
-        expression = self._build_emittable_expression(expression_builder)
         try:
+            # Inside the try, not before it: a builder that REFUSES -- the entry-anchor
+            # matcher declining to guess which condition a study is about, say -- must
+            # surface as this arm's `status="failed"` with the reason, which the exporter
+            # reads (`_collect_build_failures`) and turns into a `missing_arm` violation
+            # naming it. Raised past this point it killed the whole batch instead,
+            # taking the studies that built cleanly down with it and leaving no gate
+            # result for any of them. Nothing is softened by the move: the arm still
+            # produces no file and the export is still rejected with no manifest.
+            expression = self._build_emittable_expression(expression_builder)
             definition = client.create_cohort_definition(
                 definition_name,
                 expression,
@@ -5187,8 +5051,9 @@ class TTEService:
         """If PrimaryCriteria uses a Drug domain, swap it to a disease
         ConditionOccurrence.
 
-        Uses DISEASE_ANCHOR_CONCEPTS for known benchmark studies, falling
-        back to the first Condition inclusion rule for unknown studies.
+        The anchor is the first Condition-domain concept set the study's own
+        inclusion rules carry, for every study alike. The rules themselves are
+        preserved -- only the entry moves.
 
         This enables the 'Disease-Based PrimaryCriteria' design where
         Target = disease patients, Treatment = disease + drug PRESENCE,
@@ -5231,86 +5096,40 @@ class TTEService:
 
         observation_window = pc.get("ObservationWindow") or {"PriorDays": 365, "PostDays": 0}
 
-        # Try study-specific disease anchor concepts
-        nct_id = ((study or {}).get("trialMetadata") or {}).get("nctId", "")
-        anchor_concepts = self.DISEASE_ANCHOR_CONCEPTS.get(nct_id or "")
-
-        if anchor_concepts:
-            # For known benchmark studies, build a clean disease-only base:
-            # PrimaryCriteria = disease, no inclusion rules (eligibility criteria
-            # are too restrictive for the small benchmark CDMs).
-            disease_cs_id = 1
-            items = [
-                {
-                    "concept": {
-                        "CONCEPT_ID": cid,
-                        "CONCEPT_NAME": cname,
-                        "DOMAIN_ID": "Condition",
-                        "VOCABULARY_ID": "SNOMED",
-                        "CONCEPT_CLASS_ID": "Clinical Finding",
-                        "STANDARD_CONCEPT": "S",
-                        "CONCEPT_CODE": "",
-                        "INVALID_REASON": None,
-                        "INVALID_REASON_CAPTION": None,
-                        "STANDARD_CONCEPT_CAPTION": "Standard",
-                    },
-                    "includeDescendants": True,
-                    "isExcluded": False,
-                    "includeMapped": True,
-                }
-                for cid, cname in anchor_concepts
-            ]
-            disease_name = anchor_concepts[0][1]
-            # Replace entire base with a clean disease-only CIRCE
-            base = {
-                "ConceptSets": [
-                    {
-                        "id": disease_cs_id,
-                        "name": f"Disease anchor: {disease_name}",
-                        "expression": {"items": items},
-                    }
-                ],
-                "PrimaryCriteria": {
-                    "CriteriaList": [{"ConditionOccurrence": {"CodesetId": disease_cs_id, "First": True}}],
-                    "ObservationWindow": observation_window,
-                    "PrimaryCriteriaLimit": {"Type": "First"},
-                },
-                "InclusionRules": [],
-                "QualifiedLimit": {"Type": "First"},
-                "ExpressionLimit": {"Type": "First"},
-                "EndStrategy": None,
-                "CensoringCriteria": [],
-                "CollapseSettings": {"CollapseType": "ERA", "EraPad": 0},
-                "CdmVersionRange": "",
-            }
-            logging.info(
-                "[TTE] Built clean disease-only base for NCT=%s: %s (concept_id=%s)",
-                nct_id, disease_name, anchor_concepts[0][0],
+        # The disease anchor is the trial's OWN registered condition -- the strings
+        # ClinicalTrials.gov carries under `conditionsModule.conditions`, persisted
+        # onto the study as `trialMetadata.conditions`. There is deliberately no
+        # per-trial table here, and no per-trial branch: a lookup keyed on NCT id gave
+        # three benchmark trials a different, far weaker cohort -- a tabled concept for
+        # the entry AND an emptied `InclusionRules` -- while every other study kept its
+        # criteria and derived the anchor from them.
+        #
+        # Deriving it from the study alone is not enough either. "The first Condition
+        # concept set in document order" is not a clinical fact: LEADER's first Condition
+        # rule is `LV systolic or diastolic dysfunction`, one of several ALTERNATIVE
+        # cardiovascular-risk qualifiers, so its comparator entered on a fraction of the
+        # trial population, and CARMELINA and EMPA-REG were right only because their
+        # diabetes rule happened to be written first. `select_disease_anchor` scores the
+        # study's own presence-rule Condition sets against what the trial registered and
+        # refuses rather than guess -- see `src/utils/disease_anchor.py` for the rule.
+        #
+        # The pre-existing "nothing to anchor on at all" branch is preserved verbatim,
+        # including its warning and its return: a study whose rules read no Condition
+        # concept set has no entry to swap TO, which is a different situation from
+        # choosing wrongly among several and is not what this change is about. It stays
+        # visible downstream -- a placebo comparator that keeps its drug entry while
+        # requiring zero occurrences of that drug is caught by the delivery gate's
+        # `contradictory_absence_rules`.
+        if not anchor_candidates(base):
+            logging.warning(
+                "[TTE] Cannot swap to disease-based primary: "
+                "no Condition concept set found"
             )
             return base
-        else:
-            # Fallback: find first Condition-domain concept set in inclusion rules
-            disease_cs_id = None
-            for rule in base.get("InclusionRules") or []:
-                expr = rule.get("expression") or {}
-                for crit_entry in expr.get("CriteriaList") or []:
-                    criteria = crit_entry.get("Criteria") or {}
-                    for domain_key, content in criteria.items():
-                        if domain_key == "ConditionOccurrence" and isinstance(content, dict):
-                            cs_id = content.get("CodesetId", 0)
-                            if cs_id != 0:
-                                disease_cs_id = cs_id
-                                break
-                    if disease_cs_id:
-                        break
-                if disease_cs_id:
-                    break
+        registered_conditions = ((study or {}).get("trialMetadata") or {}).get("conditions")
+        disease_cs_id = select_disease_anchor(base, registered_conditions)
 
-            if disease_cs_id is None:
-                logging.warning("[TTE] Cannot swap to disease-based primary: no Condition concept set found")
-                return base
-
-        # Swap PrimaryCriteria to ConditionOccurrence (fallback path for unknown studies)
+        # Swap PrimaryCriteria to ConditionOccurrence.
         base["PrimaryCriteria"] = {
             "CriteriaList": [{"ConditionOccurrence": {"CodesetId": disease_cs_id, "First": True}}],
             "ObservationWindow": deepcopy(observation_window),
@@ -5318,8 +5137,8 @@ class TTEService:
         }
 
         logging.info(
-            "[TTE] Swapped PrimaryCriteria from Drug to ConditionOccurrence "
-            "(CodesetId=%s, NCT=%s)", disease_cs_id, nct_id,
+            "[TTE] Swapped PrimaryCriteria from Drug to ConditionOccurrence (CodesetId=%s)",
+            disease_cs_id,
         )
         return base
 
@@ -5623,11 +5442,13 @@ class TTEService:
     # ------------------------------------------------------------------
 
     def _recommender_indication(self, study: dict[str, Any] | None) -> str:
-        """Indication string for the comparator recommender (disease anchor preferred)."""
-        nct = ((study or {}).get("trialMetadata") or {}).get("nctId", "")
-        anchors = self.DISEASE_ANCHOR_CONCEPTS.get(nct or "")
-        if anchors:
-            return anchors[0][1]
+        """Indication string for the comparator recommender, read off the study.
+
+        Previously a per-trial table keyed on NCT id supplied this name for three
+        benchmark trials, so the recommender was asked a different question about
+        them than about any other study. The study's own condition fields are the
+        general source and are used for every study alike.
+        """
         for key in ("condition", "disease", "indication"):
             val = (study or {}).get(key)
             if isinstance(val, str) and val.strip():
@@ -10167,6 +9988,21 @@ class TTEService:
 
                 metadata["briefTitle"] = identification.get("briefTitle", "")
                 metadata["officialTitle"] = identification.get("officialTitle", "")
+                # What the trial says it is about, in its sponsor's own registration:
+                # LEADER carries ["Diabetes", "Diabetes Mellitus, Type 2"], ARISTOTLE
+                # ["Atrial Fibrillation", "Atrial Flutter"]. The fetcher has always
+                # parsed this field (`nct_fetcher._parse_protocol_to_trial_data`) and
+                # nothing persisted it, so the disease entry anchor had no fact to be
+                # chosen against and fell back to document order -- see
+                # `src/utils/disease_anchor.py`.
+                conditions_module = protocol.get("conditionsModule", {})
+                metadata["conditions"] = [
+                    condition
+                    for condition in (
+                        (c or "").strip() for c in (conditions_module.get("conditions") or [])
+                    )
+                    if condition
+                ]
                 metadata["phases"] = design.get("phases", [])
                 metadata["overallStatus"] = status_module.get("overallStatus", "")
                 metadata["enrollment"] = (
@@ -10197,6 +10033,7 @@ class TTEService:
 
                 trial_data = fetch_or_load_trial_data(nct_id)
                 metadata["briefTitle"] = trial_data.title
+                metadata["conditions"] = [c.strip() for c in trial_data.conditions if c.strip()]
                 metadata["phases"] = [trial_data.phase] if trial_data.phase else []
         except Exception:
             pass

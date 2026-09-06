@@ -193,6 +193,31 @@ Settled, do not re-litigate:
   reaches the mapper, but that store is not the scored one). No scored pair changes
   either way.
 
+## DISEASE ENTRY ANCHOR
+
+A placebo comparator cannot enter on the study drug, so its entry is swapped to a
+`ConditionOccurrence`. Which condition is decided by `src/utils/disease_anchor.py`
+against the trial's OWN registered condition — the strings ClinicalTrials.gov carries
+under `conditionsModule.conditions`, persisted as `trialMetadata.conditions`. A
+candidate is a Condition concept set the study's rules read under a PRESENCE
+occurrence; it wins by carrying exactly a registered condition's tokens. Nothing
+matching, two matching over different concepts, or no `conditions` at all with several
+candidates, all REFUSE — the arm reports `missing_arm` with the reason and the export
+writes no manifest.
+
+- Backfill an older store with `scripts/backfill_registered_conditions.py` before
+  exporting or gating it. Without `conditions` the delivery gate reports
+  `disease anchor unverifiable` and fails, which is deliberate: a disease-anchored
+  comparator that cannot be checked is what shipped wrong on 2026-09-06.
+- Do not add a per-trial table or branch here. Two have already been removed — a
+  lookup keyed on NCT id, then "the first Condition set in document order", which gave
+  LEADER's comparator `LV systolic or diastolic dysfunction` and studies 4/5/6
+  `Asymptomatic cardiac ischemia` for the same trial, purely because their criteria are
+  written in a different order.
+- Studies 4/5/6 refuse because they carry no type-2-diabetes rule at all. That is a gap
+  in their extracted criteria, not in the matcher; regenerating those criteria is the
+  fix, not loosening the match.
+
 ## ANTI-PATTERNS
 
 - Do not move API contract fields without checking Atlas TTE consumers under `../atlas-dev/js/pages/target-trial-emulation/`.

@@ -294,14 +294,6 @@ class TestBuildCombinedTreatmentCirce:
 class TestBenchmarkCompatibilityRouting:
     """Tests for trial-specific benchmark compatibility auto-routing."""
 
-    def test_detects_aristotle_and_plato_trials(self):
-        svc = _make_service()
-
-        assert svc._uses_benchmark_compatibility_path({"trialMetadata": {"nctId": "NCT00412984"}}) is True
-        assert svc._uses_benchmark_compatibility_path({"trialMetadata": {"nctId": "NCT00391872"}}) is True
-        assert svc._uses_benchmark_compatibility_path({"trialMetadata": {"nctId": "NCT01179048"}}) is False
-        assert svc._uses_benchmark_compatibility_path({"trialMetadata": {"nctId": "NCT00000000"}}) is False
-
     def test_builds_drug_primary_compat_circe_from_eligibility_base(self):
         svc = _make_service()
         eligibility = {
