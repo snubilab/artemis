@@ -511,6 +511,16 @@ def _parse_criteria_items(text: str) -> List[str]:
             llm_items = []
         if llm_items:
             regex_items = _merge_parsed_items(regex_items, llm_items)
+        else:
+            # Not the same as "the LLM had nothing to add": the pass RAN. Without
+            # this line the outcome is indistinguishable from never invoking it,
+            # which is how the pass stayed broken across every study on the
+            # 2026-09-07 cold run without anything downstream noticing.
+            logger.warning(
+                "[PubMed Fetcher] %s — keeping the %d regex items. See the "
+                "preceding rejection reason.",
+                LLM_PASS_EMPTY_MARKER, len(regex_items),
+            )
 
     return regex_items
 
@@ -649,21 +659,78 @@ def _get_criteria_llm():
     return _criteria_llm
 
 
+#: The single phrase that marks "the validation pass RAN and produced nothing".
+#: It is logged at exactly one site -- the gate in :func:`_parse_criteria_items`,
+#: the only place that knows the pass was attempted at all. Before this existed,
+#: a rejected response and "the LLM had nothing to add" were the same silence.
+LLM_PASS_EMPTY_MARKER = "LLM validation pass produced NO usable criteria"
+
+#: Why a response yielded nothing. Logged by :func:`_llm_parse_criteria`; the
+#: gate pairs it with :data:`LLM_PASS_EMPTY_MARKER`.
+LLM_REASON_UNPARSEABLE = "unparseable-json"
+LLM_REASON_SHAPE = "unrecognised-shape"
+LLM_REASON_NO_STRINGS = "no-usable-strings"
+LLM_REASON_INVOCATION = "invocation-failed"
+
+
+# The response contract has to agree with `_get_criteria_llm`, which asks for
+# `get_llm(json_mode=True)`. That becomes `response_format={"type":"json_object"}`
+# (src/utils/llm.py), which constrains the model's TOP LEVEL to an object -- so a
+# prompt asking for a top-level array asks for something the decoder cannot emit.
+# Measured on the six-study cold run of 2026-09-07: the success line occurred 0
+# times and `LLM returned non-list: <class 'dict'>` occurred once, on the single
+# call the gate opened. json_mode is what makes a local vLLM model emit parseable
+# JSON at all, so the prompt and the parser are what move, not json_mode.
 _LLM_CRITERIA_PROMPT = """\
 Extract individual eligibility criteria items from the following clinical trial text.
-Return ONLY a JSON array of strings, one string per criterion.
-Do not number them. Do not add explanations.
+Return ONLY a JSON object of the form {{"criteria": ["...", "..."]}}, one string per
+criterion. Do not number them. Do not add explanations.
 
 Text:
 {text}
 """
 
 
+def _coerce_criteria_list(parsed: object) -> Optional[list]:
+    """The one place that decides which JSON shapes carry a criteria list.
+
+    Three shapes are accepted, in descending order of how firmly the response
+    committed to the contract:
+
+    1. A bare list. `response_format` is a request, and providers that ignore it
+       still emit the array the older prompt asked for; refusing it would trade
+       one silent failure for another.
+    2. An object with a ``criteria`` key holding a list -- what the prompt asks for.
+    3. An object with exactly ONE list-valued key. Unambiguous, so reading it beats
+       discarding the pass over a synonym.
+
+    Anything else returns None. In particular an object carrying SEVERAL lists
+    (``{"inclusion": [...], "exclusion": [...]}``) is refused rather than guessed:
+    picking one would silently drop half the criteria and read as success.
+
+    :param parsed: the decoded JSON body.
+    :returns: the list of raw items, or None when no shape matched.
+    """
+    if isinstance(parsed, list):
+        return parsed
+    if isinstance(parsed, dict):
+        canonical = parsed.get("criteria")
+        if isinstance(canonical, list):
+            return canonical
+        lists = [value for value in parsed.values() if isinstance(value, list)]
+        if len(lists) == 1:
+            return lists[0]
+    return None
+
+
 def _llm_parse_criteria(text: str) -> List[str]:
     """
     LLM validation pass: ask an LLM to extract criteria items from text.
 
-    Returns a list of criteria strings, or an empty list on failure.
+    Returns a list of criteria strings, or an empty list on failure. Every empty
+    return is logged with a named reason, so a rejected response is distinguishable
+    from a response that genuinely carried nothing. The pass is optional
+    enrichment: it never raises, and the caller keeps the regex-only result.
     """
     import json
     from langchain_core.messages import HumanMessage
@@ -681,17 +748,43 @@ def _llm_parse_criteria(text: str) -> List[str]:
                 content = content[4:]
             content = content.strip()
 
-        items = json.loads(content)
-        if not isinstance(items, list):
-            logger.warning("[PubMed Fetcher] LLM returned non-list: %s", type(items))
+        try:
+            parsed = json.loads(content)
+        except ValueError as exc:
+            logger.warning(
+                "[PubMed Fetcher] LLM criteria response rejected (%s): %s | body[:200]=%r",
+                LLM_REASON_UNPARSEABLE, exc, content[:200],
+            )
+            return []
+
+        items = _coerce_criteria_list(parsed)
+        if items is None:
+            shape = (
+                f"dict keys={sorted(parsed)[:8]}" if isinstance(parsed, dict)
+                else type(parsed).__name__
+            )
+            logger.warning(
+                "[PubMed Fetcher] LLM criteria response rejected (%s): %s",
+                LLM_REASON_SHAPE, shape,
+            )
             return []
 
         cleaned = [str(i).strip().rstrip(".") for i in items if isinstance(i, str) and len(str(i).strip()) >= 5]
+        if not cleaned:
+            logger.warning(
+                "[PubMed Fetcher] LLM criteria response rejected (%s): %d raw items, "
+                "none usable",
+                LLM_REASON_NO_STRINGS, len(items),
+            )
+            return []
         logger.info("[PubMed Fetcher] LLM extracted %d criteria items", len(cleaned))
         return cleaned
 
     except Exception as exc:
-        logger.warning("[PubMed Fetcher] LLM criteria parsing failed: %s", exc)
+        logger.warning(
+            "[PubMed Fetcher] LLM criteria parsing failed (%s): %s",
+            LLM_REASON_INVOCATION, exc,
+        )
         return []
 
 
