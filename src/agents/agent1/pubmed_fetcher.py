@@ -496,6 +496,21 @@ def _parse_criteria_items(text: str) -> List[str]:
 
     # Gate: only invoke LLM when regex likely missed structure
     if len(regex_items) < 5 and len(text) > 200:
+        # A span can be short on items for two opposite reasons: it is prose the
+        # regex could not split -- the case this pass exists to rescue -- or it is
+        # a counts table with no criteria in it at all. Only the first is worth
+        # structuring; on the second the pass faithfully turns participant-flow
+        # rows into plausible-looking criteria. Refusing is not a silent skip: it
+        # names the reason, so a declined pass stays distinguishable from one that
+        # ran and found nothing.
+        if _is_participant_flow_table(text):
+            logger.warning(
+                "[PubMed Fetcher] %s (%s) — a %d-char span whose lines are "
+                "dominated by leading counts; keeping the %d regex items.",
+                LLM_PASS_REFUSED_MARKER, LLM_REASON_FLOW_DIAGRAM,
+                len(text), len(regex_items),
+            )
+            return regex_items
         logger.info(
             "[PubMed Fetcher] Regex produced %d items from %d chars — "
             "invoking LLM validation pass",
@@ -671,6 +686,48 @@ LLM_REASON_UNPARSEABLE = "unparseable-json"
 LLM_REASON_SHAPE = "unrecognised-shape"
 LLM_REASON_NO_STRINGS = "no-usable-strings"
 LLM_REASON_INVOCATION = "invocation-failed"
+
+#: Why the gate DECLINED to open. Distinct from the LLM_REASON_* family above,
+#: which says why a response yielded nothing; this says the pass was never
+#: attempted at all.
+LLM_REASON_FLOW_DIAGRAM = "span-is-a-participant-flow-table"
+
+#: "The pass was refused." Deliberately NOT :data:`LLM_PASS_EMPTY_MARKER`, which
+#: documents itself as "the pass RAN and produced nothing" and is the phrase a
+#: reader greps for to establish that. A refusal did not run the pass, and
+#: logging the same marker for both would put them back into the one silence
+#: that marker was added to end.
+LLM_PASS_REFUSED_MARKER = "LLM validation pass DECLINED before invocation"
+
+#: A CONSORT participant-flow diagram is a column of counts, one per line. The
+#: capture patterns in :func:`extract_eligibility_from_text` anchor on the phrase
+#: "inclusion criteria" wherever it appears, including inside the flow-diagram row
+#: "4021 Did not meet inclusion criteria" (CAROLINA's main paper), so the span
+#: handed to the pass is the rest of the diagram. Measured over every span the
+#: six-study corpus produces: 34 of 42 non-blank lines (81%) on that span, 32 of
+#: 50 (64%) on CARMELINA's main paper, and 1 of 66 (2%) or less on every span
+#: that carries real criteria -- including all of them from the PDFs the pipeline
+#: actually ingests. The thresholds sit in that empty band.
+#:
+#: The digits must be followed by WHITESPACE. A numbered criteria list writes
+#: "1)" or "1."; a flow diagram writes "3490 HbA1c out of window". That is the
+#: whole of what keeps the two apart, so do not relax it to a bare digit run.
+_FLOW_ROW_RE = re.compile(r"^\s*\d{1,5}\s+\S")
+_FLOW_MIN_ROWS = 5
+_FLOW_MIN_FRACTION = 0.30
+
+
+def _is_participant_flow_table(text: str) -> bool:
+    """Whether a captured span is a counts table rather than a criteria list.
+
+    :param text: the span the gate is about to hand to the validation pass.
+    :returns: True when the span is dominated by count-prefixed rows.
+    """
+    lines = [line for line in text.split("\n") if line.strip()]
+    if not lines:
+        return False
+    rows = sum(1 for line in lines if _FLOW_ROW_RE.match(line))
+    return rows >= _FLOW_MIN_ROWS and rows / len(lines) >= _FLOW_MIN_FRACTION
 
 
 # The response contract has to agree with `_get_criteria_llm`, which asks for
