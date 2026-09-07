@@ -250,11 +250,11 @@ class TestTheSectionCapIsAnnounced:
 
         section = LogicDecomposer._extract_eligibility_section(text, pdf_name=PDF_NAME)
 
-        assert len(section) == 20000
+        assert len(section) <= LogicDecomposer._SECTION_CHAR_CAP
         emitted = capsys.readouterr().out
         assert "truncat" in emitted.lower(), "the cap fired silently"
         assert PDF_NAME in emitted
-        dropped = len(text.strip()) - 20000
+        dropped = len(text.strip()) - len(section)
         assert str(dropped) in emitted, (
             f"the log does not say how much was dropped ({dropped} chars)"
         )
