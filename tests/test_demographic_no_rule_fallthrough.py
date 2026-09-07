@@ -297,7 +297,7 @@ class TestDraftPreviewParity:
         refs = {key: 5}
 
         updated = service._apply_draft_concept_set_metadata(
-            [criterion], concept_sets, 1, {}, role, refs,
+            [criterion], concept_sets, {}, role, refs,
         )
 
         assert len(updated) == 1
@@ -316,10 +316,16 @@ class TestDraftPreviewParity:
 # _apply_draft_concept_set_metadata's skip check, now driven by the shared
 # helper, no longer knows that. For criterion_role="inclusion" it must keep
 # skipping a demographic-no-rule criterion (matching what generation actually
-# does), or the positional-fallback lookup consumes a slot that belongs to
-# the FOLLOWING criterion and silently shifts every concept set after it by
-# one -- confirmed against real LEADER-trial data (tmp/mesh_fix/studies.json
+# does) -- confirmed against real LEADER-trial data (tmp/mesh_fix/studies.json
 # study id=4, inclusion criteria id 6/7/8 have exactly this shape).
+#
+# The positional-fallback lookup these two tests were written against is gone:
+# it also handed a NEIGHBOUR's concept set to every criterion the producer
+# refused to mint one for (20 such rows on tmp/tte_cold6_32k_20260907), so the
+# shift hazard is now structurally impossible rather than guarded against. Both
+# fixtures below therefore carry the criterionConceptSetRefs entry the producer
+# records for every set it actually mints -- a minted set with no ref was a
+# state the real store never holds.
 # ---------------------------------------------------------------------------
 
 
@@ -342,8 +348,10 @@ class TestInclusionSidePreviewDoesNotStealFollowingConceptSets:
             {"id": 1, "name": "Type 2 diabetes concept set", "expression": {"items": []}},
         ]
 
+        refs = {service._criterion_mapping_key("inclusion", "9"): 1}
+
         updated = service._apply_draft_concept_set_metadata(
-            [demo, following], concept_sets, 1, {}, "inclusion", {},
+            [demo, following], concept_sets, {}, "inclusion", refs,
         )
 
         assert updated[0].get("conceptSetId") is None, (
@@ -354,8 +362,8 @@ class TestInclusionSidePreviewDoesNotStealFollowingConceptSets:
         )
         assert updated[1]["conceptSetId"] == 1, (
             "the criterion AFTER the demographic-no-rule one must receive its own "
-            "concept set (index 1), not be shifted by the demographic criterion "
-            f"consuming a positional slot it should not have; got {updated[1]}"
+            "concept set (the one keyed to it), not be shifted by the demographic "
+            f"criterion consuming a slot it should not have; got {updated[1]}"
         )
 
     def test_exclusion_demographic_no_rule_criterion_is_still_enriched(self, service):
@@ -380,10 +388,13 @@ class TestInclusionSidePreviewDoesNotStealFollowingConceptSets:
             {"id": 5, "name": "Pregnancy-related", "expression": {"items": []}},
             {"id": 6, "name": "LDL concept set", "expression": {"items": []}},
         ]
-        refs = {service._criterion_mapping_key("exclusion", "63"): 5}
+        refs = {
+            service._criterion_mapping_key("exclusion", "63"): 5,
+            service._criterion_mapping_key("exclusion", "64"): 6,
+        }
 
         updated = service._apply_draft_concept_set_metadata(
-            [demo, following], concept_sets, 1, {}, "exclusion", refs,
+            [demo, following], concept_sets, {}, "exclusion", refs,
         )
 
         assert updated[0]["conceptSetId"] == 5

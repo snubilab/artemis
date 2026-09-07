@@ -3467,16 +3467,11 @@ class TTEService:
         concept_sets = structured_expression.get("ConceptSets") or []
         inclusion_criteria = eligibility.get("inclusionCriteria") or []
         exclusion_criteria = eligibility.get("exclusionCriteria") or []
-        mappable_inclusion_count = sum(
-            1 for c in inclusion_criteria
-            if (c.get("domain") or "").strip() not in DEMOGRAPHIC_DOMAINS
-        )
         proposed_eligibility = {
             "targetCohortName": eligibility.get("targetCohortName") or "",
             "inclusionCriteria": self._apply_draft_concept_set_metadata(
                 inclusion_criteria,
                 concept_sets,
-                1,
                 criterion_mapping_meta,
                 "inclusion",
                 criterion_concept_set_refs,
@@ -3484,7 +3479,6 @@ class TTEService:
             "exclusionCriteria": self._apply_draft_concept_set_metadata(
                 exclusion_criteria,
                 concept_sets,
-                1 + mappable_inclusion_count,
                 criterion_mapping_meta,
                 "exclusion",
                 criterion_concept_set_refs,
@@ -3539,7 +3533,6 @@ class TTEService:
         self,
         criteria: list[dict[str, Any]],
         concept_sets: list[dict[str, Any]],
-        start_index: int,
         criterion_mapping_meta: dict[str, Any] | None = None,
         criterion_role: str | None = None,
         criterion_concept_set_refs: dict[str, Any] | None = None,
@@ -3554,7 +3547,6 @@ class TTEService:
             if isinstance(concept_set, dict)
         }
         updated: list[dict[str, Any]] = []
-        mappable_offset = 0
         for criterion in criteria:
             enriched = deepcopy(criterion)
             domain = (criterion.get("domain") or "").strip()
@@ -3566,10 +3558,9 @@ class TTEService:
             )
             # The generation-loop fallthrough this preview mirrors is exclusion-only
             # (_build_seeded_target_circe's inclusion loop still drops a
-            # demographic-but-mappable criterion unconditionally). If this preview
-            # treated it as mappable on the inclusion side too, the positional
-            # fallback below would consume a slot that belongs to the FOLLOWING
-            # criterion, silently shifting every concept set after it by one.
+            # demographic-but-mappable criterion unconditionally), so the preview
+            # keeps skipping one on the inclusion side to show what generation
+            # actually produces rather than a set generation never minted.
             demographic_but_mappable_here = demographic_but_mappable and criterion_role == "exclusion"
             if is_group_label or (domain in DEMOGRAPHIC_DOMAINS and not demographic_but_mappable_here):
                 updated.append(enriched)
@@ -3591,19 +3582,31 @@ class TTEService:
                 )
             if concept_set is None:
                 concept_set = concept_sets_by_criterion_id.get(criterion_id)
-            if concept_set is None:
-                concept_set_index = start_index + mappable_offset
-                concept_set = (
-                    concept_sets[concept_set_index]
-                    if 0 <= concept_set_index < len(concept_sets)
-                    else None
-                )
+            # No positional fallback. The producer refuses to mint a concept set on
+            # four grounds this loop's skip branch cannot see -- the two restated-*
+            # collapse drops, a mapping that returned None, and
+            # refuse_domain_contradiction -- so an index derived from "how many rows
+            # have I walked" ran ahead of the list it indexes and handed a refused
+            # criterion its NEIGHBOUR's concept set. Replayed over the six cold-run
+            # studies in tmp/tte_cold6_32k_20260907, the fallback fired 13 times, on
+            # 13 producer-refused rows and on nothing else: 13 wrong answers, 0 right
+            # ones. A refused criterion now keeps the conceptSetId=None /
+            # conceptSetName="" that _criterion_dict_from_ir_item already writes,
+            # which leaves the rule honestly absent instead of matching the wrong
+            # patients.
+            #
+            # NOT fixed here: 7 further refused rows in that store still collect a
+            # neighbour's set through the BARE-ID ref two branches above. Inclusion
+            # and exclusion criteria are numbered in independent sequences, so the
+            # role-blind key `criterion_concept_set_refs[str(criterion_id)]` collides
+            # -- study 10 exclusion 42 has no `exclusion:42` ref and picks up the
+            # `42` written for INCLUSION 42 ('Urinary albumin creatinine ratio').
+            # All 7 verified to be exactly that collision. Separate defect.
             if isinstance(concept_set, dict):
                 enriched["conceptSetId"] = concept_set.get("id")
                 enriched["conceptSetName"] = concept_set.get("name") or enriched.get(
                     "conceptSetName", ""
                 )
-            mappable_offset += 1
             updated.append(enriched)
         return updated
 
