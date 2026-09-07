@@ -1,0 +1,450 @@
+"""A group label's threshold must reach its members, but only when it is unit-free.
+
+Measured on ``tmp/tte_cold6_20260907b/studies.json`` (2026-09-07 cold run): three
+exclusion groups carry a ``valueConstraint`` on the GROUP LABEL and on no member.
+The label row is ``isGroupLabel: true``, the seeded builder refuses it outright
+(``_skippedCriteria`` reason ``group-label``), so the only row holding the number
+never reaches a cohort and the threshold is silently lost::
+
+    study  8 exclusion  ALL/ABSENCE  "Uncontrolled hyperglycemia"  {gt 240.0 mg/dL}
+                                     members: Elevated Fasting Plasma Glucose /
+                                              Elevated Random Plasma Glucose / Elevated HbA1c
+    study 10 exclusion  ALL/ABSENCE  "Active liver disease or impaired hepatic
+                                      function"                    {gt 3.0 "x ULN"}
+                                     members: ALT / AST / ALP
+    study 10 exclusion  ALL/ABSENCE  "Uncontrolled hyperglycaemia" {gt 240.0 mg/dl}
+                                     members: Elevated HbA1c / Elevated Fasting Glucose /
+                                              Elevated Random Glucose
+
+Blind propagation is NOT the fix. ``> 240 mg/dL`` copied onto "Elevated HbA1c"
+builds a MeasurementOccurrence rule matching zero rows -- HbA1c is reported in %
+or mmol/mol and never in mg/dL -- and inside an ABSENCE exclusion that converts
+today's visible over-exclusion into a silent zero-match.
+``refuse_domain_contradiction`` cannot catch it: both sides are Measurement.
+
+The distinction that makes a safe fix possible is a property of the CONSTRAINT,
+never of the analyte. A reference-relative bound is unit-free and therefore
+analyte-independent -- "3 times the upper limit of normal" is meaningful for ALT,
+AST and ALP alike. An absolute bound is analyte-specific. That predicate is
+already encoded in ``build_measurement_value_filter``: a reference-relative
+constraint emits ``RangeHighRatio`` / ``RangeLowRatio``, an absolute one emits
+``ValueAsNumber``. So the propagation is gated on what the shared builder would
+emit, not on a re-derived rule and not on any analyte name.
+
+The unsafe case must not become silent in the other direction either: refusing to
+propagate is recorded, through each builder's existing refusal channel.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
+
+from src.services.value_constraint import build_measurement_value_filter
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+# `tests/test_parser_paper_status.py` overwrites `src.models.ir.Criteria` and
+# `.ValueConstraint` with MagicMocks at import time and never puts them back --
+# its teardown only drops modules it *injected*, and it injects nothing when the
+# real module is already imported. Importing those classes here would therefore
+# make this suite pass or fail on collection order. Both builders reach the IR
+# through plain attribute access (`getattr` in tte_service, `rule.x` in the
+# assembler) and `value_constraint._field` accepts any object or mapping, so
+# these stand-ins are the contract the code actually consumes.
+# `test_should_match_the_real_ir_field_names` pins them to the real model.
+
+
+@dataclass
+class _VC:
+    """Stand-in for `src.models.ir.ValueConstraint`."""
+
+    op: str
+    value: float
+    reference_bound: str = "absolute"
+    unit_text: str | None = None
+    unit_concept_id: int | None = None
+
+
+@dataclass
+class _Crit:
+    """Stand-in for `src.models.ir.Criteria`, limited to what the builders read."""
+
+    name: str
+    domain: str
+    entity_text: str | None = None
+    source_text: str | None = None
+    concept_set_id: int | None = None
+    logic_type: str = "PRESENCE"
+    window: Any = None
+    value_constraint: _VC | None = None
+    sub_criteria: list["_Crit"] = field(default_factory=list)
+    group_type: str = "ALL"
+    conditional: bool = False
+
+
+def _real_ir_module():
+    """Load `src/models/ir.py` under a private name, bypassing the mangled entry.
+
+    Never touches `sys.modules["src.models.ir"]`, so it neither depends on nor
+    repairs the pollution described above.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "_ir_for_field_drift_check", REPO_ROOT / "src" / "models" / "ir.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+# ---------------------------------------------------------------------------
+# Fixtures transcribed verbatim from the 2026-09-07 store.
+# ---------------------------------------------------------------------------
+
+# study 10 exclusion group: the SAFE case. `referenceBound` is "absolute" in the
+# store and the bound lives in `unitText` -- `split_reference_bound` recovers it,
+# which is why the predicate has to ask the builder rather than read the field.
+LIVER_LABEL_CONSTRAINT = _VC(op="gt", value=3.0, unit_text="x ULN")
+LIVER_MEMBER_NAMES = (
+    "Alanine aminotransferase level",
+    "Aspartate aminotransferase level",
+    "Alkaline phosphatase level",
+)
+
+# study 8 exclusion group: the UNSAFE case. mg/dL is meaningful for plasma glucose
+# and meaningless for HbA1c, which is a member of this very group.
+HYPERGLYCEMIA_LABEL_CONSTRAINT = _VC(op="gt", value=240.0, unit_text="mg/dL")
+HYPERGLYCEMIA_MEMBER_NAMES = (
+    "Elevated Fasting Plasma Glucose",
+    "Elevated Random Plasma Glucose",
+    "Elevated HbA1c",
+)
+
+
+def _ir_group(label: str, constraint: _VC, member_names: tuple[str, ...]) -> _Crit:
+    """One IR exclusion group: a labelled parent whose members carry no constraint."""
+    return _Crit(
+        name=label,
+        domain="Measurement",
+        entity_text=label,
+        logic_type="ABSENCE",
+        group_type="ALL",
+        value_constraint=constraint,
+        sub_criteria=[
+            _Crit(
+                name=name,
+                domain="Measurement",
+                entity_text=name,
+                logic_type="ABSENCE",
+                value_constraint=None,
+            )
+            for name in member_names
+        ],
+    )
+
+
+def _liver_group() -> _Crit:
+    return _ir_group(
+        "Active liver disease or impaired hepatic function",
+        LIVER_LABEL_CONSTRAINT,
+        LIVER_MEMBER_NAMES,
+    )
+
+
+def _hyperglycemia_group() -> _Crit:
+    return _ir_group(
+        "Uncontrolled hyperglycemia",
+        HYPERGLYCEMIA_LABEL_CONSTRAINT,
+        HYPERGLYCEMIA_MEMBER_NAMES,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Builder A -- src/services/tte_service.py `_criteria_from_ir` (store rows)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def service():
+    """A bare TTEService; `_criteria_from_ir` touches no I/O or agent."""
+    from src.services.tte_service import TTEService
+
+    return TTEService.__new__(TTEService)
+
+
+def _member_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [row for row in rows if not row.get("isGroupLabel")]
+
+
+def _label_row(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    labels = [row for row in rows if row.get("isGroupLabel")]
+    assert len(labels) == 1, f"expected exactly one group label, got {len(labels)}"
+    return labels[0]
+
+
+class TestStoreRowsInheritOnlyUnitFreeThresholds:
+    def test_should_give_every_member_the_ratio_bound_when_group_label_is_reference_relative(
+        self, service
+    ):
+        rows = service._criteria_from_ir([_liver_group()])
+        members = _member_rows(rows)
+
+        assert [row["description"] for row in members] == list(LIVER_MEMBER_NAMES)
+        for row in members:
+            assert row["valueConstraint"] is not None, (
+                f"{row['description']!r} lost the group label's '> 3x ULN' threshold; "
+                f"the label row is refused as isGroupLabel, so nothing else carries it"
+            )
+            assert build_measurement_value_filter(row["valueConstraint"]) == {
+                "RangeHighRatio": {"Value": 3.0, "Op": "gt"}
+            }
+
+    def test_should_leave_members_unconstrained_when_group_label_bound_is_absolute(
+        self, service
+    ):
+        rows = service._criteria_from_ir([_hyperglycemia_group()])
+
+        for row in _member_rows(rows):
+            assert row["valueConstraint"] is None, (
+                f"{row['description']!r} was given the label's absolute '> 240 mg/dL'. "
+                f"HbA1c is reported in % or mmol/mol, so inside an ABSENCE exclusion "
+                f"that rule matches zero rows and the exclusion silently stops applying"
+            )
+
+    def test_should_not_overwrite_a_member_that_carries_its_own_threshold(self, service):
+        group = _liver_group()
+        group.sub_criteria[0].value_constraint = _VC(op="gt", value=5.0, unit_text="x ULN")
+
+        members = _member_rows(service._criteria_from_ir([group]))
+
+        assert members[0]["valueConstraint"]["value"] == 5.0
+        assert members[1]["valueConstraint"]["value"] == 3.0
+
+
+# ---------------------------------------------------------------------------
+# Visibility -- the refusal must not itself be silent.
+# ---------------------------------------------------------------------------
+
+
+def _eligibility_shell(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "targetCohortName": "T2DM cohort",
+        "inclusionCriteria": [],
+        "exclusionCriteria": rows,
+    }
+
+
+@pytest.fixture
+def seeded_service():
+    """A TTEService with the expensive Agent2 / vector-search methods stubbed out."""
+    from src.services.tte_service import TTEService
+
+    svc = TTEService.__new__(TTEService)
+    svc._recommend_seeded_concept_set = MagicMock(
+        side_effect=lambda name, expected_domain=None, workflow=None, **kw: {
+            "name": name,
+            "domain": "Measurement",
+            "expression": {"items": [{"concept": {"CONCEPT_ID": 99999}}]},
+        }
+    )
+    svc._build_seeded_eligibility_rule = MagicMock(
+        side_effect=lambda **kw: {
+            "conceptSet": {
+                "id": kw["codeset_id"],
+                "name": kw["criterion"].get("description", "rule"),
+                "expression": {"items": []},
+            },
+            "rule": {
+                "name": kw["criterion"].get("description", "rule"),
+                "expression": {
+                    "Type": "ALL",
+                    "CriteriaList": [{
+                        "Criteria": {"MeasurementOccurrence": {"CodesetId": kw["codeset_id"]}},
+                        "Occurrence": {"Type": 0, "Count": 0},
+                    }],
+                    "DemographicCriteriaList": [],
+                    "Groups": [],
+                },
+            },
+        }
+    )
+    svc._seeded_primary_criteria_key = MagicMock(return_value="ConditionOccurrence")
+    svc._patch_codeset_id_in_rule = MagicMock()
+    return svc
+
+
+def _skip_reasons(result: dict[str, Any], label: str) -> list[str]:
+    return [r["reason"] for r in result["_skippedCriteria"] if r["label"] == label]
+
+
+class TestRefusedPropagationIsRecorded:
+    def test_should_record_a_distinct_skip_reason_when_an_absolute_threshold_is_stranded(
+        self, service, seeded_service
+    ):
+        from src.services.value_constraint import STRANDED_GROUP_CONSTRAINT_REASON
+
+        rows = service._criteria_from_ir([_hyperglycemia_group()])
+        result = seeded_service._build_seeded_target_circe(_eligibility_shell(rows))
+
+        assert _skip_reasons(result, "Uncontrolled hyperglycemia") == [
+            STRANDED_GROUP_CONSTRAINT_REASON
+        ], (
+            "the label carrying '> 240 mg/dL' was refused under the generic "
+            "'group-label' reason, which is indistinguishable from a label that "
+            "carried no threshold at all -- the lost number stays invisible"
+        )
+        assert (
+            result["_generationCensus"]["skippedByReason"][STRANDED_GROUP_CONSTRAINT_REASON]
+            == 1
+        )
+
+    def test_should_keep_the_plain_group_label_reason_when_the_threshold_was_propagated(
+        self, service, seeded_service
+    ):
+        rows = service._criteria_from_ir([_liver_group()])
+        result = seeded_service._build_seeded_target_circe(_eligibility_shell(rows))
+
+        assert _skip_reasons(
+            result, "Active liver disease or impaired hepatic function"
+        ) == ["group-label"], (
+            "nothing was lost here -- every member inherited the ratio bound -- so "
+            "flagging it would make the stranded reason meaningless"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Builder B -- src/agents/agent3/assembler.py composite branch (Circe directly)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def assembler():
+    from src.agents.agent3.assembler import CohortAssembler
+
+    return CohortAssembler.__new__(CohortAssembler)
+
+
+def _member_criteria(rule: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        next(iter(entry["Criteria"].values()))
+        for entry in rule["expression"]["CriteriaList"]
+    ]
+
+
+class TestAssemblerInheritsOnlyUnitFreeThresholds:
+    def test_should_emit_range_high_ratio_for_every_member_of_a_reference_relative_group(
+        self, assembler
+    ):
+        rule = assembler._build_inclusion_rule(_liver_group(), [], 0, is_exclusion=True)
+
+        emitted = _member_criteria(rule)
+        assert len(emitted) == len(LIVER_MEMBER_NAMES)
+        for content in emitted:
+            assert content.get("RangeHighRatio") == {"Value": 3.0, "Op": "gt"}, (
+                "the composite branch reads only sc.value_constraint, so the group "
+                "label's '> 3x ULN' never reaches ALT/AST/ALP and each emits an "
+                "unfiltered MeasurementOccurrence"
+            )
+
+    def test_should_emit_no_value_filter_for_members_of_an_absolute_group(self, assembler):
+        rule = assembler._build_inclusion_rule(
+            _hyperglycemia_group(), [], 0, is_exclusion=True
+        )
+
+        for content in _member_criteria(rule):
+            assert "ValueAsNumber" not in content
+            assert "RangeHighRatio" not in content
+
+
+# ---------------------------------------------------------------------------
+# One implementation, two builders.
+# ---------------------------------------------------------------------------
+
+
+class TestBothBuildersShareOneResolver:
+    """A fix applied to one builder and not the other is this tree's repeat defect."""
+
+    def test_should_route_both_builders_through_resolve_group_member_constraint(
+        self, service, assembler, monkeypatch
+    ):
+        import src.agents.agent3.assembler as assembler_mod
+        import src.services.tte_service as tte_service_mod
+        from src.services import value_constraint as vc_mod
+
+        seen: list[str] = []
+
+        def _spy(caller: str):
+            def _wrapped(parent_vc, member_vc):
+                seen.append(caller)
+                return vc_mod.resolve_group_member_constraint(parent_vc, member_vc)
+
+            return _wrapped
+
+        monkeypatch.setattr(
+            tte_service_mod, "resolve_group_member_constraint", _spy("tte_service")
+        )
+        monkeypatch.setattr(
+            assembler_mod, "resolve_group_member_constraint", _spy("assembler")
+        )
+
+        service._criteria_from_ir([_liver_group()])
+        assembler._build_inclusion_rule(_liver_group(), [], 0, is_exclusion=True)
+
+        assert set(seen) == {"tte_service", "assembler"}
+
+
+class TestPredicateIsAboutTheConstraintNotTheAnalyte:
+    """No per-trial, per-NCT or per-analyte branch: only the bound's kind decides."""
+
+    @pytest.mark.parametrize(
+        "constraint,expected_propagation",
+        [
+            (_VC(op="gt", value=3.0, unit_text="x ULN"), True),
+            (_VC(op="gt", value=3.0, reference_bound="uln"), True),
+            (_VC(op="lt", value=0.8, reference_bound="lln"), True),
+            (_VC(op="gt", value=240.0, unit_text="mg/dL"), False),
+            (_VC(op="gt", value=7.0, unit_text="%"), False),
+            (_VC(op="gt", value=1.5, unit_text=None), False),
+        ],
+    )
+    def test_should_propagate_only_when_the_bound_is_reference_relative(
+        self, constraint, expected_propagation
+    ):
+        from src.services.value_constraint import resolve_group_member_constraint
+
+        resolution = resolve_group_member_constraint(constraint, None)
+
+        assert resolution.propagated is expected_propagation
+        assert (resolution.constraint is constraint) is expected_propagation
+        assert (resolution.refusal_reason is None) is expected_propagation
+
+
+class TestStandInsMatchTheRealIR:
+    """The stand-ins above are only honest while they carry the real field names."""
+
+    def test_should_match_the_real_ir_field_names(self):
+        import dataclasses
+
+        ir = _real_ir_module()
+
+        assert {f.name for f in dataclasses.fields(_VC)} == set(
+            ir.ValueConstraint.model_fields
+        )
+        assert {f.name for f in dataclasses.fields(_Crit)} <= set(
+            ir.Criteria.model_fields
+        )
+
+    def test_should_accept_the_real_value_constraint_model(self):
+        from src.services.value_constraint import resolve_group_member_constraint
+
+        ir = _real_ir_module()
+        relative = ir.ValueConstraint(op="gt", value=3.0, unit_text="x ULN")
+        absolute = ir.ValueConstraint(op="gt", value=240.0, unit_text="mg/dL")
+
+        assert resolve_group_member_constraint(relative, None).propagated is True
+        assert resolve_group_member_constraint(absolute, None).propagated is False

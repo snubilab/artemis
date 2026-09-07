@@ -21,7 +21,7 @@ import json
 import re
 import unicodedata
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from src.models.ir import ValueConstraint
 
@@ -233,6 +233,22 @@ def _field(vc: Any, *names: str) -> Any:
     return None
 
 
+def resolve_reference_bound(vc: Any) -> tuple[ReferenceBound, str | None]:
+    """The bound a constraint really carries, plus what is left of its unit.
+
+    Reads the ADR-031 D1 field, and falls back to :func:`split_reference_bound`
+    when it says ``absolute``, because legacy IR parked the bound in ``unit_text``
+    and every study in the current store still does: study 10's liver group is
+    written ``{referenceBound: "absolute", unitText: "x ULN"}``. Reading the field
+    alone would call that constraint absolute, which is exactly backwards.
+    """
+    bound: ReferenceBound = _field(vc, "reference_bound", "referenceBound") or "absolute"
+    unit_text = _field(vc, "unit_text", "unitText")
+    if bound == "absolute":
+        return split_reference_bound(unit_text)
+    return bound, unit_text
+
+
 def build_measurement_value_filter(vc: Any) -> dict[str, Any]:
     """Circe fragment for a Measurement value condition (ADR-031 D4).
 
@@ -263,11 +279,7 @@ def build_measurement_value_filter(vc: Any) -> dict[str, Any]:
     if circe_op not in _CIRCE_OPS:
         return {}
 
-    bound: ReferenceBound = _field(vc, "reference_bound", "referenceBound") or "absolute"
-    unit_text = _field(vc, "unit_text", "unitText")
-    if bound == "absolute":
-        # Legacy IR predating ADR-031 D1 parked the bound in unit_text.
-        bound, unit_text = split_reference_bound(unit_text)
+    bound, unit_text = resolve_reference_bound(vc)
 
     operand = {"Value": float(value), "Op": circe_op}
     if bound == "uln":
@@ -281,6 +293,85 @@ def build_measurement_value_filter(vc: Any) -> dict[str, Any]:
         # Sibling of ValueAsNumber, not a key inside it — Circe ignores it nested.
         fragment["Unit"] = [unit_concept(concept_id)]
     return fragment
+
+
+# --------------------------------------------------------------------------
+# Group-label threshold propagation
+# --------------------------------------------------------------------------
+
+# Wire-format constant: the `_skippedCriteria` reason recorded when a group
+# label's threshold reached no member. Import it, never retype it -- a guessed
+# spelling makes every probe against the census return False.
+STRANDED_GROUP_CONSTRAINT_REASON = "group-label-absolute-constraint-stranded"
+
+
+class GroupConstraintResolution(NamedTuple):
+    """What a group member should carry, and why, given its label's constraint.
+
+    ``constraint`` is what the member ends up with (its own, the label's, or
+    None); ``propagated`` says the label's constraint was handed down;
+    ``refusal_reason`` is set only when a label constraint existed, the member
+    had none, and handing it down would have been unsafe.
+    """
+
+    constraint: Any | None
+    propagated: bool
+    refusal_reason: str | None
+
+
+def is_reference_relative(vc: Any) -> bool:
+    """True when this constraint is a *ratio* against the row's own reference range.
+
+    Such a bound is unit-free and therefore analyte-independent: "3 times the
+    upper limit of normal" means the same thing for ALT, AST and ALP, because
+    Circe divides by each row's own ``range_high``. An absolute bound is not --
+    "240 mg/dL" is meaningful for plasma glucose and meaningless for HbA1c,
+    which is reported in % or mmol/mol.
+
+    Asked of :func:`build_measurement_value_filter` rather than re-derived, so
+    there is one predicate rather than two that can drift apart: a
+    reference-relative constraint is exactly one that emits a ``Range*Ratio``.
+    An unusable constraint emits ``{}`` and so is never reference-relative,
+    which is the safe answer.
+    """
+    fragment = build_measurement_value_filter(vc)
+    return "RangeHighRatio" in fragment or "RangeLowRatio" in fragment
+
+
+def resolve_group_member_constraint(
+    parent_vc: Any, member_vc: Any
+) -> GroupConstraintResolution:
+    """Decide what one member of a labelled criteria group is measured against.
+
+    Both Circe builders call this and nothing else decides it:
+    ``TTEService._criteria_from_ir`` (store rows) and
+    ``CohortAssembler._build_inclusion_rule`` (Circe directly). Each previously
+    read only the member's own constraint, so a threshold written once on the
+    group label was dropped by both -- and the label row is unconditionally
+    refused (``isGroupLabel``), so nothing downstream still held the number.
+
+    Propagation is gated on :func:`is_reference_relative`, never on the analyte.
+    Copying "> 240 mg/dL" onto "Elevated HbA1c" builds a MeasurementOccurrence
+    matching zero rows; inside an ABSENCE exclusion that turns a visible
+    over-exclusion into a silent no-op, and ``refuse_domain_contradiction``
+    cannot see it because both sides are Measurement. Refusing instead leaves the
+    member honestly unfiltered and returns a reason for the caller to record.
+
+    A member that carries its own constraint always keeps it: SPEC-INFRA-007
+    REQ-004/REQ-005 made the decomposer ground each sub-item's threshold in its
+    own source text, and this must not overwrite that answer.
+
+    :param parent_vc: the group label's constraint, or None.
+    :param member_vc: the member's own constraint, or None.
+    :returns: the member's effective constraint plus why.
+    """
+    if member_vc is not None:
+        return GroupConstraintResolution(member_vc, False, None)
+    if parent_vc is None:
+        return GroupConstraintResolution(None, False, None)
+    if is_reference_relative(parent_vc):
+        return GroupConstraintResolution(parent_vc, True, None)
+    return GroupConstraintResolution(None, False, STRANDED_GROUP_CONSTRAINT_REASON)
 
 
 # --------------------------------------------------------------------------

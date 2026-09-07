@@ -14,7 +14,10 @@ from src.agents.agent3.mappings import (
     DOMAIN_TO_CRITERIA_TYPE, DOMAIN_TO_PRIMARY_CRITERIA_TYPE,
     OPERATOR_MAP, OCCURRENCE_TYPE, DEMOGRAPHIC_KEYWORDS
 )
-from src.services.value_constraint import build_measurement_value_filter
+from src.services.value_constraint import (
+    build_measurement_value_filter,
+    resolve_group_member_constraint,
+)
 import logging
 import copy
 
@@ -578,8 +581,32 @@ class CohortAssembler:
                     sc_cs_id = self._find_concept_set_id(sc.entity_text, concept_sets)
                     sc_criteria_type = DOMAIN_TO_CRITERIA_TYPE.get(sc.domain, "ConditionOccurrence")
                     sc_content: Dict[str, Any] = {"CodesetId": sc_cs_id}
+                    # A threshold written once on the group label belongs to every
+                    # member, but only when it is unit-free. Reading `sc.value_constraint`
+                    # alone dropped CAROLINA's "> 3x ULN" from ALT/AST/ALP entirely;
+                    # copying it down blindly would put "> 240 mg/dL" on HbA1c, which
+                    # matches zero rows. `resolve_group_member_constraint` is the one
+                    # place that decides, shared with `services/tte_service.py`.
+                    resolution = resolve_group_member_constraint(
+                        rule.value_constraint, sc.value_constraint
+                    )
+                    if resolution.refusal_reason:
+                        logger.warning(
+                            "[Agent3] %s: group %r carries %s %s %s but it is an absolute "
+                            "bound, so it is NOT applied to member %r -- an absolute "
+                            "threshold is analyte-specific and would match zero rows on a "
+                            "member reported in another unit. The member is emitted "
+                            "unfiltered; ground the threshold per sub-criterion at "
+                            "extraction to recover it.",
+                            resolution.refusal_reason,
+                            rule.name,
+                            rule.value_constraint.op,
+                            rule.value_constraint.value,
+                            rule.value_constraint.unit_text or "(no unit)",
+                            sc.name,
+                        )
                     # Flat merge: Unit is a sibling of ValueAsNumber in Circe.
-                    sc_content.update(build_measurement_value_filter(sc.value_constraint))
+                    sc_content.update(build_measurement_value_filter(resolution.constraint))
                     criteria_list.append({
                         "Criteria": {sc_criteria_type: sc_content},
                         "StartWindow": start_window,

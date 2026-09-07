@@ -87,7 +87,12 @@ from src.agents.agent2.criterion_cache import (
     get_criterion_cache,
 )
 from src.services.tte_store import TTEStore
-from src.services.value_constraint import build_measurement_value_filter
+from src.services.value_constraint import (
+    STRANDED_GROUP_CONSTRAINT_REASON,
+    build_measurement_value_filter,
+    is_reference_relative,
+    resolve_group_member_constraint,
+)
 from src.utils.circe_lint import (
     CRITERIA_TYPE_DOMAINS,
     criteria_types_by_codeset,
@@ -226,6 +231,50 @@ def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]
     ):
         return "ALL"
     return group_type
+
+
+def _stranded_group_constraint_labels(
+    criteria: list[dict[str, Any]], role: str
+) -> set[tuple[str, str]]:
+    """``(role, id)`` of group labels whose threshold reached none of their members.
+
+    A group label is refused unconditionally (``isGroupLabel``), so when it is the
+    only row carrying a ``valueConstraint`` the number leaves the cohort entirely.
+    ``resolve_group_member_constraint`` hands it down when it is unit-free; when it
+    is absolute it deliberately does not, because "> 240 mg/dL" on "Elevated HbA1c"
+    matches zero rows. That refusal is correct and must not also be silent, so the
+    label is skipped under its own reason instead of the generic ``group-label``
+    and the census counts it.
+
+    Recomputed here from the criteria as they arrive rather than recorded upstream,
+    so stores generated before this fix surface the loss too.
+
+    Only flags a label whose group still holds a member that ended up unfiltered:
+    if every member carries its own threshold nothing was lost, and a label with no
+    members at all emits no rule to under-filter.
+    """
+    by_group: dict[str, list[dict[str, Any]]] = {}
+    for criterion in criteria:
+        group_id = criterion.get("groupId")
+        if group_id:
+            by_group.setdefault(str(group_id), []).append(criterion)
+
+    stranded: set[tuple[str, str]] = set()
+    for members in by_group.values():
+        unfiltered = [
+            m
+            for m in members
+            if not m.get("isGroupLabel") and m.get("valueConstraint") is None
+        ]
+        if not unfiltered:
+            continue
+        for label in members:
+            if not label.get("isGroupLabel"):
+                continue
+            constraint = label.get("valueConstraint")
+            if constraint and not is_reference_relative(constraint):
+                stranded.add((role, str(label.get("id", ""))))
+    return stranded
 
 
 class TTEService:
@@ -4548,6 +4597,12 @@ class TTEService:
             exclusion_criteria=exc_criteria,
         )
 
+        # Same shape and placement as the two drop sets above: decided over the
+        # criteria as they arrived, consumed by the group-label branch in each loop.
+        stranded_constraint_labels = _stranded_group_constraint_labels(
+            inc_criteria, "inclusion"
+        ) | _stranded_group_constraint_labels(exc_criteria, "exclusion")
+
         for criterion in inc_criteria:
             # First branch in the loop, ahead of the demographic split: a dropped
             # criterion must not reach the mapper at all, which is the entire point --
@@ -4578,7 +4633,14 @@ class TTEService:
                 order += 1
                 continue
             if criterion.get("isGroupLabel"):
-                _record_skip(criterion, "inclusion", "group-label")
+                key = ("inclusion", str(criterion.get("id", "")))
+                _record_skip(
+                    criterion,
+                    "inclusion",
+                    STRANDED_GROUP_CONSTRAINT_REASON
+                    if key in stranded_constraint_labels
+                    else "group-label",
+                )
                 order += 1
                 continue
             mappable_items.append((criterion, False))
@@ -4631,7 +4693,14 @@ class TTEService:
                 # like a non-demographic exclusion criterion would, instead of
                 # being unconditionally discarded as "demographic-no-rule".
             if criterion.get("isGroupLabel"):
-                _record_skip(criterion, "exclusion", "group-label")
+                key = ("exclusion", str(criterion.get("id", "")))
+                _record_skip(
+                    criterion,
+                    "exclusion",
+                    STRANDED_GROUP_CONSTRAINT_REASON
+                    if key in stranded_constraint_labels
+                    else "group-label",
+                )
                 order += 1
                 continue
             mappable_items.append((criterion, True))
@@ -10258,6 +10327,7 @@ class TTEService:
                             sub, next_id, sub_desc,
                             group_id=group_id, group_type=group_type,
                             logic_type=parent_logic_type,
+                            parent_value_constraint=getattr(item, "value_constraint", None),
                         )
                     )
                     next_id += 1
@@ -10277,12 +10347,20 @@ class TTEService:
         group_id: str | None = None,
         group_type: str = "ALL",
         logic_type: str = "PRESENCE",
+        parent_value_constraint: Any = None,
     ) -> dict[str, Any]:
         domain = (getattr(item, "domain", None) or "").strip()
         name = (getattr(item, "name", None) or "").strip()
         entity_text = (getattr(item, "entity_text", None) or "").strip()
         source_text = entity_text
-        vc = getattr(item, "value_constraint", None)
+        # A threshold written once on the group label belongs to every member, but
+        # only when it is unit-free -- `resolve_group_member_constraint` is the one
+        # place that decides, shared with `agent3/assembler.py`. Passing the label's
+        # own constraint here (rather than reading only `item.value_constraint`) is
+        # what stops "> 3x ULN" from dying on the refused `isGroupLabel` row.
+        vc = resolve_group_member_constraint(
+            parent_value_constraint, getattr(item, "value_constraint", None)
+        ).constraint
         value_constraint = None
         if vc is not None:
             # referenceBound/unitConceptId must survive the model -> dict hop, or the
