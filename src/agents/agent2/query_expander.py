@@ -8,8 +8,9 @@ This runs at workflow.py Step 0a-bis, after the deprecated abbreviation
 expander and before drug class expansion.
 """
 import logging
-import os
 from typing import Optional
+
+from src.utils.env_flags import env_flag_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class QueryExpander:
     """Expand short clinical abbreviations to canonical names via UMLS."""
 
     def __init__(self, umls_expander=None):
-        self._enabled = os.environ.get("AGENT2_QUERY_EXPAND", "true").lower() == "true"
+        self._enabled = env_flag_enabled("AGENT2_QUERY_EXPAND")
         self._umls = umls_expander
 
     def expand(self, query: str, domain_hint: Optional[str] = None) -> str:

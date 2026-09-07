@@ -25,6 +25,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from src.utils.env_flags import env_flag_enabled
 from src.utils.llm import resolve_model
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ def _critic_signature() -> str:
 
 
 def _cache_enabled() -> bool:
-    return os.environ.get("CRITERION_CACHE_ENABLED", "true").lower() == "true"
+    return env_flag_enabled("CRITERION_CACHE_ENABLED")
 
 try:
     from cachetools import TTLCache as _TTLCache

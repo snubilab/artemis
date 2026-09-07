@@ -1631,7 +1631,7 @@ def test_generate_from_nct_helper_preserves_agent1_ir_when_planner_mutates_and_f
     monkeypatch, tmp_path
 ):
     service = TTEService(TTEStore(str(tmp_path / "tte" / "studies.json")))
-    monkeypatch.setattr("src.agents.agent1.parser.get_agent1", lambda: FakeNCTTrialAgent())
+    monkeypatch.setattr("src.services.tte_service.get_agent1", lambda: FakeNCTTrialAgent())
     monkeypatch.setattr("src.agents.planner.get_planner", lambda: MutatingFailingPlanner())
 
     generated_study, generation_mode, fallback_reason, _paper_status = (
@@ -1650,7 +1650,7 @@ def test_generate_from_nct_helper_preserves_agent1_ir_when_planner_mutates_and_f
 def test_generate_from_nct_falls_back_to_heuristic_when_agent1_parse_nct_fails(
     monkeypatch, tmp_path
 ):
-    monkeypatch.setattr("src.agents.agent1.parser.get_agent1", lambda: FailingNCTTrialAgent())
+    monkeypatch.setattr("src.services.tte_service.get_agent1", lambda: FailingNCTTrialAgent())
 
     client = build_client(monkeypatch, tmp_path)
     create_response = client.post(

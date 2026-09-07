@@ -16,6 +16,8 @@ import os
 import sqlite3
 from typing import Dict, List, Optional, Set, Tuple
 
+from src.utils.env_flags import env_flag_enabled
+
 logger = logging.getLogger(__name__)
 
 # Default path relative to project root
@@ -179,7 +181,7 @@ class UMLSSynonymExpander:
         # to prevent abbreviation confusion (e.g., MI matching "milia" instead
         # of "Myocardial Infarction" in Condition domain).
         # Toggle: AGENT2_UMLS_STRICT (default "true").
-        strict = os.environ.get("AGENT2_UMLS_STRICT", "true").lower() == "true"
+        strict = env_flag_enabled("AGENT2_UMLS_STRICT")
         if strict and domain_hint and len(query.strip()) <= 5:
             logger.info(
                 f"[UMLS] Short query '{query}' with domain={domain_hint}: "

@@ -90,7 +90,7 @@ def test_should_surface_the_extraction_failure_when_nct_generation_fails(
 ) -> None:
     """The defect: a truncated extraction became a completed zero-criteria draft."""
     monkeypatch.setattr(
-        "src.agents.agent1.parser.get_agent1", lambda **_: _TruncatedAgent()
+        "src.services.tte_service.get_agent1", lambda **_: _TruncatedAgent()
     )
     with pytest.raises(LLMTruncationError):
         service._generate_with_trial_agent_from_nct("NCT01243424")
@@ -101,7 +101,7 @@ def test_should_keep_the_original_cause_when_nct_generation_fails(
 ) -> None:
     """The heuristic's own refusal must not displace the reason the run failed."""
     monkeypatch.setattr(
-        "src.agents.agent1.parser.get_agent1", lambda **_: _TruncatedAgent()
+        "src.services.tte_service.get_agent1", lambda **_: _TruncatedAgent()
     )
     with pytest.raises(LLMTruncationError) as excinfo:
         service._generate_with_trial_agent_from_nct("NCT01243424")
@@ -114,7 +114,7 @@ def test_should_mark_the_job_failed_when_nct_generation_raises(
 ) -> None:
     """A raise must not leave the capability's job stuck reading 'running'."""
     monkeypatch.setattr(
-        "src.agents.agent1.parser.get_agent1", lambda **_: _TruncatedAgent()
+        "src.services.tte_service.get_agent1", lambda **_: _TruncatedAgent()
     )
     study = service.store.create_study({"name": "CAROLINA", "description": ""})
 
@@ -131,7 +131,7 @@ def test_should_not_create_a_draft_artifact_when_nct_generation_raises(
 ) -> None:
     """Nothing to apply means nothing on disk that reads like a proposal."""
     monkeypatch.setattr(
-        "src.agents.agent1.parser.get_agent1", lambda **_: _TruncatedAgent()
+        "src.services.tte_service.get_agent1", lambda **_: _TruncatedAgent()
     )
     study = service.store.create_study({"name": "CAROLINA", "description": ""})
 

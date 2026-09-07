@@ -1,8 +1,12 @@
+import pytest
+
 from src.utils.circe_lint import (
     entry_concept_ids,
+    entry_concept_set,
     entry_concept_set_name,
     entry_matches_expected,
     noop_exclusion_rules,
+    refuse_domain_contradiction,
     rule_names,
 )
 
@@ -204,6 +208,40 @@ def test_should_return_entry_concept_set_name():
     }
 
     assert entry_concept_set_name(expression) == "glimepiride"
+
+
+def test_should_return_the_entry_concept_set_when_it_has_items():
+    concept_set = {
+        "id": 73,
+        "name": "glimepiride",
+        "expression": {"items": [{"concept": {"CONCEPT_ID": 1597756}}]},
+    }
+    expression = {
+        "PrimaryCriteria": {"CriteriaList": [{"DrugEra": {"CodesetId": 73}}]},
+        "ConceptSets": [concept_set],
+    }
+
+    assert entry_concept_set(expression) is concept_set
+
+
+def test_should_return_none_when_the_entry_concept_set_has_no_items():
+    expression = {
+        "PrimaryCriteria": {"CriteriaList": [{"DrugEra": {"CodesetId": 73}}]},
+        "ConceptSets": [{"id": 73, "name": "glimepiride", "expression": {"items": []}}],
+    }
+
+    assert entry_concept_set(expression) is None
+
+
+def test_should_refuse_a_condition_criterion_over_a_drug_set():
+    mapped = {
+        "expression": {
+            "items": [{"concept": {"CONCEPT_ID": 1597756, "DOMAIN_ID": "Drug"}}]
+        }
+    }
+
+    with pytest.raises(ValueError, match="domain contradiction"):
+        refuse_domain_contradiction("ConditionOccurrence", mapped, "Glimepiride")
 
 
 def test_should_accept_comparator_entry_matching_arm2_name_for_active_comparator():

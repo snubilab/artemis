@@ -30,6 +30,7 @@ whatever ends the section.
 """
 import pytest
 
+from src.agents.agent1.eligibility_section import SECTION_CHAR_CAP
 from src.agents.agent1.parser import LogicDecomposer
 
 extract = LogicDecomposer._extract_eligibility_section
@@ -197,7 +198,7 @@ class TestTruncationCutsAtALineBoundary:
             f"this list rather than neatly at its end." for n in range(1, 400)
         )
         section = extract("Inclusion criteria\n" + body)
-        assert len(section) <= LogicDecomposer._SECTION_CHAR_CAP
+        assert len(section) <= SECTION_CHAR_CAP
         assert not section.endswith(" "), "cut inside trailing whitespace"
         assert section.splitlines()[-1].endswith("."), (
             f"the cap cut a criterion in half: {section.splitlines()[-1]!r}"

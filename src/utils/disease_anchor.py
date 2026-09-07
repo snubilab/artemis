@@ -82,7 +82,7 @@ class DiseaseAnchorError(ValueError):
     """No single Condition concept set answers to the trial's registered condition.
 
     A ``ValueError`` so it lands in the same handling as the generator's other
-    refusals (``TTEService._refuse_domain_contradiction``): the arm surfaces as
+    refusals (``circe_lint.refuse_domain_contradiction``): the arm surfaces as
     unbuildable and the export reports a missing arm, rather than shipping a
     plausible-looking cohort anchored on the wrong disease.
     """

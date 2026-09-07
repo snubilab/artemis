@@ -62,6 +62,7 @@ from src.api.models.tte import (
     SuggestionArtifactMeta,
     TTEArtifact,
     TTEJob,
+    PaperStatus,
     TTEStudy,
     ValidationIssue,
     ValidationPayload,
@@ -79,9 +80,22 @@ from src.services.restated_distinctness import (
     COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
     collapse_all_restated_criteria,
 )
+from src.agents.agent1.parser import get_agent1  # lazy factory; import does not construct Agent 1
+from src.agents.agent2.criterion_cache import (
+    CriterionCacheEntry,
+    _cache_enabled as _criterion_cache_enabled,
+    get_criterion_cache,
+)
 from src.services.tte_store import TTEStore
 from src.services.value_constraint import build_measurement_value_filter
-from src.utils.circe_lint import end_entry_colliding_washouts_before_index
+from src.utils.circe_lint import (
+    CRITERIA_TYPE_DOMAINS,
+    criteria_types_by_codeset,
+    end_entry_colliding_washouts_before_index,
+    entry_concept_ids,
+    entry_concept_set,
+    refuse_domain_contradiction,
+)
 from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
 from src.utils.exceptions import LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
@@ -604,6 +618,17 @@ class TTEService:
             },
         )
 
+    def _fail_job(self, job, error: str) -> None:
+        """Write status=failed, finishedAt, and error. Caller raises after this."""
+        self.store.update_job(
+            job["id"],
+            {
+                "status": "failed",
+                "finishedAt": utc_now_iso(),
+                "error": error,
+            },
+        )
+
     def run_generate_draft(self, study_id: int, description: str, model_name: str | None = None) -> CapabilityRunResponse:
         study = self.store.get_study(study_id)
         study_version = int(study.get("version") or 1)
@@ -632,14 +657,7 @@ class TTEService:
             try:
                 generated_study = self._heuristic_draft(description)
             except ValueError as refusal:
-                self.store.update_job(
-                    job["id"],
-                    {
-                        "status": "failed",
-                        "finishedAt": utc_now_iso(),
-                        "error": f"{exc} | {refusal}",
-                    },
-                )
+                self._fail_job(job, f"{exc} | {refusal}")
                 raise
             fallback_reason = str(exc)
 
@@ -761,14 +779,7 @@ class TTEService:
                     )
                 )
             except Exception as exc:
-                self.store.update_job(
-                    job["id"],
-                    {
-                        "status": "failed",
-                        "finishedAt": utc_now_iso(),
-                        "error": str(exc),
-                    },
-                )
+                self._fail_job(job, str(exc))
                 raise
             paper_status = paper_status_obj.model_dump() if paper_status_obj is not None else None
             generated_payload = TTEStudy.model_validate(generated_study).model_dump()
@@ -1087,14 +1098,7 @@ class TTEService:
                 meta=meta,
             )
         except Exception as exc:
-            self.store.update_job(
-                job["id"],
-                {
-                    "status": "failed",
-                    "finishedAt": utc_now_iso(),
-                    "error": str(exc),
-                },
-            )
+            self._fail_job(job, str(exc))
             raise
 
     def evaluate_analysis_strategy(
@@ -5078,9 +5082,11 @@ class TTEService:
         """If PrimaryCriteria uses a Drug domain, swap it to a disease
         ConditionOccurrence.
 
-        The anchor is the first Condition-domain concept set the study's own
-        inclusion rules carry, for every study alike. The rules themselves are
-        preserved -- only the entry moves.
+        The anchor is the Condition-domain concept set ``select_disease_anchor``
+        picks from the study's own presence-rule sets against the trial's
+        registered conditions. Document order is not a clinical fact — LEADER's
+        first Condition rule is an alternative cardiovascular-risk qualifier.
+        The rules themselves are preserved -- only the entry moves.
 
         This enables the 'Disease-Based PrimaryCriteria' design where
         Target = disease patients, Treatment = disease + drug PRESENCE,
@@ -5189,18 +5195,10 @@ class TTEService:
         concept set, or when that set is empty. An empty set is not an answer, so the
         caller must still fall back to resolving the arm name.
         """
-        sets_by_id: dict[Any, dict[str, Any]] = {}
-        for concept_set in base.get("ConceptSets") or []:
-            if isinstance(concept_set, dict):
-                sets_by_id[concept_set.get("id")] = concept_set
-        for crit in (base.get("PrimaryCriteria") or {}).get("CriteriaList") or []:
-            for domain, body in crit.items():
-                if domain not in ("DrugEra", "DrugExposure") or not isinstance(body, dict):
-                    continue
-                concept_set = sets_by_id.get(body.get("CodesetId"))
-                if concept_set and (concept_set.get("expression") or {}).get("items"):
-                    return concept_set
-        return None
+        domain, _ids = entry_concept_ids(base)
+        if domain not in ("DrugEra", "DrugExposure"):
+            return None
+        return entry_concept_set(base)
 
     def _build_disease_based_treatment_circe(
         self,
@@ -6100,7 +6098,7 @@ class TTEService:
             workflow=workflow,
         )
         criteria_key = self._seeded_criteria_key(criterion_domain or mapped_criterion["domain"])
-        self._refuse_domain_contradiction(criteria_key, mapped_criterion, label)
+        refuse_domain_contradiction(criteria_key, mapped_criterion, label)
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
         # Flat merge, so Unit lands as a sibling of ValueAsNumber rather than
@@ -6161,55 +6159,6 @@ class TTEService:
             },
             "_mapping_metadata": mapped_criterion.get("mapping_metadata"),
         }
-
-    @staticmethod
-    def _refuse_domain_contradiction(
-        criteria_key: str, mapped_criterion: dict[str, Any], label: str
-    ) -> None:
-        """Raise when the mapped concept set cannot be read from the criterion's own table.
-
-        A criterion carries two independent answers about its domain: the one it declares,
-        which picks the CDM table, and the one the mapper returns with the concept set.
-        Nothing compared them, so a mapper answer from another domain was written into a
-        criterion that cannot read it and the rule matched no row at all.
-
-        CAROLINA is the measured case. Store study 10, `exclusionCriteria` id 25 declares
-        `domain = "Condition"` for "Hypersensitivity to investigational product or
-        glimepiride", but its `sourceText` had already lost the head noun down to
-        "Glimepiride", so the mapper answered with glimepiride Drug products. The emitted
-        `ConditionOccurrence` rule returns 0 persons where the same criterion over a
-        Condition set returns 5,975 of 10,093 -- and because it is an ABSENCE rule,
-        matching nothing means the exclusion is never applied to anybody.
-
-        This is `circe_lint.domain_mismatched_criteria` applied one step earlier, against
-        the same `CRITERIA_TYPE_DOMAINS` table, so the generator stops producing what the
-        delivery gate will reject. Raising rather than emitting is deliberate: the caller
-        records the criterion in `_unmappedCriteria` with this reason and drops it, which
-        leaves the rule honestly absent instead of present and vacuous.
-
-        Silent on the two cases the mapping cannot settle, for the same reason the
-        delivery gate is: a criteria type absent from the table, and a concept set whose
-        items carry no readable `DOMAIN_ID`.
-
-        :param criteria_key: the CIRCE criteria type the rule will be emitted under.
-        :param mapped_criterion: the mapper's answer, in the `_recommend_seeded_concept_set` shape.
-        :param label: the seed the mapper was asked about, for the recorded reason.
-        :raises ValueError: when the set's domains and the table's are disjoint.
-        """
-        from src.utils.circe_lint import CRITERIA_TYPE_DOMAINS, concept_set_domains
-
-        allowed = CRITERIA_TYPE_DOMAINS.get(criteria_key)
-        if allowed is None:
-            return
-        domains = concept_set_domains(mapped_criterion)
-        if not domains or domains & allowed:
-            return
-        raise ValueError(
-            f"criterion domain contradiction: {criteria_key} reads "
-            f"{'/'.join(sorted(allowed))} but the concept set mapped for {label!r} "
-            f"holds only {', '.join(sorted(domains))} concepts, so the rule would match "
-            f"nothing"
-        )
 
     def _resolve_ingredient_concept_id(self, seed: str) -> int | None:
         """Resolve a drug name to the single standard Ingredient concept it names.
@@ -6437,8 +6386,6 @@ class TTEService:
         cannot express a subtraction, so replacing the set would silently re-include what
         the exclusion removed.
         """
-        from src.utils.circe_lint import CRITERIA_TYPE_DOMAINS, criteria_types_by_codeset
-
         concept_sets = base.get("ConceptSets") or []
         names = {
             (cs.get("name") or "").strip().lower()
@@ -6826,11 +6773,9 @@ class TTEService:
                 return _alias
 
         # --- Cache lookup ---
-        _cache_enabled = os.environ.get("CRITERION_CACHE_ENABLED", "true").lower() == "true"
+        _cache_enabled = _criterion_cache_enabled()
         if _cache_enabled:
             try:
-                from src.agents.agent2.criterion_cache import get_criterion_cache
-
                 cache = get_criterion_cache()
                 cached = cache.get(normalized_seed, expected_domain)
                 if cached is not None:
@@ -6919,11 +6864,6 @@ class TTEService:
                         # --- Cache store on Agent2 success ---
                         if _cache_enabled:
                             try:
-                                from src.agents.agent2.criterion_cache import (
-                                    CriterionCacheEntry,
-                                    get_criterion_cache,
-                                )
-
                                 get_criterion_cache().put(
                                     normalized_seed,
                                     expected_domain,
@@ -9954,37 +9894,19 @@ class TTEService:
     def _generate_with_trial_agent_from_nct(
         self, nct_id: str, model_name: str | None = None
     ) -> tuple[dict[str, Any], str, str | None, Any]:
-        from src.api.models.tte import PaperStatus
-
-        generation_mode = "heuristic"
+        generation_mode = "trial_agent"
         fallback_reason: str | None = None
         paper_status: PaperStatus | None = None
+        ir = self._parse_trial_agent_ir_from_nct(nct_id, model_name=model_name)
+        paper_status = self._get_last_paper_status()
+        study_ir = ir
         try:
-            ir = self._parse_trial_agent_ir_from_nct(nct_id, model_name=model_name)
-            paper_status = self._get_last_paper_status()
-            study_ir = ir
-            try:
-                planned_ir = deepcopy(ir)
-                refined_ir = self._plan_trial_agent_ir(planned_ir, model_name=model_name)
-                study_ir = refined_ir if refined_ir is not None else planned_ir
-            except Exception as exc:
-                fallback_reason = str(exc)
-            generated_study = self._study_from_ir(study_ir, f"Imported from {nct_id}", source="nct")
-            generation_mode = "trial_agent"
+            planned_ir = deepcopy(ir)
+            refined_ir = self._plan_trial_agent_ir(planned_ir, model_name=model_name)
+            study_ir = refined_ir if refined_ir is not None else planned_ir
         except Exception as exc:
-            # The heuristic has nothing to work with here: what it would be handed is
-            # a synthesised label, not a question, so it refuses (see _heuristic_draft)
-            # and the extraction failure -- the truncation, the parse error, whatever
-            # it was -- is what the caller sees instead of a zero-criteria draft.
-            try:
-                generated_study = self._heuristic_draft(
-                    f"Target trial emulation from {nct_id}"
-                )
-            except ValueError:
-                raise exc
-            generated_study["description"] = f"Imported from {nct_id}"
-            generated_study.setdefault("outcomes", {}).setdefault("primary", {})["source"] = "nct"
             fallback_reason = str(exc)
+        generated_study = self._study_from_ir(study_ir, f"Imported from {nct_id}", source="nct")
 
         trial_metadata = self._fetch_nct_trial_metadata(nct_id)
         generated_study["trialMetadata"] = trial_metadata
@@ -9994,8 +9916,6 @@ class TTEService:
     def _get_last_paper_status(self) -> Any:
         """Return last_paper_status from the singleton agent1 parser, or None."""
         try:
-            from src.agents.agent1.parser import get_agent1
-
             return get_agent1().last_paper_status
         except Exception:
             return None
@@ -10102,13 +10022,9 @@ class TTEService:
         return metadata
 
     def _parse_trial_agent_ir(self, description: str, model_name: str | None = None) -> Any:
-        from src.agents.agent1.parser import get_agent1
-
         return get_agent1(model_name=model_name).parse(description)
 
     def _parse_trial_agent_ir_from_nct(self, nct_id: str, model_name: str | None = None) -> Any:
-        from src.agents.agent1.parser import get_agent1
-
         return get_agent1(model_name=model_name).parse_nct(nct_id)
 
     def _plan_trial_agent_ir(self, ir: Any, model_name: str | None = None) -> Any:

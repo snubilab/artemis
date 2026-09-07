@@ -111,6 +111,22 @@ def entry_concept_ids(expression: dict[str, Any]) -> tuple[str, set[int]]:
     return domain, concept_ids
 
 
+def entry_concept_set(expression: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the ``ConceptSets`` entry the ``PrimaryCriteria`` entry references.
+
+    Returns ``None`` when there is no entry criterion, the codeset cannot be
+    found, or the set has no items. Domain filtering (Drug vs Condition) is
+    the caller's job — this is the resolved set, not a clinical choice.
+    """
+    _domain, codeset_id = _entry_domain_and_codeset(expression)
+    concept_set = _find_concept_set(expression, codeset_id)
+    if concept_set is None:
+        return None
+    if not (concept_set.get("expression") or {}).get("items"):
+        return None
+    return concept_set
+
+
 def entry_concept_set_name(expression: dict[str, Any]) -> str | None:
     """Return the ``name`` of the ``ConceptSets`` entry the ``PrimaryCriteria``
     entry criterion references, or ``None`` when it cannot be resolved.
@@ -498,7 +514,7 @@ def concept_set_domains(concept_set: dict[str, Any]) -> set[str]:
     An item with no readable ``DOMAIN_ID`` contributes nothing rather than a guess.
 
     Public because the generator asks the same question one step earlier, before a
-    criterion is emitted (``TTEService._refuse_domain_contradiction``): the delivery gate
+    criterion is emitted (:func:`refuse_domain_contradiction`): the delivery gate
     and the generator must read a concept set's domains the same way or the generator can
     emit a shape the gate then rejects.
 
@@ -516,6 +532,53 @@ def concept_set_domains(concept_set: dict[str, Any]) -> set[str]:
             if part:
                 domains.add(_DOMAIN_ABBREVIATIONS.get(part, part))
     return domains
+
+
+def refuse_domain_contradiction(
+    criteria_key: str, mapped_criterion: dict[str, Any], label: str
+) -> None:
+    """Raise when the mapped concept set cannot be read from the criterion's own table.
+
+    A criterion carries two independent answers about its domain: the one it declares,
+    which picks the CDM table, and the one the mapper returns with the concept set.
+    Nothing compared them, so a mapper answer from another domain was written into a
+    criterion that cannot read it and the rule matched no row at all.
+
+    CAROLINA is the measured case. Store study 10, `exclusionCriteria` id 25 declares
+    `domain = "Condition"` for "Hypersensitivity to investigational product or
+    glimepiride", but its `sourceText` had already lost the head noun down to
+    "Glimepiride", so the mapper answered with glimepiride Drug products. The emitted
+    `ConditionOccurrence` rule returns 0 persons where the same criterion over a
+    Condition set returns 5,975 of 10,093 -- and because it is an ABSENCE rule,
+    matching nothing means the exclusion is never applied to anybody.
+
+    This is :func:`domain_mismatched_criteria` applied one step earlier, against
+    the same :data:`CRITERIA_TYPE_DOMAINS` table, so the generator stops producing what
+    the delivery gate will reject. Raising rather than emitting is deliberate: the
+    caller records the criterion in `_unmappedCriteria` with this reason and drops it,
+    which leaves the rule honestly absent instead of present and vacuous.
+
+    Silent on the two cases the mapping cannot settle, for the same reason the
+    delivery gate is: a criteria type absent from the table, and a concept set whose
+    items carry no readable `DOMAIN_ID`.
+
+    :param criteria_key: the CIRCE criteria type the rule will be emitted under.
+    :param mapped_criterion: the mapper's answer, in the seeded-concept-set shape.
+    :param label: the seed the mapper was asked about, for the recorded reason.
+    :raises ValueError: when the set's domains and the table's are disjoint.
+    """
+    allowed = CRITERIA_TYPE_DOMAINS.get(criteria_key)
+    if allowed is None:
+        return
+    domains = concept_set_domains(mapped_criterion)
+    if not domains or domains & allowed:
+        return
+    raise ValueError(
+        f"criterion domain contradiction: {criteria_key} reads "
+        f"{'/'.join(sorted(allowed))} but the concept set mapped for {label!r} "
+        f"holds only {', '.join(sorted(domains))} concepts, so the rule would match "
+        f"nothing"
+    )
 
 
 def _criterion_references(body: dict[str, Any]) -> list[tuple[str, Any]]:

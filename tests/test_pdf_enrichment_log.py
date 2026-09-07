@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from src.agents.agent1 import parser as parser_module
+from src.agents.agent1.eligibility_section import Truncated, extract_eligibility_section
 from src.agents.agent1.parser import LogicDecomposer
 
 PDF_PATH = "/app/data/papers/NCT00412984/nejmoa1107039_appendix.pdf"
@@ -242,25 +243,30 @@ class TestTheSectionCapIsAnnounced:
     """A4 — ARISTOTLE's protocol hits the 20000-char cap exactly, and the log
     said `20000 chars` with nothing to say a tail had been discarded."""
 
-    def test_should_report_the_dropped_tail_when_the_section_cap_fires(self, capsys):
+    def test_should_report_the_dropped_tail_when_the_section_cap_fires(
+        self, monkeypatch, capsys
+    ):
         # No end-of-section heading anywhere, so the section is the whole text
-        # and the arithmetic below is exact.
+        # and the arithmetic below is exact. The heading module returns
+        # Truncated without printing; `_enrich_from_pdf` is who announces it.
         filler = "\n1. A criterion that is repeated to overflow the cap." * 900
         text = "INCLUSION CRITERIA\n1. Age 18 or older" + filler
+        result = extract_eligibility_section(text)
+        assert isinstance(result, Truncated)
 
-        section = LogicDecomposer._extract_eligibility_section(text, pdf_name=PDF_NAME)
+        _enrich(monkeypatch, stdout=text)
 
-        assert len(section) <= LogicDecomposer._SECTION_CHAR_CAP
         emitted = capsys.readouterr().out
         assert "truncat" in emitted.lower(), "the cap fired silently"
         assert PDF_NAME in emitted
-        dropped = len(text.strip()) - len(section)
-        assert str(dropped) in emitted, (
-            f"the log does not say how much was dropped ({dropped} chars)"
+        assert str(result.dropped) in emitted, (
+            f"the log does not say how much was dropped ({result.dropped} chars)"
         )
 
-    def test_should_stay_quiet_when_the_section_fits_under_the_cap(self, capsys):
-        LogicDecomposer._extract_eligibility_section(GOOD_TEXT, pdf_name=PDF_NAME)
+    def test_should_stay_quiet_when_the_section_fits_under_the_cap(
+        self, monkeypatch, capsys
+    ):
+        _enrich(monkeypatch, stdout=GOOD_TEXT)
         assert "truncat" not in capsys.readouterr().out.lower()
 
 

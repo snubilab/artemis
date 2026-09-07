@@ -1,11 +1,11 @@
 import logging
-import os
 from typing import List, Optional, Dict, Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
+from src.utils.env_flags import env_flag_enabled
 from src.utils.llm import get_llm
 from src.agents.agent2.retriever import CandidateConcept
 
@@ -84,7 +84,7 @@ class ConceptReranker:
         self.llm = get_llm(temperature=0.0, json_mode=True)
         self.parser = JsonOutputParser(pydantic_object=RerankResult)
 
-        domain_aware = os.environ.get("AGENT2_RERANKER_DOMAIN_AWARE", "true").lower() == "true"
+        domain_aware = env_flag_enabled("AGENT2_RERANKER_DOMAIN_AWARE")
         domain_section = _DOMAIN_GROUNDING_INSTRUCTION if domain_aware else ""
 
         system_msg = (
