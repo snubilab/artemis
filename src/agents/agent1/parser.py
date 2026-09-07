@@ -765,6 +765,58 @@ class LogicDecomposer:
         """
         return "supplement_priority" if role in cls._PDF_AUTHORITATIVE_ROLES else "merge"
 
+    # Appended to every per-PDF failure. `_enrich_from_pdf` runs once per
+    # discovered PDF, so one PDF failing is not the study failing. On the
+    # 2026-09-07 cold run ARISTOTLE's appendix failed three lines after its own
+    # protocol had succeeded (5 -> 9 inclusion, 0 -> 21 exclusion), and the pair
+    # was read as a single verdict: "PDF enrichment is broken for ARISTOTLE".
+    _PDF_FAILURE_SCOPE_NOTE = (
+        "This is one PDF, not the study — other PDFs for this study may still succeed."
+    )
+
+    @staticmethod
+    def _report_pdf_outcome(pdf_name: str, message: str, *, degraded: bool = False) -> None:
+        """Announce one per-PDF enrichment outcome, on one channel, in one line.
+
+        Success used to go through ``logger.info`` and failure through
+        ``warnings.warn``. Measured in-container on 2026-09-07: this module's
+        logger has effective level WARNING and the root logger has no handlers,
+        so the INFO record produced no output while the warning did — a reader
+        of an unconfigured run saw only the failures and read the pipeline as
+        more broken than it was. Both outcomes now go to stdout, alongside the
+        progress lines this module already prints, so one cannot appear without
+        the other.
+
+        Configuring logging stays the entry point's job
+        (``scripts/reingest_protocol_pdfs.py`` calls ``configure_logging``);
+        nothing here touches logging configuration.
+
+        :param pdf_name: Basename of the PDF this outcome belongs to. Every
+            outcome names its PDF, because a study has several and the log
+            interleaves them.
+        :param message: What happened. Newlines are collapsed so one outcome is
+            one grep-able line.
+        :param degraded: True when the result is worse than intended — a
+            failure, a fallback, a truncation. Marked ``⚠`` so a reader can
+            separate the degraded outcomes from the healthy ones.
+        """
+        marker = "⚠" if degraded else "•"
+        where = f"[{pdf_name}] " if pdf_name else ""
+        print(f"[Agent 1] {marker} {where}{' '.join(message.split())}")
+
+    @classmethod
+    def _report_pdf_failure(cls, pdf_name: str, message: str) -> None:
+        """Announce a per-PDF enrichment failure, scoped to that PDF.
+
+        :param pdf_name: Basename of the PDF that failed.
+        :param message: Why it failed.
+        """
+        cls._report_pdf_outcome(
+            pdf_name,
+            f"PDF enrichment FAILED: {message} {cls._PDF_FAILURE_SCOPE_NOTE}",
+            degraded=True,
+        )
+
     def _enrich_from_pdf(
         self, trial_data: TrialData, pdf_path: str, role: str = "main"
     ) -> TrialData:
@@ -779,33 +831,33 @@ class LogicDecomposer:
 
         Uses pdftotext to extract full text, then parses inclusion/exclusion sections.
         """
-        import subprocess
-        import warnings
         import re
-        
+        import subprocess
+
+        pdf_name = os.path.basename(pdf_path)
         print(f"[Agent 1] 📄 Enriching from PDF: {pdf_path}")
-        
+
         try:
             result = subprocess.run(
                 ['pdftotext', pdf_path, '-'],
                 capture_output=True, text=True, timeout=30
             )
             if result.returncode != 0:
-                warnings.warn(
-                    f"[Agent 1] ⚠ PDF enrichment FAILED: pdftotext returned code {result.returncode}. "
+                self._report_pdf_failure(
+                    pdf_name,
+                    f"pdftotext returned code {result.returncode}. "
                     f"stderr: {result.stderr[:200]}",
-                    RuntimeWarning, stacklevel=2
                 )
                 return trial_data
-            
+
             full_text = result.stdout
             if not full_text or len(full_text) < 100:
-                warnings.warn(
-                    f"[Agent 1] ⚠ PDF enrichment FAILED: Extracted text too short ({len(full_text or '')} chars).",
-                    RuntimeWarning, stacklevel=2
+                self._report_pdf_failure(
+                    pdf_name,
+                    f"extracted text too short ({len(full_text or '')} chars).",
                 )
                 return trial_data
-            
+
             # Clean up PDF artifacts
             full_text = re.sub(r'Downloaded from .*?\n', '', full_text)
             full_text = re.sub(r'Copyright © .*?\n', '', full_text)
@@ -813,62 +865,82 @@ class LogicDecomposer:
             
             # Extract ONLY the eligibility criteria section, not the entire PDF.
             # This prevents tables, figures, author lists etc. from being parsed as criteria.
-            eligibility_section = self._extract_eligibility_section(full_text)
-            
+            eligibility_section = self._extract_eligibility_section(full_text, pdf_name=pdf_name)
+
             if eligibility_section:
-                print(f"[Agent 1] 📄 Extracted eligibility section: {len(eligibility_section)} chars "
-                      f"(from {len(full_text)} total)")
+                self._report_pdf_outcome(
+                    pdf_name,
+                    f"eligibility section extracted: {len(eligibility_section)} chars "
+                    f"(from {len(full_text)} total)",
+                )
                 pdf_criteria = extract_eligibility_from_text(eligibility_section)
             else:
-                # Fallback: use full text if no section found (e.g., short abstracts)
-                print(f"[Agent 1] 📄 No eligibility section found, using full text ({len(full_text)} chars)")
+                # Not a neutral note. The section extractor exists to keep tables,
+                # figures and author lists out of the criteria; parsing the whole
+                # paper is the failure mode it was written to prevent, and on the
+                # 2026-09-07 cold run it ran over as much as 153431 chars.
+                self._report_pdf_outcome(
+                    pdf_name,
+                    f"DEGRADED: no eligibility section found — parsing the whole paper "
+                    f"({len(full_text)} chars) instead, so tables, figures and author "
+                    f"lists can be read as criteria.",
+                    degraded=True,
+                )
                 pdf_criteria = extract_eligibility_from_text(full_text)
-            
+
             if not pdf_criteria["inclusion"] and not pdf_criteria["exclusion"]:
-                warnings.warn(
-                    f"[Agent 1] ⚠ PDF enrichment FAILED: No eligibility criteria found in PDF text. "
-                    f"The PDF may not contain structured inclusion/exclusion sections. "
-                    f"Proceeding with NCT-only criteria (likely incomplete).",
-                    RuntimeWarning, stacklevel=2
+                self._report_pdf_failure(
+                    pdf_name,
+                    "no eligibility criteria found in the PDF text. The PDF may not "
+                    "contain structured inclusion/exclusion sections. Proceeding with "
+                    "NCT-only criteria for this PDF (likely incomplete).",
                 )
                 return trial_data
-            
+
             strategy = self._strategy_for_role(role)
             enriched = enrich_trial_data(trial_data, pdf_criteria, strategy=strategy)
-            logger.info(
-                "[Agent 1] PDF enriched (strategy=%s): %d -> %d inclusion, %d -> %d exclusion",
-                strategy,
-                len(trial_data.inclusion_criteria), len(enriched.inclusion_criteria),
-                len(trial_data.exclusion_criteria), len(enriched.exclusion_criteria),
+            self._report_pdf_outcome(
+                pdf_name,
+                f"PDF enriched ({strategy}): "
+                f"{len(trial_data.inclusion_criteria)} -> "
+                f"{len(enriched.inclusion_criteria)} inclusion, "
+                f"{len(trial_data.exclusion_criteria)} -> "
+                f"{len(enriched.exclusion_criteria)} exclusion",
             )
-            print(f"[Agent 1] PDF enriched ({strategy}): "
-                  f"{len(trial_data.inclusion_criteria)} -> "
-                  f"{len(enriched.inclusion_criteria)} inclusion, "
-                  f"{len(trial_data.exclusion_criteria)} -> "
-                  f"{len(enriched.exclusion_criteria)} exclusion")
-            
+
             return enriched
-            
+
         except FileNotFoundError:
-            warnings.warn(
-                f"[Agent 1] ⚠ PDF enrichment FAILED: pdftotext not found. "
-                f"Install with: brew install poppler (macOS) or apt install poppler-utils (Linux).",
-                RuntimeWarning, stacklevel=2
+            self._report_pdf_failure(
+                pdf_name,
+                "pdftotext not found. Install with: brew install poppler (macOS) "
+                "or apt install poppler-utils (Linux).",
             )
             return trial_data
         except Exception as e:
-            warnings.warn(
-                f"[Agent 1] ⚠ PDF enrichment FAILED with exception: {e}. "
-                f"Proceeding with NCT-only criteria (likely incomplete).",
-                RuntimeWarning, stacklevel=2
+            self._report_pdf_failure(
+                pdf_name,
+                f"unexpected exception: {e}. Proceeding with NCT-only criteria "
+                f"for this PDF (likely incomplete).",
             )
             return trial_data
     
+    #: Ceiling on the returned section, to keep the downstream LLM prompt bounded.
+    #: ARISTOTLE's protocol hits it exactly, which is why the truncation is
+    #: announced: "20000 chars" printed on its own is indistinguishable from a
+    #: section that happens to be that long.
+    _SECTION_CHAR_CAP = 20000
+
     @staticmethod
-    def _extract_eligibility_section(full_text: str) -> Optional[str]:
+    def _extract_eligibility_section(full_text: str, pdf_name: str = "") -> Optional[str]:
         """
         Extract ONLY the eligibility criteria section from PDF full text.
-        
+
+        :param full_text: The whole pdftotext output for one PDF.
+        :param pdf_name: Basename of the PDF, used only to name the source in a
+            truncation notice. Optional so existing single-argument callers keep
+            working.
+
         Looks for section headings like:
         - "Inclusion and exclusion criteria"
         - "Inclusion criteria"
@@ -934,10 +1006,20 @@ class LogicDecomposer:
         # Sanity check: section should be reasonable length
         if len(section) < 50:
             return None
-        if len(section) > 20000:
-            # Cap at 20K chars to avoid LLM token explosion
-            section = section[:20000]
-        
+        cap = LogicDecomposer._SECTION_CHAR_CAP
+        if len(section) > cap:
+            # Cap to avoid LLM token explosion. Say so: this drops the tail of a
+            # real eligibility section, and the caller's "N chars" line cannot
+            # distinguish a capped section from one that is naturally that long.
+            dropped = len(section) - cap
+            section = section[:cap]
+            LogicDecomposer._report_pdf_outcome(
+                pdf_name,
+                f"eligibility section TRUNCATED at the {cap}-char cap — "
+                f"{dropped} chars of the section were dropped and are not read as criteria.",
+                degraded=True,
+            )
+
         return section
     
     def _enrich_from_pubmed(
