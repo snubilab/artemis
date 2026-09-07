@@ -3575,33 +3575,36 @@ class TTEService:
                 )
                 if concept_set is None:
                     concept_set = concept_sets_by_criterion_id.get(criterion_key)
-            if concept_set is None:
-                concept_set = self._concept_set_from_ref(
-                    concept_sets_by_id,
-                    (criterion_concept_set_refs or {}).get(criterion_id),
-                )
-            if concept_set is None:
-                concept_set = concept_sets_by_criterion_id.get(criterion_id)
-            # No positional fallback. The producer refuses to mint a concept set on
-            # four grounds this loop's skip branch cannot see -- the two restated-*
-            # collapse drops, a mapping that returned None, and
-            # refuse_domain_contradiction -- so an index derived from "how many rows
-            # have I walked" ran ahead of the list it indexes and handed a refused
-            # criterion its NEIGHBOUR's concept set. Replayed over the six cold-run
-            # studies in tmp/tte_cold6_32k_20260907, the fallback fired 13 times, on
-            # 13 producer-refused rows and on nothing else: 13 wrong answers, 0 right
-            # ones. A refused criterion now keeps the conceptSetId=None /
-            # conceptSetName="" that _criterion_dict_from_ir_item already writes,
-            # which leaves the rule honestly absent instead of matching the wrong
-            # patients.
+            # The two ROLE-KEYED lookups above are the whole resolution. There is no
+            # bare-id lookup and no positional fallback, because both guessed, and on
+            # the six cold-run studies in tmp/tte_cold6_32k_20260907 every guess either
+            # of them made was wrong -- 20 wrong answers, 0 right ones between them.
             #
-            # NOT fixed here: 7 further refused rows in that store still collect a
-            # neighbour's set through the BARE-ID ref two branches above. Inclusion
-            # and exclusion criteria are numbered in independent sequences, so the
-            # role-blind key `criterion_concept_set_refs[str(criterion_id)]` collides
-            # -- study 10 exclusion 42 has no `exclusion:42` ref and picks up the
-            # `42` written for INCLUSION 42 ('Urinary albumin creatinine ratio').
-            # All 7 verified to be exactly that collision. Separate defect.
+            # Bare id (removed): inclusion and exclusion criteria are numbered in
+            # INDEPENDENT sequences, so `refs[str(criterion_id)]` and
+            # `concept_sets_by_criterion_id[str(criterion_id)]` structurally cannot tell
+            # inclusion:42 from exclusion:42 -- and the producer writes a bare key beside
+            # every role key it mints, so the other role's answer is always sitting there
+            # when this role's criterion was refused. The two sequences overlap on
+            # 18/16/11/14/13/49 ids across those studies; the role-blind paths resolved 7
+            # rows, all 7 producer-refused, and in all 7 the id was the OTHER role's.
+            # Study 10 exclusion:42 "Thiazolidinediones" (Drug, ABSENCE, refused as a
+            # restated-distinctness duplicate) collected concept set 31 'Urinary albumin
+            # creatinine ratio', minted for inclusion:42, a Measurement rule. The ref
+            # variant shadowed the metadata variant, so the latter measured 0 under the
+            # live ordering; in isolation it resolves the same 7 rows, which is why they
+            # were removed together rather than one after the other.
+            #
+            # Positional (removed): the producer refuses to mint a concept set on four
+            # grounds this loop's skip branch cannot see -- the two restated-* collapse
+            # drops, a mapping that returned None, and refuse_domain_contradiction -- so
+            # an index derived from "how many rows have I walked" ran ahead of the list
+            # it indexes and handed a refused criterion its NEIGHBOUR's concept set. It
+            # fired 13 times, on 13 producer-refused rows and on nothing else.
+            #
+            # A criterion the role-keyed paths miss now keeps the conceptSetId=None /
+            # conceptSetName="" that _criterion_dict_from_ir_item already writes, which
+            # leaves the rule honestly absent instead of matching the wrong patients.
             if isinstance(concept_set, dict):
                 enriched["conceptSetId"] = concept_set.get("id")
                 enriched["conceptSetName"] = concept_set.get("name") or enriched.get(

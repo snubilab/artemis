@@ -547,7 +547,15 @@ class TestStructuredTargetGuardrails:
                 "PrimaryCriteriaLimit": {"Type": "First"},
             },
             "InclusionRules": [],
+            # Role-keyed, as _build_seeded_target_circe always writes it: it sets
+            # criterion_mapping_meta["<role>:<id>"] unconditionally and adds the bare
+            # "<id>" alias only via setdefault. Measured over the six cold-run studies
+            # in tmp/tte_cold6_32k_20260907: 195 bare metadata keys, 0 of them
+            # bare-only. A bare-only key is a state the producer cannot emit, and the
+            # role-blind lookup that used to read one crossed inclusion into exclusion.
             "_criterionMappingMetadata": {
+                "inclusion:101": {"selectedConceptIds": [4324124]},
+                "inclusion:102": {"selectedConceptIds": [1502826]},
                 "101": {"selectedConceptIds": [4324124]},
                 "102": {"selectedConceptIds": [1502826]},
             },
