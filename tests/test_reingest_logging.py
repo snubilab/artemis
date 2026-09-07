@@ -67,3 +67,26 @@ class TestTheRunCanSeeItsOwnTokenHeadroom:
         logging.getLogger(PIPELINE_LOGGER).info("once")
 
         assert capsys.readouterr().err.count("once") == 1
+
+    def test_should_emit_once_when_the_root_logger_also_has_a_handler(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The run configures logging itself, but something in the import chain configures
+        the root logger too — observed mid-run, where ARISTOTLE's token line appeared once
+        and PLATO's appeared twice. Without propagate=False the record reaches both
+        handlers and every INFO line doubles, which makes a log that exists to be counted
+        unreliable for counting."""
+        root = logging.getLogger()
+        root_handler = logging.StreamHandler(sys.stderr)
+        root.addHandler(root_handler)
+        root_level = root.level
+        root.setLevel(logging.INFO)
+        try:
+            configure_logging()
+
+            logging.getLogger(PIPELINE_LOGGER).info("token usage: prompt=1")
+
+            assert capsys.readouterr().err.count("token usage: prompt=1") == 1
+        finally:
+            root.removeHandler(root_handler)
+            root.setLevel(root_level)

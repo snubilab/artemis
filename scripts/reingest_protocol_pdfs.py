@@ -136,6 +136,10 @@ def configure_logging() -> None:
     handler.setFormatter(logging.Formatter(LOG_FORMAT))
     pipeline.addHandler(handler)
     pipeline.setLevel(logging.INFO)
+    # Something in the service import chain configures the root logger partway through a
+    # run. Without this, records reach both handlers from that point on and every INFO
+    # line doubles -- observed mid-run, ARISTOTLE's token line once and PLATO's twice.
+    pipeline.propagate = False
 
 
 def main() -> int:
