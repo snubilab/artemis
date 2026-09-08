@@ -13,11 +13,19 @@ This script:
 1. Requires an explicit ``--store`` path and aborts via
    :func:`src.utils.store_resolution.resolve_store_path` if ``TTE_STORE_PATH``
    disagrees with it — no silent fallback, no override flag.
-2. Builds each requested study's per-arm CIRCE the same way the scratch
+2. Pins drug-anchored entry via
+   :func:`src.utils.delivery_mode.resolve_drug_anchored_entry` and prints the mode
+   it resolved. For a delivery export a treatment arm entering on its own drug is
+   not an option but the definition of a treatment arm, so the mode is not left to
+   the caller's memory: it is set here, said out loud, and recorded in the
+   manifest. On 2026-09-08 the same run without ``TTE_DRUG_ANCHORED_ENTRY`` in the
+   environment produced six disease-anchored treatment arms and two arms that could
+   not be built at all.
+3. Builds each requested study's per-arm CIRCE the same way the scratch
    scripts did: call ``TTEService._build_seeded_cohort_artifact_payload``
    with ``WebAPIClient.create_cohort_definition`` monkeypatched to capture
    ``(name, expression)`` instead of touching the live WebAPI.
-3. Lints every emitted file with ``src.utils.circe_lint`` before approving
+4. Lints every emitted file with ``src.utils.circe_lint`` before approving
    the batch: a no-op exclusion rule, or an entry concept-set that does not
    match the store's own entry (see ``entry_matches_expected`` for the one
    sanctioned exception — a disease-anchored comparator), is a violation.
@@ -47,6 +55,10 @@ from typing import Any
 # aborts, never a silent env fallback.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.utils.delivery_mode import (  # noqa: E402
+    DeliveryModeConflictError,
+    resolve_drug_anchored_entry,
+)
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
 
@@ -192,6 +204,16 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _build_arg_parser().parse_args(argv)
     _configure_logging()
+
+    # Resolved before the store, and reported, because it decides what a cohort
+    # MEANS while the store decides which data it is built from. Printing it is the
+    # point: a mode that is set silently is the hazard this replaces.
+    try:
+        mode = resolve_drug_anchored_entry()
+    except DeliveryModeConflictError as exc:
+        print(f"ABORT: {exc}", file=sys.stderr)
+        return 2
+    print(mode.summary(), file=sys.stderr)
 
     try:
         store_path = resolve_store_path(args.store)
@@ -411,6 +433,7 @@ def main(argv: list[str] | None = None) -> int:
         ).isoformat(),
         "env_TTE_STORE_PATH": os.environ.get("TTE_STORE_PATH"),
         "TTE_DRUG_ANCHORED_ENTRY": os.environ.get("TTE_DRUG_ANCHORED_ENTRY"),
+        "TTE_DRUG_ANCHORED_ENTRY_source": mode.source,
         "git_head": _git_head(repo_dir),
         "studies": manifest_studies,
         "files": manifest_files,

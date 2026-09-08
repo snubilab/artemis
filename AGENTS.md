@@ -246,8 +246,14 @@ writes no manifest.
 - Per-arm CIRCE for hospital/site delivery is produced only by `scripts/export_seeded_cohorts.py`
   with an explicit `--store`; a `TTE_STORE_PATH` mismatch aborts the run rather than silently
   overriding it. `scripts/verify_circe_delivery.py` must pass on the export directory before
-  anything is sent. The 2026-08-31 delivery (`output/circe_be/2026-08-31/`) — stale-store export,
-  62 no-op inclusion rules, a wrong EMPA-REG entry concept set — is the counterexample both gates
+  anything is sent. Do not pass `TTE_DRUG_ANCHORED_ENTRY` on a delivery command line and do not
+  add a flag for it: both scripts pin it through
+  `src/utils/delivery_mode.resolve_drug_anchored_entry`, print the mode they resolved, and abort
+  if the environment explicitly disables it. A treatment arm entering on a disease rather than
+  on its own drug collects patients who never took the drug; the 2026-09-08 export, run without
+  the variable, produced six of them plus two arms that could not be built at all.
+  The 2026-08-31 delivery (`output/circe_be/2026-08-31/`) — stale-store export, 62 no-op
+  inclusion rules, a wrong EMPA-REG entry concept set — is the counterexample both gates
   exist to catch.
 - Do not infer a measurement's unit from its value distribution. An exclusion threshold sits in the abnormal tail by design, so "outside the observed range" is what a *correct* threshold looks like; the molar cases that must be refused score better than the decimal cases that must be accepted. Achilles 1815 is a sound detector and an unsound repairer.
 - Do not retype a wire-format constant (for example the `[OR-GROUP]` prefix, join, and separator). Import it from its owning module; `tests/test_dry_or_group_contract.py` fails if a second copy appears, and a guessed format silently makes every probe against it return `False`.

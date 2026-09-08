@@ -81,6 +81,10 @@ from src.utils.circe_lint import (  # noqa: E402
     noop_exclusion_rules,
     rule_names,
 )
+from src.utils.delivery_mode import (  # noqa: E402
+    DeliveryModeConflictError,
+    resolve_drug_anchored_entry,
+)
 from src.utils.disease_anchor import DiseaseAnchorError, expected_anchor_concept_ids
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
@@ -163,6 +167,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_arg_parser().parse_args(argv)
+
+    # The same resolver the exporter runs, for the same reason and in the same
+    # order. Check (c) below expects a treatment arm's entry to equal the store's
+    # own DrugEra entry, which is only what a drug-anchored export produces; a gate
+    # resolving a different mode from the exporter compares against the wrong
+    # expected entry, which is worse than no gate at all.
+    try:
+        mode = resolve_drug_anchored_entry()
+    except DeliveryModeConflictError as exc:
+        print(f"ABORT: {exc}", file=sys.stderr)
+        return 2
+    print(mode.summary(), file=sys.stderr)
 
     try:
         store_path = resolve_store_path(args.store)
