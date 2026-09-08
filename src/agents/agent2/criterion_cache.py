@@ -4,7 +4,20 @@ Criterion Result Cache -- Thread-safe TTL+LRU cache for Agent2 mapping results.
 Caches the full output of Agent2 mapping per criterion text so re-runs of
 process_eligibility can skip Agent2 for unchanged criteria.
 
-Cache key: SHA256(normalize(text) + "|" + domain + "|" + EMBEDDING_MODEL + "|" + LLM_MODEL)
+Cache key: SHA256(normalize(text) | domain | embedding model | LLM_MODEL
+                  | critic_signature() | mapping_signature())
+
+The last two parts exist because the first four did not describe the run. Eight
+environment variables change what Agent 2 emits and appeared in no key part, so
+flipping one re-mapped fresh criteria while cached criteria replayed the old mode --
+one export carrying both. ``mapping_signature()`` closes that; see
+:mod:`src.utils.mapping_flags` for which flags are in it and why each of the two
+excluded ones is excluded.
+
+The embedding part is canonicalised rather than taken raw: ``settings.py`` spells the
+MiniLM default ``"default"`` and this module spelled it ``"minilm"``, so setting the
+variable to the literal ``"default"`` re-namespaced the entire cache without changing
+a single embedding.
 
 Configuration (env vars):
     CRITERION_CACHE_TTL_HOURS:   TTL in hours (default: 24)
@@ -27,6 +40,7 @@ from pydantic import BaseModel
 
 from src.utils.env_flags import env_flag_enabled
 from src.utils.llm import resolve_model
+from src.utils.mapping_flags import canonical_embedding_model, mapping_signature
 
 logger = logging.getLogger(__name__)
 
@@ -145,13 +159,35 @@ class CriterionResultCache:
     def _make_key(
         text: str, domain: str | None, embedding_model: str, llm_model: str
     ) -> str:
-        """SHA256 hash of normalized(text) + domain + embedding_model + llm_model."""
+        """SHA256 over everything that changes what this entry would contain.
+
+        ``embedding_model`` is canonicalised here rather than at the call site so every
+        path agrees -- a direct ``_make_key(..., "default", ...)`` and an environment
+        carrying ``EMBEDDING_MODEL=minilm`` name one collection and must land on one key.
+
+        :param text: the criterion seed, normalised before hashing.
+        :param domain: the domain the CALLER asked for. Note that ``DOMAIN_PRECHECK``
+            can override it downstream of the lookup, which is exactly why that flag is
+            in ``mapping_signature()``.
+        :param embedding_model: raw ``EMBEDDING_MODEL`` value, any spelling.
+        :param llm_model: the resolved LLM, from ``resolve_model()``.
+        :returns: hex digest.
+        """
         normalized = _normalize(text)
-        raw = f"{normalized}|{domain or ''}|{embedding_model}|{llm_model}|{_critic_signature()}"
+        raw = (
+            f"{normalized}|{domain or ''}|{canonical_embedding_model(embedding_model)}"
+            f"|{llm_model}|{_critic_signature()}|{mapping_signature()}"
+        )
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def _embedding_model(self) -> str:
-        return os.environ.get("EMBEDDING_MODEL", "minilm")
+        """The raw environment value; ``_make_key`` owns the canonicalisation.
+
+        No default is supplied because there is no single right spelling to supply:
+        unset, ``"default"`` and ``"minilm"`` all select the same collection, and
+        ``canonical_embedding_model`` is the one place that decides so.
+        """
+        return os.environ.get("EMBEDDING_MODEL", "")
 
     def _llm_model(self) -> str:
         return resolve_model()

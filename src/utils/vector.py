@@ -4,6 +4,7 @@ from typing import Optional
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from src.settings import settings
+from src.utils.mapping_flags import canonical_embedding_model
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,11 @@ def get_collection(name: str, embedding_model: Optional[str] = None):
         ChromaDB Collection with appropriate embedding function
     """
     client = get_chroma_client()
-    model = embedding_model or settings.EMBEDDING_MODEL
-    
+    # Routed through the canonicaliser so this branch and the criterion cache key
+    # cannot disagree about what a spelling means. The function is exact-match, so
+    # the selection made here is byte-for-byte the one this line made before.
+    model = canonical_embedding_model(embedding_model or settings.EMBEDDING_MODEL)
+
     if model == "medcpt":
         # MedCPT: use separate collection with custom embedding function
         collection_name = f"{name}_medcpt"

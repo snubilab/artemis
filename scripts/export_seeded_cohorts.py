@@ -21,11 +21,17 @@ This script:
    manifest. On 2026-09-08 the same run without ``TTE_DRUG_ANCHORED_ENTRY`` in the
    environment produced six disease-anchored treatment arms and two arms that could
    not be built at all.
-3. Builds each requested study's per-arm CIRCE the same way the scratch
+3. Records the nine further environment settings that change what a concept set
+   CONTAINS -- refiner, KG expansion mode, includeDescendants policy, route forcing,
+   embedding model, domain pre-check, footprint guard and its threshold, mapper
+   worker cap -- under ``mapping_env`` in the manifest, each with whether the value
+   came from the environment or from a default, and prints them before the run. See
+   :mod:`src.utils.mapping_flags`.
+4. Builds each requested study's per-arm CIRCE the same way the scratch
    scripts did: call ``TTEService._build_seeded_cohort_artifact_payload``
    with ``WebAPIClient.create_cohort_definition`` monkeypatched to capture
    ``(name, expression)`` instead of touching the live WebAPI.
-4. Lints every emitted file with ``src.utils.circe_lint`` before approving
+5. Lints every emitted file with ``src.utils.circe_lint`` before approving
    the batch: a no-op exclusion rule, or an entry concept-set that does not
    match the store's own entry (see ``entry_matches_expected`` for the one
    sanctioned exception — a disease-anchored comparator), is a violation.
@@ -58,6 +64,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.utils.delivery_mode import (  # noqa: E402
     DeliveryModeConflictError,
     resolve_drug_anchored_entry,
+)
+from src.utils.mapping_flags import (  # noqa: E402
+    mapping_flags_manifest,
+    mapping_flags_summary,
 )
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
@@ -111,6 +121,50 @@ def _file_md5(path: Path) -> str:
         for chunk in iter(lambda: fh.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def build_manifest(
+    *,
+    store_path: Path,
+    drug_anchored_source: str,
+    manifest_studies: list[dict[str, Any]],
+    manifest_files: list[dict[str, Any]],
+    repo_dir: Path,
+) -> dict[str, Any]:
+    """Assemble ``manifest.json``: what was exported, and under which mode.
+
+    Split out of :func:`main` so the recorded provenance can be asserted without
+    running an export. The provenance is the point of the file -- a delivered batch
+    whose mode cannot be recovered afterwards is what both this script's gates exist
+    to prevent.
+
+    :param store_path: the resolved store the export read from.
+    :param drug_anchored_source: ``DeliveryMode.source`` -- whether the entry-anchor
+        mode came from the environment or was set by this script.
+    :param manifest_studies: per-study rows collected during the run.
+    :param manifest_files: per-file rows collected during the run.
+    :param repo_dir: repository root, for the recorded git HEAD.
+    :returns: the manifest document, ready to serialise.
+    """
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "store_path": str(store_path),
+        "store_sha256": _file_sha256(store_path),
+        "store_mtime": datetime.fromtimestamp(
+            store_path.stat().st_mtime, tz=timezone.utc
+        ).isoformat(),
+        "env_TTE_STORE_PATH": os.environ.get("TTE_STORE_PATH"),
+        "TTE_DRUG_ANCHORED_ENTRY": os.environ.get("TTE_DRUG_ANCHORED_ENTRY"),
+        "TTE_DRUG_ANCHORED_ENTRY_source": drug_anchored_source,
+        # The other nine settings that change what a cohort CONTAINS. Until this was
+        # added none of them was printed or recorded, so "which mode produced this
+        # batch" had no answer after the fact -- the same gap TTE_DRUG_ANCHORED_ENTRY
+        # left on 2026-09-08, and the reason that one is recorded on the line above.
+        "mapping_env": mapping_flags_manifest(),
+        "git_head": _git_head(repo_dir),
+        "studies": manifest_studies,
+        "files": manifest_files,
+    }
 
 
 def _collect_build_failures(generated: Any) -> dict[str, str]:
@@ -237,6 +291,15 @@ def main(argv: list[str] | None = None) -> int:
         noop_exclusion_rules,
         rule_names,
     )
+
+    # Reported here, and not beside mode.summary() above, because the mapping flags
+    # must be read AFTER `.env` has reached os.environ. `src.settings` calls
+    # load_dotenv() at import, and that import happens in the block above -- so read
+    # any earlier and a value from `.env` reports as unset. Measured, not assumed:
+    # `.env` carries EMBEDDING_MODEL=medcpt, which printed as "unset" from the earlier
+    # position while the manifest, built at the end, correctly said "medcpt". A record
+    # that contradicts the line printed next to it is worse than no record.
+    print(mapping_flags_summary(), file=sys.stderr)
 
     slug_map = _parse_slug_map(args.slug_map)
     out_dir: Path = args.out
@@ -424,20 +487,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     repo_dir = Path(__file__).resolve().parents[1]
-    manifest = {
-        "exported_at": datetime.now(timezone.utc).isoformat(),
-        "store_path": str(store_path),
-        "store_sha256": _file_sha256(store_path),
-        "store_mtime": datetime.fromtimestamp(
-            store_path.stat().st_mtime, tz=timezone.utc
-        ).isoformat(),
-        "env_TTE_STORE_PATH": os.environ.get("TTE_STORE_PATH"),
-        "TTE_DRUG_ANCHORED_ENTRY": os.environ.get("TTE_DRUG_ANCHORED_ENTRY"),
-        "TTE_DRUG_ANCHORED_ENTRY_source": mode.source,
-        "git_head": _git_head(repo_dir),
-        "studies": manifest_studies,
-        "files": manifest_files,
-    }
+    manifest = build_manifest(
+        store_path=store_path,
+        drug_anchored_source=mode.source,
+        manifest_studies=manifest_studies,
+        manifest_files=manifest_files,
+        repo_dir=repo_dir,
+    )
     manifest_path = out_dir / "manifest.json"
     with manifest_path.open("w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2)
