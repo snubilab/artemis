@@ -137,6 +137,18 @@ CLEAN_EXCLUSION = [
 ]
 
 
+#: What the census `total` is anchored to for the default store. `_records` derives
+#: `mapped` from it rather than naming a number, so no fixture here can claim more
+#: outcomes than the store it is checked against has criteria.
+STORE_CRITERIA = len(CLEAN_INCLUSION) + len(CLEAN_EXCLUSION)
+
+
+def _store_criteria(study: dict[str, Any]) -> int:
+    """How many criteria rows a store study carries, for a test building a custom one."""
+    eligibility = study["eligibility"]
+    return len(eligibility["inclusionCriteria"]) + len(eligibility["exclusionCriteria"])
+
+
 def _study(
     *,
     inclusion: list[dict[str, Any]] | None = None,
@@ -238,13 +250,22 @@ def _records(
     *,
     unmapped: list[dict[str, Any]] | None = None,
     skipped: list[dict[str, Any]] | None = None,
-    mapped: int = 30,
+    mapped: int | None = None,
     demographic_rules: int = 2,
+    store_criteria: int = STORE_CRITERIA,
     collapses: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    """The three record keys plus any collapse lists, balanced by construction."""
+    """The three record keys plus any collapse lists, balanced by construction.
+
+    `mapped` is the RESIDUAL by default -- `store_criteria` less the refused, the
+    skipped and the demographic rules -- so `total` comes out equal to the store's
+    criteria count, which the gate anchors it to in both directions. A test building
+    against a custom store passes `store_criteria=_store_criteria(study)`.
+    """
     unmapped = unmapped or []
     skipped = skipped or []
+    if mapped is None:
+        mapped = store_criteria - len(unmapped) - len(skipped) - demographic_rules
     by_reason: dict[str, int] = {}
     for record in skipped:
         by_reason[record["reason"]] = by_reason.get(record["reason"], 0) + 1
@@ -297,7 +318,6 @@ CLEAN_RECORDS = _records(
             is_group_label=False,
         ),
     ],
-    mapped=32,
     collapses={
         "_restatedDistinctnessCollapse": [
             _collapse(survivor_id=30, dropped_ids=[31], reason=RESTATED_DISTINCTNESS_REASON)
@@ -401,7 +421,12 @@ class TestAGroupLabelSkipIsReDerivedFromTheStore:
                 _criterion(45, "Hemoglobin A1c", domain="Measurement", group_id="g-glucose"),
             ]
         )
-        rc, out = gate(_records(skipped=[_skip("44", "Glucose", "group-label")]), study)
+        records = _records(
+            skipped=[_skip("44", "Glucose", "group-label")],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
         assert rc == 1, out
         assert STRANDED_GROUP_CONSTRAINT_REASON in out
 
@@ -422,7 +447,11 @@ class TestAGroupLabelSkipIsReDerivedFromTheStore:
                 ),
             ]
         )
-        records = _records(skipped=[_skip("9", "Liver enzyme elevation", "group-label")])
+        records = _records(
+            skipped=[_skip("9", "Liver enzyme elevation", "group-label")],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
         rc, out = gate(records, study)
         assert rc == 0, out
 
@@ -440,6 +469,8 @@ class TestAGroupLabelSkipIsReDerivedFromTheStore:
             unmapped=[
                 _unmapped("12", "Breast cancer", reason="No concept mapping found")
             ],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
         )
         rc, out = gate(records, study)
         assert rc == 1, out
@@ -447,7 +478,12 @@ class TestAGroupLabelSkipIsReDerivedFromTheStore:
 
     def test_should_fail_when_a_group_label_skip_names_a_row_that_is_not_a_group_label(self, gate):
         study = _study(exclusion=[_criterion(26, "Aspirin and thienopyridine combination")])
-        rc, out = gate(_records(skipped=[_skip("26", "Aspirin", "group-label")]), study)
+        records = _records(
+            skipped=[_skip("26", "Aspirin", "group-label")],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
         assert rc == 1, out
         assert "the store row is not a group label" in out
 
@@ -471,7 +507,8 @@ class TestADemographicNoRuleSkipIsReDerivedFromTheStore:
                     domain="Demographics",
                     is_group_label=False,
                 )
-            ]
+            ],
+            store_criteria=_store_criteria(study),
         )
         rc, out = gate(records, study)
         assert rc == 1, out
@@ -491,7 +528,8 @@ class TestADemographicNoRuleSkipIsReDerivedFromTheStore:
                     domain="Demographics",
                     is_group_label=False,
                 )
-            ]
+            ],
+            store_criteria=_store_criteria(study),
         )
         rc, out = gate(records, study)
         assert rc == 0, out
@@ -508,7 +546,8 @@ class TestADemographicNoRuleSkipIsReDerivedFromTheStore:
                     domain="Condition",
                     is_group_label=False,
                 )
-            ]
+            ],
+            store_criteria=_store_criteria(study),
         )
         rc, out = gate(records, study)
         assert rc == 1, out
@@ -629,7 +668,7 @@ class TestTheReconciliationDoesNotOverFire:
     def test_should_report_the_summary_prefix_unchanged_on_a_passing_row(self, gate):
         rc, out = gate(CLEAN_RECORDS)
         assert rc == 0, out
-        assert "criterion accounting: 32 mapped, 0 unmapped, 7 skipped (all permitted)" in out
+        assert "criterion accounting: 6 mapped, 0 unmapped, 7 skipped (all permitted)" in out
 
 
 class TestTheReconciliationIsNotBlind:
@@ -740,7 +779,11 @@ class TestTheExporterRefusesToShipAnUnreconciledSkip:
                 _criterion(45, "Hemoglobin A1c", domain="Measurement", group_id="g-glucose"),
             ]
         )
-        records = _records(skipped=[_skip("44", "Glucose", "group-label")])
+        records = _records(
+            skipped=[_skip("44", "Glucose", "group-label")],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
         rc, err, out_dir = self._export(monkeypatch, tmp_path, capsys, study, records)
         assert rc == 1, err
         assert "criterion_loss" in err

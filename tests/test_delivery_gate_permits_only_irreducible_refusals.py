@@ -95,6 +95,11 @@ DEFAULT_EXCLUSION = [
     _criterion(21, "Table II criteria", domain="Condition"),
 ]
 
+#: What the census `total` is anchored to; `_study` carries no inclusion criteria.
+#: `_records` derives `mapped` from it rather than naming a number, so a census here
+#: cannot claim more outcomes than the store it is checked against has criteria.
+STORE_CRITERIA = len(DEFAULT_EXCLUSION)
+
 
 def _study(*, exclusion: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """The minimal two-arm store study the delivery-gate tests build against."""
@@ -168,20 +173,37 @@ def _unmapped(
 
 
 def _records(
-    *, unmapped: list[dict[str, Any]] | None = None, mapped: int = 30
+    *,
+    unmapped: list[dict[str, Any]] | None = None,
+    skipped: list[dict[str, Any]] | None = None,
+    mapped: int | None = None,
+    store_criteria: int = STORE_CRITERIA,
 ) -> dict[str, Any]:
+    """The three record keys, balanced against a store of `store_criteria` rows.
+
+    `mapped` is the RESIDUAL by default -- `store_criteria` less the refused and the
+    skipped -- so `total` comes out equal to the store's criteria count, which the
+    gate anchors it to in both directions. A test building against a custom store
+    passes its size rather than restating the census by hand.
+    """
     unmapped = unmapped or []
+    skipped = skipped or []
+    if mapped is None:
+        mapped = store_criteria - len(unmapped) - len(skipped)
+    by_reason: dict[str, int] = {}
+    for record in skipped:
+        by_reason[record["reason"]] = by_reason.get(record["reason"], 0) + 1
     return {
         "_unmappedCriteria": unmapped,
-        "_skippedCriteria": [],
+        "_skippedCriteria": skipped,
         "_generationCensus": {
-            "total": mapped + len(unmapped),
+            "total": mapped + len(unmapped) + len(skipped),
             "mappable": mapped + len(unmapped),
             "mapped": mapped,
             "unmapped": len(unmapped),
             "demographicRules": 0,
-            "skipped": 0,
-            "skippedByReason": {},
+            "skipped": len(skipped),
+            "skippedByReason": by_reason,
         },
     }
 
@@ -400,20 +422,19 @@ class TestAnAbsoluteGroupBoundIsJudgedPerMember:
                 _criterion(46, "Random Plasma Glucose", domain="Measurement", group_id="g-glucose"),
             ]
         )
-        records = _records()
-        records["_skippedCriteria"] = [
-            {
-                "criterionId": "44",
-                "role": "exclusion",
-                "label": "Glucose",
-                "domain": "Measurement",
-                "isGroupLabel": True,
-                "reason": "group-label",
-            }
-        ]
-        records["_generationCensus"]["skipped"] = 1
-        records["_generationCensus"]["total"] += 1
-        records["_generationCensus"]["skippedByReason"] = {"group-label": 1}
+        records = _records(
+            skipped=[
+                {
+                    "criterionId": "44",
+                    "role": "exclusion",
+                    "label": "Glucose",
+                    "domain": "Measurement",
+                    "isGroupLabel": True,
+                    "reason": "group-label",
+                }
+            ],
+            store_criteria=len(study["eligibility"]["exclusionCriteria"]),
+        )
         rc, out = gate(records, study)
         assert rc == 0, out
         assert STRANDED_GROUP_CONSTRAINT_REASON not in out
@@ -439,20 +460,19 @@ class TestAnAbsoluteGroupBoundIsJudgedPerMember:
                 _criterion(47, "Random Plasma Glucose", domain="Measurement", group_id="g-glucose"),
             ]
         )
-        records = _records()
-        records["_skippedCriteria"] = [
-            {
-                "criterionId": "44",
-                "role": "exclusion",
-                "label": "Glucose",
-                "domain": "Measurement",
-                "isGroupLabel": True,
-                "reason": "group-label",
-            }
-        ]
-        records["_generationCensus"]["skipped"] = 1
-        records["_generationCensus"]["total"] += 1
-        records["_generationCensus"]["skippedByReason"] = {"group-label": 1}
+        records = _records(
+            skipped=[
+                {
+                    "criterionId": "44",
+                    "role": "exclusion",
+                    "label": "Glucose",
+                    "domain": "Measurement",
+                    "isGroupLabel": True,
+                    "reason": "group-label",
+                }
+            ],
+            store_criteria=len(study["eligibility"]["exclusionCriteria"]),
+        )
         rc, out = gate(records, study)
         assert rc == 1, out
         assert STRANDED_GROUP_CONSTRAINT_REASON in out

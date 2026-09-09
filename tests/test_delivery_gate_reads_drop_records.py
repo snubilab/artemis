@@ -124,6 +124,13 @@ STORE_EXCLUSION_CRITERIA = [
     _criterion(33, "Pre-menopausal women", domain="Demographics"),
 ]
 
+#: What the census `total` is anchored to. Every `_records` call below derives `mapped`
+#: from it rather than naming a number, so a criterion added to either list above stays
+#: accounted for without a second edit -- and so no fixture can drift back to claiming
+#: more outcomes than this store has criteria, which is what these censuses did until
+#: the anchor became an equality.
+STORE_CRITERIA = len(STORE_INCLUSION_CRITERIA) + len(STORE_EXCLUSION_CRITERIA)
+
 
 def _study(study_id: int = 3, arm_names: tuple[str, ...] = ("apixaban", "warfarin")) -> dict:
     """The minimal two-arm store study the other delivery-gate tests use."""
@@ -206,18 +213,26 @@ def _records(
     *,
     unmapped: list[dict[str, Any]] | None = None,
     skipped: list[dict[str, Any]] | None = None,
-    mapped: int = 30,
+    mapped: int | None = None,
     demographic_rules: int = 2,
     total: int | None = None,
+    store_criteria: int = STORE_CRITERIA,
     collapses: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """The three record keys, balanced by construction unless `total` overrides.
+
+    `mapped` defaults to the RESIDUAL of `store_criteria` -- what is left once the
+    refused, the skipped and the demographic rules are taken off -- so `total` comes
+    out equal to the store's criteria count, which the gate now anchors it to in both
+    directions. Passing it explicitly states an over- or under-count on purpose.
 
     `collapses` carries the `_restated*Collapse` lists a restated-* skip is now
     reconciled against: the gate re-derives that the collapse actually names the
     criterion as dropped and that its survivor exists in the store and emitted."""
     unmapped = unmapped or []
     skipped = skipped or []
+    if mapped is None:
+        mapped = store_criteria - len(unmapped) - len(skipped) - demographic_rules
     by_reason: dict[str, int] = {}
     for record in skipped:
         by_reason[record["reason"]] = by_reason.get(record["reason"], 0) + 1
@@ -260,7 +275,6 @@ ARISTOTLE_RECORDS = _records(
             is_group_label=False,
         ),
     ],
-    mapped=30,
     demographic_rules=2,
 )
 
@@ -284,7 +298,6 @@ CLEAN_RECORDS = _records(
             is_group_label=False,
         ),
     ],
-    mapped=32,
     demographic_rules=2,
     collapses={
         "_restatedDistinctnessCollapse": [
@@ -378,7 +391,6 @@ class TestTheGateFailsOnRecordedCriterionLoss:
         """The real 2026-09-08 shape: CAROLINA/EMPA-REG "Glucose"."""
         records = _records(
             skipped=[_skip("41", "Glucose", STRANDED_GROUP_CONSTRAINT_REASON)],
-            mapped=30,
         )
         rc, out = gate(records)
         assert rc == 1, out
@@ -399,7 +411,11 @@ class TestTheGateChecksTheCensusBalancesOnTheDeliveredFile:
     where the file has been pruned, copied and possibly hand-edited since."""
 
     def test_should_fail_when_the_census_total_does_not_equal_its_parts(self, gate):
-        rc, out = gate(_records(mapped=30, demographic_rules=2, total=41))
+        # `total` alone is overridden, so the parts still describe this store and the
+        # only thing wrong with the census is the identity this test is about. It is
+        # also, unavoidably, an over-count against the store -- 41 outcomes over 15
+        # criteria -- and the store anchor says so on its own line beside this one.
+        rc, out = gate(_records(total=41))
         assert rc == 1, out
         assert "census does not balance" in out
 
@@ -433,7 +449,18 @@ class TestTheGateDoesNotOverFire:
         """A silent pass cannot be told from an unchecked one, so the row says it."""
         rc, out = gate(CLEAN_RECORDS)
         assert rc == 0, out
-        assert "criterion accounting: 32 mapped, 0 unmapped, 7 skipped" in out
+        assert "criterion accounting: 6 mapped, 0 unmapped, 7 skipped" in out
+
+    def test_should_report_the_store_anchor_on_a_passing_row(self, gate):
+        """The anchor is the one check here with a referent outside the file.
+
+        It said nothing at all on a passing row until now, which is indistinguishable
+        from an anchor that never ran -- the same reason the accounting summary above
+        is printed rather than kept for failures.
+        """
+        rc, out = gate(CLEAN_RECORDS)
+        assert rc == 0, out
+        assert f"{STORE_CRITERIA} of {STORE_CRITERIA} store criteria accounted for" in out
 
     def test_should_say_accounting_was_not_recorded_when_the_file_predates_it(self, gate):
         """Artifacts built before `_generationCensus` existed carry none of the three

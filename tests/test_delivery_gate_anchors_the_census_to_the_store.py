@@ -24,8 +24,39 @@ one referent outside the file. On that same batch the two sides agree exactly on
 file -- aristotle 39/39, carmelina 39/39, carolina 114/114, empa-reg 73/73, leader
 49/49, plato 46/46 -- so the anchor adds no failure the batch did not already carry.
 
-It is a LOWER bound. `total` short of the store is loss; `total` over the store is a
-different defect and is not judged here (see `criterion_accounting` for why).
+That anchor shipped as a LOWER bound with two holes named in the commit, and both are
+closed here.
+
+The bound is defeatable by inflating the census before decrementing it: pad `total`,
+`mappable` and `mapped` by twice the loss and give half back, and everything stays
+self-consistent while `total` lands ABOVE the store, where `total < len(index)` never
+looks. Measured on the same batch, that shape passes 8 of the 12 files against the
+lower bound and fails all 12 against the equality. It is an equality now, and the 11
+gate-test fixtures whose synthetic censuses claimed 31-41 criteria over stores of 2-15
+-- every one of them the over-count direction, none of them loss -- derive `mapped`
+from their own store rather than naming a number.
+
+The second hole is a swap rather than a count, so no anchor over `total` can see it:
+strike an `_unmappedCriteria` row and book the criterion as `mapped`. `total` never
+moves, the balance and the mappable identity hold, and the criterion merely changes
+which side of the partition it sits on -- so the residual set identity below moves with
+it too. Measured on that batch it passes 8 of the 12 files. What does not follow the
+criterion across is the concept set, because none was ever minted for it, so `mapped`
+is anchored to `_criterionConceptSetRefs`: one role-keyed entry per criterion the
+producer actually built a set for. On all 71 artifacts under `output/` that carry both
+keys, `mapped` equals the count of those entries exactly.
+
+That link is CONDITIONAL, and the limit is real: 73 of the 144 census-carrying
+artifacts carry no refs map, the previous day's whole delivery among them, because the
+draft path pops the key. Failing them would fail a correct batch, so the check runs
+when the key is there and the row says so when it is not.
+
+Between the two, the outcomes are also reconciled as SETS: the two record buckets name
+their criterion ids, `mapped` and `demographicRules` are the only outcomes left, so
+what the buckets do not name must be exactly what those two counters claim. That sees a
+criterion recorded under two outcomes at once, and a record naming a criterion the
+store does not carry while a real one goes unaccounted for -- neither of which changes
+a count.
 
 Two smaller fail-open paths in the same file are covered here too, neither of which has
 an instance in that batch (0 non-dict record rows, 0 group labels without a `groupId`
@@ -46,6 +77,8 @@ import json
 from typing import Any
 
 import pytest
+
+from src.utils.criterion_refusal import REFUSAL_UNMAPPABLE_PLACEHOLDER
 
 
 def _criterion(
@@ -191,6 +224,52 @@ STRUCK_UNMAPPED_ROW_RECORDS = _records(
     mapped=2, demographic_rules=2, skipped=[GROUP_LABEL_SKIP]
 )
 
+#: The clean shape's three mapped criteria (#1, #4, #6), each with the concept set the
+#: producer minted for it. Written role-keyed AND bare, exactly as
+#: `_build_seeded_target_circe` writes them; only the role-keyed half is read, because
+#: inclusion and exclusion ids are independent sequences and a bare key cannot tell
+#: `inclusion:6` from `exclusion:6`.
+CLEAN_CONCEPT_SET_REFS = {
+    "inclusion:1": 2,
+    "1": 2,
+    "inclusion:4": 3,
+    "4": 3,
+    "exclusion:6": 4,
+    "6": 4,
+}
+
+CLEAN_RECORDS_WITH_LINKS = {
+    **CLEAN_RECORDS,
+    "_criterionConceptSetRefs": json.loads(json.dumps(CLEAN_CONCEPT_SET_REFS)),
+}
+
+#: The residual `0d80c94` named and could not close. Criterion #6 was refused; instead
+#: of decrementing `total`, the producer struck the `_unmappedCriteria` row and booked
+#: the criterion as `mapped`. `total` never moved, so the census here is BYTE-IDENTICAL
+#: to `CLEAN_RECORDS` -- the balance, both cross-checks, the mappable identity, the
+#: store anchor and the residual set identity all hold, because the criterion simply
+#: changed which side of the partition it sits on.
+#:
+#: The one thing that did not follow it is the concept set: nothing was ever minted for
+#: #6, so its entry is missing from the refs map, and that is the only record in the
+#: file that distinguishes the two artifacts.
+BOOKED_AS_MAPPED_RECORDS = {
+    **CLEAN_RECORDS,
+    "_criterionConceptSetRefs": {"inclusion:1": 2, "1": 2, "inclusion:4": 3, "4": 3},
+}
+
+#: A skip naming a criterion id the store does not carry. The counters stay whole --
+#: `census.skipped` counts the row, so `total` still equals the store's 6 -- while the
+#: store criterion it was standing in for reaches no outcome at all.
+PHANTOM_SKIP = {
+    "criterionId": "99",
+    "role": "inclusion",
+    "label": "A criterion the store does not carry",
+    "domain": "Measurement",
+    "isGroupLabel": True,
+    "reason": "group-label",
+}
+
 
 @pytest.fixture
 def gate(monkeypatch, tmp_path, capsys):
@@ -296,3 +375,184 @@ class TestAGroupLabelPermitWithNoGroupIsUnreJudgeable:
 
         assert rc == 0, out
         assert "no groupId" not in out
+
+
+class TestARefusalBookedAsMappedIsSeenByTheConceptSetLink:
+    """The residual `0d80c94` recorded and could not close.
+
+    Striking an `_unmappedCriteria` row and booking the criterion as `mapped` moves it
+    from one side of the partition to the other and touches no counter that any check
+    reads: the balance holds, `mappable == mapped + unmapped` holds, the store anchor
+    holds because `total` never moved, and the residual set identity holds because the
+    id left the refused bucket and entered the residual, so both sides grew together.
+
+    `mapped` therefore has to be anchored to a record of a PARTICULAR criterion having
+    emitted, and `_criterionConceptSetRefs` is the only one the file carries. Measured
+    on the 12-file 2026-09-09 batch, this swap passes 8 of 12 files against the
+    pre-change gate -- `leader_treatment` among them, reading "37 mapped, 0 unmapped,
+    8 skipped (all permitted)" -- and fails all 12 after it.
+    """
+
+    def test_should_show_the_swap_leaves_the_census_byte_identical(self):
+        """Not a gate run: the premise of every test below it.
+
+        If the two censuses differed anywhere, some existing self-consistency check
+        could have caught the swap and the link would be proving nothing.
+        """
+        assert (
+            BOOKED_AS_MAPPED_RECORDS["_generationCensus"]
+            == CLEAN_RECORDS_WITH_LINKS["_generationCensus"]
+        )
+        assert BOOKED_AS_MAPPED_RECORDS["_unmappedCriteria"] == []
+
+    def test_should_fail_when_a_criterion_is_booked_as_mapped_with_no_concept_set(self, gate):
+        rc, out = gate(BOOKED_AS_MAPPED_RECORDS)
+
+        assert rc == 1
+        assert "census books 3 criteria as mapped but only 2 of them carry a concept-set" in out
+        assert "nothing in the file shows a concept set was ever minted for them" in out
+
+    def test_should_name_the_link_alone_when_every_other_check_still_holds(self, gate):
+        """The point of the fixture, and the reason it is worth a check of its own."""
+        _rc, out = gate(BOOKED_AS_MAPPED_RECORDS)
+
+        assert "census does not balance" not in out
+        assert "census counter disagrees" not in out
+        assert "census accounts for" not in out
+        assert "are named by no refusal record and no skip record" not in out
+
+    def test_should_pass_when_every_mapped_criterion_carries_a_concept_set(self, gate):
+        """The negative control the link check lives or dies by: the same census as the
+        fixture above, differing only in that the third concept set is there."""
+        rc, out = gate(CLEAN_RECORDS_WITH_LINKS)
+
+        assert rc == 0, out
+        assert "3 of 3 mapped concept-set linked" in out
+        assert "carry a concept-set reference" not in out
+        assert "per-criterion references" not in out
+
+    def test_should_fail_when_a_concept_set_reference_names_a_refused_criterion(self, gate):
+        """The other direction: the file minted a set for a criterion it also refused.
+
+        The refusal is a PERMITTED one, so the row itself ships and nothing else on the
+        page objects -- the contradiction between the two records is the whole finding.
+        """
+        records = _records(
+            mapped=2,
+            demographic_rules=2,
+            skipped=[GROUP_LABEL_SKIP],
+            unmapped=[
+                {
+                    "criterionId": "6",
+                    "role": "exclusion",
+                    "label": "Investigational drug use",
+                    "domain": "Drug",
+                    "reason": "names no clinical entity",
+                    "refusalCode": REFUSAL_UNMAPPABLE_PLACEHOLDER,
+                }
+            ],
+        )
+        records["_criterionConceptSetRefs"] = json.loads(json.dumps(CLEAN_CONCEPT_SET_REFS))
+
+        rc, out = gate(records)
+
+        assert rc == 1
+        assert "while a record says they were refused or skipped" in out
+        assert "exclusion #6" in out
+
+    def test_should_say_on_the_row_when_the_file_carries_no_links_at_all(self, gate):
+        """73 of the 144 census-carrying artifacts under `output/` have no refs map --
+        including all 12 files of the previous day's delivery -- because the draft path
+        pops the key. Failing them would fail a correct batch, so the check does not
+        run; saying nothing would make a popped key indistinguishable from a clean one,
+        so the row says which happened."""
+        rc, out = gate(CLEAN_RECORDS)
+
+        assert rc == 0, out
+        assert "no concept-set links recorded" in out
+
+
+class TestTheStoreAnchorIsAnEqualityInBothDirections:
+    """`0d80c94` shipped `total < len(index)` and named the asymmetry as deliberate.
+
+    It is defeatable: a census inflated first and then decremented stays above the
+    bound, so the bound only ever closed the loss direction against a producer that
+    did not also inflate. On the real batch, inflating by the loss and giving half of
+    it back passes 8 of 12 files against the lower bound and fails all 12 against the
+    equality.
+    """
+
+    def test_should_fail_when_the_census_accounts_for_more_outcomes_than_the_store_has(
+        self, gate
+    ):
+        # Inflated by 2 phantom mapped criteria and balanced around them, exactly as a
+        # census that was padded before the loss was taken off it would read.
+        records = _records(mapped=5, demographic_rules=2, skipped=[GROUP_LABEL_SKIP])
+
+        rc, out = gate(records)
+
+        assert rc == 1
+        assert f"census accounts for {STORE_CRITERIA + 2} outcomes over the store study's " in out
+        assert "2 more outcome(s) are booked than the study has criteria" in out
+
+    def test_should_not_report_a_shortfall_on_an_over_count(self, gate):
+        """The two directions are different defects and say different things."""
+        _rc, out = gate(_records(mapped=5, demographic_rules=2, skipped=[GROUP_LABEL_SKIP]))
+
+        assert "left the study with no outcome recorded anywhere" not in out
+
+
+class TestTheOutcomesAreReconciledAsSetsNotOnlyAsCounts:
+    def test_should_fail_when_a_record_names_a_criterion_outside_the_store(self, gate):
+        """`total` still equals the store's 6, so the count anchor has nothing to say.
+
+        The record accounts for a criterion the study does not carry, which means one
+        it DOES carry is accounted for by nothing -- visible only over the ids.
+        """
+        records = _records(
+            mapped=2, demographic_rules=2, skipped=[GROUP_LABEL_SKIP, PHANTOM_SKIP]
+        )
+
+        rc, out = gate(records)
+
+        assert rc == 1
+        assert "census books 2 mapped + 2 demographic rule(s) = 4 criteria as having emitted" in out
+        assert f"5 of the store study's {STORE_CRITERIA} criteria are named by no refusal" in out
+        assert "census accounts for" not in out
+
+    def test_should_fail_when_one_criterion_is_recorded_under_two_outcomes(self, gate):
+        """Refused and skipped at once: the balance counts it twice, so a second
+        criterion is missing from the file and the totals still add up."""
+        records = _records(
+            mapped=2,
+            demographic_rules=2,
+            skipped=[GROUP_LABEL_SKIP],
+            unmapped=[
+                {
+                    "criterionId": "3",
+                    "role": "inclusion",
+                    "label": "Renal impairment group",
+                    "domain": "Measurement",
+                    "reason": "names no clinical entity",
+                    "refusalCode": REFUSAL_UNMAPPABLE_PLACEHOLDER,
+                }
+            ],
+        )
+
+        rc, out = gate(records)
+
+        assert rc == 1
+        assert "1 criterion(s) are recorded BOTH as refused and as skipped" in out
+        assert "inclusion #3" in out
+
+
+class TestTheAnchorReportsItselfOnAPassingRow:
+    def test_should_name_the_store_anchor_and_the_link_on_a_passing_row(self, gate):
+        """`0d80c94` held both silent to prove the anchor added no failure to the real
+        batch. That is proved, and a check whose only output is silence cannot be told
+        from a check that never ran."""
+        rc, out = gate(CLEAN_RECORDS_WITH_LINKS)
+
+        assert rc == 0, out
+        assert f"{STORE_CRITERIA} of {STORE_CRITERIA} store criteria accounted for" in out
+        assert "3 of 3 mapped concept-set linked" in out

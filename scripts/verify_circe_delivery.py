@@ -282,9 +282,56 @@ COLLAPSE_RECORD_KEYS = {
 }
 
 
+#: Where the producer records, per criterion, the concept set it minted for it:
+#: ``{"inclusion:5": 2, "5": 2, ...}``, one ROLE-KEYED entry per criterion whose
+#: mapping returned a result, written in the same loop that appends the concept set
+#: and increments the codeset id. It is the only record in the file that says a
+#: PARTICULAR criterion produced something, which is what makes it the one referent
+#: for ``census.mapped`` — see :func:`criterion_accounting` for why the rule list
+#: cannot serve and why the ``ConceptSets`` length cannot either.
+#:
+#: The bare-id keys written beside the role keys are ignored everywhere here.
+#: Inclusion and exclusion criteria are numbered in independent sequences, so a bare
+#: key structurally cannot tell ``inclusion:42`` from ``exclusion:42``; the producer's
+#: own consumer dropped its bare-id fallback for exactly that reason.
+#:
+#: No module owns this spelling — it is a literal in ``_build_seeded_target_circe``,
+#: the same asymmetry :data:`COLLAPSE_RECORD_KEYS` carries — but the safe direction is
+#: the OPPOSITE one here: a misspelling finds no map and the link check does not run.
+#: That is why its absence is printed on every row rather than passed over: a batch
+#: that suddenly reads "no concept-set links recorded" where it read "N of N mapped
+#: concept-set linked" is the visible signal a silent skip would not give.
+CRITERION_CONCEPT_SET_REFS_KEY = "_criterionConceptSetRefs"
+
+
 def _describe(record: dict[str, Any]) -> str:
     role = record.get("role") or "?"
     return f"{role} #{record.get('criterionId', '?')} {str(record.get('label', ''))!r}"
+
+
+def recorded_criterion_keys(records: Any) -> set[tuple[Any, str]]:
+    """``{(role, criterionId)}`` for every row of a drop-record list that is a record.
+
+    The one spelling of the key both ``_unmappedCriteria`` and ``_skippedCriteria``
+    are read by, matching :func:`criteria_index` on the store side: the id is
+    stringified because store ids are ints and every record spells them as strings.
+    ``role`` is NOT coerced, so a row carrying something other than ``"inclusion"`` or
+    ``"exclusion"`` keeps whatever it carries and joins nothing in the store index --
+    which is the correct outcome, and is reported by
+    :func:`unmapped_criteria_violations` on its own line.
+
+    A row that is not a dict contributes nothing. It is reported on its own line by
+    :func:`unmapped_criteria_violations` or by the malformed-skip check in
+    :func:`criterion_accounting`, and leaving it out here is what makes the criterion
+    it stood for show up as unaccounted-for rather than silently covered.
+    """
+    if not isinstance(records, list):
+        return set()
+    return {
+        (record.get("role"), str(record.get("criterionId") or ""))
+        for record in records
+        if isinstance(record, dict)
+    }
 
 
 def dropped_criteria_violations(records: Any) -> list[str]:
@@ -729,11 +776,7 @@ def skipped_criteria_violations(
     from src.api.models.tte import DEMOGRAPHIC_DOMAINS
 
     unmapped_records = expression.get("_unmappedCriteria") or []
-    unmapped_keys = {
-        (record.get("role"), str(record.get("criterionId") or ""))
-        for record in unmapped_records
-        if isinstance(record, dict)
-    }
+    unmapped_keys = recorded_criterion_keys(unmapped_records)
     skipped_by_key = {
         (record.get("role"), str(record.get("criterionId") or "")): record
         for record in records
@@ -830,14 +873,27 @@ def criterion_accounting(
     That identity is self-consistency and nothing more: every term in it is written by
     the artifact being checked, so a producer that stops writing ``_unmappedCriteria``
     rows can restore all of it by striking the rows and taking the difference off
-    ``total`` and ``mappable``. ``total`` is therefore also anchored to
-    ``len(criteria_index(study))`` -- the store study's own criteria rows, the one
-    referent outside the file -- and a census short of it names the criteria that left
-    the study with no record at all.
+    ``total`` and ``mappable``. Three anchors outside the census answer that, each
+    seeing a defeat of the one before it:
+
+    * ``total == len(criteria_index(study))`` — the store study's own criteria rows,
+      the one referent outside the file. An EQUALITY in both directions: a census
+      inflated first and then decremented survives a lower bound.
+    * ``mapped + demographicRules == len(store criteria not named by any record)`` —
+      the same reconciliation over ids rather than counts, so a criterion recorded
+      under two outcomes, or a record naming a criterion the store does not carry,
+      is visible where a count is not.
+    * ``mapped == len(role-keyed _criterionConceptSetRefs)`` — the only per-criterion
+      record of an emission the file carries, and the only thing that sees a refusal
+      struck from ``_unmappedCriteria`` and booked as ``mapped``, which keeps the
+      balance, the mappable identity and both anchors above. Run only when the file
+      carries that key, and its absence is named in ``summary`` rather than passed
+      over.
 
     ``summary`` is returned even when there are no violations, and the caller prints
     it on a passing row — a check whose only output is silence cannot be told from a
-    check that never ran.
+    check that never ran. It carries the store anchor and the emission link for that
+    reason.
     """
     # The emission-time drop record, checked and reported on every path below. It is
     # NOT in ACCOUNTING_KEYS: those three are written together by the generator, so a
@@ -953,24 +1009,166 @@ def criterion_accounting(
     # Outside the balance branch above on purpose: a census missing `mapped` cannot be
     # balanced but can still be anchored, and the criterion it lost is worth naming.
     #
-    # A LOWER bound, not an equality, and the asymmetry is deliberate. `total` short of
-    # the store is loss -- criteria the study has and the file accounts for nowhere.
-    # `total` OVER the store is a different defect (an outcome booked for a criterion
-    # that does not exist), and enforcing it here fires on 11 existing gate tests whose
-    # synthetic census claims 31-41 criteria over fixture stores of 2-15; every one of
-    # those 11 is the over-count direction and none is loss. Closing that direction
-    # means correcting those fixtures first, which is a separate change.
+    # An EQUALITY, in both directions, since `0d80c94` shipped it as a lower bound.
+    # `total` short of the store is loss -- criteria the study has and the file accounts
+    # for nowhere. `total` OVER the store is an outcome booked for a criterion that does
+    # not exist, and leaving that direction open leaves the loss direction open with it:
+    # a census inflated first and then decremented stays above a lower bound, so the
+    # bound only ever closed the hole against a producer that did not also inflate. The
+    # 11 gate-test fixtures that made this a bound -- synthetic censuses claiming 31-41
+    # criteria over fixture stores of 2-15, every one of them the over-count direction --
+    # were corrected to match their own stores in the same change that tightened this.
+    if total is not None and total != len(index):
+        if total < len(index):
+            violations.append(
+                f"census accounts for {total} of the store study's {len(index)} criteria: "
+                f"{len(index) - total} criterion(s) left the study with no outcome recorded "
+                "anywhere -- not mapped, not refused, not skipped, not built into a "
+                "demographic rule -- and no record in the file says where they went"
+            )
+        else:
+            violations.append(
+                f"census accounts for {total} outcomes over the store study's {len(index)} "
+                f"criteria: {total - len(index)} more outcome(s) are booked than the study "
+                "has criteria, so at least that many name a criterion the store does not "
+                "carry and the balance identity is counting something twice"
+            )
+
+    # The anchor above is a COUNT, and a count is defeated by a swap: strike an
+    # `_unmappedCriteria` row, book the criterion as `mapped` and leave `total` alone,
+    # and the balance, the mappable identity and the anchor all still hold while a
+    # refused criterion is now recorded as having emitted. That is not only the
+    # adversarial case -- a miscounting branch books a refused criterion as mapped by
+    # accident and nothing else in this function would say so.
     #
-    # What this anchor does NOT catch, in either direction: a producer that strikes the
-    # record rows and books the criteria as `mapped` instead of decrementing `total`.
-    # That keeps the balance, the mappable identity AND this anchor, and only anchoring
-    # `mapped` to the emitted rules would see it.
-    if total is not None and total < len(index):
+    # So the outcomes are reconciled as SETS as well. The two recorded buckets name
+    # their criterion ids; `mapped` and `demographicRules` do not, but they are the only
+    # two outcomes left, so what the buckets do not name must be exactly what those two
+    # counters claim. Three things follow and each is checked below: the buckets are
+    # disjoint (a criterion has one outcome, not two), each is a subset of the store
+    # (already reported per-record one channel over, and left to those lines), and
+    # `mapped + demographicRules` equals the residual.
+    #
+    # Measured on the 12-file 2026-09-09 batch: the residual identity holds exactly on
+    # all 12 (32/32, 25/25, 79/79, 58/58, 39/39, 38/38), the buckets are disjoint on all
+    # 12, and no bucket names a criterion outside the store. It also holds on all 12 of
+    # the previous day's `deliver_20260909` batch and all 12 of `deliver_20260908`.
+    store_keys = set(index)
+    unmapped_keys = recorded_criterion_keys(unmapped)
+    skipped_keys = recorded_criterion_keys(skipped)
+
+    double_booked = unmapped_keys & skipped_keys
+    if double_booked:
         violations.append(
-            f"census accounts for {total} of the store study's {len(index)} criteria: "
-            f"{len(index) - total} criterion(s) left the study with no outcome recorded "
-            "anywhere -- not mapped, not refused, not skipped, not built into a "
-            "demographic rule -- and no record in the file says where they went"
+            f"{len(double_booked)} criterion(s) are recorded BOTH as refused and as "
+            "skipped, so the balance counts one criterion twice and another that "
+            "reached no outcome at all is hidden behind the double entry: "
+            + "; ".join(f"{role} #{criterion_id}" for role, criterion_id in sorted(double_booked))
+        )
+
+    # Intersected with the store on purpose: a record naming a criterion the study does
+    # not carry accounts for nothing here, and the residual below is right to count the
+    # store criterion that record was standing in for as still unaccounted for. The
+    # stray record itself is named by `unmapped_criteria_violations` and by
+    # `skipped_criteria_violations`.
+    residual = store_keys - ((unmapped_keys | skipped_keys) & store_keys)
+    if parts["mapped"] is not None and parts["demographicRules"] is not None:
+        claimed = parts["mapped"] + parts["demographicRules"]
+        if claimed != len(residual):
+            violations.append(
+                f"census books {parts['mapped']} mapped + {parts['demographicRules']} "
+                f"demographic rule(s) = {claimed} criteria as having emitted, but "
+                f"{len(residual)} of the store study's {len(store_keys)} criteria are "
+                "named by no refusal record and no skip record: the two counters and the "
+                "two record lists are describing different sets of criteria"
+            )
+
+    # And the swap the residual identity above still cannot see, because it is a set
+    # identity over the SAME partition: strike an `_unmappedCriteria` row and book its
+    # criterion as `mapped`, and the id leaves the refused bucket and enters the
+    # residual, so `mapped` rises by exactly as much as the residual does and both
+    # sides move together. `mapped` has to be anchored to something the file records
+    # PER CRITERION, and `_criterionConceptSetRefs` is the only such record: the
+    # producer writes one role-keyed entry there in the same loop that appends the
+    # concept set and increments the codeset id, so an entry means a concept set was
+    # actually minted for that criterion.
+    #
+    # Two nearer-looking anchors were measured and REJECTED, both because they fire on
+    # correct artifacts:
+    #
+    #   * `len(InclusionRules)` -- rules are not criteria. A group emits one rule for
+    #     many members, a collapse folds a restatement onto its survivor, and a
+    #     demographic rule has no concept set at all. `mapped == len(InclusionRules)`
+    #     is wrong on every file of the real batch.
+    #   * `len(ConceptSets)` -- the delivery path prunes, merges and adds sets after
+    #     generation. Across the 144 census-carrying artifacts under `output/`,
+    #     `len(ConceptSets) - mapped` takes four different values (1 on 130, 2 on 6,
+    #     0 on 6, -1 on 2), so any fixed offset fails 14 real files.
+    #
+    # The refs map does hold: on all 71 artifacts under `output/` that carry both keys,
+    # `mapped == len(role-keyed refs)` exactly, with no exception. It is an equality by
+    # construction and not by coincidence -- the loop writes one entry per non-None
+    # mapping result, keyed by `f"{role}:{id}"`, and `mapped` counts the same results --
+    # and the two ways it could legitimately drift (a criterion with an empty id, two
+    # criteria sharing one role+id) collapse the store index the same way, so the
+    # equality anchor above fires on them first.
+    #
+    # CONDITIONAL, and this is the honest limit of the check: 73 of those 144 artifacts
+    # carry `_generationCensus` and no refs map, including all 12 files of the previous
+    # day's delivery. The key is popped on the draft path, so its presence is a property
+    # of the export route rather than of the artifact's age, and failing a file for not
+    # carrying it would fail a correct batch. It is therefore run when present and
+    # NAMED IN THE SUMMARY when absent -- the same answer this function already gives a
+    # pre-accounting artifact, and the reason `link_clause` is printed on passing rows.
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    if not isinstance(refs, dict):
+        link_clause = "no concept-set links recorded"
+    else:
+        ref_keys: set[tuple[str, str]] = set()
+        for key in refs:
+            role, separator, criterion_id = str(key).partition(":")
+            if separator:
+                ref_keys.add((role, criterion_id))
+
+        contradicted = sorted(ref_keys & (unmapped_keys | skipped_keys))
+        if contradicted:
+            violations.append(
+                f"{len(contradicted)} criterion(s) carry a concept-set reference in "
+                f"{CRITERION_CONCEPT_SET_REFS_KEY} while a record says they were refused "
+                "or skipped, so the file both minted a set for them and recorded that it "
+                "did not: "
+                + "; ".join(f"{role} #{criterion_id}" for role, criterion_id in contradicted)
+            )
+        stray_refs = sorted(ref_keys - store_keys)
+        if stray_refs:
+            violations.append(
+                f"{len(stray_refs)} concept-set reference(s) in "
+                f"{CRITERION_CONCEPT_SET_REFS_KEY} name a criterion the store study does "
+                "not carry, so nothing says which criterion the set was minted for: "
+                + "; ".join(f"{role} #{criterion_id}" for role, criterion_id in stray_refs)
+            )
+
+        if parts["mapped"] is not None and parts["mapped"] != len(ref_keys):
+            if parts["mapped"] > len(ref_keys):
+                violations.append(
+                    f"census books {parts['mapped']} criteria as mapped but only "
+                    f"{len(ref_keys)} of them carry a concept-set reference in "
+                    f"{CRITERION_CONCEPT_SET_REFS_KEY}: "
+                    f"{parts['mapped'] - len(ref_keys)} criterion(s) are counted as having "
+                    "emitted while nothing in the file shows a concept set was ever minted "
+                    "for them -- the shape a refusal booked as a mapping takes"
+                )
+            else:
+                violations.append(
+                    f"{CRITERION_CONCEPT_SET_REFS_KEY} carries {len(ref_keys)} per-criterion "
+                    f"references but the census books only {parts['mapped']} criteria as "
+                    f"mapped: {len(ref_keys) - parts['mapped']} concept set(s) were minted "
+                    "for a criterion the census does not say was mapped"
+                )
+        link_clause = (
+            f"{len(ref_keys)} of {parts['mapped']} mapped concept-set linked"
+            if parts["mapped"] is not None
+            else f"{len(ref_keys)} concept-set linked"
         )
 
     # Record integrity first, and on its own line: an unmapped row carrying no reason
@@ -1065,9 +1263,19 @@ def criterion_accounting(
         )
     else:
         unmapped_clause = f"{len(unmapped)} unmapped (none permitted)"
+    # The store anchor and the emission link both report on the row, passing or not.
+    # `0d80c94` held them silent to prove the anchor added no failure to the real batch;
+    # that is proved, and a check whose only output is silence cannot be told from a
+    # check that never ran -- which is exactly how a popped `_criterionConceptSetRefs`
+    # would disable the link check without anyone noticing.
+    anchor_clause = (
+        f"{total} of {len(index)} store criteria accounted for"
+        if total is not None
+        else f"no total recorded against the store study's {len(index)} criteria"
+    )
     summary = (
         f"criterion accounting: {census.get('mapped')} mapped, {unmapped_clause}, "
-        f"{len(skipped)} skipped ({permitted}){drop_clause}"
+        f"{len(skipped)} skipped ({permitted}), {anchor_clause}, {link_clause}{drop_clause}"
     )
     return violations, summary
 
