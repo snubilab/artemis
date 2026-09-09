@@ -492,13 +492,17 @@ def end_entry_colliding_washouts_before_index(expression: dict[str, Any]) -> lis
 #: domain, in the IR's own `{"start": <negative days>, "end": 0}` shape so the emitter
 #: runs ONE conversion to CIRCE `Start`/`End` for defaulted and extracted windows alike.
 #:
-#: These four numbers have exactly one home: `agent1/prompts.py` renders its own four
-#: statements of them from this table (`render_default_window_prompt_line`) rather than
-#: retyping them, and the emitter reads it here. A fifth copy is the defect, not the fix
-#: -- the two that existed disagreed, and nothing compared them.
+#: These four numbers have exactly one home, and all three readers come here for them:
+#: `agent1/prompts.py` renders its four statements of them from this table
+#: (`render_default_window_prompt_line`) rather than retyping them; the emitter
+#: `TTEService._build_seeded_target_circe` reads it through `default_criterion_window`;
+#: and so does the IR pipeline's own builder, `CohortAssembler._start_window`. A fourth
+#: copy is the defect, not the fix -- when the assembler carried its own, the two
+#: disagreed on Drug and Measurement and nothing compared them.
 #:
-#: 9999 days is "all prior history" (~27 years), the same value
-#: `agents/agent3/assembler.py` already uses for its own null-window branch.
+#: 9999 days is "all prior history" (~27 years) -- the flat value the assembler used
+#: for EVERY domain until 2026-09-10, which is why Condition and Procedure are
+#: byte-identical across that change and only Drug and Measurement moved.
 DEFAULT_WINDOW_START_DAYS_BY_DOMAIN: dict[str, int] = {
     "Condition": -9999,
     "Drug": -365,

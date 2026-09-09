@@ -18,7 +18,7 @@ from src.services.value_constraint import (
     build_measurement_value_filter,
     resolve_group_member_constraint,
 )
-from src.utils.circe_lint import unreadable_value_attributes
+from src.utils.circe_lint import default_criterion_window, unreadable_value_attributes
 import logging
 import copy
 
@@ -226,7 +226,14 @@ class CohortAssembler:
             "CdmVersionRange": "",
         }
 
-        # Drug rule template for Treatment / Comparator
+        # Drug rule template for Treatment / Comparator.
+        #
+        # The 9999 below is NOT the criterion-window default `_start_window` resolves
+        # from `circe_lint.DEFAULT_WINDOW_START_DAYS_BY_DOMAIN`, and must not be routed
+        # through it. This rule asks "was this patient ever on the arm's drug", which
+        # is what assigns a patient to an arm; a per-domain lookback would turn it into
+        # "was on it within the last year" and silently move patients between arms.
+        # Same number, different decision -- it has no null-window branch to default.
         drug_presence_rule = {
             "name": drug_entity_text or "Treatment drug",
             "expression": {
@@ -523,6 +530,49 @@ class CohortAssembler:
         else:
             return {"Days": 0, "Coeff": 1}
     
+    def _start_window(self, rule: Criteria, domain: Optional[str]) -> Dict[str, Any]:
+        """The ``StartWindow`` for one emitted criterion of ``rule``.
+
+        A rule that carries its own window shares it across every criterion it emits:
+        the protocol stated one time frame and it applies to the whole group.
+
+        A rule that carries none takes its DOMAIN's documented lookback, from
+        ``circe_lint.DEFAULT_WINDOW_START_DAYS_BY_DOMAIN`` -- the same table
+        ``TTEService._build_seeded_target_circe`` reads and the same one
+        ``agent1/prompts.py`` renders its four statements of these values from. Until
+        2026-09-10 this builder answered a null window with a flat ``9999`` for every
+        domain: it agreed with the table on Condition and Procedure and disagreed on
+        Drug (365) and Measurement (180), so the same decision had two homes and this
+        one won silently whenever the model omitted ``window`` -- which it does for 57
+        of the 557 criteria in the cold-6 store, 10%, in nine of the ten studies.
+
+        Both builders read one table because both consume IR from Agent 1, and all
+        four Agent 1 prompts state these defaults to the model. A window the model was
+        told to apply and did not is reconstructed here; it is not a second opinion
+        about how long a lookback should be.
+
+        ``domain`` is the domain of the criterion being emitted, not of the rule: a
+        composite group's members carry their own, and one shared window would put one
+        domain's default on another domain's member. An absent or unlisted domain
+        takes ``DEFAULT_WINDOW_START_DAYS_UNLISTED_DOMAIN`` ("all prior history"), the
+        only reading that cannot silently NARROW a criterion the protocol left
+        unbounded -- and, being -9999, byte-identical to the literal that was here.
+
+        The default arrives in the IR's own ``{"start", "end"}`` shape so it runs
+        through ``_offset_to_circe_window`` like an extracted window does. There is one
+        conversion, so a defaulted window cannot be converted differently from an
+        extracted one.
+        """
+        if rule.window:
+            start_days, end_days = rule.window.start, rule.window.end
+        else:
+            window, _source = default_criterion_window(domain)
+            start_days, end_days = window["start"], window["end"]
+        return self._validate_window({
+            "Start": self._offset_to_circe_window(start_days),
+            "End": self._offset_to_circe_window(end_days),
+        })
+
     @staticmethod
     def _validate_window(window: Dict[str, Any]) -> Dict[str, Any]:
         """Validate that StartWindow has Start <= End (temporally).
@@ -553,18 +603,12 @@ class CohortAssembler:
         else:
             occurrence = OCCURRENCE_TYPE["PRESENCE"]
         
-        # Build temporal constraint using normalized helper
-        # Default: 365 days prior to index date
-        if rule.window:
-            start_window = self._validate_window({
-                "Start": self._offset_to_circe_window(rule.window.start),
-                "End": self._offset_to_circe_window(rule.window.end)
-            })
-        else:
-            start_window = {
-                "Start": {"Days": 9999, "Coeff": -1},  # up to ~27 years before index
-                "End": {"Days": 0, "Coeff": 1}           # up to index date
-            }
+        # The temporal window is now resolved per EMITTED CRITERION rather than once
+        # per rule, by `_start_window` below. A rule that carries a window still shares
+        # it across every member (the protocol stated one time frame for the group); a
+        # rule that does not takes each member's own domain default, so a mixed group
+        # cannot put one domain's lookback on another domain's member.
+        #
         # EndWindow intentionally omitted — Circe treats missing EndWindow as
         # unconstrained.  Previous {Days:0} required the condition to exist
         # on exactly the index date, which incorrectly filtered all patients.
@@ -647,7 +691,7 @@ class CohortAssembler:
                     sc_content.update(sc_value_filter)
                     criteria_list.append({
                         "Criteria": {sc_criteria_type: sc_content},
-                        "StartWindow": start_window,
+                        "StartWindow": self._start_window(rule, sc.domain),
                         "RestrictVisit": False,
                         "IgnoreObservationPeriod": False,
                         "Occurrence": occurrence
@@ -711,7 +755,7 @@ class CohortAssembler:
                 "CriteriaList": [
                     {
                         "Criteria": {criteria_type: criteria_content},
-                        "StartWindow": start_window,
+                        "StartWindow": self._start_window(rule, rule.domain),
                         "RestrictVisit": False,
                         "IgnoreObservationPeriod": False,
                         "Occurrence": occurrence
