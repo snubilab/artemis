@@ -113,6 +113,7 @@ from src.utils.criterion_refusal import (
     REFUSAL_UNMAPPABLE_PLACEHOLDER,
     CriterionRefused,
 )
+from src.utils.criterion_seed import criterion_mapper_seed
 from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
 from src.utils.exceptions import DBConnectionError, DBQueryError, LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
@@ -4971,12 +4972,11 @@ class TTEService:
                 expanded_texts: list[str] = []
                 domain_hints: list[str | None] = []
                 for criterion, _excl in mappable_items:
-                    raw_text = (
-                        criterion.get("sourceText")
-                        or criterion.get("description")
-                        or ""
-                    ).strip()
-                    raw_text = " ".join(raw_text.split())
+                    # The SAME seed `_build_seeded_eligibility_rule` will ask for. These
+                    # candidates are handed back by index, so a seed chosen differently
+                    # here pre-fetches for one string and answers a mapper that asked for
+                    # another -- `criterion_mapper_seed` is the single home of that choice.
+                    raw_text = criterion_mapper_seed(criterion)
                     # Mirror abbreviation expansion from workflow.py
                     exp, was_exp = expand_abbreviation(raw_text)
                     if was_exp:
@@ -6413,6 +6413,15 @@ class TTEService:
             or criterion.get("description")
             or f"{'Exclusion' if exclusion else 'Inclusion'} criterion"
         ).strip()
+        # `label` names the rule a human reads and reports every refusal below, so it
+        # keeps the protocol's whole sentence. The SEED is narrower: a criterion whose
+        # `sourceText` is empty falls back to a description that still carries the
+        # temporal qualifier already stored in `window` ("... within 3 years"), and the
+        # intent router refuses to parse a seed carrying one -- four CARMELINA criteria
+        # were lost that way on 2026-09-09 with correct windows on every one of them.
+        # Nothing is deleted: the criterion's own fields and this rule's name are
+        # untouched. See `src/utils/criterion_seed.py`.
+        seed = criterion_mapper_seed(criterion) or label
         raw_domain = (criterion.get("domain") or "").strip() or None
         # A demographic-domain criterion reaching this function (via the exclusion-
         # loop fallthrough) has no real Age/Gender/etc. rule to build, so its raw
@@ -6423,7 +6432,7 @@ class TTEService:
         # match itself instead.
         criterion_domain = None if raw_domain in DEMOGRAPHIC_DOMAINS else raw_domain
         mapped_criterion = self._recommend_seeded_concept_set(
-            label,
+            seed,
             expected_domain=criterion_domain,
             pre_fetched_candidates=pre_fetched_candidates,
             workflow=workflow,

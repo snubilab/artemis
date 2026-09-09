@@ -230,6 +230,39 @@ For each criterion, identify:
   threshold outright (e.g. "HbA1c >= 7%", "creatinine > 354 mmol/l"); leave it out when
   you are not copying a number the text actually gives. `source_text` is the record of
   what the protocol said, so nothing is lost by omitting it.
+  CRITICAL — a `value_constraint` bounds a MEASURED VALUE: the number a lab or a clinical
+  observation recorded for this patient, which OMOP keeps in `measurement.value_as_number`
+  or `observation.value_as_number`. Only Measurement and Observation criteria have such a
+  column at all. "The protocol states a threshold outright" is therefore NOT the test —
+  protocols state many numbers that are not measured values, and each kind below is a
+  threshold you must NOT write as a `value_constraint`:
+    · a DRUG DOSE — "aspirin > 165 mg/day", "insulin > 1 U/kg". `drug_exposure` has no
+      dose-strength column Circe can filter; the one value it reads is Quantity, which is
+      units DISPENSED, not strength, so a mg/day bound has no correct home there at all.
+      Emit the drug, drop the number.
+    · a DISEASE DURATION — "type 2 diabetes duration > 10 years", "hypertension >= 5
+      years". `condition_occurrence` has no value column whatsoever. A duration is a
+      temporal fact about when the diagnosis started; `window` and `source_text` carry it.
+    · an ANATOMIC or IMAGING PERCENTAGE on a Procedure or Condition criterion —
+      "revascularization ... >50% stenosis". That number describes the lesion, not a
+      recorded measurement, and `procedure_occurrence` reads no value either.
+    · a COUNT — "at least two CV risk factors", "> 1 prior episode". That is an occurrence
+      count and belongs to the criterion's structure, never to `value_constraint`.
+    · an AGE — "age >= 18 years". Demographics carries age from `year_of_birth`; a
+      Demographics criterion never takes a `value_constraint`.
+  The unit is the tell: mg/day, U/kg, years-of-disease, % stenosis and "risk factors" are
+  not units any lab reports a result in. If you cannot name the lab or observation that
+  would produce this number for one patient on one day, it is not a `value_constraint`.
+  Getting this wrong is silent and total. Circe DROPS a value condition written on a table
+  that cannot read it — no error, no warning — and the rule then matches EVERY occurrence
+  of its concept set while reading in the JSON as though it were filtered. Measured on
+  these exact criteria: "Required treatment with aspirin > 165 mg/day" became "any aspirin
+  exposure at all", "Type 2 diabetes mellitus duration > 10 years" became "any type 2
+  diabetes diagnosis", and "revascularization >50% stenosis" became "any arterial
+  revascularization" — three criteria that read stricter than the protocol and were in
+  fact vacuous. Downstream now REFUSES a criterion carrying a bound its own table cannot
+  read, so the whole criterion is dropped rather than shipped vacuous: writing the number
+  where it does not belong costs the criterion, while omitting it keeps the criterion.
   When the threshold is a multiple of a reference range rather than the measured value
   ("ALT > 3x ULN", "bilirubin above 2 times the upper limit of normal"), put the
   reference marker in `unit_text` verbatim — `"x ULN"` or `"x LLN"` — and never replace
@@ -246,6 +279,31 @@ When choosing a domain and structuring rules, consider the OMOP CDM tables:
 - **Procedure**: procedure_occurrence → procedure_concept_id. Use for surgeries, interventions.
 - **Observation**: observation → observation_concept_id. Use for clinical observations.
 - **Demographics**: person → year_of_birth, gender_concept_id. Use for age, sex criteria.
+
+## When the description and the entity disagree, the description decides the domain
+`entity_text` is the noun you look up in the vocabulary; the criterion's name/description
+is what the protocol actually asserts. When the two point at different OMOP domains, the
+DESCRIPTION decides `domain` — it is the whole sentence, and `entity_text` is only one word
+lifted out of it. Then make `entity_text` name something that really lives in that domain:
+a rule whose concept set holds none of its own domain's concepts matches nothing, and is
+now refused downstream, so the criterion is lost rather than merely weakened.
+Two criteria that got this backwards, and what each cost:
+  · "Known hypersensitivity or allergy to the investigational product or its excipients,
+    or glimepiride" was emitted as domain=Condition with entity_text "Glimepiride".
+    Glimepiride is a DRUG, so the concept set resolved to drug concepts while the rule
+    asked `condition_occurrence` for them — zero overlap, zero matches, and the trial's
+    exclusion on its own comparator drug never applied to a single patient. The entity the
+    sentence asserts is HYPERSENSITIVITY, a Condition; glimepiride is the allergen that
+    qualifies it, not the thing to look up. Emit domain=Condition with entity_text
+    "Hypersensitivity to glimepiride" — the domain and the entity must agree.
+  · "Change in dose of thyroid hormones within 6 weeks prior informed consent" was emitted
+    as domain=Measurement with entity_text "Thyroid hormones". "dose change" is a statement
+    about a DRUG the patient takes, not about a lab result. As a Measurement it became "no
+    thyroid lab drawn in the last 420 days", which is not the protocol's criterion at all
+    and selects a different population entirely.
+The deciding words sit in the description, not in the entity: "dose", "treatment with",
+"use of", "therapy" ⇒ Drug. "hypersensitivity", "allergy", "history of", "diagnosis of" ⇒
+Condition. "level", "count", "concentration", or a unit of measure ⇒ Measurement.
 
 ## Drug Entity Normalization
 - For Drug criteria, `entity_text` must be the active ingredient/generic drug name.
@@ -289,6 +347,26 @@ Pattern E — Composite OR condition ("≥1 of A, B, C ...", "at least one of", 
   Example: "Troponin I or T or CK-MB greater than the upper limit of normal" →
   One inclusion_rule, group_type="ANY", sub_criteria = Troponin I, Troponin T, CK-MB,
   each with the same "> 1X ULN" constraint. Three sub_criteria from one threshold.
+  CRITICAL — the GROUP LABEL never carries the `value_constraint`. When a criterion has
+  `sub_criteria`, the parent row is a heading: it maps to no concept set of its own and
+  emits no rule, so a threshold written there goes NOWHERE. Write the bound out once per
+  member it can honestly measure, even when that repeats the same number three times.
+  Measured on "Uncontrolled hyperglycaemia with a glucose level >240 mg/dl": it was emitted
+  as one group labelled "Glucose" carrying {op: gt, value: 240, unit_text: "mg/dl"} over
+  three members — Hemoglobin A1c, Fasting Plasma Glucose, Random Plasma Glucose — each
+  carrying no constraint at all. The label emitted nothing, so the bound was simply lost,
+  and the three members each emitted "any glucose measurement on record" inside an ABSENCE
+  rule, which excluded every patient the inclusion rules had just required.
+  The grouping was also wrong before the bound went missing. 240 mg/dL is a plasma-glucose
+  number; HbA1c is reported in %, so no mg/dL bound can ever apply to it. A member measured
+  in a DIFFERENT UNIT from the threshold does not belong in that group — give it its own
+  criterion with its own bound in its own unit, or leave it out. (Here the protocol names
+  exactly one analyte, so Pattern H applies and the right answer is ONE flat Measurement
+  criterion: entity_text "Glucose", value_constraint {op: "gt", value: 240,
+  unit_text: "mg/dl"} — no group at all.)
+  The mechanical check before you emit a group: every sub_criterion either carries its own
+  `value_constraint` in a unit that criterion is actually reported in, or the group carries
+  no threshold anywhere. A number on the parent and nothing on the members is always wrong.
 
 Pattern F — Conditional criterion ("If [subgroup] → [requirement]"):
   CRITICAL: When a criterion only applies to a specific patient subgroup

@@ -666,6 +666,44 @@ _RELATIVE_TIME_ANCHOR_RE = re.compile(
     r"\bwithin\b|\bprior\s+to\b|\bpreceding\b|\bbefore\b|\bafter\b|\bsince\b|\bago\b",
     re.IGNORECASE,
 )
+# The other way a time quantity fails to be a measured value: it is the SPAN the
+# criterion is about, anchored to nothing. "duration > 10 years", "≥ 7 consecutive
+# days", "life expectancy ≤ 1 year". `_RELATIVE_TIME_ANCHOR_RE` above catches the
+# index-relative window; these catch the span with no index at all. Age is
+# deliberately not here — "age >= 18 years" is a patient attribute and still parses.
+_DURATION_MARKER_RE = re.compile(
+    r"\bduration\b|\bconsecutive\b|\blife\s+expectancy\b|\blasting\b|\blong[- ]?standing\b",
+    re.IGNORECASE,
+)
+
+# A percentage describing a LESION rather than a lab result. No OMOP table carries a
+# column for it: ProcedureOccurrence and ConditionOccurrence read no value at all, so
+# ">50% stenosis" written as ValueAsNumber is dropped by Circe and the rule matches
+# every occurrence of its concept set. Keyed on the anatomy word rather than on "%",
+# because "%" is also HbA1c's unit and LVEF's — both of which are measured and stay.
+_ANATOMIC_SEVERITY_RE = re.compile(
+    r"\bstenos[ei]s\b|\bstenotic\b|\bnarrowing\b|\bocclusi(?:on|ve)\b|"
+    r"\bluminal\b|\bobstruction\b",
+    re.IGNORECASE,
+)
+_PERCENT_UNITS = frozenset({"%", "percent", "pct"})
+
+# An amount per unit TIME or per unit BODY MASS is a prescription, not a result.
+# drug_exposure has no dose-strength column -- the one value Circe reads there is
+# Quantity, which is units DISPENSED -- so "aspirin > 165 mg/day" has no correct home.
+# A lab reports a concentration (mg/dL, ng/L) or a mass ratio (μg/mg), which do not
+# match this and are untouched.
+_DOSE_RATE_UNIT_RE = re.compile(
+    r"^(?:mg|g|mcg|µg|μg|ng|u|iu|ml|l)\s*/\s*(?:day|d|kg|hr|h|hour|min|m2|m²)\b",
+    re.IGNORECASE,
+)
+# ...gated on the phrase naming a prescription, because a 24-hour collection reports a
+# real excretion rate in the same units ("proteinuria > 300 mg/day") and must survive.
+_DOSE_CONTEXT_RE = re.compile(
+    r"\bdose\b|\bdosage\b|\bdosing\b|\btreatment\s+with\b|\btherapy\s+with\b|"
+    r"\btreated\s+with\b|\breceiving\b|\btaking\b|\bdaily\b",
+    re.IGNORECASE,
+)
 
 # ClinicalTrials.gov strips the caret upstream, so "1.5 x 10^9/L" can arrive as
 # "1.5 x 109/L". Reading 109 as the magnitude is off by nine orders.
@@ -699,16 +737,81 @@ def _resolve_unit(tail: str) -> tuple[str | None, int | None]:
     return tail, None
 
 
+def _normalize_unit_token(text: str) -> str:
+    token = text.strip("().,;:'\u2019\u201d\"").lower().rstrip(".")
+    return token[:-1] if token.endswith("s") else token
+
+
 def _is_temporal(unit_text: str | None, phrase: str) -> bool:
-    """True when the quantity is a time window rather than a measured value (D8)."""
+    """True when the quantity is a time span rather than a measured value (D8).
+
+    Two ways a span reaches here. It is a WINDOW when something anchors it to the index
+    event ("within 3 months"), and it is a DURATION when the phrase names it as one
+    ("duration > 10 years", "≥ 7 consecutive days") with no anchor at all. Both are
+    facts about time; neither is a number a lab reported, and neither has a column.
+
+    The unit is read from the first two whitespace tokens rather than from the whole
+    tail, because `_resolve_unit` hands back everything it could not resolve: CARMELINA's
+    "Treatment (=> 7 consecutive days) with GLP-1 receptor agonists" arrives with
+    ``unit_text`` = ``"consecutive days) with GLP-1 receptor agonists"`` and the time word
+    is the second token. Scanning ALL tokens instead would reach the "min" of a
+    space-separated "ml / min" and start refusing eGFR bounds on any phrase carrying
+    "within" -- the failure is silent and in the direction that loses real thresholds,
+    so the scan is bounded to where a unit can actually be.
+    """
     if not unit_text:
         return False
-    token = "".join(unit_text.split()).lower().rstrip(".")
-    token = token[:-1] if token.endswith("s") else token
-    if token in _WINDOW_UNITS:
+    head = _normalize_unit_token("".join(unit_text.split()))
+    if head in _WINDOW_UNITS:
         return True
-    # A year is an age until something anchors it to the index event.
-    return token in _TIME_UNITS and _RELATIVE_TIME_ANCHOR_RE.search(phrase) is not None
+    leading = [_normalize_unit_token(t) for t in unit_text.split()[:2]]
+    # A year is an age until something anchors it to the index event or names it a span.
+    names_time = head in _TIME_UNITS or any(t in _TIME_UNITS for t in leading)
+    if not names_time:
+        return False
+    return bool(
+        _RELATIVE_TIME_ANCHOR_RE.search(phrase) or _DURATION_MARKER_RE.search(phrase)
+    )
+
+
+def _is_anatomic_severity(unit_text: str | None, phrase: str) -> bool:
+    """True for "≥50% stenosis" and its kin -- a lesion figure, not a lab result."""
+    if not unit_text:
+        return False
+    return (
+        _normalize_unit_token(unit_text.split()[0]) in _PERCENT_UNITS
+        and _ANATOMIC_SEVERITY_RE.search(phrase) is not None
+    )
+
+
+def _is_drug_dose_rate(unit_text: str | None, phrase: str) -> bool:
+    """True for "aspirin > 165 mg/day" -- a prescription, not a measured result."""
+    if not unit_text:
+        return False
+    return (
+        _DOSE_RATE_UNIT_RE.match(unit_text.strip()) is not None
+        and _DOSE_CONTEXT_RE.search(phrase) is not None
+    )
+
+
+def _is_unmeasurable(unit_text: str | None, phrase: str) -> bool:
+    """True when no OMOP value column could ever hold this quantity.
+
+    The one predicate the two parse paths share, so a family excluded here cannot be
+    reintroduced by the other. Every family it names was measured in the six-trial
+    delivery of 2026-09-09 as a ``value_constraint`` written onto a criteria type whose
+    CDM table reads nothing (`circe_lint.CRITERIA_TYPE_VALUE_ATTRIBUTES`): Circe drops
+    the condition silently, and since the emission-time refusal landed the whole
+    criterion is dropped instead. Refusing to produce the number is the only place the
+    loss can be prevented — the extraction prompt cannot, because Rule 0 tells the model
+    to copy this parser's annotation verbatim and Step 8a re-attaches it when the model
+    leaves it out.
+    """
+    return (
+        _is_temporal(unit_text, phrase)
+        or _is_anatomic_severity(unit_text, phrase)
+        or _is_drug_dose_rate(unit_text, phrase)
+    )
 
 
 def _comparator_before(text: str, limit: int) -> tuple[str, int] | None:
@@ -781,7 +884,7 @@ def parse_value_constraint(phrase: str) -> ValueConstraint | None:
     if number is None:
         return None
     unit_text, unit_concept_id = _resolve_unit(text[number.end() :])
-    if _is_temporal(unit_text, text):
+    if _is_unmeasurable(unit_text, text):
         return None
     return ValueConstraint(
         op=_COMPARATOR_OPS[comparator.lastgroup or ""],
@@ -804,7 +907,7 @@ def _bare_value(text: str) -> ValueConstraint | None:
         return None
     unit_text = _canonical_unit(text[match.end() :].strip())
     unit_concept_id = normalize_unit(unit_text)
-    if unit_concept_id is None or _is_temporal(unit_text, text):
+    if unit_concept_id is None or _is_unmeasurable(unit_text, text):
         return None
     return ValueConstraint(
         op="gte",
@@ -827,6 +930,21 @@ def parse_value_constraints(line: str) -> list[ValueConstraint]:
         constraint
         for segment in _PHRASE_SPLIT_RE.split(line)
         if (constraint := parse_value_constraint(segment)) is not None
+        # ...and a bare percentage re-judged against the WHOLE line, because the split
+        # can carry the number away from the word that disqualifies it. CAROLINA's
+        # "Documented coronary artery disease (≥ 50% luminal diameter narrowing ... or
+        # ≥50% in at least two major coronary arteries in angiogram)" splits on " or ",
+        # and the second segment is a bare "≥50% in ... angiogram)" with no anatomy word
+        # left in it. Judged on the segment alone it reads like a lab result; judged on
+        # the line it is the same stenosis figure stated twice.
+        #
+        # ONLY the anatomic family gets this widening, and the narrowness is measured,
+        # not cautious by default. Applying `_is_unmeasurable` to the whole line dropped
+        # PLATO's "≥18 years of age" -- a real age -- because the same CT.gov paragraph
+        # elsewhere says "≥10 minutes' duration at rest". Duration and dose phrases carry
+        # their own disqualifying word inside the segment that holds the number; only the
+        # percentage is left naked by the split.
+        and not _is_anatomic_severity(constraint.unit_text, line)
     ]
 
 

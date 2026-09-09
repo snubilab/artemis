@@ -55,7 +55,11 @@ REFUSAL_UNMAPPABLE_PLACEHOLDER = "unmappable-placeholder"
 #: The intent router could not parse the seed into a clinical entity — usually because
 #: the seed still carries a temporal qualifier ("... within 3 years") that belongs in the
 #: criterion's ``window``, not in its text. The refusal is correct; the defect is
-#: upstream, at extraction.
+#: upstream, in whichever text was handed to the mapper. Note where it is NOT: the four
+#: CARMELINA rows that produced this code on 2026-09-09 had CORRECT windows, so
+#: extraction was right and the seed was the copy that should not have repeated the
+#: number. ``src.utils.criterion_seed.criterion_mapper_seed`` is where that is now
+#: decided; check it before reaching for the extraction prompt.
 REFUSAL_INTENT_UNPARSED = "intent-unparsed"
 
 #: A recommendation came back but its expression holds no concepts, so there is nothing
