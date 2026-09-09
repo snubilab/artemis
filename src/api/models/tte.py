@@ -129,6 +129,14 @@ class PaperStatus(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+#: The key under which a criterion records the protocol line it was extracted from.
+#: Spelled once here, in the module that owns the criterion wire format, for the same
+#: reason :data:`~src.utils.circe_lint.DROPPED_CRITERIA_KEY` is spelled once there: a
+#: key retyped at a second site is a key that half-survives its own rename.
+#: ``src/services/tte_service.py`` imports this rather than writing the string again.
+CRITERION_PROTOCOL_LINE_KEY = "protocolLine"
+
+
 class CriterionValueConstraint(TTEModel):
     op: str = ""
     value: float | None = None
@@ -141,6 +149,23 @@ class Criterion(TTEModel):
     domain: str = ""
     valueConstraint: CriterionValueConstraint | None = None
     sourceText: str = ""
+    #: The protocol's own line, verbatim, as Agent 1 recorded it in the IR's
+    #: ``source_text`` -- NOT a second spelling of ``sourceText`` above, which carries
+    #: the criterion's entity ("Alanine aminotransferase") because
+    #: ``_criterion_dict_from_ir_item`` assigns it from ``entity_text``, and which
+    #: several concept-mapping seeds read as such.
+    #:
+    #: One line can yield one criterion or several, and until this field existed the
+    #: store could not tell those apart: a line that collapsed from four criteria to
+    #: one left no trace in any other field, and a threshold the model supplied itself
+    #: was indistinguishable from one the protocol wrote down. Grouping rows by this
+    #: value makes the line-to-criterion cardinality readable, and reading it next to
+    #: the row's ``valueConstraint`` shows whether the number is in the line at all.
+    #:
+    #: Empty for a study whose IR predates ``Criteria.source_text`` (documented
+    #: Optional there for the same reason) and for any criterion not built from an IR.
+    #: The key is :data:`CRITERION_PROTOCOL_LINE_KEY`.
+    protocolLine: str = ""
     window: dict[str, int] | None = None
     conceptSetId: int | None = None
     conceptSetName: str = ""

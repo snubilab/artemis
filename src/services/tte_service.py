@@ -25,6 +25,7 @@ from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field, field_validator
 
 from src.api.models.tte import (
+    CRITERION_PROTOCOL_LINE_KEY,
     DEMOGRAPHIC_DOMAINS,
     is_demographic_domain_but_not_a_demographic_rule,
     AnalysisArtifactMeta,
@@ -10913,6 +10914,34 @@ class TTEService:
         name = (getattr(item, "name", None) or "").strip()
         entity_text = (getattr(item, "entity_text", None) or "").strip()
         source_text = entity_text
+        # The protocol's OWN line, kept separate from `source_text` above. The two
+        # names look alike and are not the same thing: the line below is what the
+        # protocol wrote, while `sourceText` is the entity, because this function
+        # assigns it from `entity_text` -- and several concept-mapping seeds read
+        # `sourceText` expecting exactly that entity, so it keeps its meaning here.
+        #
+        # Without the line, the store cannot say which protocol line produced which
+        # criterion, and two different things become one record. A line that fanned
+        # out into ALT + AST + ALP in one run and into ALT alone in another leaves no
+        # trace of the two lost analytes anywhere else in the row (measured on
+        # CAROLINA/NCT01243424 -- `tests/fixtures/carolina_liver_line_ir.json` pins
+        # both recorded runs), so the collapse is unfindable by counting. And a
+        # `3x ULN` the model supplied itself reads identically to one the protocol
+        # stated, which scores invention as extraction.
+        #
+        # Carried as the line text rather than as an index into the criteria list,
+        # for three measured reasons. The IR records the text, not an ordinal, so no
+        # index exists to copy. The ordinal the model copies into `source_text` is
+        # per-block and the block a criterion lands in is not the block its line came
+        # from -- one recorded CAROLINA run turned the whole exclusion block into
+        # negated inclusion rules, where "line 1" would resolve to the wrong line.
+        # And `trialMetadata.enrichedCriteria`, the only line list the store holds, is
+        # a display string written by a separate overlay that picks its cache file by
+        # filename order rather than by the run: the 09-09 CAROLINA store carries an
+        # enrichment whose text never mentions ALT, AST, ALP or `3 x ULN` at all,
+        # while the IR that built its criteria did. An index into that list would
+        # resolve confidently to the wrong line, which is worse than no index.
+        protocol_line = (getattr(item, "source_text", None) or "").strip()
         # A threshold written once on the group label belongs to the members it can
         # honestly measure -- `resolve_group_member_constraint` is the one place that
         # decides, shared with `agent3/assembler.py`. Passing the label's own
@@ -10955,6 +10984,7 @@ class TTEService:
             "domain": domain,
             "valueConstraint": value_constraint,
             "sourceText": source_text,
+            CRITERION_PROTOCOL_LINE_KEY: protocol_line,
             "window": window,
             "logicType": item_logic_type,
             "conceptSetId": None,

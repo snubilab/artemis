@@ -132,6 +132,23 @@ class CriteriaPlanner:
                         entity_text=sc_data.get("entity_text", ""),
                         logic_type=criterion.logic_type,  # Inherit parent's logic
                         window=criterion.window,  # Inherit parent's window
+                        # Inherit the parent's protocol line. A sub-criterion is a
+                        # reading OF the parent's line, so the line is its provenance
+                        # too -- and these members are precisely where a
+                        # line-to-criterion cardinality is worth reading, since this
+                        # is the hop that turns one line into several criteria.
+                        # Leaving it None meant every decomposed member reached the
+                        # store carrying no line at all: CAROLINA's stored
+                        # "Elevated Bilirubin" and "Coagulopathy (e.g., elevated INR)"
+                        # members are this shape, and appear in no recorded Agent 1
+                        # cache because the planner, not Agent 1, invented them.
+                        #
+                        # This carries provenance across the hop and decides nothing:
+                        # not what is decomposed, not the prompt, and not the member's
+                        # own `value_constraint`, which REQ-004/REQ-005 require be
+                        # grounded in the member's OWN text and which is still parsed
+                        # from `value_constraint_text` above, never inherited.
+                        source_text=criterion.source_text,
                         value_constraint=value_constraint,
                     )
                     sub_criteria.append(sc)

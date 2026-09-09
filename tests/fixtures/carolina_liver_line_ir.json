@@ -1,0 +1,104 @@
+{
+  "_comment": "Verbatim excerpt of two recorded Agent 1 IR runs for NCT01243424 (CAROLINA), taken from data/cache/agent1_ir/ (gitignored, so the rules are vendored here). Both runs saw the SAME numbered protocol line and disagreed on how many criteria it yields: three (ALT, AST, ALP) in one run, one in the other. Nothing else in the pair distinguishes them, which is what makes this a line-to-criterion cardinality fixture rather than a clinical one.",
+  "nctId": "NCT01243424",
+  "runs": {
+    "fanout_3": {
+      "cacheFile": "NCT01243424_vllm_google_gemma-4-E4B-it_0c86b997f8d5c5c3.json",
+      "cacheSha256": "9e28627e1538fd989def9304215201f1033dfa6c61d9ff5d86da1a4117c5c878",
+      "exclusionRules": [
+        {
+          "name": "Active liver disease/impaired hepatic function",
+          "domain": "Measurement",
+          "entity_text": "Alanine aminotransferase",
+          "source_text": "1. Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+          "logic_type": "ABSENCE",
+          "window": {
+            "start": -180,
+            "end": 0
+          },
+          "value_constraint": {
+            "op": "gt",
+            "value": 3.0,
+            "unit_text": "x ULN"
+          }
+        },
+        {
+          "name": "Active liver disease/impaired hepatic function",
+          "domain": "Measurement",
+          "entity_text": "Aspartate aminotransferase",
+          "source_text": "1. Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+          "logic_type": "ABSENCE",
+          "window": {
+            "start": -180,
+            "end": 0
+          },
+          "value_constraint": {
+            "op": "gt",
+            "value": 3.0,
+            "unit_text": "x ULN"
+          }
+        },
+        {
+          "name": "Active liver disease/impaired hepatic function",
+          "domain": "Measurement",
+          "entity_text": "Alkaline phosphatase",
+          "source_text": "1. Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+          "logic_type": "ABSENCE",
+          "window": {
+            "start": -180,
+            "end": 0
+          },
+          "value_constraint": {
+            "op": "gt",
+            "value": 3.0,
+            "unit_text": "x ULN"
+          }
+        },
+        {
+          "name": "Acute liver disease/impaired hepatic function",
+          "domain": "Condition",
+          "entity_text": "Acute liver disease or impaired hepatic function",
+          "source_text": "27. acute liver disease or impaired hepatic function",
+          "logic_type": "ABSENCE",
+          "window": {
+            "start": -9999,
+            "end": 0
+          }
+        }
+      ]
+    },
+    "collapsed_1": {
+      "cacheFile": "NCT01243424_vllm_google_gemma-4-E4B-it_91076e55e38aa8ec.json",
+      "cacheSha256": "a9b987715d744d6bc0914f43e2a77e51f86afb257f8c84e9eecc42196adbf457",
+      "exclusionRules": [
+        {
+          "name": "Active liver disease/impaired hepatic function",
+          "domain": "Measurement",
+          "entity_text": "Alanine aminotransferase",
+          "source_text": "1. Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+          "logic_type": "ABSENCE",
+          "window": {
+            "start": -180,
+            "end": 0
+          },
+          "value_constraint": {
+            "op": "gt",
+            "value": 3.0,
+            "unit_text": "x ULN"
+          }
+        },
+        {
+          "name": "Acute liver disease or impaired hepatic function",
+          "domain": "Condition",
+          "entity_text": "Acute liver disease",
+          "source_text": "27. acute liver disease or impaired hepatic function",
+          "logic_type": "ABSENCE",
+          "window": {
+            "start": -9999,
+            "end": 0
+          }
+        }
+      ]
+    }
+  }
+}
