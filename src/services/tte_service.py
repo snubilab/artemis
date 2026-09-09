@@ -109,6 +109,7 @@ from src.utils.circe_lint import (
     refuse_unreadable_value_filter,
 )
 from src.utils.criterion_refusal import (
+    REFUSAL_DOMAIN_CONTRADICTION,
     REFUSAL_EMPTY_CONCEPT_SET,
     REFUSAL_EMPTY_SEED,
     REFUSAL_INTENT_UNPARSED,
@@ -407,6 +408,51 @@ _TALLIED_PLACEHOLDER_NOUNS = frozenset(
 #: reducible and the refusal must stay `no-concept-mapping`.
 _BARE_QUALIFIERS = frozenset({"contraindication", "contraindications"})
 
+#: Drug CATEGORIES a protocol writes when it means "whatever this trial is testing".
+#: Each names a ROLE in the study rather than a substance, so no RxNorm ingredient sits
+#: behind it and no mapper can ever find one -- what comes back instead is whatever the
+#: vocabulary finds semantically near, which is how "Investigational Drug" answered with
+#: Meas Value, Measurement, Observation and Procedure concepts on 2026-09-10 and refused
+#: as `domain-contradiction`.
+#:
+#: Matched against the WHOLE seed and never as a substring, which is the entire reason
+#: "Hypersensitivity to investigational product or glimepiride", "Contraindication to
+#: study drug or bleeding" and "Participation in another trial with an investigational
+#: drug" keep failing the delivery gate: each names a real entity beside the category,
+#: and a mapper that found it would reduce the loss.
+#:
+#: Measured over the 2,055 distinct `sourceText` / `description` / `label` / `name` /
+#: `conceptSetName` strings of `tmp/tte_cold6_20260908/studies.json` and
+#: `output/site_gap/2026-09-10/store/studies.json`: 28 carry an investigational- or
+#: study-drug phrase, and exactly 6 of them are the bare category. `study drug` and
+#: `study medication` appear in that corpus only INSIDE a larger phrase, never alone;
+#: they are listed because the exact-residue match cannot reach the larger phrases, so
+#: carrying them costs nothing and guards the next batch. "Investigational drug trial"
+#: is deliberately absent -- a trial has an Observation concept and is mappable.
+_UNMAPPABLE_DRUG_CATEGORIES = frozenset(
+    {
+        "investigational drug",
+        "investigational drugs",
+        "investigational product",
+        "investigational products",
+        "investigational medicinal product",
+        "investigational medicinal products",
+        "investigational medicinal/medical product",
+        "investigational agent",
+        "investigational agents",
+        "study drug",
+        "study drugs",
+        "study medication",
+        "study medications",
+    }
+)
+
+#: The one trailing noun the corpus actually writes after a category ("Investigational
+#: Drug Use"). Kept to exactly that: every wider word -- "therapy", "exposure",
+#: "treatment" -- would be imagined rather than measured, and each one widens what the
+#: delivery gate permits.
+_DRUG_CATEGORY_TRAILING_FILLER = frozenset({"use"})
+
 #: An identifier a document pointer may carry: "3", "II", "B".
 _POINTER_IDENTIFIER = re.compile(r"^(?:\d+|[ivxlcdm]+|[a-z])$")
 
@@ -423,7 +469,9 @@ def _seed_is_unmappable_placeholder(seed: str) -> bool:
     it. One code, two opposite verdicts, and no reason string separates them -- so the
     call is made here, at the raise site that can see the seed, and
     ``PERMITTED_REFUSAL_CODES`` in ``scripts/verify_circe_delivery.py`` applies no
-    judgement of its own.
+    judgement of its own. The same call is made from
+    :func:`_refuse_domain_contradiction_for_seed`, where the mapper DID answer and the
+    answer's domain is what betrays that there was nothing to find.
 
     The bias is one-directional and asymmetric on purpose. A false ``True`` permits a
     real mapping loss through the delivery gate, which is the failure that matters; a
@@ -435,13 +483,21 @@ def _seed_is_unmappable_placeholder(seed: str) -> bool:
     * a trailing arabic ordinal after a stem that names nothing -- "Risk factor 1";
     * a pointer into the source document -- "Table II criteria", "Appendix B criteria";
     * a tally of protocol rows -- "Preexisting Conditions Count";
-    * a bare relational qualifier -- "Contraindication", alone.
+    * a bare relational qualifier -- "Contraindication", alone;
+    * a drug CATEGORY naming no ingredient -- "Investigational Drug", "study drug".
 
     Verified against the delivered 2026-09-08 batch (652 distinct criterion
     ``sourceText`` values): it permits none of them, including the four
     ``Contraindication <substance>`` seeds, ``Platelet count``, and the four seeds
     ending in a bare digit (``Age >=50``, ``MELD score >= 30``,
     ``Multiple endocrine neoplasia type 2``, ``Chronic Kidney Disease Stage 4 or 5``).
+
+    Re-verified 2026-09-10 when the drug-category rule was added, over the 2,055 distinct
+    ``sourceText`` / ``description`` / ``label`` / ``name`` / ``conceptSetName`` strings
+    of ``tmp/tte_cold6_20260908/studies.json`` and
+    ``output/site_gap/2026-09-10/store/studies.json``: the rule newly permits 6 of them,
+    every one the bare category, and none of the 22 further strings that carry an
+    investigational- or study-drug phrase beside a real entity.
     """
     text = re.sub(r"\s+", " ", (seed or "").strip()).strip(" .;:,")
     if not text:
@@ -464,7 +520,65 @@ def _seed_is_unmappable_placeholder(seed: str) -> bool:
     if len(words) >= 2 and words[-1] == "count" and words[-2] in _TALLIED_PLACEHOLDER_NOUNS:
         return True
 
+    # Matched on the WHOLE residue, never as a substring: "Investigational drug use" is
+    # the category and nothing else, while "Participation in another trial with an
+    # investigational drug" names a trial the vocabulary holds.
+    category = list(words)
+    while len(category) > 1 and category[-1] in _DRUG_CATEGORY_TRAILING_FILLER:
+        category.pop()
+    if " ".join(category) in _UNMAPPABLE_DRUG_CATEGORIES:
+        return True
+
     return False
+
+
+def _refuse_domain_contradiction_for_seed(
+    criteria_key: str, mapped_criterion: dict[str, Any], label: str, seed: str
+) -> None:
+    """:func:`refuse_domain_contradiction`, re-coded when the seed named no entity.
+
+    ``domain-contradiction`` names a MECHANISM -- the vocabulary answered, and answered
+    from a domain the criterion's own CDM table cannot read. The delivery gate does not
+    permit it, and that is right for the case it was written against: CAROLINA's
+    "Glimepiride" is a real substance in the wrong domain, so a better seed or a better
+    mapper recovers it and the loss is REDUCIBLE.
+
+    It is not right for a seed that names no substance at all. "Investigational drug"
+    is a role in the study, not an ingredient; nothing in RxNorm sits behind it, so the
+    vocabulary answers with whatever is semantically near -- Meas Value, Measurement,
+    Observation, Procedure -- and the wrong domain is the SYMPTOM of unmappability
+    rather than a mapping that went astray. Both rows the 2026-09-10 delivery blocked on
+    (ARISTOTLE exclusion #31 "Investigational drug use", EMPA-REG exclusion #41
+    "Investigational Drug") are that shape, and no re-extraction would change it.
+
+    So the code moves and nothing else does. The message and ``detail`` are carried
+    through verbatim, which keeps the mechanism legible in the delivered record: a
+    reader still sees which domains came back and which table could not read them. Only
+    the key a consumer classifies on -- "is this loss IRREDUCIBLE" -- is corrected.
+
+    Placed here rather than inside :func:`refuse_domain_contradiction` because the
+    classifier reads the SEED, and ``circe_lint`` is handed only the rule's ``label``.
+    The two diverge exactly where it matters: EMPA-REG #41's ``description`` is "Prior
+    investigational drug trial", which names a trial and would NOT be permitted.
+
+    :param criteria_key: the CIRCE criteria type the rule will be emitted under.
+    :param mapped_criterion: the mapper's answer, in the seeded-concept-set shape.
+    :param label: the rule's name, for the recorded reason.
+    :param seed: the text the mapper was actually asked about.
+    :raises CriterionRefused: unchanged from :func:`refuse_domain_contradiction`, except
+        that a seed naming no clinical entity carries
+        :data:`~src.utils.criterion_refusal.REFUSAL_UNMAPPABLE_PLACEHOLDER`.
+    """
+    try:
+        refuse_domain_contradiction(criteria_key, mapped_criterion, label)
+    except CriterionRefused as refused:
+        if refused.code != REFUSAL_DOMAIN_CONTRADICTION or not _seed_is_unmappable_placeholder(
+            seed
+        ):
+            raise
+        raise CriterionRefused(
+            str(refused), code=REFUSAL_UNMAPPABLE_PLACEHOLDER, detail=refused.detail
+        ) from refused
 
 
 class TTEService:
@@ -6476,7 +6590,11 @@ class TTEService:
         # expressions is how they drift apart.
         resolved_domain = criterion_domain or mapped_criterion["domain"]
         criteria_key = self._seeded_criteria_key(resolved_domain)
-        refuse_domain_contradiction(criteria_key, mapped_criterion, label)
+        # `seed` and not `label`: the classifier inside decides on what the MAPPER was
+        # asked, and the two differ on the row it matters for (EMPA-REG exclusion #41
+        # is seeded "Investigational Drug" while its description says "Prior
+        # investigational drug trial", which names a trial and stays unpermitted).
+        _refuse_domain_contradiction_for_seed(criteria_key, mapped_criterion, label, seed)
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
         # A threshold written once on the group label belongs to the members it can

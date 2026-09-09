@@ -72,8 +72,28 @@ REDUCIBLE_SEEDS_FROM_THE_BATCH = [
     "Chronic heart failure NYHA class IV",
     "DPP-IV inhibitors",
     "Troponin I",
-    "Investigational drug use",
+    # Every one of these carries the investigational-drug CATEGORY beside a real
+    # entity, and the real entity is what keeps them reducible: `glimepiride` and
+    # `bleeding` are in the vocabulary, and `trial` participation has an Observation
+    # concept. Transcribed from the same two stores as the placeholder rows below --
+    # they are the near misses the exact-residue match exists to keep out.
+    "Prior investigational drug trial",
+    "Prior investigational drug trial exclusion",
+    "Investigational drug trial",
+    "Unapproved investigational drug use",
+    "Participation in another trial with an investigational drug",
+    "Participation in another trial (Investigational Drug)",
+    "Hypersensitivity to investigational product or glimepiride",
+    "Hypersensitivity or allergy to the investigational products or its excipients",
+    "Contraindication to study drug or bleeding",
+    "Contraindication to clopidogrel or other reason study drug should not be administered",
+    "Hypersensitivity to study drug/therapy class",
 ]
+
+#: The four substances the batch's investigational-drug rows sit beside. A category
+#: rule wide enough to swallow one of these would walk a real mapping loss through the
+#: delivery gate, which is the failure that matters.
+SPECIFIC_DRUGS = ["clopidogrel", "glimepiride", "metformin", "aspirin"]
 
 #: Entities outside this batch that the rules must not swallow. Each names the rule it
 #: would trip if that rule were written one step wider: a roman numeral read as an
@@ -100,6 +120,18 @@ PLACEHOLDER_SHAPES = [
     "Comorbidity count",
     "Contraindications",
     "  contraindication.  ",
+    # A drug CATEGORY naming no ingredient. "Investigational drug use" was listed as
+    # REDUCIBLE here until 2026-09-10, on the reading that the mapper had returned
+    # something for it; what the mapper returned was Meas Value / Measurement /
+    # Observation / Procedure concepts, refused as `domain-contradiction`, which is the
+    # vocabulary saying there is no drug to find. The loss is irreducible: no RxNorm
+    # ingredient exists behind "whatever this trial is testing".
+    "Investigational Drug",
+    "Investigational drug use",
+    "Investigational Drug Use",
+    "investigational drug",
+    "study drug",
+    "Study Medication",
 ]
 
 
@@ -164,7 +196,8 @@ def test_should_classify_placeholder_shapes_as_naming_no_entity(seed):
 
 
 @pytest.mark.parametrize(
-    "seed", REDUCIBLE_SEEDS_FROM_THE_BATCH + REDUCIBLE_SEEDS_OUTSIDE_THE_BATCH
+    "seed",
+    REDUCIBLE_SEEDS_FROM_THE_BATCH + REDUCIBLE_SEEDS_OUTSIDE_THE_BATCH + SPECIFIC_DRUGS,
 )
 def test_should_refuse_to_permit_a_seed_that_names_something(seed):
     """The bias is one-directional: when uncertain, do not permit."""
