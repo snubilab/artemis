@@ -38,6 +38,12 @@ This script:
    A batch with any violation writes no ``manifest.json`` — an export with a
    violation is not deliverable, even though the individual per-arm files
    stay on disk for inspection.
+6. Reads the drop records the generator writes into each payload
+   (``_unmappedCriteria``, ``_skippedCriteria``, ``_generationCensus``) via
+   ``verify_circe_delivery.criterion_accounting``, which owns the rule. Until this
+   was added nothing in either script mentioned those keys, so an arm carrying
+   unmapped protocol exclusions was written, linted clean and approved — see check
+   (i) in ``scripts/verify_circe_delivery.py``.
 """
 
 from __future__ import annotations
@@ -276,7 +282,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     # Import service modules only after the store path is resolved and
-    # TTE_STORE_PATH has been pinned to it by resolve_store_path().
+    # TTE_STORE_PATH has been pinned to it by resolve_store_path(). The delivery
+    # gate owns what counts as recorded criterion loss, so `criterion_accounting`
+    # is imported from it rather than reimplemented here -- and it is imported in
+    # this block, not at module scope, because it pulls in src.* and must stay
+    # behind the store resolution for the same reason everything else here does.
+    from scripts.verify_circe_delivery import criterion_accounting
     from src.pipeline.webapi_client import prune_unused_concept_sets
     from src.services.tte_service import TTEService
     from src.services.tte_store import TTEStore
@@ -408,6 +419,24 @@ def main(argv: list[str] | None = None) -> int:
                             + "; ".join(domain_mismatches)
                         ),
                     )
+                )
+            # The generator records every criterion it could not turn into a rule
+            # (`_unmappedCriteria`, `_skippedCriteria`, `_generationCensus`) inside
+            # the payload being written here. Nothing read them, so both ARISTOTLE
+            # arms were exported and approved carrying two unmapped protocol
+            # exclusions -- in `output/anchor_after/` and again in the 2026-09-08
+            # delivery. A cohort missing an exclusion admits patients the trial
+            # excluded, which is the same class of defect as a no-op rule.
+            accounting_violations, _summary = criterion_accounting(expression)
+            if accounting_violations:
+                violations.append(
+                    {
+                        "study_id": study_id,
+                        "slug": slug,
+                        "arm": role,
+                        "reason": "criterion_loss",
+                        "detail": "; ".join(accounting_violations),
+                    }
                 )
             if not entry_ok:
                 violations.append(

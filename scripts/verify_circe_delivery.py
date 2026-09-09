@@ -40,6 +40,20 @@ Checks per file:
     ``src.utils.circe_lint.domain_mismatched_criteria`` and
     ``output/site_gap/2026-09-06/plan048_domain_repair/``.
 
+(i) the file's own criterion accounting — ``_generationCensus``,
+    ``_unmappedCriteria``, ``_skippedCriteria`` — balances and records no loss.
+    The generator has always written these three keys into the delivered payload
+    and nothing read them: ``rg -c _unmappedCriteria`` over this script and
+    ``export_seeded_cohorts.py`` exited 1. So
+    ``output/anchor_after/aristotle_comparator.circe.json`` shipped with two
+    protocol exclusions recorded as unmapped ("Aspirin and thienopyridine
+    combination", "Investigational drug use") and this gate printed PASS. Check
+    (b) structurally cannot catch it: it compares the file's rule names against
+    the store ``structuredExpression`` produced by the SAME generation, so both
+    sides are missing the same criteria and the multiset matches.
+    See ``criterion_accounting`` below for the failure condition and for why
+    ``skipped > 0`` is not one.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -71,6 +85,12 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.services.restated_demographics import (  # noqa: E402
+    COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
+)
+from src.services.restated_distinctness import (  # noqa: E402
+    COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
+)
 from src.utils.circe_lint import (  # noqa: E402
     contradictory_absence_rules,
     domain_mismatched_criteria,
@@ -89,6 +109,167 @@ from src.utils.disease_anchor import DiseaseAnchorError, expected_anchor_concept
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
 DEFAULT_MAP = "carmelina=9,empa-reg=8,carolina=10,aristotle=3,plato=2,leader=1"
+
+#: The three keys ``TTEService._build_seeded_target_circe`` writes together to
+#: account for every criterion that did not become a rule. Emitted as a set —
+#: present-and-empty rather than absent — so a partial set means something removed
+#: one after generation, which is checked separately from an artifact that carries
+#: none of them because it predates the accounting.
+ACCOUNTING_KEYS = ("_generationCensus", "_unmappedCriteria", "_skippedCriteria")
+
+#: Skip reasons that are NOT criterion loss, so a delivery carrying them still
+#: ships. Derived from what this tree's own exported artifacts contain — the 108
+#: ``*.circe.json`` under ``output/`` that carry the records, of 151 present — one
+#: entry per reason actually observed there:
+#:
+#: * ``group-label`` (1046 rows) — a container row. Its members map and emit as one
+#:   grouped inclusion rule; the label itself never carried a concept set. Every
+#:   observed row has ``isGroupLabel: true``.
+#: * ``demographic-no-rule`` (106 rows) — a Demographics row with no single usable
+#:   ``valueConstraint`` ("Age and Sex", "Age >= 50 with prior CVD",
+#:   "Age (region-conditional)"). The components emit on their own.
+#: * the two collapse reasons (458 rows) — a restatement deliberately dropped onto
+#:   its retained sibling, which does emit. Both are recorded a second time under
+#:   ``_restatedDemographicsCollapse`` / ``_restatedDistinctnessCollapse``.
+#:
+#: The two collapse spellings are imported from the modules that own them rather
+#: than retyped; the other two are bare literals in ``tte_service.py`` with no
+#: owning constant, so they are spelled here. That is safe in one direction only,
+#: and it is the right one: this is a PERMIT list, so any drift — a renamed reason,
+#: a typo here, a new silent branch — leaves the reason unrecognised and FAILS the
+#: delivery rather than quietly passing it.
+#:
+#: ``STRANDED_GROUP_CONSTRAINT_REASON`` is deliberately absent. It records a group
+#: label whose absolute threshold reached no member, so the members emit
+#: unconstrained and the exclusion is weaker than the protocol wrote it. It occurs
+#: in the real 2026-09-08 batch (CAROLINA and EMPA-REG, "Glucose").
+ALLOWED_SKIP_REASONS = frozenset(
+    {
+        "group-label",
+        "demographic-no-rule",
+        RESTATED_DEMOGRAPHICS_REASON,
+        RESTATED_DISTINCTNESS_REASON,
+    }
+)
+
+
+def _describe(record: dict[str, Any]) -> str:
+    role = record.get("role") or "?"
+    return f"{role} #{record.get('criterionId', '?')} {str(record.get('label', ''))!r}"
+
+
+def criterion_accounting(expression: dict[str, Any]) -> tuple[list[str], str]:
+    """Read a delivered file's own drop records: ``(violations, summary)``.
+
+    The failure condition is ``unmapped > 0``, plus ``skipped > 0`` for any reason
+    not in :data:`ALLOWED_SKIP_REASONS`. ``skipped`` alone is not loss — see that
+    constant for what is permitted and why — so a batch with 32 skips and nothing
+    unmapped (the measured CAROLINA case) still passes.
+
+    The balance identity ``total == mapped + unmapped + demographicRules + skipped``
+    is asserted here against the DELIVERED file.
+    ``tests/test_generation_census_accounts_for_every_criterion.py`` asserts it
+    against the generator, which is a different claim: between the two the payload
+    is pruned, deep-copied and written to disk, and nothing re-checked it at the
+    boundary where it is handed to a site.
+
+    ``summary`` is returned even when there are no violations, and the caller prints
+    it on a passing row — a check whose only output is silence cannot be told from a
+    check that never ran.
+    """
+    present = [key for key in ACCOUNTING_KEYS if key in expression]
+    if not present:
+        # Every current export writes all three. An artifact carrying none of them
+        # was built before the accounting existed, so the identity cannot be
+        # evaluated at all; saying so on the row is the honest report. This is a
+        # known hole -- a pre-accounting artifact is not verifiable here and still
+        # passes -- and closing it means re-exporting rather than re-reading.
+        return [], "criterion accounting: NOT RECORDED (artifact predates _generationCensus)"
+
+    missing = [key for key in ACCOUNTING_KEYS if key not in expression]
+    if missing:
+        return (
+            [
+                "criterion accounting incomplete: "
+                f"{', '.join(missing)} absent while {', '.join(present)} present"
+            ],
+            "criterion accounting: INCOMPLETE",
+        )
+
+    census = expression["_generationCensus"] or {}
+    unmapped = expression["_unmappedCriteria"] or []
+    skipped = expression["_skippedCriteria"] or []
+
+    violations: list[str] = []
+
+    total = census.get("total")
+    parts = {
+        "mapped": census.get("mapped"),
+        "unmapped": census.get("unmapped"),
+        "demographicRules": census.get("demographicRules"),
+        "skipped": census.get("skipped"),
+    }
+    if total is None or any(value is None for value in parts.values()):
+        violations.append(f"census is missing a counter: {census!r}")
+    else:
+        balance = sum(parts.values())
+        if total != balance:
+            violations.append(
+                f"census does not balance: total={total} != "
+                + " + ".join(f"{name} {value}" for name, value in parts.items())
+                + f" = {balance}"
+            )
+        # The counters and the lists are two records of the same event, so they are
+        # cross-checked rather than trusted individually: a stripped list with its
+        # counter left behind balances perfectly and reads as clean.
+        if parts["unmapped"] != len(unmapped):
+            violations.append(
+                f"census counter disagrees with its record list: unmapped={parts['unmapped']} "
+                f"but _unmappedCriteria carries {len(unmapped)}"
+            )
+        if parts["skipped"] != len(skipped):
+            violations.append(
+                f"census counter disagrees with its record list: skipped={parts['skipped']} "
+                f"but _skippedCriteria carries {len(skipped)}"
+            )
+        by_reason = census.get("skippedByReason") or {}
+        if sum(by_reason.values()) != parts["skipped"]:
+            violations.append(
+                "census counter disagrees with its own breakdown: skippedByReason sums to "
+                f"{sum(by_reason.values())}, skipped={parts['skipped']}"
+            )
+        mappable = census.get("mappable")
+        if mappable is not None and mappable != parts["mapped"] + parts["unmapped"]:
+            violations.append(
+                f"census counter disagrees: mappable={mappable} != "
+                f"mapped {parts['mapped']} + unmapped {parts['unmapped']}"
+            )
+
+    if unmapped:
+        # The producer records `"reason": str(e)`, which is empty for any exception
+        # constructed without an argument -- 3 of the 13 distinct unmapped criteria
+        # across every exported artifact carry `""` (ARISTOTLE 26/27, PLATO 16).
+        # Saying "reason not recorded" rather than printing nothing keeps that gap
+        # visible here until the producer records `repr(e)` and the class as well.
+        details = []
+        for record in unmapped:
+            reason = str(record.get("reason") or "").strip()
+            details.append(f"{_describe(record)} — {reason or 'reason not recorded'}")
+        violations.append(f"unmapped criteria ({len(unmapped)}): " + "; ".join(details))
+
+    off_list = [r for r in skipped if r.get("reason") not in ALLOWED_SKIP_REASONS]
+    if off_list:
+        violations.append(
+            f"criteria skipped for a reason not on the allowlist ({len(off_list)}): "
+            + "; ".join(f"{r.get('reason')!r} {_describe(r)}" for r in off_list)
+        )
+
+    permitted = "all permitted" if not off_list else f"{len(off_list)} not permitted"
+    summary = (
+        f"criterion accounting: {census.get('mapped')} mapped, {len(unmapped)} unmapped, "
+        f"{len(skipped)} skipped ({permitted})"
+    )
+    return violations, summary
 
 
 def _parse_map(raw: str) -> dict[str, int]:
@@ -336,6 +517,11 @@ def main(argv: list[str] | None = None) -> int:
                 f"{'; '.join(domain_mismatches)}"
             )
 
+        # (i) the file's own drop records: recorded criterion loss, and whether the
+        # census that reports it still balances on the delivered artifact.
+        accounting_violations, accounting_summary = criterion_accounting(expression)
+        reasons.extend(accounting_violations)
+
         # (d) manifest cross-check, if present
         if manifest is not None:
             manifest_entry = next(
@@ -356,7 +542,12 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "file": path.name,
                 "status": status,
-                "reasons": reasons or [f"entry: {case}; rules: {rules_detail}"],
+                # The accounting summary rides the passing row too. A check that
+                # only ever speaks up on failure is indistinguishable from a check
+                # that was never wired in -- which is exactly how these three keys
+                # went unread from the day they were written.
+                "reasons": reasons
+                or [f"entry: {case}; rules: {rules_detail}; {accounting_summary}"],
             }
         )
 
