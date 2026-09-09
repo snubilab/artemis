@@ -592,13 +592,23 @@ class CohortAssembler:
                         rule.value_constraint, sc.value_constraint
                     )
                     if resolution.refusal_reason:
+                        # Logging it and emitting anyway was the defect: an unfiltered
+                        # occurrence inside an ABSENCE rule is "exclude anyone with any
+                        # result at all", which is strictly broader than the threshold
+                        # the protocol wrote and silently drops patients the study
+                        # required. The member is NOT emitted -- the same refusal
+                        # channel `sc_unreadable` uses below: a member that cannot be
+                        # emitted honestly is left out, and a rule left with no criteria
+                        # is SKIPped by `_validate_and_heal`. Raising is wrong here; the
+                        # store row this assembler reads must survive so the threshold
+                        # can be re-grounded per sub-criterion at extraction.
                         logger.warning(
                             "[Agent3] %s: group %r carries %s %s %s but it is an absolute "
                             "bound, so it is NOT applied to member %r -- an absolute "
                             "threshold is analyte-specific and would match zero rows on a "
-                            "member reported in another unit. The member is emitted "
-                            "unfiltered; ground the threshold per sub-criterion at "
-                            "extraction to recover it.",
+                            "member reported in another unit. The member is NOT emitted; "
+                            "ground the threshold per sub-criterion at extraction to "
+                            "recover it.",
                             resolution.refusal_reason,
                             rule.name,
                             rule.value_constraint.op,
@@ -606,6 +616,7 @@ class CohortAssembler:
                             rule.value_constraint.unit_text or "(no unit)",
                             sc.name,
                         )
+                        continue
                     # Flat merge: Unit is a sibling of ValueAsNumber in Circe.
                     sc_value_filter = build_measurement_value_filter(resolution.constraint)
                     # ...but only onto a criteria type whose CDM table reads those

@@ -110,6 +110,7 @@ from src.utils.criterion_refusal import (
     REFUSAL_EMPTY_SEED,
     REFUSAL_INTENT_UNPARSED,
     REFUSAL_NO_CONCEPT_MAPPING,
+    REFUSAL_STRANDED_GROUP_THRESHOLD,
     CriterionRefused,
 )
 from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
@@ -6322,9 +6323,37 @@ class TTEService:
         # Measurement occurrence and the exclusion dropped anyone with any ALT/AST/ALP
         # result on record. Resolved here rather than written back into the criterion,
         # because the eligibility dict reaching this builder is the study's own.
-        effective_constraint = resolve_group_member_constraint(
+        # ...and the WHOLE resolution is kept, not just `.constraint`. Reading only
+        # the constraint discarded the refusal reason, and `build_measurement_value_filter(None)`
+        # returns `{}`, so a member whose group threshold was refused emitted with
+        # `criteria_attrs == {"CodesetId": N}` -- an UNFILTERED occurrence. Measured on
+        # CAROLINA: exclusion group 44 carries "> 240 mg/dl" on its label, so its three
+        # glucose members each emitted "any glucose measurement at all" inside an
+        # ABSENCE rule, which excluded every patient inclusion rule 5 required (the two
+        # codesets overlap on 4 of 6 presence concepts). The loss WAS recorded -- against
+        # the group label, which never emitted -- and the members that actually shipped
+        # carried no record at all.
+        resolution = resolve_group_member_constraint(
             parent_value_constraint, criterion.get("valueConstraint")
-        ).constraint
+        )
+        # Refuse rather than emit, the same choice `refuse_domain_contradiction` above
+        # and `refuse_unreadable_value_filter` below both make: the caller records the
+        # criterion in `_unmappedCriteria` and drops it, which leaves the rule honestly
+        # absent instead of present and vacuous. If every member of the group refuses
+        # the group emits no rule at all -- that is the correct outcome, not a hole to
+        # paper over: the protocol's exclusion has genuinely left the cohort, and a
+        # delivery shipping without it should not pass the gate.
+        if resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON:
+            raise CriterionRefused(
+                f"group threshold stranded: the label of {label!r}'s group carries an "
+                f"absolute bound, which is analyte-specific and would match zero rows "
+                f"on a member reported in another unit, so it is not handed down -- and "
+                f"this member carries no threshold of its own, so emitting it would "
+                f"build an unfiltered occurrence over its whole concept set",
+                code=REFUSAL_STRANDED_GROUP_THRESHOLD,
+                detail=resolution.refusal_reason,
+            )
+        effective_constraint = resolution.constraint
 
         # Flat merge, so Unit lands as a sibling of ValueAsNumber rather than
         # nested inside it, where Circe ignores it.
@@ -10673,6 +10702,16 @@ class TTEService:
         # place that decides, shared with `agent3/assembler.py`. Passing the label's
         # own constraint here (rather than reading only `item.value_constraint`) is
         # what stops "> 3x ULN" from dying on the refused `isGroupLabel` row.
+        #
+        # `.constraint` alone is CORRECT here and must stay that way, unlike the
+        # identical-looking read in `_build_seeded_eligibility_rule`, which now raises
+        # `CriterionRefused` on a stranded absolute threshold. This function writes the
+        # STORE ROW, not a Circe rule. A stranded threshold is a reason not to emit an
+        # unfiltered *rule*; it is not a reason to delete the criterion from the study
+        # -- the row is what a human reads, edits and re-grounds per sub-criterion to
+        # recover the number. Refusing here would silently shrink the stored protocol.
+        # The loss is surfaced on the store side by `_stranded_group_constraint_labels`,
+        # which skips the group label under its own reason so the census counts it.
         vc = resolve_group_member_constraint(
             parent_value_constraint, getattr(item, "value_constraint", None)
         ).constraint

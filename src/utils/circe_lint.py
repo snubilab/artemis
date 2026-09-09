@@ -18,6 +18,16 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+# Importing the refusal vocabulary keeps this module pure: `criterion_refusal` has no
+# I/O and no imports of its own beyond `__future__`. The codes live there and nowhere
+# else -- a code retyped at a raise site is a code that eventually gets retyped wrong,
+# and the mismatch is silent at the gate rather than loud here.
+from src.utils.criterion_refusal import (
+    REFUSAL_DOMAIN_CONTRADICTION,
+    REFUSAL_UNREADABLE_VALUE_FILTER,
+    CriterionRefused,
+)
+
 _ABSENT_OCCURRENCE = (0, 0)
 
 
@@ -566,7 +576,11 @@ def refuse_domain_contradiction(
     :param criteria_key: the CIRCE criteria type the rule will be emitted under.
     :param mapped_criterion: the mapper's answer, in the seeded-concept-set shape.
     :param label: the seed the mapper was asked about, for the recorded reason.
-    :raises ValueError: when the set's domains and the table's are disjoint.
+    :raises CriterionRefused: when the set's domains and the table's are disjoint,
+        carrying :data:`~src.utils.criterion_refusal.REFUSAL_DOMAIN_CONTRADICTION`.
+        A bare ``ValueError`` here recorded ``refusalCode: None``, which every consumer
+        reads as "nothing deliberately refused" -- i.e. as a FAILURE -- and this is the
+        opposite: the mapping was looked at and rejected on purpose.
     """
     allowed = CRITERIA_TYPE_DOMAINS.get(criteria_key)
     if allowed is None:
@@ -574,11 +588,13 @@ def refuse_domain_contradiction(
     domains = concept_set_domains(mapped_criterion)
     if not domains or domains & allowed:
         return
-    raise ValueError(
+    raise CriterionRefused(
         f"criterion domain contradiction: {criteria_key} reads "
         f"{'/'.join(sorted(allowed))} but the concept set mapped for {label!r} "
         f"holds only {', '.join(sorted(domains))} concepts, so the rule would match "
-        f"nothing"
+        f"nothing",
+        code=REFUSAL_DOMAIN_CONTRADICTION,
+        detail=f"{criteria_key} vs {', '.join(sorted(domains))}",
     )
 
 
@@ -705,16 +721,23 @@ def refuse_unreadable_value_filter(
     :param criteria_key: the CIRCE criteria type the rule will be emitted under.
     :param value_fragment: what :func:`build_measurement_value_filter` returned.
     :param label: the criterion's seed text, for the recorded reason.
-    :raises ValueError: when the fragment holds an attribute the type cannot read.
+    :raises CriterionRefused: when the fragment holds an attribute the type cannot
+        read, carrying
+        :data:`~src.utils.criterion_refusal.REFUSAL_UNREADABLE_VALUE_FILTER`. Same
+        reason as :func:`refuse_domain_contradiction`: a bare ``ValueError`` recorded
+        ``refusalCode: None``, which reads as a failure rather than the deliberate
+        verdict it is.
     """
     unreadable = unreadable_value_attributes(criteria_key, value_fragment)
     if not unreadable:
         return
-    raise ValueError(
+    raise CriterionRefused(
         f"criterion value filter unreadable: {criteria_key} cannot read "
         f"{', '.join(unreadable)}, so the value condition written for {label!r} "
         f"would be dropped by Circe and the rule would match every occurrence "
-        f"of its concept set"
+        f"of its concept set",
+        code=REFUSAL_UNREADABLE_VALUE_FILTER,
+        detail=f"{criteria_key} cannot read {', '.join(unreadable)}",
     )
 
 

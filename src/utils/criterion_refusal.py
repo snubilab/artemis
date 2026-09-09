@@ -45,6 +45,32 @@ REFUSAL_EMPTY_CONCEPT_SET = "empty-concept-set"
 #: rather than silently skipped so the empty criterion is visible in the artifact.
 REFUSAL_EMPTY_SEED = "empty-seed"
 
+#: A threshold written once on a criteria group's label was an ABSOLUTE bound, so
+#: ``resolve_group_member_constraint`` would not hand it down and the member has no
+#: constraint of its own. Emitting the member anyway builds an UNFILTERED occurrence:
+#: "any glucose measurement at all" where the protocol said "> 240 mg/dL". Distinct
+#: from every code above: the mapper SUCCEEDED — a concept set was found — and the
+#: refusal is about the number that did not survive the group label, not about the
+#: concepts. Distinct from :data:`REFUSAL_UNREADABLE_VALUE_FILTER`: there a filter
+#: exists and the table cannot read it; here no filter exists to write.
+REFUSAL_STRANDED_GROUP_THRESHOLD = "stranded-group-threshold"
+
+#: The concept set the mapper returned holds only concepts from domains the criterion's
+#: own CDM table cannot hold, so the emitted rule would match no row at all — and inside
+#: an ABSENCE exclusion, matching nothing means the exclusion never applies to anybody.
+#: Distinct from :data:`REFUSAL_NO_CONCEPT_MAPPING`: the vocabulary DID answer, and the
+#: answer is from the wrong domain. Raised by
+#: :func:`src.utils.circe_lint.refuse_domain_contradiction`.
+REFUSAL_DOMAIN_CONTRADICTION = "domain-contradiction"
+
+#: The criterion carries a value condition (``ValueAsNumber``, ``Unit``, ...) that its
+#: own criteria type's CDM table has no column for, so Circe silently drops the
+#: attribute and the rule matches every occurrence of its concept set while reading as
+#: filtered. Distinct from :data:`REFUSAL_STRANDED_GROUP_THRESHOLD`: the threshold
+#: reached the criterion intact; it is the TABLE that cannot read it. Raised by
+#: :func:`src.utils.circe_lint.refuse_unreadable_value_filter`.
+REFUSAL_UNREADABLE_VALUE_FILTER = "unreadable-value-filter"
+
 #: Every code a record's ``refusalCode`` may hold. A consumer that permits a code not in
 #: this set is permitting something no mapper can emit.
 REFUSAL_CODES = frozenset(
@@ -53,6 +79,9 @@ REFUSAL_CODES = frozenset(
         REFUSAL_INTENT_UNPARSED,
         REFUSAL_EMPTY_CONCEPT_SET,
         REFUSAL_EMPTY_SEED,
+        REFUSAL_STRANDED_GROUP_THRESHOLD,
+        REFUSAL_DOMAIN_CONTRADICTION,
+        REFUSAL_UNREADABLE_VALUE_FILTER,
     }
 )
 
