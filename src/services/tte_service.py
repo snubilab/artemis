@@ -96,10 +96,12 @@ from src.services.value_constraint import (
 from src.utils.circe_lint import (
     CRITERIA_TYPE_DOMAINS,
     criteria_types_by_codeset,
+    drop_unreadable_value_criteria,
     end_entry_colliding_washouts_before_index,
     entry_concept_ids,
     entry_concept_set,
     refuse_domain_contradiction,
+    refuse_unreadable_value_filter,
 )
 from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
 from src.utils.exceptions import LLMConfigurationError
@@ -4107,8 +4109,9 @@ class TTEService:
         Every seeded expression this service produces -- target, treatment, comparator,
         outcome -- converges on `_materialize_seeded_cohort_item`, and this is the only
         place all four builders meet. Two properties make it the right home for the
-        entry-colliding washout correction rather than the criterion->CIRCE emission in
-        `_build_seeded_eligibility_rule`:
+        entry-colliding washout correction, and the first of them is why the
+        unreadable-value-filter repair lives here too, rather than only at the
+        criterion->CIRCE emission in `_build_seeded_eligibility_rule`:
 
         - Studies 1/8/9/10 all carry a prebuilt `structuredExpression`, so the arm
           builders deepcopy it and `_build_seeded_eligibility_rule` is never called on
@@ -4121,6 +4124,22 @@ class TTEService:
           expression, and this is the first point at which the expression is assembled.
         """
         expression = expression_builder()
+        # Refusals run before repairs. A stored `structuredExpression` predates the
+        # generation-time refusal in `_build_seeded_eligibility_rule`, so it can still
+        # carry a value filter its own CDM table ignores -- 10 such criteria shipped
+        # on 2026-09-08. Circe drops the attribute and matches every occurrence of the
+        # concept set, so the rule is not merely unfiltered, it is unfiltered while
+        # claiming otherwise. Dropping first also keeps the two log lines honest:
+        # CARMELINA's incretin rule is both a colliding washout and a refused
+        # criterion, and moving its window before removing it reported a correction to
+        # a rule that then left the file.
+        dropped = drop_unreadable_value_criteria(expression)
+        if dropped:
+            logging.warning(
+                "[TTE] Dropped %d criteri(on/a) carrying a value filter their CDM "
+                "table cannot read, so the rule would have matched every occurrence "
+                "of its concept set: %s", len(dropped), "; ".join(dropped),
+            )
         moved = end_entry_colliding_washouts_before_index(expression)
         if moved:
             logging.info(
@@ -6178,7 +6197,17 @@ class TTEService:
 
         # Flat merge, so Unit lands as a sibling of ValueAsNumber rather than
         # nested inside it, where Circe ignores it.
-        criteria_attrs.update(build_measurement_value_filter(criterion.get("valueConstraint")))
+        value_filter = build_measurement_value_filter(criterion.get("valueConstraint"))
+        # ...and only onto a criteria type whose CDM table reads those keys. The
+        # merge used to be unconditional, which put `ValueAsNumber` on DrugExposure,
+        # ConditionOccurrence and ProcedureOccurrence criteria that silently ignore
+        # it -- the rule then matched every occurrence of its concept set while
+        # reading as filtered. Refusing here is the same choice
+        # `refuse_domain_contradiction` makes one line above: the caller records the
+        # criterion and drops it, leaving the claim absent rather than present and
+        # wrong.
+        refuse_unreadable_value_filter(criteria_key, value_filter, label)
+        criteria_attrs.update(value_filter)
 
         # Heuristic: derive minimum era length from the total temporal window span
         if criteria_key == "DrugEra" and criterion.get("window"):

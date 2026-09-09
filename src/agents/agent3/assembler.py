@@ -18,6 +18,7 @@ from src.services.value_constraint import (
     build_measurement_value_filter,
     resolve_group_member_constraint,
 )
+from src.utils.circe_lint import unreadable_value_attributes
 import logging
 import copy
 
@@ -606,7 +607,28 @@ class CohortAssembler:
                             sc.name,
                         )
                     # Flat merge: Unit is a sibling of ValueAsNumber in Circe.
-                    sc_content.update(build_measurement_value_filter(resolution.constraint))
+                    sc_value_filter = build_measurement_value_filter(resolution.constraint)
+                    # ...but only onto a criteria type whose CDM table reads those
+                    # keys. Circe silently ignores an unreadable one, so the member
+                    # would match every occurrence of its concept set while reading
+                    # as filtered. Skipping it is this builder's own refusal channel:
+                    # a member that contributes nothing is left out, and a rule left
+                    # with no criteria is SKIPped by `_validate_and_heal`.
+                    sc_unreadable = unreadable_value_attributes(
+                        sc_criteria_type, sc_value_filter
+                    )
+                    if sc_unreadable:
+                        logger.warning(
+                            "[Agent3] %s: member %r is a %s, which cannot read %s, so "
+                            "its value condition would be dropped by Circe and the "
+                            "member would match every occurrence of its concept set. "
+                            "The member is NOT emitted; map it to a criteria type that "
+                            "reads the constraint to recover it.",
+                            rule.name, sc.name, sc_criteria_type,
+                            ", ".join(sc_unreadable),
+                        )
+                        continue
+                    sc_content.update(sc_value_filter)
                     criteria_list.append({
                         "Criteria": {sc_criteria_type: sc_content},
                         "StartWindow": start_window,
@@ -641,7 +663,30 @@ class CohortAssembler:
         cs_id = self._find_concept_set_id(rule.entity_text, concept_sets)
         criteria_type = DOMAIN_TO_CRITERIA_TYPE.get(rule.domain, "ConditionOccurrence")
         criteria_content: Dict[str, Any] = {"CodesetId": cs_id}
-        criteria_content.update(build_measurement_value_filter(rule.value_constraint))
+        value_filter = build_measurement_value_filter(rule.value_constraint)
+        # Same gate as the composite branch above, at the second of this module's two
+        # merge sites. An atomic rule has nothing left once its only criterion is
+        # refused, so it is returned with an empty CriteriaList and `_validate_and_heal`
+        # records the SKIP -- reusing this assembler's refusal ledger rather than
+        # raising past it.
+        unreadable = unreadable_value_attributes(criteria_type, value_filter)
+        if unreadable:
+            logger.warning(
+                "[Agent3] SKIP rule '%s' — %s cannot read %s, so its value condition "
+                "would be dropped by Circe and the rule would match every occurrence "
+                "of its concept set",
+                rule.name, criteria_type, ", ".join(unreadable),
+            )
+            return {
+                "name": rule.name,
+                "expression": {
+                    "Type": "ALL",
+                    "CriteriaList": [],
+                    "DemographicCriteriaList": [],
+                    "Groups": [],
+                },
+            }
+        criteria_content.update(value_filter)
 
         return {
             "name": rule.name,

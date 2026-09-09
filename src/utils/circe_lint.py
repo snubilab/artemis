@@ -15,6 +15,7 @@ satisfies it, so the rule silently does nothing.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 _ABSENT_OCCURRENCE = (0, 0)
@@ -579,6 +580,325 @@ def refuse_domain_contradiction(
         f"holds only {', '.join(sorted(domains))} concepts, so the rule would match "
         f"nothing"
     )
+
+
+# --------------------------------------------------------------------------
+# Value-condition attributes a criteria type can actually read
+# --------------------------------------------------------------------------
+#
+# `build_measurement_value_filter` returns a flat Circe fragment, and all three
+# callers merged it onto whatever criteria type the domain mapping had chosen:
+#
+#     criteria_attrs.update(build_measurement_value_filter(vc))
+#
+# Nothing asked whether that type's CDM table has the columns. Over the twelve
+# files of `output/site_gap/2026-09-08/deliver_20260908/`, 10 criteria in 8 files
+# carried a filter their table cannot read -- DrugExposure+ValueAsNumber x6,
+# ConditionOccurrence+Unit+ValueAsNumber x2, ProcedureOccurrence+Unit+ValueAsNumber
+# x2 -- alongside 108 that were read correctly. Circe silently ignores the
+# attribute, so each of those 10 rules matched every occurrence of its concept set
+# while reading as though it were filtered: "aspirin > 165 mg" excluded everyone on
+# any aspirin at all.
+#
+# The table below was MEASURED, not derived from the CDM schema. Each cell is one
+# expression POSTed twice to the live `WebAPI /cohortdefinition/sql` -- once with the
+# attribute, once without -- with the attribute recorded as readable only when the
+# rendered SQL differed. Two entries would have been wrong by reasoning alone:
+# `Specimen` reads `Unit` but not `ValueAsNumber`, and `ProcedureOccurrence` reads
+# `Quantity` while reading no other value attribute.
+#
+# Independent corroboration: across the 18 TROY v1.1 CIRCE files under `data/gold/`,
+# a value attribute appears on `Measurement` and on no other criteria type.
+
+#: The value-condition keys this gate is willing to judge. A key outside it is
+#: passed over rather than guessed at, the same conservatism
+#: :data:`CRITERIA_TYPE_DOMAINS` applies to an unmodelled criteria type.
+#: `ValueAsString` is deliberately absent: the probe for it was rejected by WebAPI
+#: with HTTP 400, so whether a type reads it was never established.
+VALUE_CONDITION_ATTRIBUTES: frozenset[str] = frozenset(
+    {
+        "Abnormal",
+        "Qualifier",
+        "Quantity",
+        "RangeHigh",
+        "RangeHighRatio",
+        "RangeLow",
+        "RangeLowRatio",
+        "Unit",
+        "ValueAsConcept",
+        "ValueAsNumber",
+    }
+)
+
+#: Criteria type -> the members of :data:`VALUE_CONDITION_ATTRIBUTES` whose presence
+#: changes the SQL Circe renders for that type. A type absent from this map is not
+#: checked rather than guessed at.
+CRITERIA_TYPE_VALUE_ATTRIBUTES: dict[str, frozenset[str]] = {
+    "Measurement": frozenset(
+        {
+            "Abnormal",
+            "RangeHigh",
+            "RangeHighRatio",
+            "RangeLow",
+            "RangeLowRatio",
+            "Unit",
+            "ValueAsConcept",
+            "ValueAsNumber",
+        }
+    ),
+    # OBSERVATION has no range_low/range_high, so the two ratio bounds render
+    # identical SQL here and a "> 3x ULN" written on an Observation is lost.
+    "Observation": frozenset({"Qualifier", "Unit", "ValueAsConcept", "ValueAsNumber"}),
+    "Specimen": frozenset({"Quantity", "Unit"}),
+    "DoseEra": frozenset({"Unit"}),
+    "DrugExposure": frozenset({"Quantity"}),
+    "ProcedureOccurrence": frozenset({"Quantity"}),
+    "DeviceExposure": frozenset({"Quantity"}),
+    "ConditionOccurrence": frozenset(),
+    "ConditionEra": frozenset(),
+    "DrugEra": frozenset(),
+    "VisitOccurrence": frozenset(),
+    "VisitDetail": frozenset(),
+    "Death": frozenset(),
+}
+
+
+def unreadable_value_attributes(
+    criteria_type: str, criteria_body: Mapping[str, Any]
+) -> list[str]:
+    """Value attributes on this criterion that its own CDM table cannot read.
+
+    The one predicate behind every surface below, so the generation-time refusal,
+    the delivery gate and the emission-time repair cannot drift apart.
+
+    :param criteria_type: the CIRCE criteria type key, e.g. ``"DrugExposure"``.
+    :param criteria_body: that key's payload -- the dict holding ``CodesetId``.
+    :returns: sorted attribute names, empty when the type reads all of them, when
+        it carries none, or when the type is absent from
+        :data:`CRITERIA_TYPE_VALUE_ATTRIBUTES`.
+    """
+    readable = CRITERIA_TYPE_VALUE_ATTRIBUTES.get(criteria_type)
+    if readable is None:
+        return []
+    return sorted(
+        key
+        for key in criteria_body
+        if key in VALUE_CONDITION_ATTRIBUTES and key not in readable
+    )
+
+
+def refuse_unreadable_value_filter(
+    criteria_key: str, value_fragment: Mapping[str, Any], label: str
+) -> None:
+    """Raise when a value filter is about to be merged onto a type that ignores it.
+
+    The generation-time half of the gate, and deliberately the same shape as
+    :func:`refuse_domain_contradiction`: raising rather than merging leaves the
+    caller to record the criterion under its own refusal reason and drop it, so the
+    claim is honestly absent instead of present and wrong.
+
+    Emitting the criterion with the attribute *stripped* is not the alternative it
+    looks like. Circe already ignores the attribute, so stripping selects exactly
+    the same patients -- it only stops the file from advertising a filter it never
+    applied, which leaves an over-broad rule in place and no record that it is one.
+
+    :param criteria_key: the CIRCE criteria type the rule will be emitted under.
+    :param value_fragment: what :func:`build_measurement_value_filter` returned.
+    :param label: the criterion's seed text, for the recorded reason.
+    :raises ValueError: when the fragment holds an attribute the type cannot read.
+    """
+    unreadable = unreadable_value_attributes(criteria_key, value_fragment)
+    if not unreadable:
+        return
+    raise ValueError(
+        f"criterion value filter unreadable: {criteria_key} cannot read "
+        f"{', '.join(unreadable)}, so the value condition written for {label!r} "
+        f"would be dropped by Circe and the rule would match every occurrence "
+        f"of its concept set"
+    )
+
+
+def unreadable_value_filter_criteria(expression: dict[str, Any]) -> list[str]:
+    """Locators for criteria carrying a value filter their CDM table cannot read.
+
+    The delivery-gate half, in the same locator format
+    :func:`domain_mismatched_criteria` uses::
+
+        "<where>: <CriteriaType> carries <attrs> over codeset <id>"
+
+    Reports every section including ``PrimaryCriteria``, which
+    :func:`drop_unreadable_value_criteria` deliberately does not repair.
+    """
+    findings: list[str] = []
+    for where, entry in _criterion_locations(expression):
+        body = entry.get("Criteria")
+        body = body if isinstance(body, dict) else entry
+        for criteria_type, payload in body.items():
+            if not isinstance(payload, dict):
+                continue
+            unreadable = unreadable_value_attributes(criteria_type, payload)
+            if unreadable:
+                findings.append(
+                    f"{where}: {criteria_type} carries {', '.join(unreadable)} "
+                    f"over codeset {payload.get('CodesetId')}"
+                )
+    return findings
+
+
+def _entry_is_unreadable(entry: dict[str, Any]) -> bool:
+    body = entry.get("Criteria")
+    body = body if isinstance(body, dict) else entry
+    return any(
+        isinstance(payload, dict) and unreadable_value_attributes(criteria_type, payload)
+        for criteria_type, payload in body.items()
+    )
+
+
+def _entry_unreadable_summary(entry: dict[str, Any]) -> str:
+    body = entry.get("Criteria")
+    body = body if isinstance(body, dict) else entry
+    parts = [
+        f"{criteria_type} carrying {', '.join(unreadable)}"
+        for criteria_type, payload in body.items()
+        if isinstance(payload, dict)
+        and (unreadable := unreadable_value_attributes(criteria_type, payload))
+    ]
+    return " / ".join(parts)
+
+
+def _prune_group_expression(
+    node: dict[str, Any], where: str, dropped: list[str]
+) -> None:
+    """Drop unreadable criteria from one group expression, depth first.
+
+    A nested group emptied by the pruning is removed with it: an ``ALL`` group with
+    no criteria matches everybody, so leaving the husk behind would turn a dropped
+    exclusion into an admitted-everyone rule.
+
+    Does NOT descend into ``CorrelatedCriteria``. Emptying one would leave a nested
+    correlation that constrains nothing, which is a different repair than dropping a
+    sibling criterion, and no such node appears in any file delivered so far. It is a
+    hole only in the repair -- :func:`unreadable_value_filter_criteria` still walks
+    them, so such a criterion is reported rather than silently kept.
+
+    :param node: a CIRCE group expression, modified in place.
+    :param where: the enclosing rule name, for the recorded reason.
+    :param dropped: appended to, one line per criterion actually removed.
+    """
+    kept_entries = []
+    for entry in node.get("CriteriaList") or []:
+        if isinstance(entry, dict) and _entry_is_unreadable(entry):
+            dropped.append(f"{where}: {_entry_unreadable_summary(entry)}")
+            continue
+        kept_entries.append(entry)
+    if "CriteriaList" in node:
+        node["CriteriaList"] = kept_entries
+
+    kept_groups = []
+    for group in node.get("Groups") or []:
+        if not isinstance(group, dict):
+            kept_groups.append(group)
+            continue
+        _prune_group_expression(group, where, dropped)
+        if _group_is_empty(group):
+            continue
+        kept_groups.append(group)
+    if "Groups" in node:
+        node["Groups"] = kept_groups
+
+
+def _group_is_empty(node: dict[str, Any]) -> bool:
+    return not (
+        node.get("CriteriaList")
+        or node.get("DemographicCriteriaList")
+        or node.get("Groups")
+    )
+
+
+def _rename_after_drop(name: str, kept: list[int], original_count: int) -> str:
+    """Rebuild a group rule's name from the members that survived, when provable.
+
+    A grouped rule's name is ``" + ".join(member descriptions)``, so a rule that
+    loses a member keeps advertising it. Rewriting is only safe when the file itself
+    proves the correspondence: the name must split into exactly one segment per
+    original member, and must not be one of the names truncated to
+    ``_MAX_RULE_NAME_LENGTH``. Anything else is left alone -- an over-broad name is a
+    smaller error than a mangled one.
+    """
+    if not name or name.endswith("..."):
+        return name
+    segments = name.split(" + ")
+    if len(segments) != original_count:
+        return name
+    return " + ".join(segments[index] for index in kept)
+
+
+def drop_unreadable_value_criteria(expression: dict[str, Any]) -> list[str]:
+    """Remove criteria whose value filter their CDM table cannot read. Mutates.
+
+    The emission-time half of the gate. Studies 1/8/9/10 carry a prebuilt
+    ``structuredExpression`` that the arm builders deepcopy verbatim, so the
+    generation-time refusal never runs on the delivery path and a fix there alone
+    would need an LLM re-extraction to reach a delivered file. Applied where the
+    expression is first assembled, a plain re-export is enough -- the same reasoning,
+    and the same placement, as :func:`end_entry_colliding_washouts_before_index`.
+
+    ``PrimaryCriteria`` is deliberately left alone: dropping the entry criterion
+    would empty the cohort rather than repair it, so that case stays a finding for
+    :func:`unreadable_value_filter_criteria` to report.
+
+    :param expression: a CIRCE cohort expression, modified in place.
+    :returns: one ``"<rule name>: <CriteriaType> carrying <attrs>"`` line per criterion
+        actually removed, for the caller to log. A criterion this function cannot
+        reach is absent from the list and stays a finding for
+        :func:`unreadable_value_filter_criteria`.
+    """
+    dropped: list[str] = []
+    kept_rules: list[dict[str, Any]] = []
+
+    for rule in expression.get("InclusionRules") or []:
+        if not isinstance(rule, dict):
+            kept_rules.append(rule)
+            continue
+        rule_expression = rule.get("expression")
+        if not isinstance(rule_expression, dict):
+            kept_rules.append(rule)
+            continue
+
+        name = rule.get("name", "")
+        # Top-level members, in the order `_build_grouped_inclusion_rule` emits
+        # them, so a surviving index maps onto a segment of the joined rule name.
+        members = list(rule_expression.get("CriteriaList") or []) + list(
+            rule_expression.get("Groups") or []
+        )
+        original_count = len(members) + len(
+            rule_expression.get("DemographicCriteriaList") or []
+        )
+
+        before = len(dropped)
+        _prune_group_expression(rule_expression, name, dropped)
+        if len(dropped) == before:
+            kept_rules.append(rule)
+            continue
+
+        survivors = list(rule_expression.get("CriteriaList") or []) + list(
+            rule_expression.get("Groups") or []
+        )
+        kept_indices = [
+            index
+            for index, member in enumerate(members)
+            if any(member is survivor for survivor in survivors)
+        ]
+        kept_indices += list(range(len(members), original_count))
+
+        if _group_is_empty(rule_expression):
+            continue
+        rule["name"] = _rename_after_drop(name, kept_indices, original_count)
+        kept_rules.append(rule)
+
+    if "InclusionRules" in expression:
+        expression["InclusionRules"] = kept_rules
+    return dropped
 
 
 def _criterion_references(body: dict[str, Any]) -> list[tuple[str, Any]]:
