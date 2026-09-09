@@ -110,6 +110,7 @@ from src.utils.criterion_refusal import (
     REFUSAL_INTENT_UNPARSED,
     REFUSAL_NO_CONCEPT_MAPPING,
     REFUSAL_STRANDED_GROUP_THRESHOLD,
+    REFUSAL_UNMAPPABLE_PLACEHOLDER,
     CriterionRefused,
 )
 from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
@@ -348,6 +349,117 @@ def _stranded_group_constraint_labels(
                     stranded.add((role, str(label.get("id", ""))))
                     break
     return stranded
+
+
+#: Stems that name nothing on their own, so a trailing ordinal after one is an index
+#: into the protocol rather than part of a name. Only ARABIC digits count as ordinals
+#: here: "Factor V" and "NYHA class IV" are entities a vocabulary holds, so a roman
+#: numeral is never read as an index. `factor` alone is out of the set for the same
+#: reason -- "Factor 8" is haemophilia B's clotting factor, "Risk factor 1" is a row
+#: number.
+_PLACEHOLDER_ORDINAL_STEMS = frozenset(
+    {
+        "risk factor",
+        "risk factors",
+        "criterion",
+        "criteria",
+        "inclusion criterion",
+        "inclusion criteria",
+        "exclusion criterion",
+        "exclusion criteria",
+        "condition",
+        "conditions",
+        "item",
+        "items",
+    }
+)
+
+#: Words that point INTO the source document. Each must be FOLLOWED by an identifier to
+#: count, which is the whole of what keeps the anatomical "Appendix" and "Cesarean
+#: section" out. `supplement` is deliberately absent -- a dietary supplement is a real
+#: drug-domain entity, and "Supplementary Table 1" is caught by `table` anyway.
+_DOCUMENT_POINTER_WORDS = frozenset({"table", "appendix", "figure", "exhibit", "annex"})
+
+#: Nouns whose count is a tally of protocol rows rather than a measured quantity. Every
+#: cell and analyte is deliberately absent: "Platelet count", "Absolute neutrophil
+#: count" and "CD4 count" are measurements a better mapper finds, and permitting one
+#: would walk a real loss through the delivery gate.
+_TALLIED_PLACEHOLDER_NOUNS = frozenset(
+    {
+        "condition",
+        "conditions",
+        "criterion",
+        "criteria",
+        "comorbidity",
+        "comorbidities",
+        "factor",
+        "factors",
+    }
+)
+
+#: Qualifiers that name a RELATION to a substance and no substance. Bare, nothing can be
+#: mapped; with a substance after them ("Contraindication to clopidogrel") the loss is
+#: reducible and the refusal must stay `no-concept-mapping`.
+_BARE_QUALIFIERS = frozenset({"contraindication", "contraindications"})
+
+#: An identifier a document pointer may carry: "3", "II", "B".
+_POINTER_IDENTIFIER = re.compile(r"^(?:\d+|[ivxlcdm]+|[a-z])$")
+
+
+def _seed_is_unmappable_placeholder(seed: str) -> bool:
+    """Does this seed name no clinical entity at all, so that NO mapper could map it?
+
+    A heuristic over English, and narrow on purpose. It exists because
+    ``REFUSAL_NO_CONCEPT_MAPPING`` straddles the axis a delivery gate permits on -- not
+    "was the refusal deliberate" (all of them are) but "is this loss IRREDUCIBLE given a
+    correct pipeline". "Table II criteria" is irreducible: the content lives in the
+    protocol's own table and no vocabulary will ever hold the pointer. "Contraindication
+    to clopidogrel" is REDUCIBLE: it names a real substance and a better mapper finds
+    it. One code, two opposite verdicts, and no reason string separates them -- so the
+    call is made here, at the raise site that can see the seed, and
+    ``PERMITTED_REFUSAL_CODES`` in ``scripts/verify_circe_delivery.py`` applies no
+    judgement of its own.
+
+    The bias is one-directional and asymmetric on purpose. A false ``True`` permits a
+    real mapping loss through the delivery gate, which is the failure that matters; a
+    false ``False`` merely fails a delivery a human then reads. So each rule below is
+    keyed on a closed stem list rather than on a shape, and anything not on a list gets
+    ``False``. Four rules, each answering "what is left once the placeholder scaffolding
+    is removed?" with "nothing":
+
+    * a trailing arabic ordinal after a stem that names nothing -- "Risk factor 1";
+    * a pointer into the source document -- "Table II criteria", "Appendix B criteria";
+    * a tally of protocol rows -- "Preexisting Conditions Count";
+    * a bare relational qualifier -- "Contraindication", alone.
+
+    Verified against the delivered 2026-09-08 batch (652 distinct criterion
+    ``sourceText`` values): it permits none of them, including the four
+    ``Contraindication <substance>`` seeds, ``Platelet count``, and the four seeds
+    ending in a bare digit (``Age >=50``, ``MELD score >= 30``,
+    ``Multiple endocrine neoplasia type 2``, ``Chronic Kidney Disease Stage 4 or 5``).
+    """
+    text = re.sub(r"\s+", " ", (seed or "").strip()).strip(" .;:,")
+    if not text:
+        return False
+
+    words = text.lower().split(" ")
+
+    if len(words) == 1 and words[0] in _BARE_QUALIFIERS:
+        return True
+
+    for index, word in enumerate(words[:-1]):
+        if word.strip("()[]") in _DOCUMENT_POINTER_WORDS and _POINTER_IDENTIFIER.match(
+            words[index + 1].strip("().,")
+        ):
+            return True
+
+    if words[-1].isdigit() and " ".join(words[:-1]) in _PLACEHOLDER_ORDINAL_STEMS:
+        return True
+
+    if len(words) >= 2 and words[-1] == "count" and words[-2] in _TALLIED_PLACEHOLDER_NOUNS:
+        return True
+
+    return False
 
 
 class TTEService:
@@ -7331,9 +7443,18 @@ class TTEService:
                     code=REFUSAL_INTENT_UNPARSED,
                     detail=str(fallback_reason),
                 )
+            # Two verdicts on one axis, and only this line can see which. The seed that
+            # names no clinical entity is an IRREDUCIBLE loss -- no vocabulary will ever
+            # hold "Table II criteria" -- and is the one thing the delivery gate may
+            # permit; the seed that names a real substance is a mapping failure a better
+            # mapper fixes, and must keep failing the gate.
             raise CriterionRefused(
                 f"No concept mapping found for '{normalized_seed}'",
-                code=REFUSAL_NO_CONCEPT_MAPPING,
+                code=(
+                    REFUSAL_UNMAPPABLE_PLACEHOLDER
+                    if _seed_is_unmappable_placeholder(normalized_seed)
+                    else REFUSAL_NO_CONCEPT_MAPPING
+                ),
             )
 
         recommendation = recommendations[0]
