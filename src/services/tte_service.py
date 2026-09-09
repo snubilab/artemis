@@ -105,6 +105,13 @@ from src.utils.circe_lint import (
     refuse_domain_contradiction,
     refuse_unreadable_value_filter,
 )
+from src.utils.criterion_refusal import (
+    REFUSAL_EMPTY_CONCEPT_SET,
+    REFUSAL_EMPTY_SEED,
+    REFUSAL_INTENT_UNPARSED,
+    REFUSAL_NO_CONCEPT_MAPPING,
+    CriterionRefused,
+)
 from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
 from src.utils.exceptions import LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
@@ -197,6 +204,60 @@ def mean_included_score(items: list[MappingCandidateItem]) -> float | None:
     """
     scored = [i.score for i in items if i.included and i.score is not None]
     return sum(scored) / len(scored) if scored else None
+
+
+def describe_mapping_failure(exc: BaseException) -> dict[str, Any]:
+    """Everything a dropped criterion's record needs to say about why it dropped.
+
+    The record used to carry ``str(e)`` alone, and ``str(e)`` is the EMPTY STRING for
+    any exception constructed without a message. ``TimeoutError()`` is one, and it is
+    the one that happened. Measured over the live study state of
+    ``tmp/tte_cold6_20260908/studies.json`` (``$.studies[].eligibility.
+    structuredExpression``), 3 of its 11 ``_unmappedCriteria`` rows carry
+    ``reason: ""`` -- PLATO 16 and ARISTOTLE 26/27 -- and they reach the twelve
+    delivered files as 6 rows, one per arm. Count the live studies only: pooling in
+    ``$.artifacts[].payload.proposedChanges`` gives 24 of 68, but those are pending
+    review proposals, not the state the delivery gate judges. What refused them was
+    ``stage1_pipeline.search_sync``'s five-second ontology-search timeout -- an
+    infrastructure failure, recorded as if it were a mapping verdict, saying nothing
+    (``tmp/tte_cold6_20260908/cold6c.log`` lines 1013-1018 and 3415-3421).
+
+    So the class name goes in front of the message unconditionally, and ``repr(exc)``
+    stands in when the message is blank. A reason built this way cannot be empty, and
+    the assert below says so in code rather than in this docstring.
+
+    ``__cause__`` is followed exactly one level, and ``__context__`` never is. A cause
+    is an EXPLICIT ``raise ... from ...``, which means somebody decided the two failures
+    belong in one sentence; ``__context__`` is whatever happened to be in flight, and
+    following it would append unrelated noise to a reason a human has to read.
+
+    :param exc: the exception that ended the mapping attempt.
+    :returns: ``reason`` (never empty), ``exceptionType`` (fully qualified, so
+        ``builtins.TimeoutError`` and a project exception are told apart without
+        guessing), and ``refusalCode`` / ``refusalDetail``, which are non-None only for
+        a deliberate :class:`~src.utils.criterion_refusal.CriterionRefused`. A consumer
+        classifies on ``refusalCode`` and on nothing else: ``None`` there means nothing
+        deliberately refused, which is a failure and must never be permitted.
+    """
+
+    def _one(e: BaseException) -> str:
+        return f"{type(e).__name__}: {str(e).strip() or repr(e)}"
+
+    reason = _one(exc)
+    cause = exc.__cause__
+    if cause is not None:
+        reason = f"{reason} — after {_one(cause)}"
+
+    refusal_code = exc.code if isinstance(exc, CriterionRefused) else None
+    refusal_detail = exc.detail if isinstance(exc, CriterionRefused) else None
+
+    assert reason.strip(), "describe_mapping_failure promised a non-empty reason"
+    return {
+        "reason": reason,
+        "exceptionType": f"{type(exc).__module__}.{type(exc).__qualname__}",
+        "refusalCode": refusal_code,
+        "refusalDetail": refusal_detail,
+    }
 
 
 def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]) -> str:
@@ -4847,7 +4908,17 @@ class TTEService:
                     parent_value_constraint=_parent_constraint(criterion, exclusion),
                 ))
             except Exception as e:
-                logging.warning("Failed to process criterion %s: %s", index, e)
+                # `str(e)` alone was the whole record, and it is "" for any exception
+                # built without a message -- which is how six rows of the 2026-09-08
+                # batch shipped a refusal that gave no reason. `describe_mapping_failure`
+                # cannot return an empty one, and it carries the class and the refusal
+                # code so a consumer tells a deliberate refusal from a failure without
+                # reading prose. The log line takes the same text for the same reason:
+                # `%s` on a bare TimeoutError() printed nothing there either.
+                failure = describe_mapping_failure(e)
+                logging.warning(
+                    "Failed to process criterion %s: %s", index, failure["reason"]
+                )
                 with progress_lock:
                     unmapped_criteria.append({
                         "criterionId": str(criterion.get("id", "")),
@@ -4858,7 +4929,7 @@ class TTEService:
                             or ""
                         ).strip(),
                         "domain": (criterion.get("domain") or "").strip() or None,
-                        "reason": str(e),
+                        **failure,
                     })
                 result = (index, None)
             with progress_lock:
@@ -6893,7 +6964,10 @@ class TTEService:
     ) -> dict[str, Any]:
         normalized_seed = " ".join(seed_text.split()).strip()
         if not normalized_seed:
-            raise ValueError("Missing seed text for cohort definition mapping")
+            raise CriterionRefused(
+                "Missing seed text for cohort definition mapping",
+                code=REFUSAL_EMPTY_SEED,
+            )
 
         # Defect B fix: for drug seeds, an EXACT standard RxNorm Ingredient name
         # match wins over embedding search (fixes linagliptin->sitagliptin,
@@ -6960,6 +7034,15 @@ class TTEService:
                 logging.debug("Criterion cache lookup failed: %s", exc)
 
         # Primary path: Agent 2 full pipeline (ATC, UMLS, reranker, critic)
+        #
+        # How this stage ended is kept, because the RAG fallback below runs whether it
+        # raised or merely came back empty, and if the fallback then fails too its
+        # exception is the only thing the caller sees. That is how the six empty-reason
+        # rows of the 2026-09-08 batch lost half their story: Agent 2 returned no seeds,
+        # the fallback's ontology search timed out, and the record said "".
+        agent2_exc: Exception | None = None
+        agent2_empty = False
+        agent2_route = ""
         try:
             from src.agents.agent2.workflow import Agent2Workflow
             from src.agents.conceptset.expression_builder import get_expression_builder
@@ -7050,24 +7133,51 @@ class TTEService:
                             "domain": resolved_domain,
                             "mapping_metadata": mapping_meta,
                         }
+
+            # Reached only when nothing above returned: Agent 2 ran to completion and
+            # produced nothing usable -- no concept_ids, or none that hydrated, or an
+            # expression with no items. That is NOT an exception, so there is no cause
+            # to chain; the fallback's refusal has to say it in words instead.
+            agent2_empty = True
+            agent2_route = str(getattr(mapping_result, "route_path", "") or "")
         except Exception as exc:
             if self._should_use_placeholder_seeded_mapping(exc):
                 return self._build_placeholder_seeded_concept_set(
                     normalized_seed,
                     expected_domain=expected_domain,
                 )
+            agent2_exc = exc
             import structlog
             structlog.get_logger().warning(
                 "agent2_seeded_mapping_failed",
                 seed_text=normalized_seed,
                 domain=expected_domain,
-                error=str(exc),
+                # `str(exc)` alone is "" for a bare TimeoutError, which is what made
+                # this the only surviving trace of a failure nobody could name.
+                error=describe_mapping_failure(exc)["reason"],
             )
 
         # Fallback: ConceptSetRecommender (RAG-only) -- NOT cached
-        return self._recommend_seeded_concept_set_rag_fallback(
-            normalized_seed, expected_domain=expected_domain
-        )
+        #
+        # If this fails too, the record must name BOTH stages. An Agent 2 exception is
+        # attached as the cause, which `describe_mapping_failure` reads one level deep;
+        # an Agent 2 that merely came back empty has no exception to attach, so it goes
+        # into the message. Neither changes WHAT is raised: a refusal stays a refusal
+        # with its code intact, and a failure stays a failure.
+        try:
+            return self._recommend_seeded_concept_set_rag_fallback(
+                normalized_seed, expected_domain=expected_domain
+            )
+        except Exception as fallback_exc:
+            if agent2_exc is not None:
+                raise fallback_exc from agent2_exc
+            if agent2_empty and isinstance(fallback_exc, CriterionRefused):
+                raise CriterionRefused(
+                    f"{fallback_exc} (Agent 2 returned no concepts, route={agent2_route})",
+                    code=fallback_exc.code,
+                    detail=fallback_exc.detail,
+                )
+            raise
 
     def _recommend_seeded_concept_set_rag_fallback(
         self,
@@ -7100,18 +7210,30 @@ class TTEService:
                 recommendations = filtered
 
         if not recommendations:
+            # Both of these are DELIBERATE: every tier ran and the vocabulary has no
+            # counterpart, or the intent router refused to parse the seed at all. The
+            # code is what says so -- a consumer that classified on this message text
+            # would break the next time the sentence is reworded.
             fallback_reason = getattr(response, "fallback_reason", None)
             if fallback_reason:
-                raise ValueError(
-                    f"No concept mapping found for '{normalized_seed}': {fallback_reason}"
+                raise CriterionRefused(
+                    f"No concept mapping found for '{normalized_seed}': {fallback_reason}",
+                    code=REFUSAL_INTENT_UNPARSED,
+                    detail=str(fallback_reason),
                 )
-            raise ValueError(f"No concept mapping found for '{normalized_seed}'")
+            raise CriterionRefused(
+                f"No concept mapping found for '{normalized_seed}'",
+                code=REFUSAL_NO_CONCEPT_MAPPING,
+            )
 
         recommendation = recommendations[0]
         expression = recommendation.expression.to_atlas_json()
         items = list(expression.get("items") or [])
         if not items:
-            raise ValueError(f"Concept mapping for '{normalized_seed}' did not return any concepts")
+            raise CriterionRefused(
+                f"Concept mapping for '{normalized_seed}' did not return any concepts",
+                code=REFUSAL_EMPTY_CONCEPT_SET,
+            )
 
         # Capture mapping metadata for HITL transparency (RAG fallback path)
         from src.api.models.tte import CriterionMappingMetadata, MappingCandidateItem
