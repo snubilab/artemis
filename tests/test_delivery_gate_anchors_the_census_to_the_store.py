@@ -78,6 +78,7 @@ from typing import Any
 
 import pytest
 
+from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
 from src.utils.criterion_refusal import REFUSAL_UNMAPPABLE_PLACEHOLDER
 
 
@@ -240,7 +241,7 @@ CLEAN_CONCEPT_SET_REFS = {
 
 CLEAN_RECORDS_WITH_LINKS = {
     **CLEAN_RECORDS,
-    "_criterionConceptSetRefs": json.loads(json.dumps(CLEAN_CONCEPT_SET_REFS)),
+    CRITERION_CONCEPT_SET_REFS_KEY: json.loads(json.dumps(CLEAN_CONCEPT_SET_REFS)),
 }
 
 #: The residual `0d80c94` named and could not close. Criterion #6 was refused; instead
@@ -255,7 +256,7 @@ CLEAN_RECORDS_WITH_LINKS = {
 #: file that distinguishes the two artifacts.
 BOOKED_AS_MAPPED_RECORDS = {
     **CLEAN_RECORDS,
-    "_criterionConceptSetRefs": {"inclusion:1": 2, "1": 2, "inclusion:4": 3, "4": 3},
+    CRITERION_CONCEPT_SET_REFS_KEY: {"inclusion:1": 2, "1": 2, "inclusion:4": 3, "4": 3},
 }
 
 #: A skip naming a criterion id the store does not carry. The counters stay whole --
@@ -377,6 +378,100 @@ class TestAGroupLabelPermitWithNoGroupIsUnreJudgeable:
         assert "no groupId" not in out
 
 
+class TestTheKeyTheLinkIsReadByHasOneHome:
+    """The link check above is only as good as the string both sides spell it with.
+
+    `ad7855c` anchored `census.mapped` to `_criterionConceptSetRefs` while the string
+    lived at three sites: a constant in the gate and two literals in `tte_service`. A
+    typo at either producer site left the gate finding no map, taking the fail-open
+    branch, and printing "no concept-set links recorded" -- the delivery still ships and
+    the one check standing between it and a criterion booked as `mapped` has silently
+    stopped running. Nothing fails; the check simply is not there any more.
+
+    The spelling now has one home, `circe_lint.CRITERION_CONCEPT_SET_REFS_KEY`, and both
+    sides import it. What that closes and what it does not:
+
+      * a producer-side typo -- CLOSED structurally. No literal remains to mistype;
+        `rg '"_criterionConceptSetRefs"'` over `src/` and `scripts/` returns the
+        definition and nothing else.
+      * the constant renamed or removed -- LOUD at import. Both importers name it in a
+        `from ... import`, so they raise `ImportError` before any delivery is read.
+        `test_should_break_both_importers_loudly_if_the_constant_is_renamed` runs that.
+      * the constant's VALUE changed -- NOT caught by import or by mypy, because both
+        sides move together and the code stays type-correct. It is a wire-format change
+        against every artifact already on disk, and only the pin below sees it.
+    """
+
+    def test_should_give_the_producer_and_the_gate_the_same_object(self):
+        """Same object, not merely equal strings -- an equal-but-separate constant is
+        the defect this closes, one rename away from being unequal."""
+        from scripts import verify_circe_delivery
+        from src.services import tte_service
+        from src.utils import circe_lint
+
+        assert (
+            tte_service.CRITERION_CONCEPT_SET_REFS_KEY
+            is circe_lint.CRITERION_CONCEPT_SET_REFS_KEY
+        )
+        assert (
+            verify_circe_delivery.CRITERION_CONCEPT_SET_REFS_KEY
+            is circe_lint.CRITERION_CONCEPT_SET_REFS_KEY
+        )
+
+    def test_should_pin_the_value_to_the_spelling_every_artifact_on_disk_carries(self):
+        """The one assertion the constant cannot make about itself. 71 artifacts under
+        `output/` carry this key; changing the value orphans every one of them, and no
+        importer, linter or type checker would say so."""
+        from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
+
+        assert CRITERION_CONCEPT_SET_REFS_KEY == "_criterionConceptSetRefs"
+
+    def test_should_break_both_importers_loudly_if_the_constant_is_renamed(self, monkeypatch):
+        """Shows the guard firing rather than asserting that it would.
+
+        Re-executes each importer's own `from src.utils.circe_lint import (...)`
+        statement, lifted verbatim from its source, against a stand-in module that
+        carries everything `circe_lint` does EXCEPT the constant -- which is what a
+        rename there leaves behind. Both statements raise `ImportError`, so neither
+        module can load holding a spelling the producer no longer writes.
+        """
+        import ast
+        import pathlib as _pathlib
+        import sys
+        import types
+
+        import src.utils.circe_lint as circe_lint
+
+        stub = types.ModuleType("src.utils.circe_lint")
+        for name, value in vars(circe_lint).items():
+            if name != "CRITERION_CONCEPT_SET_REFS_KEY":
+                setattr(stub, name, value)
+        assert not hasattr(stub, "CRITERION_CONCEPT_SET_REFS_KEY")
+        monkeypatch.setitem(sys.modules, "src.utils.circe_lint", stub)
+
+        repo_root = _pathlib.Path(__file__).resolve().parents[1]
+        checked = []
+        for path in (
+            repo_root / "src" / "services" / "tte_service.py",
+            repo_root / "scripts" / "verify_circe_delivery.py",
+        ):
+            source = path.read_text()
+            statements = [
+                ast.get_source_segment(source, node)
+                for node in ast.walk(ast.parse(source))
+                if isinstance(node, ast.ImportFrom) and node.module == "src.utils.circe_lint"
+            ]
+            assert len(statements) == 1, (path, len(statements))
+            statement = statements[0]
+            assert "CRITERION_CONCEPT_SET_REFS_KEY" in statement, path
+
+            with pytest.raises(ImportError, match="CRITERION_CONCEPT_SET_REFS_KEY"):
+                exec(statement, {})  # noqa: S102 - the statement under test
+            checked.append(path.name)
+
+        assert checked == ["tte_service.py", "verify_circe_delivery.py"], checked
+
+
 class TestARefusalBookedAsMappedIsSeenByTheConceptSetLink:
     """The residual `0d80c94` recorded and could not close.
 
@@ -452,7 +547,7 @@ class TestARefusalBookedAsMappedIsSeenByTheConceptSetLink:
                 }
             ],
         )
-        records["_criterionConceptSetRefs"] = json.loads(json.dumps(CLEAN_CONCEPT_SET_REFS))
+        records[CRITERION_CONCEPT_SET_REFS_KEY] = json.loads(json.dumps(CLEAN_CONCEPT_SET_REFS))
 
         rc, out = gate(records)
 

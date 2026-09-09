@@ -980,6 +980,27 @@ DROP_OUTCOME_RULE_RENAMED = "rule-renamed"
 #: segments and members was not provable, so :func:`_rename_after_drop` left it alone.
 DROP_OUTCOME_RULE_KEPT = "rule-kept"
 
+#: The key ``TTEService._build_seeded_target_circe`` writes the per-criterion
+#: concept-set links under: ``{"inclusion:5": 2, "5": 2, ...}``, one role-keyed entry
+#: per criterion whose mapping returned a result, written in the same loop that appends
+#: the concept set and increments the codeset id.
+#:
+#: Spelled once here for the same reason :data:`DROPPED_CRITERIA_KEY` is, but the
+#: consequence of a second copy is worse. This is the ONLY record in an emitted file
+#: that says a PARTICULAR criterion produced something, so the delivery gate anchors
+#: ``census.mapped`` to it: retype the string at either producer site and the gate finds
+#: no map, takes its fail-open branch, and reports "no concept-set links recorded" --
+#: the mapped check has silently stopped running while the delivery still ships. A
+#: producer that then books a lost criterion as ``mapped`` meets no check at all.
+#:
+#: With the spelling owned here that shape is closed at the source: the producer writes
+#: this name and the gate reads this name, and there is no literal left to mistype.
+#: Renaming the CONSTANT breaks both importers loudly at import; changing its VALUE is
+#: a wire-format change against every artifact already on disk, which no importer or
+#: type checker can see. Both are covered by ``TestTheKeyTheLinkIsReadByHasOneHome`` in
+#: ``tests/test_delivery_gate_anchors_the_census_to_the_store.py``.
+CRITERION_CONCEPT_SET_REFS_KEY = "_criterionConceptSetRefs"
+
 
 def _prune_group_expression(
     node: dict[str, Any], where: str, dropped: list[dict[str, Any]]

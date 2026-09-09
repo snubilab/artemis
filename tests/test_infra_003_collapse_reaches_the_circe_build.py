@@ -24,6 +24,7 @@ from typing import Any
 import pytest
 
 from src.services.tte_service import TTEService
+from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
 
 
 def _stub_concept_set(name: str, concept_id: int, domain: str = "Condition") -> dict[str, Any]:
@@ -142,7 +143,7 @@ class TestTheDroppedCriteriaNeverReachTheMapper:
 
     def test_should_keep_the_survivor_mapped_rather_than_dropping_all_three(self):
         circe = service_build(_eligibility(exclusion=CARMELINA_PREGNANCY))
-        mapped_ids = set(circe["_criterionConceptSetRefs"])
+        mapped_ids = set(circe[CRITERION_CONCEPT_SET_REFS_KEY])
         assert any("11" in str(k) for k in mapped_ids), mapped_ids
 
     def test_should_record_each_dropped_criterion_under_its_own_reason(self):

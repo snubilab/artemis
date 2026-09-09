@@ -16,6 +16,7 @@ import pytest
 
 from src.api.models.tte import SeededCohortGenerationItem
 from src.services.tte_service import TTEService
+from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
 
 
 def _make_service() -> TTEService:
@@ -681,7 +682,7 @@ class TestStructuredTargetGuardrails:
             },
             "InclusionRules": [],
             "_criterionMappingMetadata": {},
-            "_criterionConceptSetRefs": {
+            CRITERION_CONCEPT_SET_REFS_KEY: {
                 "inclusion:101": 3,
                 "exclusion:101": 2,
             },

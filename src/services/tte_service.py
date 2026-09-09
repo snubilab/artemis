@@ -94,6 +94,7 @@ from src.services.value_constraint import (
 )
 from src.utils.circe_lint import (
     CRITERIA_TYPE_DOMAINS,
+    CRITERION_CONCEPT_SET_REFS_KEY,
     DROPPED_CRITERIA_KEY,
     criteria_types_by_codeset,
     drop_unreadable_value_criteria,
@@ -3677,7 +3678,9 @@ class TTEService:
             structured_expression = self._build_seeded_target_circe(eligibility)
             criterion_mapping_meta = structured_expression.pop("_criterionMappingMetadata", {})
             rule_index_meta = structured_expression.pop("_ruleIndexMeta", {})
-            criterion_concept_set_refs = structured_expression.pop("_criterionConceptSetRefs", {})
+            criterion_concept_set_refs = structured_expression.pop(
+                CRITERION_CONCEPT_SET_REFS_KEY, {}
+            )
         except Exception as exc:
             rationale.append(
                 f"Draft structured definition generation failed during concept-set mapping: {exc}"
@@ -5285,7 +5288,7 @@ class TTEService:
             },
             "InclusionRules": inclusion_rules,
             "_criterionMappingMetadata": criterion_mapping_meta,
-            "_criterionConceptSetRefs": criterion_concept_set_refs,
+            CRITERION_CONCEPT_SET_REFS_KEY: criterion_concept_set_refs,
             "_ruleIndexMeta": rule_index_meta,
             # Always present, empty when nothing failed -- an absent key would be
             # indistinguishable from a clean run on an artifact built before this.

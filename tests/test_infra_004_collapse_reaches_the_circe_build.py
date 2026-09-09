@@ -26,6 +26,7 @@ import pytest
 from src.services.restated_demographics import COLLAPSE_REASON as DEMOGRAPHICS_REASON
 from src.services.restated_distinctness import COLLAPSE_REASON as DISTINCTNESS_REASON
 from src.services.tte_service import TTEService
+from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
 
 
 def _stub_concept_set(name: str, concept_id: int, domain: str = "Condition") -> dict[str, Any]:
@@ -184,7 +185,7 @@ class TestTheDroppedCriteriaNeverReachTheMapper:
 
     def test_should_keep_the_survivor_mapped_rather_than_dropping_both(self):
         circe = service_build(_eligibility(exclusion=CAROLINA_ALCOHOL))
-        assert any("5" in str(k) for k in circe["_criterionConceptSetRefs"])
+        assert any("5" in str(k) for k in circe[CRITERION_CONCEPT_SET_REFS_KEY])
 
     def test_should_emit_three_concept_sets_for_the_six_member_liver_group(self):
         """AC-006 end to end. Six is the unfixed defect; one would destroy two analytes."""

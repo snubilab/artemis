@@ -126,6 +126,7 @@ from src.services.value_constraint import (  # noqa: E402
     resolve_group_member_constraint,
 )
 from src.utils.circe_lint import (  # noqa: E402
+    CRITERION_CONCEPT_SET_REFS_KEY,
     DROP_OUTCOME_RULE_KEPT,
     DROP_OUTCOME_RULE_REMOVED,
     DROP_OUTCOME_RULE_RENAMED,
@@ -282,26 +283,34 @@ COLLAPSE_RECORD_KEYS = {
 }
 
 
-#: Where the producer records, per criterion, the concept set it minted for it:
-#: ``{"inclusion:5": 2, "5": 2, ...}``, one ROLE-KEYED entry per criterion whose
-#: mapping returned a result, written in the same loop that appends the concept set
-#: and increments the codeset id. It is the only record in the file that says a
-#: PARTICULAR criterion produced something, which is what makes it the one referent
-#: for ``census.mapped`` — see :func:`criterion_accounting` for why the rule list
-#: cannot serve and why the ``ConceptSets`` length cannot either.
-#:
-#: The bare-id keys written beside the role keys are ignored everywhere here.
-#: Inclusion and exclusion criteria are numbered in independent sequences, so a bare
-#: key structurally cannot tell ``inclusion:42`` from ``exclusion:42``; the producer's
-#: own consumer dropped its bare-id fallback for exactly that reason.
-#:
-#: No module owns this spelling — it is a literal in ``_build_seeded_target_circe``,
-#: the same asymmetry :data:`COLLAPSE_RECORD_KEYS` carries — but the safe direction is
-#: the OPPOSITE one here: a misspelling finds no map and the link check does not run.
-#: That is why its absence is printed on every row rather than passed over: a batch
-#: that suddenly reads "no concept-set links recorded" where it read "N of N mapped
-#: concept-set linked" is the visible signal a silent skip would not give.
-CRITERION_CONCEPT_SET_REFS_KEY = "_criterionConceptSetRefs"
+# ``CRITERION_CONCEPT_SET_REFS_KEY`` is imported from ``src.utils.circe_lint`` above,
+# which is also where ``_build_seeded_target_circe`` takes it from. What it holds, and
+# why this gate anchors ``census.mapped`` to it:
+#
+# The producer records under it, per criterion, the concept set it minted for it:
+# ``{"inclusion:5": 2, "5": 2, ...}``, one ROLE-KEYED entry per criterion whose mapping
+# returned a result, written in the same loop that appends the concept set and
+# increments the codeset id. It is the only record in the file that says a PARTICULAR
+# criterion produced something, which is what makes it the one referent for
+# ``census.mapped`` — see :func:`criterion_accounting` for why the rule list cannot
+# serve and why the ``ConceptSets`` length cannot either.
+#
+# The bare-id keys written beside the role keys are ignored everywhere here.
+# Inclusion and exclusion criteria are numbered in independent sequences, so a bare
+# key structurally cannot tell ``inclusion:42`` from ``exclusion:42``; the producer's
+# own consumer dropped its bare-id fallback for exactly that reason.
+#
+# Unlike :data:`COLLAPSE_RECORD_KEYS`, whose spellings are still literals in
+# ``TTEService``, this one is owned by ``circe_lint`` and imported by both sides — so
+# the asymmetry that used to sit here is closed at the source rather than merely
+# pointed at. It mattered in the OPPOSITE direction to the collapse keys: a producer
+# typo found no map, and the link check simply did not run. There is no literal left
+# to mistype, and the fail-open branch below is now reachable only by an artifact that
+# genuinely carries no map — one generated before the record existed, or stripped after
+# generation. Its absence is still printed on every row rather than passed over,
+# because that is the signal that tells the two cases apart: a batch that suddenly
+# reads "no concept-set links recorded" where it read "N of N mapped concept-set
+# linked" is visible in a way a silent skip would not be.
 
 
 def _describe(record: dict[str, Any]) -> str:
