@@ -531,3 +531,173 @@ class TestTheTemporalSeedIsAlreadyClassifiedAsIntentUnparsed:
         assert describe_mapping_failure(excinfo.value)["refusalCode"] == (
             REFUSAL_NO_CONCEPT_MAPPING
         )
+
+
+# --------------------------------------------------------------------------
+# PLATO, store study 2, inclusion group 8e787307-e68e-49c6-9318-2203dc47dde2.
+# --------------------------------------------------------------------------
+# The counter-case to everything above. This label's "bound" is a COUNT of the group's
+# own members -- "≥2 of the following:" -- and `parse_value_constraints` handed back
+# `unitText: "of the following:"`, the tail of the English phrase, which is not a unit.
+# None of the four members is measured in it, because none of them is measured at all,
+# so all four left as `stranded-group-threshold` and PLATO's entire "≥2 risk factors"
+# criterion was lost. On 2026-09-09, before the label carried an absolute bound,
+# `Diabetes Mellitus` (concept set 8) emitted as a plain ConditionOccurrence.
+#
+# Rows transcribed verbatim from `output/site_gap/2026-09-10/store/studies.json`.
+
+PLATO_RISK_FACTOR_GROUP_ID = "8e787307-e68e-49c6-9318-2203dc47dde2"
+PLATO_COUNT_LABEL_CONSTRAINT = {
+    "op": "gte",
+    "value": 2.0,
+    "unitText": "of the following:",
+    "referenceBound": "absolute",
+    "unitConceptId": None,
+}
+
+
+def _plato_row(
+    criterion_id: int,
+    description: str,
+    source_text: str,
+    domain: str,
+    *,
+    is_label: bool,
+    constraint: dict | None,
+) -> dict[str, Any]:
+    return {
+        "id": criterion_id,
+        "description": description,
+        "sourceText": source_text,
+        "domain": domain,
+        "valueConstraint": constraint,
+        "isGroupLabel": is_label,
+        "groupId": PLATO_RISK_FACTOR_GROUP_ID,
+        "groupType": "ANY",
+        "logicType": "PRESENCE",
+        "window": None,
+    }
+
+
+PLATO_COUNT_LABEL = _plato_row(
+    38,
+    "At least 2 of the following risk factors",
+    "Risk factor",
+    "Observation",
+    is_label=True,
+    constraint=PLATO_COUNT_LABEL_CONSTRAINT,
+)
+PLATO_RISK_FACTORS = [
+    _plato_row(39, "Hypertension", "Hypertension", "Condition", is_label=False, constraint=None),
+    _plato_row(
+        40, "Diabetes Mellitus", "Diabetes Mellitus", "Condition", is_label=False, constraint=None
+    ),
+    _plato_row(
+        41, "Smoking Status", "Current smoker", "Observation", is_label=False, constraint=None
+    ),
+    _plato_row(42, "Obesity", "Obesity", "Condition", is_label=False, constraint=None),
+]
+
+
+@pytest.fixture
+def domain_echoing_service():
+    """As `service`, but the mapper answers in the domain the criterion asked for.
+
+    PLATO's members are Conditions and an Observation, so a mapper hard-wired to
+    Measurement would refuse them under `domain-contradiction` and the refusal under
+    test would never be the one that fired.
+    """
+    from src.services.tte_service import TTEService
+
+    svc = TTEService.__new__(TTEService)
+
+    def _mapped(name, expected_domain=None, workflow=None, **_kw):
+        domain = expected_domain or "Condition"
+        return {
+            "name": name,
+            "domain": domain,
+            "expression": {
+                "items": [{"concept": {"CONCEPT_ID": 316866, "DOMAIN_ID": domain}}]
+            },
+        }
+
+    svc._recommend_seeded_concept_set = MagicMock(side_effect=_mapped)
+    return svc
+
+
+class TestAGroupCardinalityStrandsNobody:
+    def test_should_not_produce_the_count_at_all(self):
+        """Root cause. The label never had a threshold to strand its members with."""
+        from src.services.value_constraint import parse_value_constraints
+
+        assert parse_value_constraints("≥2 of the following:") == []
+        assert parse_value_constraints("At least 2 of the following risk factors") == []
+
+    @pytest.mark.parametrize(
+        "member",
+        PLATO_RISK_FACTORS,
+        ids=["Hypertension/39", "DiabetesMellitus/40", "CurrentSmoker/41", "Obesity/42"],
+    )
+    def test_should_emit_a_member_whose_label_carries_only_a_count(
+        self, domain_echoing_service, member
+    ):
+        """Second line of defence, for the stores already written with the count in them.
+
+        A count is not a bound, so there is nothing to hand down and nothing was lost --
+        the member emits exactly as it would with no label constraint at all.
+        """
+        built = domain_echoing_service._build_seeded_eligibility_rule(
+            criterion=member,
+            codeset_id=member["id"],
+            exclusion=False,
+            parent_value_constraint=PLATO_COUNT_LABEL_CONSTRAINT,
+        )
+
+        body = built["rule"]["expression"]["CriteriaList"][0]["Criteria"]
+        assert list(body) == [
+            "ConditionOccurrence" if member["domain"] == "Condition" else "Observation"
+        ]
+        assert "ValueAsNumber" not in next(iter(body.values()))
+
+    def test_should_build_all_four_risk_factors_from_the_real_store_rows(
+        self, domain_echoing_service
+    ):
+        """The whole group, as delivered. Before: four `stranded-group-threshold` rows
+        and no InclusionRule at all."""
+        built = domain_echoing_service._build_seeded_target_circe(
+            {
+                "targetCohortName": "ticagrelor",
+                "inclusionCriteria": [PLATO_COUNT_LABEL, *PLATO_RISK_FACTORS],
+                "exclusionCriteria": [],
+            }
+        )
+
+        stranded = [
+            record
+            for record in built.get("_unmappedCriteria") or []
+            if record.get("refusalCode") == REFUSAL_STRANDED_GROUP_THRESHOLD
+        ]
+        assert stranded == [], (
+            f"PLATO's '≥2 of the following' is a group cardinality, not a measurement "
+            f"threshold; refusing its members loses the whole criterion: {stranded}"
+        )
+        assert len(built.get("InclusionRules") or []) == 1
+
+    def test_should_not_skip_the_label_as_stranded(self, domain_echoing_service):
+        """The census must stop reporting a loss that no longer happens."""
+        built = domain_echoing_service._build_seeded_target_circe(
+            {
+                "targetCohortName": "ticagrelor",
+                "inclusionCriteria": [PLATO_COUNT_LABEL, *PLATO_RISK_FACTORS],
+                "exclusionCriteria": [],
+            }
+        )
+
+        label_skips = [
+            record
+            for record in built.get("_skippedCriteria") or []
+            if record.get("criterionId") == "38"
+        ]
+        assert [record["reason"] for record in label_skips] != [
+            STRANDED_GROUP_CONSTRAINT_REASON
+        ]

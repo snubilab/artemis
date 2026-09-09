@@ -572,6 +572,13 @@ def resolve_group_member_constraint(
     including a caller that passes no ``member_analyte`` at all. This narrows the
     refusal; it never widens what is emitted.
 
+    A label whose number is a group CARDINALITY -- "≥2 of the following:" -- is neither
+    of those. It is not a bound at all, so no member is measured against it and no
+    member is stranded by it; see :func:`is_item_count`. The parser stopped producing
+    these, and this branch is what keeps a store already holding one from losing its
+    members: PLATO's group ``8e787307`` shipped on 2026-09-10 with all four of
+    Hypertension / Diabetes Mellitus / Current smoker / Obesity refused.
+
     A member that carries its own constraint always keeps it: SPEC-INFRA-007
     REQ-004/REQ-005 made the decomposer ground each sub-item's threshold in its
     own source text, and this must not overwrite that answer.
@@ -585,6 +592,12 @@ def resolve_group_member_constraint(
     if member_vc is not None:
         return GroupConstraintResolution(member_vc, False, None)
     if parent_vc is None:
+        return GroupConstraintResolution(None, False, None)
+    # A count of the group's own members is not a bound on any of them, so there is
+    # nothing to hand down and nothing was stranded: the member emits exactly as it
+    # would under a label carrying no constraint at all. Not a refusal -- refusing here
+    # is what cost PLATO all four of its risk factors.
+    if is_item_count(parent_vc):
         return GroupConstraintResolution(None, False, None)
     if is_reference_relative(parent_vc):
         return GroupConstraintResolution(parent_vc, True, None)
@@ -705,6 +718,29 @@ _DOSE_CONTEXT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A number that counts the items in a LIST is not a quantity measured on any one of
+# them. PLATO's inclusion group 8e787307 is labelled "≥2 of the following:" over
+# Hypertension / Diabetes Mellitus / Current smoker / Obesity -- a group CARDINALITY,
+# "at least 2 of these four hold". `_resolve_unit` hands back "of the following:"
+# because no part of that tail names a unit; it is the rest of the English phrase. The
+# label then carried an absolute bound, `resolve_group_member_constraint` could match
+# none of the four members to a unit that is not one, and PLATO's whole "≥2 risk
+# factors" criterion left the 2026-09-10 delivery as four `stranded-group-threshold`
+# rows. On 2026-09-09, before the label carried a bound, `Diabetes Mellitus` emitted.
+#
+# The signal is the unit slot on its own: a partitive "of" opens a reference to a SET
+# OF ITEMS, and no unit of measure begins with it. Unlike "%" (HbA1c's unit as well as
+# a stenosis figure) and "mg/day" (a real excretion rate as well as a dose), this one
+# is not ambiguous, so it takes no phrase-level gate -- a context test that cannot
+# change the answer is only a second place to be wrong.
+#
+# Measured over the 1,106 distinct criterion lines in `tmp/tte_cold6_20260908/
+# studies.json` and `output/site_gap/2026-09-10/store/studies.json`: 143 -> 137
+# annotations, 6 dropped, 0 gained, every drop a count of list members. The ages
+# standing beside four of them ("Age ≥60 y and ≥1 of the following criteria:")
+# survive, because `_PHRASE_SPLIT_RE` leaves each number with its own tail.
+_ITEM_COUNT_UNIT_RE = re.compile(r"^of\b", re.IGNORECASE)
+
 # ClinicalTrials.gov strips the caret upstream, so "1.5 x 10^9/L" can arrive as
 # "1.5 x 109/L". Reading 109 as the magnitude is off by nine orders.
 _GIGA_PER_LITRE_RE = re.compile(r"^[x×*]?\s*10\s*[\^*]?\s*9\s*/\s*l$", re.IGNORECASE)
@@ -794,6 +830,28 @@ def _is_drug_dose_rate(unit_text: str | None, phrase: str) -> bool:
     )
 
 
+def _is_item_count(unit_text: str | None) -> bool:
+    """True for ">= 2 of the following" -- how many members hold, not how much of one.
+
+    Takes no phrase, unlike its three siblings: the unit slot settles this one by
+    itself (see :data:`_ITEM_COUNT_UNIT_RE`).
+    """
+    return bool(unit_text) and _ITEM_COUNT_UNIT_RE.match(unit_text.strip()) is not None
+
+
+def is_item_count(vc: Any) -> bool:
+    """True when a constraint already in a store counts members rather than measuring.
+
+    The same predicate :func:`parse_value_constraint` applies, asked of a stored row so
+    that :func:`resolve_group_member_constraint` has one home for the question rather
+    than two. Every store written before the parser declined this family still carries
+    the count -- PLATO's label #38 in `output/site_gap/2026-09-10/store/studies.json` is
+    ``{gte 2.0, unitText "of the following:"}`` -- and a re-extraction is not the only
+    thing that should stop those deliveries losing four criteria each.
+    """
+    return _is_item_count(_field(vc, "unit_text", "unitText"))
+
+
 def _is_unmeasurable(unit_text: str | None, phrase: str) -> bool:
     """True when no OMOP value column could ever hold this quantity.
 
@@ -806,11 +864,21 @@ def _is_unmeasurable(unit_text: str | None, phrase: str) -> bool:
     loss can be prevented — the extraction prompt cannot, because Rule 0 tells the model
     to copy this parser's annotation verbatim and Step 8a re-attaches it when the model
     leaves it out.
+
+    The fourth family, the item count, loses its criterion by a second route as well.
+    Where it lands on a GROUP LABEL the label is refused anyway, but the bound it now
+    appears to carry reaches `resolve_group_member_constraint`, which can match no
+    member to a unit that is not a unit and refuses every one of them: PLATO's four
+    risk factors, in the 2026-09-10 delivery. Where it lands on a flat criterion the
+    first route applies as usual -- the same PLATO count reached the 2026-09-08 store
+    on a Condition row named "Preexisting Conditions Count", which ConditionOccurrence
+    cannot read.
     """
     return (
         _is_temporal(unit_text, phrase)
         or _is_anatomic_severity(unit_text, phrase)
         or _is_drug_dose_rate(unit_text, phrase)
+        or _is_item_count(unit_text)
     )
 
 

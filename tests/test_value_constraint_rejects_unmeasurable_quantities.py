@@ -142,3 +142,72 @@ class TestTheAnnotationHandedToTheModelLosesThemToo:
     def test_should_still_annotate_a_real_lab_threshold(self):
         rendered = annotate_value_constraints("Hemoglobin < 9 g/dL")
         assert '"value": 9.0' in rendered and '"unitText": "g/dL"' in rendered
+
+
+class TestAGroupCardinalityIsNotAMeasuredValue:
+    """"at least 2 of the following" says how MANY members hold, not how much of one.
+
+    The fourth family, and the one the first three missed. PLATO's inclusion group
+    ``8e787307`` (store study 2, 2026-09-10) is a label reading "≥2 of the following:"
+    over Hypertension / Diabetes Mellitus / Current smoker / Obesity. The parser read
+    the 2 as a threshold and handed back ``unitText: "of the following:"`` -- which is
+    not a unit but the tail of the English phrase -- so the label carried an absolute
+    bound, ``resolve_group_member_constraint`` could match none of the four members to
+    it, and all four left as ``stranded-group-threshold``. The whole criterion was lost;
+    on 2026-09-09 ``Diabetes Mellitus`` had emitted as a plain ConditionOccurrence.
+
+    The signal is the unit slot itself: what follows the number opens with the
+    partitive "of", and no unit of measure does. Measured over 1,106 distinct criterion
+    lines from ``tmp/tte_cold6_20260908/studies.json`` and
+    ``output/site_gap/2026-09-10/store/studies.json``, six annotations match and every
+    one is a count of list members; the ages standing beside them in the same lines are
+    untouched.
+    """
+
+    @pytest.mark.parametrize(
+        "phrase",
+        [
+            "≥2 of the following:",
+            "At least 2 of the following risk factors",
+        ],
+    )
+    def test_should_refuse_a_count_of_the_groups_own_members(self, phrase):
+        assert parse_value_constraints(phrase) == []
+
+    @pytest.mark.parametrize(
+        "phrase,age",
+        [
+            ("Age >= 60 and >=1 of specified risk factors", 60.0),
+            ("Age >= 50 and >=1 of specified risk factors (Prior CVD)", 50.0),
+            (
+                "No Prior cardiovascular disease group: Age ≥60 y and ≥1 of the "
+                "following criteria:",
+                60.0,
+            ),
+            (
+                "Prior cardiovascular disease cohort: age ≥50 and ≥1 of the "
+                "following criteria:",
+                50.0,
+            ),
+        ],
+    )
+    def test_should_keep_the_age_standing_beside_the_count(self, phrase, age):
+        """These lines carry both. Dropping the age with the count trades one loss for
+        another -- LEADER's whole entry age is in the same sentence as its "≥1 of"."""
+        assert [(vc.op, vc.value) for vc in parse_value_constraints(phrase)] == [
+            ("gte", age)
+        ]
+
+    def test_should_still_read_a_ratio_whose_line_counts_specimens_elsewhere(self):
+        """The count is in the line but not in the UNIT SLOT: "in two of three unrelated
+        specimens" qualifies a real 30 μg/mg threshold. Judging the whole line rather
+        than what follows the number would lose it."""
+        vc = _one(
+            "Random spot urinary albumin creatinine ratio ≥ 30 μg/mg (≥ 3.4 mg/mmol) "
+            "in two of three unrelated specimens in previous 12 months prior Visit 1a"
+        )
+        assert vc is not None and vc.value == 30.0
+
+    def test_should_annotate_nothing_for_the_plato_group_label(self):
+        """Path 1 of the three: Rule 0 tells the model to copy this verbatim."""
+        assert annotate_value_constraints("≥2 of the following:") == ""
