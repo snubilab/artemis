@@ -127,6 +127,9 @@ from src.services.value_constraint import (  # noqa: E402
 )
 from src.utils.circe_lint import (  # noqa: E402
     CRITERION_CONCEPT_SET_REFS_KEY,
+    DEFAULT_WINDOW_SOURCE_DOMAIN_TABLE,
+    DEFAULT_WINDOW_SOURCE_UNLISTED_DOMAIN,
+    DEFAULTED_WINDOW_CRITERIA_KEY,
     DROP_OUTCOME_RULE_KEPT,
     DROP_OUTCOME_RULE_REMOVED,
     DROP_OUTCOME_RULE_RENAMED,
@@ -924,6 +927,64 @@ def criterion_accounting(
     else:
         drop_clause = ", 0 dropped at emission"
 
+    # The windows the emitter substituted for a criterion whose extraction carried
+    # none. Reported, never judged: a defaulted window is a QUALIFIER on a claim the
+    # protocol did make, not criterion loss, so it appends NO violation on any path
+    # below and cannot move a verdict -- the same reading `c1cb2c0` used to default
+    # rather than refuse. Verified inert before it was written: injecting the key into
+    # all 12 files of `output/site_gap/2026-09-09/deliver_v3` left 12 FAIL, the same
+    # reasons and an unmoved census.
+    #
+    # It is reported because 57 of the 557 criteria in the cold-6 store (10%, nine of
+    # the ten studies) carry no extracted window, so on a real batch one criterion in
+    # ten had its temporal window guessed and the report said nothing -- this
+    # function's own docstring rule ("a check whose only output is silence cannot be
+    # told from a check that never ran") applied to a record rather than a check.
+    #
+    # Absent vs present-and-empty are kept distinct for the reason the producer emits
+    # the key present-and-empty at all: "0 windows defaulted" is the claim that
+    # nothing was substituted, and every artifact exported before 2026-09-10 -- the
+    # whole 2026-09-09 delivery -- cannot make it. Printing 0 for those would assert
+    # something unknown and probably false. Same three-state shape as `drop_clause`.
+    #
+    # The split is by `source`, which `c1cb2c0` recorded so the two could be told
+    # apart. `domain-default` used the value `agent1/prompts.py` states to the model;
+    # `unlisted-domain-default` took the judged -9999 for a domain the prompt never
+    # documented, and per `DEFAULT_WINDOW_START_DAYS_UNLISTED_DOMAIN` such a row "is
+    # the signal that a domain needs a documented value, not a judged one". Pooling
+    # them would bury that signal in the routine case. A row whose `source` is neither
+    # is counted and named rather than folded into either, because an unrecognised
+    # source means the record shape drifted -- which is worth seeing and still is not
+    # a failure.
+    defaulted_windows = expression.get(DEFAULTED_WINDOW_CRITERIA_KEY)
+    if defaulted_windows is None:
+        defaulted_clause = ""
+    elif isinstance(defaulted_windows, list) and defaulted_windows:
+        sources = [
+            record.get("source") if isinstance(record, dict) else None
+            for record in defaulted_windows
+        ]
+        documented = sum(1 for s in sources if s == DEFAULT_WINDOW_SOURCE_DOMAIN_TABLE)
+        judged = sum(1 for s in sources if s == DEFAULT_WINDOW_SOURCE_UNLISTED_DOMAIN)
+        unrecognised = len(sources) - documented - judged
+        if unrecognised == 0 and judged == 0:
+            detail = "all documented"
+        elif unrecognised == 0 and documented == 0:
+            detail = "none documented"
+        else:
+            detail = ", ".join(
+                f"{count} {word}"
+                for count, word in (
+                    (documented, "documented"),
+                    (judged, "judged"),
+                    (unrecognised, "unrecognised source"),
+                )
+                if count
+            )
+        defaulted_clause = f", {len(defaulted_windows)} windows defaulted ({detail})"
+    else:
+        defaulted_clause = ", 0 windows defaulted"
+
     present = [key for key in ACCOUNTING_KEYS if key in expression]
     if not present:
         # Every current export writes all three. An artifact carrying none of them
@@ -934,7 +995,7 @@ def criterion_accounting(
         return (
             drop_violations,
             "criterion accounting: NOT RECORDED "
-            f"(artifact predates _generationCensus){drop_clause}",
+            f"(artifact predates _generationCensus){drop_clause}{defaulted_clause}",
         )
 
     missing = [key for key in ACCOUNTING_KEYS if key not in expression]
@@ -945,7 +1006,7 @@ def criterion_accounting(
                 "criterion accounting incomplete: "
                 f"{', '.join(missing)} absent while {', '.join(present)} present"
             ],
-            f"criterion accounting: INCOMPLETE{drop_clause}",
+            f"criterion accounting: INCOMPLETE{drop_clause}{defaulted_clause}",
         )
 
     # The store's criteria: the anchor below and the two re-derivations further down
@@ -1284,7 +1345,8 @@ def criterion_accounting(
     )
     summary = (
         f"criterion accounting: {census.get('mapped')} mapped, {unmapped_clause}, "
-        f"{len(skipped)} skipped ({permitted}), {anchor_clause}, {link_clause}{drop_clause}"
+        f"{len(skipped)} skipped ({permitted}), {anchor_clause}, "
+        f"{link_clause}{drop_clause}{defaulted_clause}"
     )
     return violations, summary
 
