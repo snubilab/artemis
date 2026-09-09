@@ -30,6 +30,28 @@ from __future__ import annotations
 #: ("Table II criteria"), a bare "Contraindication" naming no substance.
 REFUSAL_NO_CONCEPT_MAPPING = "no-concept-mapping"
 
+#: The seed names no clinical entity at all, so no vocabulary can ever hold it and no
+#: better mapper can ever find it: a numbered placeholder whose content lives elsewhere
+#: in the protocol ("Risk factor 1"), a pointer into the source document ("Table II
+#: criteria"), a count rather than an entity ("Preexisting Conditions Count"), a bare
+#: qualifier naming no substance ("Contraindication").
+#:
+#: This is the ONE code a delivery gate may permit, and it exists because
+#: :data:`REFUSAL_NO_CONCEPT_MAPPING` straddles the line that decides permission. That
+#: line is NOT "was the refusal deliberate" — every code here is deliberate — it is "is
+#: this loss IRREDUCIBLE given a correct pipeline". Both of these produce
+#: ``no-concept-mapping`` today and they need opposite verdicts:
+#:
+#:     "Table II criteria"                  irreducible — a pointer, not an entity
+#:     "Contraindication to clopidogrel"    REDUCIBLE — names a real substance, and a
+#:                                          better mapper finds it
+#:
+#: One code, two opposite verdicts, and no reason string separates them — which is why
+#: the split is made HERE, at the raise site that can see the seed, rather than by a
+#: gate-side heuristic over English. A gate that guessed would silently permit the
+#: second row the day its seed happened to look placeholder-shaped.
+REFUSAL_UNMAPPABLE_PLACEHOLDER = "unmappable-placeholder"
+
 #: The intent router could not parse the seed into a clinical entity — usually because
 #: the seed still carries a temporal qualifier ("... within 3 years") that belongs in the
 #: criterion's ``window``, not in its text. The refusal is correct; the defect is
@@ -76,6 +98,7 @@ REFUSAL_UNREADABLE_VALUE_FILTER = "unreadable-value-filter"
 REFUSAL_CODES = frozenset(
     {
         REFUSAL_NO_CONCEPT_MAPPING,
+        REFUSAL_UNMAPPABLE_PLACEHOLDER,
         REFUSAL_INTENT_UNPARSED,
         REFUSAL_EMPTY_CONCEPT_SET,
         REFUSAL_EMPTY_SEED,

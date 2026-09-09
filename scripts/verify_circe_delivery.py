@@ -66,8 +66,23 @@ Checks per file:
     whose threshold strands no member and at least one of whose members emitted, a
     ``demographic-no-rule`` row must be demographic-domain and carry no bound, and a
     restated-* row must have a collapse record naming a survivor that emitted. An
-    ``_unmappedCriteria`` row is never permitted whatever its reason says, and one
-    carrying no reason at all fails on its own line.
+    ``_unmappedCriteria`` row is permitted only when its ``refusalCode`` says the loss
+    is IRREDUCIBLE — see ``PERMITTED_REFUSAL_CODES`` for the axis and for why the
+    reason prose cannot carry it — and one carrying no reason, no code, or an unknown
+    code fails on its own line.
+
+(j) no ``Measurement`` criterion carries no value condition while its own concept-set
+    name or rule name asserts one. Every check above reads a criterion that is PRESENT
+    and asks whether it is wrong; a rule that LOST its threshold is byte-identical to
+    one that legitimately never had a threshold, so none of them could see it. Measured
+    in ``carolina_treatment.circe.json``: rule 30 keeps its "3x ULN" as a
+    ``RangeHighRatio`` while rules 33 and 37 emit bare, and rule 37 then excludes any
+    patient who has ever had an ALT, AST, bilirubin or INR drawn — routine panel labs.
+    The file was reported as "78 mapped, 0 unmapped": the bare members were counted as
+    mapped. 26 such criteria in this batch, and 4 more in the hand-built TROY v1.1 gold
+    under ``data/gold/``, which carries the same defect on ARISTOTLE's
+    "systolic BP > 180 mm Hg" exclusion. See
+    ``src.utils.circe_lint.asserted_bound_missing_criteria``.
 
 And one check across files rather than per file:
 
@@ -115,6 +130,7 @@ from src.utils.circe_lint import (  # noqa: E402
     DROP_OUTCOME_RULE_REMOVED,
     DROP_OUTCOME_RULE_RENAMED,
     DROPPED_CRITERIA_KEY,
+    asserted_bound_missing_criteria,
     contradictory_absence_rules,
     domain_mismatched_criteria,
     entry_concept_ids,
@@ -124,6 +140,10 @@ from src.utils.circe_lint import (  # noqa: E402
     noop_exclusion_rules,
     rule_names,
     unreadable_value_attributes,
+)
+from src.utils.criterion_refusal import (  # noqa: E402
+    REFUSAL_CODES,
+    REFUSAL_UNMAPPABLE_PLACEHOLDER,
 )
 from src.utils.delivery_mode import (  # noqa: E402
     DeliveryModeConflictError,
@@ -197,6 +217,50 @@ ALLOWED_SKIP_REASONS = frozenset(
         RESTATED_DISTINCTNESS_REASON,
     }
 )
+
+
+#: The ``refusalCode`` values an ``_unmappedCriteria`` row may carry and still ship.
+#:
+#: The axis is NOT "was the refusal deliberate". Every code in
+#: :data:`~src.utils.criterion_refusal.REFUSAL_CODES` is deliberate — that is what the
+#: class exists to say — and permitting on deliberateness would permit every recorded
+#: loss in the batch. The axis is **"is this loss irreducible given a correct
+#: pipeline?"**, and on that axis the codes split cleanly except for one:
+#:
+#: * ``unmappable-placeholder`` — irreducible. The seed names no clinical entity, so no
+#:   vocabulary can hold it and no better mapper can find it. Verbatim from the
+#:   2026-09-08 batch: LEADER inclusion 27 "Risk factor 1" (a numbered placeholder whose
+#:   content is elsewhere in the protocol), PLATO inclusion 21 "Table II criteria" (a
+#:   pointer into the source document), PLATO inclusion 29 "Preexisting Conditions
+#:   Count" (a count, not an entity), EMPA-REG exclusion 32 bare "Contraindication"
+#:   (names no substance).
+#: * ``no-concept-mapping`` — NOT permitted, and the reason the split above had to be
+#:   made at the producer. It is the code every row in that table carries TODAY, and it
+#:   is also what PLATO exclusion 16 "Contraindication to clopidogrel" and ARISTOTLE
+#:   exclusion 26 "Aspirin and thienopyridine combination" will carry — and those name
+#:   real substances a better mapper finds. One code, two opposite verdicts.
+#: * ``intent-unparsed`` — NOT permitted. The seed still carries a temporal qualifier
+#:   ("... within 3 years") that belongs in the criterion's ``window``; the refusal is
+#:   correct and the defect is fixable upstream at extraction. Permitting it would hide
+#:   the four real CARMELINA losses (inclusion 10/11/13, exclusion 13).
+#: * ``empty-seed``, ``empty-concept-set``, ``stranded-group-threshold``,
+#:   ``domain-contradiction``, ``unreadable-value-filter`` — NOT permitted. Each names a
+#:   defect with a repair: a criterion that reached the mapper with no text, a search
+#:   that answered with nothing, a threshold that did not survive its group label, a
+#:   mapping from the wrong domain, a filter the CDM table cannot read.
+#:
+#: A row whose ``refusalCode`` is absent or ``None`` is NEVER permitted, and that is the
+#: load-bearing default rather than a formality: ``None`` means nothing deliberately
+#: refused, which is the ``str(e) == ""`` defect — a five-second Stage 1 search timeout
+#: booked as a mapping verdict (ARISTOTLE 26/27, PLATO 16 in the 2026-09-08 batch).
+#:
+#: The alternative considered and REJECTED was a gate-side heuristic over the seed text
+#: ("does this look like a placeholder?"). It would live in the gate, guess about
+#: English, and silently permit a real loss the day its seed happened to read
+#: placeholder-shaped — the exact failure shape ``docs/mistakes.md`` records. The
+#: decision belongs where the evidence is, so it is made at the raise site and this list
+#: applies no judgement of its own.
+PERMITTED_REFUSAL_CODES = frozenset({REFUSAL_UNMAPPABLE_PLACEHOLDER})
 
 
 #: The three outcomes a drop record may claim for the rule its criterion sat in.
@@ -386,27 +450,57 @@ def criteria_index(study: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any
     }
 
 
+def unmapped_refusal_block_reason(record: dict[str, Any]) -> str | None:
+    """Why this ``_unmappedCriteria`` row is criterion loss, or ``None`` when it is not.
+
+    The single place the permit policy is applied. It reads ``refusalCode`` and nothing
+    else — never the reason prose, which is written for a human and is byte-for-byte
+    identical for an irreducible placeholder and for a mappable criterion the search
+    stopped short of.
+
+    :param record: one ``_unmappedCriteria`` row.
+    :returns: a phrase naming why the row blocks the delivery, or ``None`` when
+        :data:`PERMITTED_REFUSAL_CODES` covers it.
+    """
+    code = record.get("refusalCode")
+    if code is None:
+        return (
+            "carries no refusalCode, so nothing deliberately refused it — a mapping "
+            "that ended in a failure rather than a verdict is never permitted"
+        )
+    if code not in REFUSAL_CODES:
+        return (
+            f"carries refusalCode {code!r}, which is not in the vocabulary "
+            f"(known: {', '.join(sorted(REFUSAL_CODES))})"
+        )
+    if code not in PERMITTED_REFUSAL_CODES:
+        return f"refused as {code!r}, which is criterion loss a correct pipeline would not incur"
+    return None
+
+
 def unmapped_criteria_violations(
     records: Any, index: dict[tuple[str, str], dict[str, Any]]
 ) -> list[str]:
     """Whether each ``_unmappedCriteria`` record is a record at all.
 
-    Deliberately NOT a classification of unmapped criteria: every one of them is
-    criterion loss and fails the file on the line below this one, whatever its reason
-    text says. There is no allowlist and there must not be, because
-    ``"No concept mapping found for 'X'"`` is byte-for-byte the same string for a
-    placeholder the mapper was right to refuse (PLATO's "Table II criteria", a pointer
-    to a table in the protocol) and for a data-gap miss ("Contraindication to
-    clopidogrel", whose concepts are standard and merely absent from the index). No
-    reason string separates the two, so allowlisting any of them allowlists real loss.
+    Deliberately NOT the loss verdict, which :func:`unmapped_refusal_block_reason`
+    makes from ``refusalCode`` alone. This function asks only whether a row can be
+    re-judged: a reason that is empty or whitespace-only, a ``(role, criterionId)`` the
+    store study does not carry, or a ``refusalCode`` outside the vocabulary.
 
-    What IS checked is that the record can be re-judged at all: a reason that is empty
-    or whitespace-only, or a ``(role, criterionId)`` the store study does not carry.
     Six rows of the 2026-09-08 batch (ARISTOTLE 26/27, PLATO 16, over two arms each)
     carry ``reason: ""`` because the producer records ``str(e)`` and
     ``str(TimeoutError())`` is the empty string — the run log shows a 5-second Stage 1
-    search timeout booked as a mapping refusal. Such a row is reported on its own line
-    so that no future allowlist can ever cover it.
+    search timeout booked as a mapping refusal. Such a row is reported on its own line,
+    separately from the permit verdict, so that no future permit can ever cover it: a
+    row with no reason ALSO carries no ``refusalCode``, and the two lines fail it twice
+    for two different defects.
+
+    The vocabulary check is here rather than in the permit because an unknown code is a
+    record-integrity failure, not a policy decision. A permit that answered "not in
+    ``PERMITTED_REFUSAL_CODES``, therefore loss" would report a producer typo as though
+    it were a clinical verdict, and the delivery would be blocked for a reason nobody
+    could find.
 
     :param records: the value under ``_unmappedCriteria``, of any shape.
     :param index: the store study's criteria, from :func:`criteria_index`.
@@ -444,6 +538,14 @@ def unmapped_criteria_violations(
                 "Stage 1 search in the 2026-09-08 batch); a refusal that does not say "
                 "why it refused cannot be reconciled"
             )
+        code = record.get("refusalCode")
+        if code is not None and code not in REFUSAL_CODES:
+            violations.append(
+                f"{where} {_describe(record)} carries refusalCode {code!r}, which is not "
+                f"in the vocabulary — add it to REFUSAL_CODES in "
+                f"src/utils/criterion_refusal.py rather than at the call site "
+                f"(known: {', '.join(sorted(REFUSAL_CODES))})"
+            )
     return violations
 
 
@@ -477,17 +579,44 @@ def _group_label_violations(
     # producer that stopped recording STRANDED and wrote plain `group-label` instead
     # cannot slip the loss past this permit, because the decision is re-made rather
     # than read off the record.
+    #
+    # Asked PER MEMBER, with that member's own analyte text. `997da1b` gave the
+    # resolver a `member_analyte` keyword and an absolute bound now reaches the members
+    # measured in its unit, so the question "does this threshold strand anything" no
+    # longer has one answer for a whole group. Passing None asked the pre-997da1b
+    # question -- "would this bound reach a member we know nothing about" -- whose
+    # answer is always "no" for an absolute bound. On CAROLINA 44 and EMPA-REG 56 that
+    # happened to give the right verdict (HbA1c genuinely is stranded by "> 240
+    # mg/dL"), so nothing failed; but a group whose members are ALL unit-compatible
+    # would have been reported as a loss the build never incurred.
+    #
+    # The analyte is read the way `TTEService._stranded_group_constraint_labels` reads
+    # it -- `sourceText` then `description` -- because the two must answer alike or the
+    # gate and the producer disagree about the same group.
     label_constraint = label.get("valueConstraint")
-    if label_constraint and any(
-        criterion.get("valueConstraint") is None for _key, criterion in members
-    ):
-        resolution = resolve_group_member_constraint(label_constraint, None)
-        if resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON:
+    if label_constraint:
+        stranded = [
+            criterion
+            for _key, criterion in members
+            if criterion.get("valueConstraint") is None
+            and resolve_group_member_constraint(
+                label_constraint,
+                None,
+                member_analyte=criterion.get("sourceText") or criterion.get("description"),
+            ).refusal_reason
+            == STRANDED_GROUP_CONSTRAINT_REASON
+        ]
+        if stranded:
+            names = ", ".join(
+                repr(criterion.get("sourceText") or criterion.get("description"))
+                for criterion in stranded
+            )
             violations.append(
                 f"{where} is recorded as group-label but the producer's own predicate "
-                f"says its absolute threshold {label_constraint!r} reaches no member: "
-                f"that is {STRANDED_GROUP_CONSTRAINT_REASON}, which is loss and is off "
-                "the allowlist"
+                f"says its absolute threshold {label_constraint!r} does not reach "
+                f"{len(stranded)} of its {len(members)} member(s) ({names}): that is "
+                f"{STRANDED_GROUP_CONSTRAINT_REASON}, which is loss and is off the "
+                "allowlist"
             )
 
     # A container row loses nothing BECAUSE its members emit. When every member was
@@ -659,12 +788,21 @@ def criterion_accounting(
 ) -> tuple[list[str], str]:
     """Re-judge a delivered file's own drop records: ``(violations, summary)``.
 
-    The failure condition is ``unmapped > 0``, plus ``skipped > 0`` for any reason
-    not in :data:`ALLOWED_SKIP_REASONS`, plus any allowed skip whose permit does not
-    re-derive. ``skipped`` alone is not loss — see that constant for what is permitted
-    and why — so a batch with 32 skips and nothing unmapped (the measured CAROLINA
-    case) still passes, but only once each of those 32 has been reconciled against the
-    store criterion it names and the collapse record in the file beside it.
+    The failure condition is any ``_unmappedCriteria`` row whose ``refusalCode`` is not
+    in :data:`PERMITTED_REFUSAL_CODES`, plus ``skipped > 0`` for any reason not in
+    :data:`ALLOWED_SKIP_REASONS`, plus any allowed skip whose permit does not
+    re-derive. Neither ``skipped`` nor ``unmapped`` is loss by count alone — see those
+    two constants for what is permitted and why — so a batch with 32 skips and nothing
+    unmapped (the measured CAROLINA case) still passes, but only once each of those 32
+    has been reconciled against the store criterion it names and the collapse record in
+    the file beside it.
+
+    The unmapped permit is strictly narrower than the skip permit: a skip is re-derived
+    from the store, an unmapped row is classified by a code the producer wrote, and the
+    two loosest possible readings of that code (absent, or outside the vocabulary) both
+    fail. Until the producer emits ``unmappable-placeholder``, the permit changes no
+    verdict at all — every row carries ``refusalCode: None`` or ``no-concept-mapping``
+    and every one of them still blocks.
 
     ``study`` is required and has no default. The reconciliation needs the store's
     criteria rows, and a missing store would silently turn every re-derivation into a
@@ -785,19 +923,34 @@ def criterion_accounting(
     # over reason strings could ever cover it.
     violations.extend(unmapped_criteria_violations(unmapped, index))
 
-    if unmapped:
-        # Every unmapped record is loss, whatever its reason says -- there is no
-        # allowlist here and `unmapped_criteria_violations` deliberately builds none.
+    # An unmapped record is loss unless its `refusalCode` says the loss is irreducible.
+    # The verdict is made from that code and from nothing else -- see
+    # `PERMITTED_REFUSAL_CODES` for why the prose cannot carry it, and
+    # `unmapped_refusal_block_reason` for the one place it is applied.
+    blocking: list[tuple[dict[str, Any], str]] = []
+    permitted_unmapped: list[dict[str, Any]] = []
+    for record in unmapped:
+        if not isinstance(record, dict):
+            continue
+        block = unmapped_refusal_block_reason(record)
+        if block is None:
+            permitted_unmapped.append(record)
+        else:
+            blocking.append((record, block))
+
+    if blocking:
         # The producer records `"reason": str(e)`, which is empty for any exception
         # constructed without an argument -- 3 of the 13 distinct unmapped criteria
         # across every exported artifact carry `""` (ARISTOTLE 26/27, PLATO 16).
         # Saying "reason not recorded" rather than printing nothing keeps that gap
         # visible here until the producer records `repr(e)` and the class as well.
         details = []
-        for record in unmapped:
+        for record, block in blocking:
             reason = str(record.get("reason") or "").strip()
-            details.append(f"{_describe(record)} — {reason or 'reason not recorded'}")
-        violations.append(f"unmapped criteria ({len(unmapped)}): " + "; ".join(details))
+            details.append(
+                f"{_describe(record)} {block} — {reason or 'reason not recorded'}"
+            )
+        violations.append(f"unmapped criteria ({len(blocking)}): " + "; ".join(details))
 
     off_list = [
         r for r in skipped if isinstance(r, dict) and r.get("reason") not in ALLOWED_SKIP_REASONS
@@ -823,8 +976,22 @@ def criterion_accounting(
     if unreconciled:
         notes.append(f"{len(unreconciled)} not reconciled")
     permitted = ", ".join(notes) if notes else "all permitted"
+    # The unmapped count carries its own permit note for the same reason the skipped
+    # one does: a permit that never appears on a passing row is indistinguishable from
+    # a permit that was never applied, which is how these keys went unread for a month.
+    if not unmapped:
+        unmapped_clause = "0 unmapped"
+    elif permitted_unmapped and not blocking:
+        unmapped_clause = f"{len(unmapped)} unmapped (all permitted)"
+    elif permitted_unmapped:
+        unmapped_clause = (
+            f"{len(unmapped)} unmapped ({len(permitted_unmapped)} permitted, "
+            f"{len(blocking)} not permitted)"
+        )
+    else:
+        unmapped_clause = f"{len(unmapped)} unmapped (none permitted)"
     summary = (
-        f"criterion accounting: {census.get('mapped')} mapped, {len(unmapped)} unmapped, "
+        f"criterion accounting: {census.get('mapped')} mapped, {unmapped_clause}, "
         f"{len(skipped)} skipped ({permitted}){drop_clause}"
     )
     return violations, summary
@@ -1082,6 +1249,17 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"criterion domain mismatch ({len(domain_mismatches)}): "
                 f"{'; '.join(domain_mismatches)}"
+            )
+
+        # (j) a Measurement criterion whose own name asserts a bound it does not
+        # carry. Every other check reads a criterion that is PRESENT and asks whether
+        # it is wrong; this one asks whether something is missing from it, which is
+        # why the 26 lost thresholds in this batch were counted as "mapped".
+        missing_bounds = asserted_bound_missing_criteria(expression)
+        if missing_bounds:
+            reasons.append(
+                f"asserted bound missing ({len(missing_bounds)}): "
+                f"{'; '.join(missing_bounds)}"
             )
 
         # (i) the file's own drop records: recorded criterion loss, and whether the
