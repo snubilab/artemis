@@ -1022,3 +1022,82 @@ def domain_mismatched_criteria(expression: dict[str, Any]) -> list[str]:
                 f"{concept_set.get('name')!r} ({', '.join(sorted(domains))})"
             )
     return findings
+
+
+def partially_readable_criteria(expression: dict[str, Any]) -> list[str]:
+    """Criteria whose table reads SOME but not all of their concept set. A report.
+
+    :func:`refuse_domain_contradiction` and :func:`domain_mismatched_criteria` fire
+    only when EVERY concept is out of domain, so one in-domain concept carries a set
+    whose rest are silently unreadable. Tightening that predicate was considered and
+    measured, and rejected in both candidate forms:
+
+    - A majority or ratio threshold separates this corpus cleanly -- of 552
+      criterion -> concept-set references in ``tmp/tte_cold6_20260908``, 549 are
+      fully readable, 3 read at most a third, and none sit between. But all three are
+      partially working exclusions ("Pregnancy/Nursing" read as ``Observation`` over
+      a set that is mostly Condition and Procedure), so refusing them deletes an
+      exclusion that today applies to some patients. The real repair is a mapping
+      change, not a gate change.
+    - Skipping ``isExcluded`` items empties the domain set for an all-excluded set,
+      and the gate returns early on an empty one, so that set would move from checked
+      to silently passed. It is unmeasurable here besides: no concept set in the store
+      carries a single excluded item.
+
+    So the gate stays binary and this reports what it deliberately does not judge.
+    Silent, like the gate, on an unmodelled criteria type, a dangling ``CodesetId``,
+    a set with no readable ``DOMAIN_ID``, and a set nothing at all can be read from --
+    that last one is the gate's own finding, and reporting it twice is noise.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: ``"<where>: <CriteriaType> over codeset <id> <name!r> reads N of M
+        concepts (<unreadable domains>)"``, one per partially readable reference.
+    """
+    findings: list[str] = []
+    for where, entry in _criterion_locations(expression):
+        for criteria_type, codeset_id in _criterion_references(entry):
+            allowed = CRITERIA_TYPE_DOMAINS.get(criteria_type)
+            if allowed is None:
+                continue
+            concept_set = _find_concept_set(expression, codeset_id)
+            if concept_set is None:
+                continue
+            readable, unreadable = _split_items_by_readability(concept_set, allowed)
+            if not readable or not unreadable:
+                continue
+            lost = sorted({domain for _item, domain in unreadable})
+            findings.append(
+                f"{where}: {criteria_type} over codeset {codeset_id} "
+                f"{concept_set.get('name')!r} reads {len(readable)} of "
+                f"{len(readable) + len(unreadable)} concepts "
+                f"({len(unreadable)} unreadable: {', '.join(lost)})"
+            )
+    return findings
+
+
+def _split_items_by_readability(
+    concept_set: dict[str, Any], allowed: frozenset[str]
+) -> tuple[list[Any], list[tuple[Any, str]]]:
+    """Partition a set's items into those the table can read and those it cannot.
+
+    Counts every item, excluded ones included, for the same reason
+    :func:`concept_set_domains` does: an ``isExcluded`` item is still a claim about
+    which table the set belongs to, and dropping them is what turns an all-excluded
+    set into one with no readable domain at all.
+    """
+    readable: list[Any] = []
+    unreadable: list[tuple[Any, str]] = []
+    for item in (concept_set.get("expression") or {}).get("items") or []:
+        raw = (item.get("concept") or {}).get("DOMAIN_ID")
+        if not isinstance(raw, str):
+            continue
+        domains = {
+            _DOMAIN_ABBREVIATIONS.get(part.strip(), part.strip())
+            for part in raw.split("/")
+            if part.strip()
+        }
+        if domains & allowed:
+            readable.append(item)
+        else:
+            unreadable.append((item, raw))
+    return readable, unreadable

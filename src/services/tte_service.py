@@ -100,6 +100,7 @@ from src.utils.circe_lint import (
     end_entry_colliding_washouts_before_index,
     entry_concept_ids,
     entry_concept_set,
+    partially_readable_criteria,
     refuse_domain_contradiction,
     refuse_unreadable_value_filter,
 )
@@ -4145,6 +4146,17 @@ class TTEService:
             logging.info(
                 "[TTE] Ended %d washout rule(s) a day before index (their concept set "
                 "contains the entry drug): %s", len(moved), ", ".join(moved),
+            )
+        # Reported, never repaired. The domain gate refuses only a criterion that can
+        # read NONE of its set, and tightening it was measured and rejected -- see
+        # `partially_readable_criteria`. What is left is a criterion silently reading
+        # part of its set, and being invisible is how two of them shipped.
+        partial = partially_readable_criteria(expression)
+        if partial:
+            logging.warning(
+                "[TTE] %d criteri(on/a) can read only part of the concept set mapped "
+                "for them; the rest are in another CDM table and are silently dropped "
+                "by Circe: %s", len(partial), "; ".join(partial),
             )
         return expression
 
