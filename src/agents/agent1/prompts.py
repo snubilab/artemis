@@ -236,7 +236,13 @@ You must produce:
 
 For each criterion, identify:
 - **domain**: Condition, Drug, Measurement, Procedure, Observation, or Demographics
-- **entity_text**: The clinical term (e.g., "Type 2 Diabetes", "Metformin")
+- **entity_text**: The clinical term (e.g., "Type 2 Diabetes", "Metformin"). MANDATORY on
+  every criterion that has no `sub_criteria`; null ONLY on a parent row that has them.
+  It is the ONLY text the concept mapper is ever given, so a leaf that omits it is mapped
+  on its `name` instead -- and a `name` is a phrase written for a human ("Anti-diabetic
+  drug naive", "At least one specified risk factor", "Stable Background Medication"),
+  which resolves to whatever domain's concepts happen to share its words. Measured on the
+  2026-09-10 six-trial store: 44 of the 369 leaf criteria carried no `entity_text` at all.
 - **logic_type**: PRESENCE (patient has/uses) or ABSENCE (patient does NOT have/use)
 - **window**: Time window relative to index date (in days). MANDATORY for every criterion.
   If the protocol states an explicit temporal constraint (e.g., "within 3 months prior to screening"), convert it to days (e.g., {start: -90, end: 0}).
@@ -342,8 +348,28 @@ Pattern A — Lab test range (e.g., "HbA1c 7% to 10%"):
 Pattern B — Simple threshold (e.g., "eGFR >= 30"):
   Single rule: PRESENCE of Measurement with value_constraint {{op: "gte", value: 30}}
 
-Pattern C — "No prior X" / "Without X":
+Pattern C — "No prior X" / "Without X" / "X-naive":
   → logic_type: "ABSENCE", appropriate time window
+  The negation is often ONE WORD fused to the drug rather than a leading "no":
+  "treatment-naive", "drug-naive", "anti-diabetic drug naive", "insulin-naïve", "no prior
+  use of", "not currently treated with", "washout of". Every one of them says the patient
+  has NOT had the drug, and every one takes logic_type "ABSENCE".
+  CRITICAL — the negation belongs to `logic_type` and NEVER to `entity_text`. `entity_text`
+  is the string handed to the vocabulary, so it must name the DRUG ALONE — the ingredient
+  the line implies ("insulin", "metformin") or the class it names ("anti-diabetic agent").
+  A seed carrying the negation is not a drug, so it resolves to whatever concepts share
+  its words, and a DrugExposure rule over a concept set holding no Drug concept matches no
+  row at all: the criterion is refused downstream and the protocol's requirement is lost
+  entirely, not merely weakened.
+  Measured 2026-09-10: LEADER's "Anti-diabetic drug naive" (two criteria) and CARMELINA's
+  "Drug Naïve or Pre-treated (Excluding GLP-1/DPP-4/SGLT-2)" (two criteria) were each
+  emitted as domain "Drug", logic_type "PRESENCE", with no `entity_text` at all. The
+  refusal record for the LEADER pair, verbatim: the concept set mapped for "Anti-diabetic
+  drug naive" "holds only Condition, Measurement, Observation, Procedure concepts, so the
+  rule would match nothing". Four criteria, two trials, all four lost.
+  When the line offers a CHOICE ("drug naive OR pre-treated with X"), Pattern E governs and
+  this rule applies INSIDE it: one ANY group whose naive member is an ABSENCE of the drug
+  class and whose pre-treated member is a PRESENCE of the drugs the line actually names.
 
 Pattern D — "History of X":
   → logic_type: "PRESENCE", window: {{start: -9999, end: 0}} (all prior history)
