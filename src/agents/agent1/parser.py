@@ -369,42 +369,16 @@ class LogicDecomposer:
         # second, small, focused pass to read each criterion line against its
         # generated rule directly, instead of comparing totals.
         if verify_thresholds:
-            all_criteria = list(trial_data.inclusion_criteria) + list(trial_data.exclusion_criteria)
             misses = self._llm_review_value_constraints(
                 nct_id, trial_data.inclusion_criteria, trial_data.exclusion_criteria, ir,
             )
-
-            # Step 8: repair. The constraint numbers were already parsed
-            # deterministically from the same criterion text before the first LLM
-            # call ever ran (ADR-031-B); neither path here re-extracts or invents a
-            # number, only decides which existing rule it belongs to.
-            #   8a. Free, instant zip: safe exactly when rule-count == constraint-count,
-            #       which holds when every analyte has its own distinct threshold.
-            #   8b. LLM match (one call): the case 8a can't decide safely — most often
-            #       a shared threshold ("ALT or AST > 2X ULN") where analyte-count and
-            #       constraint-count differ on purpose. Given the text, the already-
-            #       correct constraint list, and the candidate rule names, this asks
-            #       which rule gets which constraint index, allowing many-to-one
-            #       sharing. It is a matching decision, not extraction, so it does not
-            #       carry the "shape separated them, not difficulty" extraction failure
-            #       Step 6/7 exist for.
-            still_broken = []
-            for miss in misses:
-                line = miss.get("criterion_line")
-                if not isinstance(line, int) or not (1 <= line <= len(all_criteria)):
-                    still_broken.append(miss)
-                    continue
-                original_text = str(all_criteria[line - 1])
-                repaired = self._repair_dropped_threshold(original_text, ir.target.inclusion_rules) \
-                    or self._repair_dropped_threshold(original_text, ir.target.exclusion_rules)
-                if not repaired:
-                    repaired = self._llm_match_dropped_threshold(
-                        nct_id, original_text, ir.target.inclusion_rules
-                    ) or self._llm_match_dropped_threshold(
-                        nct_id, original_text, ir.target.exclusion_rules
-                    )
-                if not repaired:
-                    still_broken.append(miss)
+            still_broken = self._repair_threshold_misses(
+                nct_id,
+                trial_data.inclusion_criteria,
+                trial_data.exclusion_criteria,
+                ir,
+                misses,
+            )
 
             if misses:
                 print(f"[Agent 1] Step 7/8: {len(misses)} flagged, "
@@ -568,6 +542,80 @@ class LogicDecomposer:
                 nct_id, exc,
             )
             return []
+
+    @staticmethod
+    def _role_indexed_criteria(inclusion_criteria: list, exclusion_criteria: list) -> list[tuple]:
+        """The criterion list Step 7's reviewer is numbered against, each line
+        carrying the block it came from.
+
+        `_llm_review_value_constraints` builds `criteria_block` from
+        ``inclusion + exclusion`` numbered 1..N across BOTH blocks, and
+        THRESHOLD_REVIEW_PROMPT asks for a bare 1-based ``criterion_line`` back —
+        no role marker. The index therefore resolves to a *role and a text*, not
+        to a text alone, and the repair step needs both: a threshold stated in an
+        exclusion line belongs to an exclusion rule.
+
+        :returns: [("inclusion" | "exclusion", criterion_text), ...] in reviewer order.
+        """
+        return (
+            [("inclusion", str(c)) for c in inclusion_criteria]
+            + [("exclusion", str(c)) for c in exclusion_criteria]
+        )
+
+    def _repair_threshold_misses(
+        self, nct_id: str, inclusion_criteria: list, exclusion_criteria: list, ir, misses: list
+    ) -> list:
+        """Step 8: reattach the thresholds Step 7 flagged, to the rules of the
+        criterion's OWN role.
+
+        The constraint numbers were already parsed deterministically from the same
+        criterion text before the first LLM call ever ran (ADR-031-B); neither path
+        here re-extracts or invents a number, only decides which existing rule it
+        belongs to.
+
+          8a. Free, instant zip: safe exactly when rule-count == constraint-count,
+              which holds when every analyte has its own distinct threshold.
+          8b. LLM match (one call): the case 8a can't decide safely — most often a
+              shared threshold ("ALT or AST > 2X ULN") where analyte-count and
+              constraint-count differ on purpose. Given the text, the already-correct
+              constraint list, and the candidate rule names, this asks which rule gets
+              which constraint index, allowing many-to-one sharing. It is a matching
+              decision, not extraction, so it does not carry the "shape separated them,
+              not difficulty" extraction failure Step 6/7 exist for.
+
+        Both are scoped to one role. Trying inclusion and falling back to exclusion
+        crossed the two blocks in every direction at once: an exclusion line's
+        threshold landed on a same-analyte inclusion rule (the cohort starts
+        *requiring* serum creatinine > 2.0 mg/dL), the truthy return then left the
+        exclusion rule at ``value_constraint=None`` so it emitted an ABSENCE rule
+        with no value filter (excluding everyone who ever had that lab drawn), and
+        `_repair_dropped_threshold` stamped the exclusion line over the inclusion
+        rule's ``source_text`` — the provenance field ADR-032's classifier reads.
+
+        :returns: the misses no repair path could resolve; the caller warns on those.
+        """
+        indexed = self._role_indexed_criteria(inclusion_criteria, exclusion_criteria)
+        still_broken: list = []
+        for miss in misses:
+            line = miss.get("criterion_line")
+            valid_line = (
+                isinstance(line, int)
+                and not isinstance(line, bool)
+                and 1 <= line <= len(indexed)
+            )
+            if not valid_line:
+                still_broken.append(miss)
+                continue
+            role, original_text = indexed[line - 1]
+            rules = (
+                ir.target.inclusion_rules if role == "inclusion" else ir.target.exclusion_rules
+            )
+            repaired = self._repair_dropped_threshold(original_text, rules)
+            if not repaired:
+                repaired = self._llm_match_dropped_threshold(nct_id, original_text, rules)
+            if not repaired:
+                still_broken.append(miss)
+        return still_broken
 
     @staticmethod
     def _collect_broken_candidates(original_text: str, rules: list) -> list:
