@@ -95,8 +95,10 @@ from src.services.value_constraint import (
 from src.utils.circe_lint import (
     CRITERIA_TYPE_DOMAINS,
     CRITERION_CONCEPT_SET_REFS_KEY,
+    DEFAULTED_WINDOW_CRITERIA_KEY,
     DROPPED_CRITERIA_KEY,
     criteria_types_by_codeset,
+    default_criterion_window,
     drop_unreadable_value_criteria,
     end_entry_colliding_washouts_before_index,
     entry_concept_ids,
@@ -5141,6 +5143,15 @@ class TTEService:
         # Collect per-criterion mapping metadata. Role-aware keys avoid collisions
         # because imported criteria commonly reuse numeric IDs across inclusion
         # and exclusion sections.
+        # A criterion whose extraction carried no `window` is emitted with its domain's
+        # documented lookback (`circe_lint.default_criterion_window`). Until 2026-09-10
+        # nothing said so: the file records a `StartWindow` and not where it came from,
+        # so a fallback read as a deliberate clinical choice. These rows are that record
+        # -- same shape and same present-and-empty contract as `_droppedCriteria` and
+        # `_unmappedCriteria`, collected in the walk that already pairs each result with
+        # the criterion and role it came from, so there is no second walk to fall out of
+        # step with the first.
+        defaulted_window_criteria: list[dict[str, Any]] = []
         for criterion, result, role in ordered_pairs:
             if result and result.get("_mapping_metadata") is not None:
                 crit_id = str(criterion.get("id", ""))
@@ -5148,6 +5159,17 @@ class TTEService:
                     metadata = result["_mapping_metadata"].model_dump()
                     criterion_mapping_meta[self._criterion_mapping_key(role, crit_id)] = metadata
                     criterion_mapping_meta.setdefault(crit_id, metadata)
+            if result and result.get("_defaulted_window") is not None:
+                defaulted_window_criteria.append({
+                    "criterionId": str(criterion.get("id", "")),
+                    "role": role,
+                    "label": (
+                        criterion.get("sourceText")
+                        or criterion.get("description")
+                        or ""
+                    ).strip(),
+                    **result["_defaulted_window"],
+                })
 
         # Assign codeset_ids and collect concept sets for all successful results
         for _crit, result, role in ordered_pairs:
@@ -5298,6 +5320,13 @@ class TTEService:
             # hold them.
             "_skippedCriteria": sorted(
                 skipped_criteria, key=lambda r: (r["role"], r["criterionId"])
+            ),
+            # Same present-and-empty contract again: the criteria the extraction gave no
+            # `window` and the emitter supplied one for. Empty means every emitted
+            # criterion carried its own window, which is a different claim from "this
+            # artifact predates the record" -- an absent key cannot make either.
+            DEFAULTED_WINDOW_CRITERIA_KEY: sorted(
+                defaulted_window_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
             "_generationCensus": generation_census,
             # SPEC-INFRA-003 REQ-005. Same present-and-empty contract as the two above.
@@ -6440,7 +6469,12 @@ class TTEService:
             pre_fetched_candidates=pre_fetched_candidates,
             workflow=workflow,
         )
-        criteria_key = self._seeded_criteria_key(criterion_domain or mapped_criterion["domain"])
+        # Named rather than inlined into `_seeded_criteria_key` because the window
+        # default below is keyed by the same resolved domain: the CIRCE table and the
+        # lookback are two readings of one answer, and deriving them from two
+        # expressions is how they drift apart.
+        resolved_domain = criterion_domain or mapped_criterion["domain"]
+        criteria_key = self._seeded_criteria_key(resolved_domain)
         refuse_domain_contradiction(criteria_key, mapped_criterion, label)
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
@@ -6509,21 +6543,56 @@ class TTEService:
             if era_length > 0:
                 criteria_attrs["EraLength"] = {"Value": era_length, "Op": "gte"}
 
+        # `window` is MANDATORY in the extraction prompt and the model omits it anyway --
+        # 57 of 557 criteria (10%) in the cold-6 store, across nine of ten studies. What
+        # stood here was a flat `{"Days": 365, "Coeff": -1}` applied to every domain
+        # alike: an unnamed literal, no comment, and no record anywhere that a default
+        # had been applied at all. Meanwhile `agent1/prompts.NCT_SYSTEM_PROMPT` told the
+        # model four DIFFERENT per-domain values. One decision, two homes, and this one
+        # won silently whenever the model did what the prompt says it must not.
+        #
+        # Measured on one ARISTOTLE pair, both `ConditionOccurrence` exclusions in
+        # `output/site_gap/2026-09-09/deliver_v3/aristotle_treatment.circe.json`:
+        # "Active infective endocarditis" carried a stored window and emitted 9999d;
+        # "Prosthetic mechanical heart valve" carried none and emitted 365d. A
+        # mechanical valve is permanent, so "implanted within the last year" excluded
+        # almost nobody and the cohort silently admitted patients the protocol excludes.
+        # The other direction is real too -- a Measurement got 365 where the documented
+        # default is 180 -- but narrowing is the quiet one.
+        #
+        # The default now comes from `circe_lint.DEFAULT_WINDOW_START_DAYS_BY_DOMAIN`,
+        # which is also what renders the four statements of these numbers in
+        # `agent1/prompts.py`. It arrives in the IR's `{"start": ..., "end": ...}` shape
+        # so the conversion below runs ONCE for both branches: a defaulted window and an
+        # extracted one cannot be converted differently, because there is only one
+        # conversion left.
+        #
+        # Defaulting rather than refusing, unlike `refuse_unreadable_value_filter` above:
+        # a window is a QUALIFIER on a claim, not the claim. Dropping the criterion would
+        # lose an exclusion the protocol actually made, whereas emitting it with the
+        # domain's documented lookback keeps the claim and only loosens its timing. That
+        # is the opposite of the value-filter case, where emitting without the threshold
+        # INVERTS the rule ("ALT > 3x ULN" becomes "any ALT at all"). Nothing is hidden
+        # by the choice: every application is recorded below.
+        window = criterion.get("window")
+        defaulted_window: dict[str, Any] | None = None
+        if not window:
+            window, default_source = default_criterion_window(resolved_domain)
+            defaulted_window = {
+                "criteriaType": criteria_key,
+                "domain": (resolved_domain or "").strip() or None,
+                "window": dict(window),
+                "source": default_source,
+            }
+
         # IR convention: window.start is negative for "before index", positive for "after index"
         # CIRCE convention: Coeff -1 = before index, Coeff 1 = after index
-        window = criterion.get("window")
-        if window:
-            start_days = window["start"]
-            end_days = window["end"]
-            start_window = {
-                "Start": {"Days": abs(start_days), "Coeff": -1 if start_days <= 0 else 1},
-                "End": {"Days": abs(end_days), "Coeff": 1 if end_days >= 0 else -1},
-            }
-        else:
-            start_window = {
-                "Start": {"Days": 365, "Coeff": -1},
-                "End": {"Days": 0, "Coeff": 1},
-            }
+        start_days = window["start"]
+        end_days = window["end"]
+        start_window = {
+            "Start": {"Days": abs(start_days), "Coeff": -1 if start_days <= 0 else 1},
+            "End": {"Days": abs(end_days), "Coeff": 1 if end_days >= 0 else -1},
+        }
 
         criteria_entry: dict[str, Any] = {
             "Criteria": {criteria_key: criteria_attrs},
@@ -6556,6 +6625,10 @@ class TTEService:
                 },
             },
             "_mapping_metadata": mapped_criterion.get("mapping_metadata"),
+            # None when the extraction carried its own window. `_build_seeded_target_circe`
+            # pairs it with the criterion's role and id and writes the rows under
+            # `DEFAULTED_WINDOW_CRITERIA_KEY`.
+            "_defaulted_window": defaulted_window,
         }
 
     def _resolve_ingredient_concept_id(self, seed: str) -> int | None:

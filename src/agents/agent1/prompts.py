@@ -3,6 +3,28 @@ Agent 1 (Logic Decomposer) - Prompts for NLU Processing.
 Converts natural language clinical queries to ARTEMIS IR format.
 """
 
+from src.utils.circe_lint import render_default_window_prompt_line
+
+# The per-domain window defaults these prompts instruct the model to apply, rendered
+# from `circe_lint.DEFAULT_WINDOW_START_DAYS_BY_DOMAIN` -- the same table the emitter
+# reads when the model omits `window` anyway (10% of the 557 criteria in the cold-6
+# store). Retyping the numbers here is the defect: the emitter used to carry a flat
+# unnamed 365 for every domain, so the prompt promised four values and the file shipped
+# one, with nothing comparing them. Both renderings below are byte-identical to the text
+# these prompts already carried, because `NCT_SYSTEM_PROMPT` and the rendered
+# `NCT_DECOMPOSITION_PROMPT` are hashed into the Agent 1 IR cache key (`parser.py`):
+# rewording them re-extracts every cached trial, and the defect was never the prose.
+_DEFAULT_WINDOWS_BY_DOMAIN = render_default_window_prompt_line(
+    [["Condition"], ["Drug"], ["Measurement"], ["Procedure"]]
+)
+#: Same table, the shape the two ``str.format``-consumed prompts state it in: Condition
+#: and Procedure collapsed (the renderer refuses to collapse them if their defaults ever
+#: diverge), braces doubled so ``.format`` passes them through.
+_DEFAULT_WINDOWS_BY_DOMAIN_FORMAT_SAFE = render_default_window_prompt_line(
+    [["Condition", "Procedure"], ["Drug"], ["Measurement"]], escape_braces=True
+)
+
+
 SYSTEM_PROMPT = """You are a clinical trial protocol parser. Your task is to convert natural language clinical questions into a structured Internal Representation (IR) format.
 
 You must extract:
@@ -17,7 +39,7 @@ For each criterion, identify:
 - **logic_type**: PRESENCE (patient has/uses) or ABSENCE (patient does NOT have/use)
 - **window**: Time window relative to index date (in days). MANDATORY for every criterion.
   If the protocol states an explicit temporal constraint (e.g., "within 3 months"), convert it to days.
-  Otherwise apply domain defaults: Condition → {start: -9999, end: 0}, Drug → {start: -365, end: 0}, Measurement → {start: -180, end: 0}, Procedure → {start: -9999, end: 0}.
+  Otherwise apply domain defaults: """ + _DEFAULT_WINDOWS_BY_DOMAIN + """.
 - **source_text**: The criterion line as the protocol writes it, copied verbatim (MANDATORY).
   Keep every threshold, unit, and comparator exactly as written — do not paraphrase,
   expand abbreviations, or convert units. A later stage locates the threshold by
@@ -173,7 +195,7 @@ Important Rules:
    lower bound with PRESENCE + upper bound with ABSENCE.
 6. `window` is MANDATORY on every rule. Never omit it.
    If the protocol specifies an explicit time frame, convert to days. Otherwise use domain defaults:
-   Condition/Procedure → {{start: -9999, end: 0}}, Drug → {{start: -365, end: 0}}, Measurement → {{start: -180, end: 0}}.
+   """ + _DEFAULT_WINDOWS_BY_DOMAIN_FORMAT_SAFE + """.
 7. PURE CLINICAL CONCEPTS: The `name` field must contain ONLY the pure clinical concept (e.g., the exact medication class, condition, or procedure). Strictly strip away all study-specific grammatical glue words, prefixes, and contextual statements (e.g., remove phrases like "a need for", "concomitant therapy with", "history of", "treatment with").
 
 Return ONLY the JSON, no explanation."""
@@ -218,7 +240,7 @@ For each criterion, identify:
 - **logic_type**: PRESENCE (patient has/uses) or ABSENCE (patient does NOT have/use)
 - **window**: Time window relative to index date (in days). MANDATORY for every criterion.
   If the protocol states an explicit temporal constraint (e.g., "within 3 months prior to screening"), convert it to days (e.g., {start: -90, end: 0}).
-  Otherwise apply domain defaults: Condition → {start: -9999, end: 0}, Drug → {start: -365, end: 0}, Measurement → {start: -180, end: 0}, Procedure → {start: -9999, end: 0}.
+  Otherwise apply domain defaults: """ + _DEFAULT_WINDOWS_BY_DOMAIN + """.
 - **source_text**: The numbered criterion line below, copied verbatim (MANDATORY).
   Keep every threshold, unit, and comparator exactly as written — do not paraphrase,
   expand abbreviations, or convert units, and drop the "  1. " numbering only. A later
@@ -624,7 +646,7 @@ Important Rules:
    lower bound with PRESENCE + upper bound with ABSENCE.
 10. `window` is MANDATORY on every rule. Never omit it.
     If the protocol specifies an explicit time frame (e.g., "within 3 months prior to screening"), convert to days ({{start: -90, end: 0}}).
-    If no time frame is stated, use domain defaults: Condition/Procedure → {{start: -9999, end: 0}}, Drug → {{start: -365, end: 0}}, Measurement → {{start: -180, end: 0}}.
+    If no time frame is stated, use domain defaults: """ + _DEFAULT_WINDOWS_BY_DOMAIN_FORMAT_SAFE + """.
 11. Drug rules must preserve the specific drug identity, but normalize it to the ingredient/generic name.
     If a criterion lists specific drugs (e.g., "ticagrelor", "clopidogrel"), keep those exact drugs,
     but strip strength, route, and formulation text. Use "ticagrelor", not

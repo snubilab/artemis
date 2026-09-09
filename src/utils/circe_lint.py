@@ -16,7 +16,7 @@ satisfies it, so the rule silently does nothing.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 # Importing the refusal vocabulary keeps this module pure: `criterion_refusal` has no
@@ -456,6 +456,162 @@ def end_entry_colliding_washouts_before_index(expression: dict[str, Any]) -> lis
         if moved:
             changed.append(rule.get("name", ""))
     return changed
+
+
+# --- the window a criterion gets when the extraction carried none -----------
+#
+# `window` is MANDATORY in the extraction prompt and the model omits it anyway: 57 of
+# the 557 criteria in `tmp/tte_cold6_20260908/studies.json` (10%) carry `window: null`,
+# in nine of the ten studies. So the emitter needs a default, and until 2026-09-10 it
+# had an unnamed one -- a flat 365-day lookback applied to every domain alike, written
+# as a literal at the emit site in `tte_service._build_seeded_eligibility_rule` while
+# `agent1/prompts.NCT_SYSTEM_PROMPT` documented four DIFFERENT per-domain values to the
+# model. The same decision had two homes that disagreed, and the emitter's won silently
+# whenever the model did what the prompt says it must not.
+#
+# It was wrong in BOTH directions, measured on one ARISTOTLE pair -- both
+# `ConditionOccurrence` exclusions in the same delivered file
+# (`output/site_gap/2026-09-09/deliver_v3/aristotle_treatment.circe.json`):
+#
+#     Active infective endocarditis        Start = 9999d   window present in the store
+#     Prosthetic mechanical heart valve    Start =  365d   window null -> flat default
+#
+# A prosthetic mechanical heart valve is permanent. "Implanted within the last 365
+# days" excludes almost nobody, so that exclusion was effectively not applied and the
+# cohort silently admitted patients the protocol excludes. Narrowing is the quiet
+# direction -- the same asymmetry the domain check above is built around. In the other
+# direction a Measurement got 365 where the documented default is 180, widening a lab
+# window past what the protocol would recognise.
+#
+# The values are the ones the extraction prompt already documents, and they are keyed
+# by OMOP domain because that is the vocabulary the prompt, the extraction and the
+# clinical judgement all speak: how long a Condition stays true is a fact about
+# conditions, not about the CIRCE table that happens to read them.
+
+#: The `window` a criterion is emitted with when the extraction carried none, per OMOP
+#: domain, in the IR's own `{"start": <negative days>, "end": 0}` shape so the emitter
+#: runs ONE conversion to CIRCE `Start`/`End` for defaulted and extracted windows alike.
+#:
+#: These four numbers have exactly one home: `agent1/prompts.py` renders its own four
+#: statements of them from this table (`render_default_window_prompt_line`) rather than
+#: retyping them, and the emitter reads it here. A fifth copy is the defect, not the fix
+#: -- the two that existed disagreed, and nothing compared them.
+#:
+#: 9999 days is "all prior history" (~27 years), the same value
+#: `agents/agent3/assembler.py` already uses for its own null-window branch.
+DEFAULT_WINDOW_START_DAYS_BY_DOMAIN: dict[str, int] = {
+    "Condition": -9999,
+    "Drug": -365,
+    "Measurement": -180,
+    "Procedure": -9999,
+}
+
+#: The lookback for a domain the table above does not list -- Observation, Visit,
+#: Device, Death, and anything the vocabulary adds later.
+#:
+#: This is a JUDGEMENT, not a documented value: the extraction prompt states defaults
+#: for four domains and is silent on the rest. "All prior history" is the honest reading
+#: of a protocol that stated no time frame, and it is the only choice that cannot
+#: silently NARROW a criterion the protocol left unbounded -- the failure direction that
+#: produced the ARISTOTLE defect above and the one no generated cohort makes visible. A
+#: too-wide window shrinks the cohort, which is loud; a too-narrow exclusion admits
+#: people it claims to exclude, which is not.
+#:
+#: Unreached by the measured batch: of the 57 null-window criteria in the cold-6 store,
+#: every one is Condition (20), Drug (15), Measurement (10), Procedure (2) or
+#: Demographics (10) -- and Demographics criteria build demographic rules, not
+#: occurrence criteria. The 15 Observation criteria all carry a window. So this constant
+#: is a guard against a shape not yet observed, and the record below is what would
+#: surface it if one arrives.
+DEFAULT_WINDOW_START_DAYS_UNLISTED_DOMAIN = -9999
+
+#: The key `TTEService._build_seeded_target_circe` writes the defaulted-window records
+#: under. Spelled once and imported by every reader, for the reason
+#: :data:`DROPPED_CRITERIA_KEY` is.
+#:
+#: A defaulted window used to be indistinguishable from an extracted one: the emitted
+#: file records a `StartWindow` and nothing about where it came from, so the ARISTOTLE
+#: pair above reads as two deliberate clinical choices rather than one choice and one
+#: fallback. Same present-and-empty contract as `_droppedCriteria` / `_unmappedCriteria`
+#: -- an absent key would be indistinguishable from a clean run on an artifact built
+#: before this.
+DEFAULTED_WINDOW_CRITERIA_KEY = "_defaultedWindowCriteria"
+
+#: `source` on a defaulted-window record: the domain was in
+#: :data:`DEFAULT_WINDOW_START_DAYS_BY_DOMAIN` and its documented value was used.
+DEFAULT_WINDOW_SOURCE_DOMAIN_TABLE = "domain-default"
+#: `source` on a defaulted-window record: the domain was NOT in the table, so
+#: :data:`DEFAULT_WINDOW_START_DAYS_UNLISTED_DOMAIN` was used. A row carrying this is
+#: the signal that a domain needs a documented value, not a judged one.
+DEFAULT_WINDOW_SOURCE_UNLISTED_DOMAIN = "unlisted-domain-default"
+
+
+def default_criterion_window(domain: str | None) -> tuple[dict[str, int], str]:
+    """The `window` to emit for a criterion whose extraction carried none.
+
+    :param domain: the criterion's OMOP domain, as resolved at the emit site. Empty or
+        ``None`` counts as unlisted -- an absent domain is not evidence of a short one.
+    :returns: ``({"start": <negative days>, "end": 0}, source)`` where ``source`` is
+        :data:`DEFAULT_WINDOW_SOURCE_DOMAIN_TABLE` or
+        :data:`DEFAULT_WINDOW_SOURCE_UNLISTED_DOMAIN`. The source travels with the value
+        so the caller can record WHICH default it applied without re-deriving it from
+        the number -- two domains share -9999, so the number alone does not say.
+    """
+    key = (domain or "").strip()
+    if key in DEFAULT_WINDOW_START_DAYS_BY_DOMAIN:
+        return (
+            {"start": DEFAULT_WINDOW_START_DAYS_BY_DOMAIN[key], "end": 0},
+            DEFAULT_WINDOW_SOURCE_DOMAIN_TABLE,
+        )
+    return (
+        {"start": DEFAULT_WINDOW_START_DAYS_UNLISTED_DOMAIN, "end": 0},
+        DEFAULT_WINDOW_SOURCE_UNLISTED_DOMAIN,
+    )
+
+
+def render_default_window_prompt_line(
+    groups: Sequence[Sequence[str]], *, escape_braces: bool = False
+) -> str:
+    """Render the per-domain defaults as the extraction prompts state them.
+
+    The prompts are strings, so they cannot import a number -- but they can be BUILT
+    from one. This renders the sentence fragment each prompt already carried, from
+    :data:`DEFAULT_WINDOW_START_DAYS_BY_DOMAIN`, so the four statements of these values
+    across `agent1/prompts.py` stop being four copies to keep in step with the emitter.
+
+    Byte-identity with the text those prompts carried before is deliberate and is what
+    `groups` and `escape_braces` exist for. `NCT_SYSTEM_PROMPT` and the rendered
+    `NCT_DECOMPOSITION_PROMPT` are both hashed into the Agent 1 IR cache key
+    (`agent1/parser.py`), so rewording them re-runs extraction for every trial in
+    `data/cache/agent1_ir`. The cost of that is measured in GPU hours and buys nothing
+    here: the defect was retyped NUMBERS, not divergent prose. The tradeoff is that this
+    function carries two presentation shapes it would not need if the four prompts
+    agreed on wording -- unifying them is a separate change, and a cache-invalidating one.
+
+    :param groups: domains in render order; a group of more than one renders as
+        ``"A/B"`` and every member must share a value, so splitting one domain's default
+        without the other raises here instead of rendering a false claim to the model.
+    :param escape_braces: double the braces, for a prompt consumed by ``str.format``.
+    :returns: e.g. ``"Condition -> {start: -9999, end: 0}, Drug -> ..."`` (arrow is U+2192).
+    :raises KeyError: a named domain has no documented default.
+    :raises ValueError: a collapsed group's members do not share a value.
+    """
+    open_brace, close_brace = ("{{", "}}") if escape_braces else ("{", "}")
+    parts: list[str] = []
+    for group in groups:
+        values = {DEFAULT_WINDOW_START_DAYS_BY_DOMAIN[domain] for domain in group}
+        if len(values) != 1:
+            raise ValueError(
+                f"cannot render {'/'.join(group)} as one default: "
+                + ", ".join(
+                    f"{d}={DEFAULT_WINDOW_START_DAYS_BY_DOMAIN[d]}" for d in group
+                )
+            )
+        start = values.pop()
+        parts.append(
+            f"{'/'.join(group)} → {open_brace}start: {start}, end: 0{close_brace}"
+        )
+    return ", ".join(parts)
 
 
 # --- criterion domain vs concept-set domain ---------------------------------
