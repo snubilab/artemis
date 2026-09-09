@@ -329,7 +329,7 @@ class TestDropUnreadableValueCriteria:
 
         assert expression["InclusionRules"] == []
         assert len(dropped) == 1
-        assert "aspirin" in dropped[0]
+        assert "aspirin" in dropped[0]["summary"]
 
     def test_should_drop_the_whole_rule_when_every_member_is_unreadable(self):
         expression = _shell([deepcopy(CARMELINA_INCRETINS)])

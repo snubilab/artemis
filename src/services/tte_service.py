@@ -95,6 +95,7 @@ from src.services.value_constraint import (
 )
 from src.utils.circe_lint import (
     CRITERIA_TYPE_DOMAINS,
+    DROPPED_CRITERIA_KEY,
     criteria_types_by_codeset,
     drop_unreadable_value_criteria,
     end_entry_colliding_washouts_before_index,
@@ -4135,11 +4136,24 @@ class TTEService:
         # criterion, and moving its window before removing it reported a correction to
         # a rule that then left the file.
         dropped = drop_unreadable_value_criteria(expression)
+        # Recorded into the payload, not only logged. The log line went to stderr and
+        # the delivered file said nothing: `deliver_20260908/aristotle_treatment` and
+        # its re-export differ by a rule and a concept set, while `_generationCensus`,
+        # `_skippedCriteria` and `_unmappedCriteria` are byte-identical across the two.
+        # The gate then failed 8 of 12 files on a rule-set mismatch it had no way to
+        # attribute. Present-and-empty, the same contract the other three keys carry:
+        # an absent key must mean "predates the record", never "nothing was dropped".
+        # `_generationCensus` is deliberately untouched -- it counts what the generator
+        # did with the extracted criteria, and this drop happens a stage later against
+        # an assembled expression with no criterion ids to file under.
+        expression[DROPPED_CRITERIA_KEY] = dropped
         if dropped:
             logging.warning(
                 "[TTE] Dropped %d criteri(on/a) carrying a value filter their CDM "
                 "table cannot read, so the rule would have matched every occurrence "
-                "of its concept set: %s", len(dropped), "; ".join(dropped),
+                "of its concept set: %s",
+                len(dropped),
+                "; ".join(record["summary"] for record in dropped),
             )
         moved = end_entry_colliding_washouts_before_index(expression)
         if moved:

@@ -292,6 +292,7 @@ def main(argv: list[str] | None = None) -> int:
     from src.services.tte_service import TTEService
     from src.services.tte_store import TTEStore
     from src.utils.circe_lint import (
+        DROPPED_CRITERIA_KEY,
         contradictory_absence_rules,
         domain_mismatched_criteria,
         entry_concept_ids,
@@ -461,6 +462,15 @@ def main(argv: list[str] | None = None) -> int:
                     "file": file_path.name,
                     "md5": _file_md5(file_path),
                     "rule_count": len(rule_names(expression)),
+                    # `rule_count` alone cannot be reconciled against the store: the
+                    # emission-time repair removes a rule whose value filter its CDM
+                    # table cannot read, and the manifest recorded the smaller number
+                    # with nothing to explain it. Counted from the payload's own
+                    # `_droppedCriteria`, so the manifest and the file agree or the
+                    # gate says which one moved.
+                    "dropped_criterion_count": len(
+                        expression.get(DROPPED_CRITERIA_KEY) or []
+                    ),
                     "noop_rule_count": len(noops),
                     "domain_mismatch_count": len(domain_mismatches),
                     "entry_domain": file_domain,

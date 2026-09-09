@@ -754,20 +754,61 @@ def _entry_is_unreadable(entry: dict[str, Any]) -> bool:
     )
 
 
-def _entry_unreadable_summary(entry: dict[str, Any]) -> str:
+def _entry_unreadable_details(entry: dict[str, Any]) -> list[dict[str, Any]]:
+    """``[{criteriaType, attributes, codesetId}]`` for one criterion entry.
+
+    One element per criteria type in the entry that carries an attribute its own CDM
+    table ignores. A list rather than a single dict because a CIRCE criterion entry is
+    keyed by criteria type and nothing forbids two of them; none of the six delivered
+    studies carries such an entry, and recording only the first would silently lose the
+    rest if one ever appeared.
+    """
     body = entry.get("Criteria")
     body = body if isinstance(body, dict) else entry
-    parts = [
-        f"{criteria_type} carrying {', '.join(unreadable)}"
+    return [
+        {
+            "criteriaType": criteria_type,
+            "attributes": unreadable,
+            # Lower-cased deliberately. `prune_unused_concept_sets` walks the whole
+            # payload for the literal key `CodesetId` to decide which concept sets are
+            # still referenced, so spelling it that way here would keep the dropped
+            # criterion's concept set alive in the delivered file -- a record of a
+            # removal that partly un-does the removal.
+            "codesetId": payload.get("CodesetId"),
+        }
         for criteria_type, payload in body.items()
         if isinstance(payload, dict)
         and (unreadable := unreadable_value_attributes(criteria_type, payload))
     ]
-    return " / ".join(parts)
+
+
+def _entry_unreadable_summary(entry: dict[str, Any]) -> str:
+    return " / ".join(
+        f"{detail['criteriaType']} carrying {', '.join(detail['attributes'])}"
+        for detail in _entry_unreadable_details(entry)
+    )
+
+
+#: The key ``TTEService._build_emittable_expression`` writes the drop records under.
+#: Spelled once and imported by every reader -- the delivery gate keys its rule-set
+#: reconciliation on it, and a second copy of the string would make that reconciliation
+#: silently find nothing (AGENTS.md, wire-format constants).
+DROPPED_CRITERIA_KEY = "_droppedCriteria"
+
+#: What became of the rule the dropped criterion sat in. The delivery gate replays
+#: these against the store's rule multiset, so each value is a wire-format constant.
+#: The rule left the file: its every criterion was unreadable, or the group it was in
+#: emptied.
+DROP_OUTCOME_RULE_REMOVED = "rule-removed"
+#: The rule survived and its name was rewritten from the members that remain.
+DROP_OUTCOME_RULE_RENAMED = "rule-renamed"
+#: The rule survived under the name it already had -- the correspondence between name
+#: segments and members was not provable, so :func:`_rename_after_drop` left it alone.
+DROP_OUTCOME_RULE_KEPT = "rule-kept"
 
 
 def _prune_group_expression(
-    node: dict[str, Any], where: str, dropped: list[str]
+    node: dict[str, Any], where: str, dropped: list[dict[str, Any]]
 ) -> None:
     """Drop unreadable criteria from one group expression, depth first.
 
@@ -783,12 +824,26 @@ def _prune_group_expression(
 
     :param node: a CIRCE group expression, modified in place.
     :param where: the enclosing rule name, for the recorded reason.
-    :param dropped: appended to, one line per criterion actually removed.
+    :param dropped: appended to, one partial record per criterion actually removed.
+        The caller fills in ``ruleIndex``/``ruleAfter``/``outcome``, which are not
+        known until the whole rule has been walked.
     """
     kept_entries = []
     for entry in node.get("CriteriaList") or []:
         if isinstance(entry, dict) and _entry_is_unreadable(entry):
-            dropped.append(f"{where}: {_entry_unreadable_summary(entry)}")
+            dropped.append(
+                {
+                    # Seeded in the order a reader wants them, then completed by
+                    # `drop_unreadable_value_criteria`; a record that reached a file
+                    # still carrying `outcome: ""` would mean that pass never ran.
+                    "ruleIndex": None,
+                    "rule": where,
+                    "ruleAfter": None,
+                    "outcome": "",
+                    "unreadable": _entry_unreadable_details(entry),
+                    "summary": f"{where}: {_entry_unreadable_summary(entry)}",
+                }
+            )
             continue
         kept_entries.append(entry)
     if "CriteriaList" in node:
@@ -833,7 +888,7 @@ def _rename_after_drop(name: str, kept: list[int], original_count: int) -> str:
     return " + ".join(segments[index] for index in kept)
 
 
-def drop_unreadable_value_criteria(expression: dict[str, Any]) -> list[str]:
+def drop_unreadable_value_criteria(expression: dict[str, Any]) -> list[dict[str, Any]]:
     """Remove criteria whose value filter their CDM table cannot read. Mutates.
 
     The emission-time half of the gate. Studies 1/8/9/10 carry a prebuilt
@@ -848,15 +903,28 @@ def drop_unreadable_value_criteria(expression: dict[str, Any]) -> list[str]:
     :func:`unreadable_value_filter_criteria` to report.
 
     :param expression: a CIRCE cohort expression, modified in place.
-    :returns: one ``"<rule name>: <CriteriaType> carrying <attrs>"`` line per criterion
-        actually removed, for the caller to log. A criterion this function cannot
-        reach is absent from the list and stays a finding for
+    :returns: one record per criterion actually removed, in removal order, each::
+
+            {"ruleIndex": int,          # index in InclusionRules BEFORE the drop
+             "rule": str,               # the rule's name before the drop
+             "ruleAfter": str | None,   # after; None when the rule left the file
+             "outcome": DROP_OUTCOME_*,
+             "unreadable": [{"criteriaType", "attributes", "codesetId"}],
+             "summary": str}            # the one-line human form
+
+        The caller writes these into the emitted payload under
+        :data:`DROPPED_CRITERIA_KEY`. Structured rather than a bare line because two
+        readers replay them: the delivery gate reconciles the store's rule multiset
+        against ``rule``/``ruleAfter``/``outcome`` before comparing, and it re-checks
+        each ``unreadable`` entry against :func:`unreadable_value_attributes` so a
+        record cannot explain away a removal it does not describe. A criterion this
+        function cannot reach is absent from the list and stays a finding for
         :func:`unreadable_value_filter_criteria`.
     """
-    dropped: list[str] = []
+    dropped: list[dict[str, Any]] = []
     kept_rules: list[dict[str, Any]] = []
 
-    for rule in expression.get("InclusionRules") or []:
+    for rule_index, rule in enumerate(expression.get("InclusionRules") or []):
         if not isinstance(rule, dict):
             kept_rules.append(rule)
             continue
@@ -891,9 +959,29 @@ def drop_unreadable_value_criteria(expression: dict[str, Any]) -> list[str]:
         ]
         kept_indices += list(range(len(members), original_count))
 
+        # Every criterion removed from THIS rule shares one outcome: whatever happened
+        # to the rule they sat in. Filled in here rather than at removal time because
+        # neither the survival nor the rewritten name is known until the walk is done.
+        records = dropped[before:]
         if _group_is_empty(rule_expression):
+            for record in records:
+                record.update(
+                    ruleIndex=rule_index, ruleAfter=None,
+                    outcome=DROP_OUTCOME_RULE_REMOVED,
+                )
             continue
-        rule["name"] = _rename_after_drop(name, kept_indices, original_count)
+        renamed = _rename_after_drop(name, kept_indices, original_count)
+        rule["name"] = renamed
+        for record in records:
+            record.update(
+                ruleIndex=rule_index,
+                ruleAfter=renamed,
+                outcome=(
+                    DROP_OUTCOME_RULE_KEPT
+                    if renamed == name
+                    else DROP_OUTCOME_RULE_RENAMED
+                ),
+            )
         kept_rules.append(rule)
 
     if "InclusionRules" in expression:

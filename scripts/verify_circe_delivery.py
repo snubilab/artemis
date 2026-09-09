@@ -9,7 +9,15 @@ Checks per file:
 
 (a) zero no-op exclusion rules (see ``src.utils.circe_lint.noop_exclusion_rules``)
 (b) the file's InclusionRules names equal the store study's rule names as a
-    multiset, allowing at most one extra rule (the appended arm drug rule)
+    multiset, allowing at most one extra rule (the appended arm drug rule).
+    The store side is first reconciled against the file's own ``_droppedCriteria``
+    records: the emission-time repair removes a criterion whose value filter its CDM
+    table cannot read, which either removes its rule outright or rewrites the rule's
+    name from the members that survived, while the store keeps the pre-drop text. So
+    a repaired export diverged from its own store on 8 of 12 files. A drop is
+    forgiven only to the exact extent a record explains it — an unrecorded missing
+    rule still fails, and so does a record naming a rule the store does not carry or
+    a (criteria type, attribute) pair that is not actually unreadable.
 (c) the file's PrimaryCriteria entry concept ids equal the store study's
     entry set, OR — for a comparator — the entry may legitimately be either
     a disease-anchored ``ConditionOccurrence`` set (the placebo-comparator
@@ -92,6 +100,10 @@ from src.services.restated_distinctness import (  # noqa: E402
     COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
 )
 from src.utils.circe_lint import (  # noqa: E402
+    DROP_OUTCOME_RULE_KEPT,
+    DROP_OUTCOME_RULE_REMOVED,
+    DROP_OUTCOME_RULE_RENAMED,
+    DROPPED_CRITERIA_KEY,
     contradictory_absence_rules,
     domain_mismatched_criteria,
     entry_concept_ids,
@@ -100,6 +112,7 @@ from src.utils.circe_lint import (  # noqa: E402
     missing_arm_roles,
     noop_exclusion_rules,
     rule_names,
+    unreadable_value_attributes,
 )
 from src.utils.delivery_mode import (  # noqa: E402
     DeliveryModeConflictError,
@@ -153,9 +166,160 @@ ALLOWED_SKIP_REASONS = frozenset(
 )
 
 
+#: The three outcomes a drop record may claim for the rule its criterion sat in.
+#: Imported from the producer rather than retyped, for the same reason the two
+#: collapse reasons above are.
+DROP_OUTCOMES = frozenset(
+    {DROP_OUTCOME_RULE_REMOVED, DROP_OUTCOME_RULE_RENAMED, DROP_OUTCOME_RULE_KEPT}
+)
+
+
 def _describe(record: dict[str, Any]) -> str:
     role = record.get("role") or "?"
     return f"{role} #{record.get('criterionId', '?')} {str(record.get('label', ''))!r}"
+
+
+def dropped_criteria_violations(records: Any) -> list[str]:
+    """Whether each ``_droppedCriteria`` record actually describes a legal drop.
+
+    Read on its own, a drop record is a self-report by the artifact being checked, and
+    check (b) forgives a rule-set mismatch to the extent these records explain it. So
+    the record must be more than well-formed: the ``(criteria type, attribute)`` pair
+    it names is re-judged here by :func:`unreadable_value_attributes`, the same
+    predicate the generator refused with. A record claiming ``Measurement`` carried an
+    unreadable ``Unit`` describes no defect — Measurement reads Unit — so it explains
+    no removal, and a rule cannot be laundered out of a file by inventing one.
+
+    :param records: the value under ``_droppedCriteria``, of any shape.
+    :returns: one line per malformed or unjustified record; empty when every record
+        describes a drop this tree would actually have performed.
+    """
+    if records is None:
+        return []
+    if not isinstance(records, list):
+        return [f"{DROPPED_CRITERIA_KEY} is not a list: {type(records).__name__}"]
+
+    violations: list[str] = []
+    for index, record in enumerate(records):
+        where = f"{DROPPED_CRITERIA_KEY}[{index}]"
+        if not isinstance(record, dict):
+            violations.append(f"{where} is not a record: {record!r}")
+            continue
+
+        rule = record.get("rule")
+        if not isinstance(rule, str) or not rule:
+            violations.append(f"{where} names no rule: {record.get('rule')!r}")
+
+        outcome = record.get("outcome")
+        rule_after = record.get("ruleAfter")
+        if outcome not in DROP_OUTCOMES:
+            violations.append(f"{where} carries an unknown outcome {outcome!r}")
+        elif outcome == DROP_OUTCOME_RULE_REMOVED and rule_after is not None:
+            violations.append(
+                f"{where} says the rule was removed but names a surviving rule "
+                f"{rule_after!r}"
+            )
+        elif outcome == DROP_OUTCOME_RULE_RENAMED and (
+            not isinstance(rule_after, str) or not rule_after or rule_after == rule
+        ):
+            violations.append(
+                f"{where} says the rule was renamed but its new name is {rule_after!r}"
+            )
+        elif outcome == DROP_OUTCOME_RULE_KEPT and rule_after != rule:
+            violations.append(
+                f"{where} says the rule name was kept but records {rule_after!r} "
+                f"beside {rule!r}"
+            )
+
+        unreadable = record.get("unreadable")
+        if not isinstance(unreadable, list) or not unreadable:
+            violations.append(f"{where} records no unreadable value attribute")
+            continue
+        for detail in unreadable:
+            if not isinstance(detail, dict):
+                violations.append(f"{where} carries a malformed detail {detail!r}")
+                continue
+            criteria_type = detail.get("criteriaType")
+            attributes = detail.get("attributes")
+            if not isinstance(criteria_type, str) or not isinstance(attributes, list):
+                violations.append(f"{where} carries a malformed detail {detail!r}")
+                continue
+            # The predicate, not the record, decides. A probe body keyed by the
+            # recorded attribute names is enough: `unreadable_value_attributes` reads
+            # keys only.
+            judged = unreadable_value_attributes(
+                criteria_type, {name: None for name in attributes}
+            )
+            if sorted(judged) != sorted(str(name) for name in attributes):
+                violations.append(
+                    f"{where} claims {criteria_type} cannot read "
+                    f"{', '.join(str(a) for a in attributes)}, but the allowlist says "
+                    f"it cannot read {', '.join(judged) or 'nothing there'} — the "
+                    "record justifies no drop"
+                )
+    return violations
+
+
+def reconcile_dropped_rules(
+    expression: dict[str, Any], store_names: list[str]
+) -> tuple[list[str], list[str]]:
+    """Replay the file's recorded drops onto the store's rule names.
+
+    The emission-time repair mutates the expression being delivered and leaves the
+    store's ``structuredExpression`` alone, so the two rule multisets legitimately
+    differ after a drop. Each record says which rule it changed and how, so the store
+    side can be moved forward to what the drop should have produced — and only that
+    far. A missing rule no record accounts for survives the reconciliation and still
+    fails check (b).
+
+    :param expression: the delivered CIRCE expression.
+    :param store_names: the store study's ``InclusionRules`` names.
+    :returns: ``(adjusted store names, violations)``. Violations name a record whose
+        rule the store does not carry, which means the record describes some other
+        file's drop and explains nothing about this one.
+    """
+    records = expression.get(DROPPED_CRITERIA_KEY)
+    if not isinstance(records, list) or not records:
+        return list(store_names), []
+
+    counter = Counter(store_names)
+    violations: list[str] = []
+
+    # One transformation per rule the drop touched, not one per criterion: CARMELINA's
+    # incretin rule loses two members and leaves the file once. `ruleIndex` keys it, so
+    # two distinct rules that happen to share a name stay two transformations.
+    transformations: list[tuple[Any, str, Any, Any]] = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        key = (
+            record.get("ruleIndex"),
+            str(record.get("rule") or ""),
+            record.get("ruleAfter"),
+            record.get("outcome"),
+        )
+        if key not in transformations:
+            transformations.append(key)
+
+    for _rule_index, rule, rule_after, outcome in transformations:
+        if outcome == DROP_OUTCOME_RULE_KEPT:
+            continue
+        if outcome not in (DROP_OUTCOME_RULE_REMOVED, DROP_OUTCOME_RULE_RENAMED):
+            # Reported by `dropped_criteria_violations`; replaying an outcome this
+            # function does not understand would forgive a mismatch on a record
+            # nobody validated.
+            continue
+        if counter[rule] <= 0:
+            violations.append(
+                f"{DROPPED_CRITERIA_KEY} records a drop from rule {rule!r}, which the "
+                "store study does not carry"
+            )
+            continue
+        counter[rule] -= 1
+        if outcome == DROP_OUTCOME_RULE_RENAMED:
+            counter[str(rule_after)] += 1
+
+    return list(counter.elements()), violations
 
 
 def criterion_accounting(expression: dict[str, Any]) -> tuple[list[str], str]:
@@ -177,6 +341,26 @@ def criterion_accounting(expression: dict[str, Any]) -> tuple[list[str], str]:
     it on a passing row — a check whose only output is silence cannot be told from a
     check that never ran.
     """
+    # The emission-time drop record, checked and reported on every path below. It is
+    # NOT in ACCOUNTING_KEYS: those three are written together by the generator, so a
+    # partial set means one was removed after the fact, while this fourth key is
+    # written a stage later and is legitimately absent from any artifact exported
+    # before it existed. Folding it into that set would fail every such artifact as
+    # "incomplete" rather than reporting it as unrecorded.
+    dropped = expression.get(DROPPED_CRITERIA_KEY)
+    drop_violations = dropped_criteria_violations(dropped)
+    if dropped is None:
+        drop_clause = ""
+    elif isinstance(dropped, list) and dropped:
+        detail = "; ".join(
+            str(record.get("summary") or record.get("rule"))
+            for record in dropped
+            if isinstance(record, dict)
+        )
+        drop_clause = f", {len(dropped)} dropped at emission ({detail})"
+    else:
+        drop_clause = ", 0 dropped at emission"
+
     present = [key for key in ACCOUNTING_KEYS if key in expression]
     if not present:
         # Every current export writes all three. An artifact carrying none of them
@@ -184,23 +368,28 @@ def criterion_accounting(expression: dict[str, Any]) -> tuple[list[str], str]:
         # evaluated at all; saying so on the row is the honest report. This is a
         # known hole -- a pre-accounting artifact is not verifiable here and still
         # passes -- and closing it means re-exporting rather than re-reading.
-        return [], "criterion accounting: NOT RECORDED (artifact predates _generationCensus)"
+        return (
+            drop_violations,
+            "criterion accounting: NOT RECORDED "
+            f"(artifact predates _generationCensus){drop_clause}",
+        )
 
     missing = [key for key in ACCOUNTING_KEYS if key not in expression]
     if missing:
         return (
-            [
+            drop_violations
+            + [
                 "criterion accounting incomplete: "
                 f"{', '.join(missing)} absent while {', '.join(present)} present"
             ],
-            "criterion accounting: INCOMPLETE",
+            f"criterion accounting: INCOMPLETE{drop_clause}",
         )
 
     census = expression["_generationCensus"] or {}
     unmapped = expression["_unmappedCriteria"] or []
     skipped = expression["_skippedCriteria"] or []
 
-    violations: list[str] = []
+    violations: list[str] = list(drop_violations)
 
     total = census.get("total")
     parts = {
@@ -267,7 +456,7 @@ def criterion_accounting(expression: dict[str, Any]) -> tuple[list[str], str]:
     permitted = "all permitted" if not off_list else f"{len(off_list)} not permitted"
     summary = (
         f"criterion accounting: {census.get('mapped')} mapped, {len(unmapped)} unmapped, "
-        f"{len(skipped)} skipped ({permitted})"
+        f"{len(skipped)} skipped ({permitted}){drop_clause}"
     )
     return violations, summary
 
@@ -448,10 +637,19 @@ def main(argv: list[str] | None = None) -> int:
         if noops:
             reasons.append(f"no-op rules ({len(noops)}): {', '.join(noops)}")
 
-        # (b) rule-name multiset vs store, allowing one extra
-        rules_ok, rules_detail = _rule_multiset_check(rules, store_rule_names)
+        # (b) rule-name multiset vs store, allowing one extra. The store side is moved
+        # forward by whatever the file's own drop records say the emission-time repair
+        # did to it -- and by nothing else, so a rule missing without a record naming
+        # it is still a mismatch.
+        expected_rule_names, drop_reconcile_violations = reconcile_dropped_rules(
+            expression, store_rule_names
+        )
+        reasons.extend(drop_reconcile_violations)
+        rules_ok, rules_detail = _rule_multiset_check(rules, expected_rule_names)
         if not rules_ok:
             reasons.append(f"rule set mismatch: {rules_detail}")
+        elif Counter(expected_rule_names) != Counter(store_rule_names):
+            rules_detail += " (after recorded emission-time drops)"
 
         # (c) entry concept ids vs store, with the sanctioned comparator swaps
         file_domain, file_concept_ids = entry_concept_ids(expression)
@@ -542,12 +740,18 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "file": path.name,
                 "status": status,
-                # The accounting summary rides the passing row too. A check that
-                # only ever speaks up on failure is indistinguishable from a check
-                # that was never wired in -- which is exactly how these three keys
-                # went unread from the day they were written.
-                "reasons": reasons
-                or [f"entry: {case}; rules: {rules_detail}; {accounting_summary}"],
+                # The accounting summary rides EVERY row, passing or failing. On a
+                # passing row because a check that only ever speaks up on failure is
+                # indistinguishable from a check that was never wired in -- which is
+                # exactly how these keys went unread from the day they were written.
+                # On a failing row because every file of the six-study batch fails on
+                # recorded criterion loss, so a summary printed only on success would
+                # never once have said what the emission-time repair removed.
+                "reasons": (
+                    reasons + [accounting_summary]
+                    if reasons
+                    else [f"entry: {case}; rules: {rules_detail}; {accounting_summary}"]
+                ),
             }
         )
 
