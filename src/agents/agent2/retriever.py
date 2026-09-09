@@ -15,6 +15,71 @@ class CandidateConcept(BaseModel):
     distance: float  # Vector distance (lower is better)
     adjusted_score: float = 0.0  # After preference scoring (lower is better)
 
+
+class BatchSearchResults(dict):
+    """What `ConceptRetriever.batch_search` returns.
+
+    A query is ``(text, domain_hint)``, not ``text``. The hint becomes ChromaDB's
+    ``where={"domain_id": hint}`` filter and is passed to `_score_candidates` as
+    ``domain_hint``, so the same text under two hints is two searches over two
+    pools, scored under two different policies. Keying the return on text alone
+    collided them and the later domain group silently overwrote the earlier.
+
+    That was not a cosmetic loss. The pool is a hard short-circuit downstream --
+    `agent2/workflow.py` logs "skipping primary ChromaDB search" and uses it as the
+    ENTIRE primary candidate set -- so the overwritten criterion was mapped against
+    a pool retrieved under a domain filter it never asked for, and the +0.50
+    domain-mismatch penalty in `_score_candidates` had already run against the
+    *writing* group's hint, so it never fired on the mismatch it exists for.
+
+    `by_index` is the authoritative surface: one entry per `query_texts` position,
+    always the result of THAT query. `by_pair` keys on ``(text, hint)``.
+
+    The dict view stays keyed on text so the existing consumer keeps working
+    (`tte_service.py`, ``batch_results.get(text, [])``). On a colliding text that
+    view cannot be right in either direction, so it is first-wins and the text is
+    named in `colliding_texts` and logged. A consumer that needs correctness on a
+    colliding batch must read `by_index` (or key on the pair, which
+    ``__getitem__``/``get`` accept as a tuple).
+    """
+
+    def __init__(
+        self,
+        query_texts: List[str],
+        hints: List[Optional[str]],
+        by_index: List[List[CandidateConcept]],
+    ):
+        self.by_index: List[List[CandidateConcept]] = list(by_index)
+        self.by_pair: Dict[tuple, List[CandidateConcept]] = {}
+        hints_by_text: Dict[str, set] = {}
+        text_view: Dict[str, List[CandidateConcept]] = {}
+        for text, hint, candidates in zip(query_texts, hints, self.by_index):
+            self.by_pair[(text, hint)] = candidates
+            hints_by_text.setdefault(text, set()).add(hint)
+            if text not in text_view:
+                text_view[text] = candidates
+        self.colliding_texts: List[str] = [
+            text for text, seen in hints_by_text.items() if len(seen) > 1
+        ]
+        super().__init__(text_view)
+        if self.colliding_texts:
+            logger.warning(
+                "batch_search: %d query text(s) were issued under more than one "
+                "domain_hint (%s); the text-keyed view holds only the first of each. "
+                "Read by_index or key on (text, hint).",
+                len(self.colliding_texts), ", ".join(sorted(self.colliding_texts)[:5]),
+            )
+
+    def __getitem__(self, key):
+        if isinstance(key, tuple):
+            return self.by_pair[key]
+        return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        if isinstance(key, tuple):
+            return self.by_pair.get(key, default)
+        return super().get(key, default)
+
 # Vocabulary preferences per domain (lower bonus = higher priority).
 #
 # Only list vocabularies the collection can actually return for that domain. An unlisted
@@ -323,28 +388,34 @@ class ConceptRetriever:
         n_results: int = 60,
         domain_hints: Optional[List[Optional[str]]] = None,
         max_batch_size: int = 50,
-    ) -> Dict[str, List[CandidateConcept]]:
+    ) -> "BatchSearchResults":
         """Batch search ChromaDB for multiple query texts.
 
         Groups queries by domain_hint to minimize ChromaDB calls
         (one call per unique domain_hint value). Within each group,
         queries are chunked into batches of ``max_batch_size`` to
-        avoid exceeding ChromaDB limits. Returns a dict mapping each
-        query_text to its list of CandidateConcept results.
+        avoid exceeding ChromaDB limits.
+
+        Every write below is positional: a query's result is stored at its own
+        index in ``query_texts``, never under a key another query can share. The
+        text-keyed view survives on the return object for existing consumers --
+        see `BatchSearchResults` for why it cannot be the authoritative one.
         """
+        hints: List[Optional[str]] = [
+            (domain_hints[idx] if domain_hints and idx < len(domain_hints) else None)
+            for idx in range(len(query_texts))
+        ]
+        by_index: List[List[CandidateConcept]] = [[] for _ in query_texts]
         if not query_texts:
-            return {}
+            return BatchSearchResults(query_texts, hints, by_index)
 
         effective_batch = int(os.environ.get("CHROMA_BATCH_SIZE", str(max_batch_size)))
         fetch_n = max(n_results * 3, 60)
-        hints = domain_hints or [None] * len(query_texts)
-        result: Dict[str, List[CandidateConcept]] = {}
 
         # Group queries by domain_hint
         groups: Dict[Optional[str], List[tuple]] = {}  # hint -> [(index, query_text)]
         for idx, query_text in enumerate(query_texts):
-            hint = hints[idx] if idx < len(hints) else None
-            groups.setdefault(hint, []).append((idx, query_text))
+            groups.setdefault(hints[idx], []).append((idx, query_text))
 
         for hint, items in groups.items():
             where_clause = {"domain_id": hint} if hint else None
@@ -366,18 +437,13 @@ class ConceptRetriever:
                     raw = self.collection.query(**kwargs)
                 except Exception as e:
                     logger.warning(f"batch_search ChromaDB query failed for hint={hint}: {e}")
-                    for _, qt in chunk_items:
-                        result[qt] = []
-                    continue
+                    continue  # by_index already holds [] for this chunk
 
                 if not raw or not raw.get("ids"):
-                    for _, qt in chunk_items:
-                        result[qt] = []
                     continue
 
-                for pos, (_, query_text) in enumerate(chunk_items):
+                for pos, (idx, query_text) in enumerate(chunk_items):
                     if pos >= len(raw["ids"]):
-                        result[query_text] = []
                         continue
 
                     ids = raw["ids"][pos]
@@ -385,7 +451,7 @@ class ConceptRetriever:
                     distances = raw["distances"][pos] if raw.get("distances") else [1.0] * len(ids)
                     documents = raw.get("documents", [[]])[pos] if raw.get("documents") else [""] * len(ids)
 
-                    result[query_text] = self._score_candidates(
+                    by_index[idx] = self._score_candidates(
                         query_text=query_text,
                         ids=ids,
                         metadatas=metadatas,
@@ -399,10 +465,10 @@ class ConceptRetriever:
             logger.debug(
                 f"[Retriever] batch_search: {len(query_texts)} queries, "
                 f"{len(groups)} domain groups, "
-                f"{sum(len(v) for v in result.values())} total candidates"
+                f"{sum(len(v) for v in by_index)} total candidates"
             )
 
-        return result
+        return BatchSearchResults(query_texts, hints, by_index)
 
 
 # Singleton instance for easy import
