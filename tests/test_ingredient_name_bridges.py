@@ -24,7 +24,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.services.tte_service import TTEService
+from src.utils.exceptions import DBConnectionError
 
 RX_CONCEPT = 40239216
 EXT_CONCEPT = 1254255
@@ -107,10 +110,19 @@ def test_should_refuse_a_name_no_probe_can_reach():
     assert cursor.execute.call_count == 3
 
 
-def test_should_refuse_when_the_database_is_unreachable():
+def test_should_raise_when_the_database_is_unreachable():
+    """An unreachable database is not a name that failed to resolve.
+
+    This assertion used to read ``is None`` -- the same value a genuine no-match
+    returns -- so a connect failure was indistinguishable from "linagliptin is not an
+    ingredient name" and the caller fell through to embedding search, which is the path
+    that answers it with sitagliptin. The full split lives in
+    ``tests/test_db_lookups_distinguish_no_from_unanswered.py``.
+    """
     svc = _build_service()
     with patch("psycopg2.connect", side_effect=OSError("no route to host")):
-        assert svc._resolve_ingredient_concept_id("linagliptin") is None
+        with pytest.raises(DBConnectionError):
+            svc._resolve_ingredient_concept_id("linagliptin")
 
 
 def test_should_still_refuse_a_trial_whose_two_salt_headings_both_resolve():

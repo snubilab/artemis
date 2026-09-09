@@ -113,7 +113,7 @@ from src.utils.criterion_refusal import (
     CriterionRefused,
 )
 from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
-from src.utils.exceptions import LLMConfigurationError
+from src.utils.exceptions import DBConnectionError, DBQueryError, LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
 
 
@@ -6422,16 +6422,28 @@ class TTEService:
         does, and it is the same gate already holding back Calcitonin, Creatinine and
         Glucose. Do not loosen it: this probe made its blast radius larger, not smaller.
 
+        A database that did not ANSWER is not a database that said no. Every failure
+        here used to become ``None`` -- the same value a genuine no-match returns -- so
+        one connect failure or pool exhaustion sent a drug seed to the embedding path,
+        which is the path that answers "linagliptin" with sitagliptin. At DEBUG it left
+        no trace, which is why the measured export shows zero rows of this loss class:
+        nothing recorded it. Both failures now raise, and the criterion is recorded as
+        unmapped (``refusalCode is None``, so the delivery gate blocks it) rather than
+        silently re-routed. ``src/agents/agent2/logic.py`` got the same split in
+        3b1a287; there is no TTL here because these probes are load-bearing name
+        resolution, not the optional filters that one gates.
+
         :param seed: The already-normalized seed text.
         :returns: The concept_id, or None when no probe yields exactly one match.
+        :raises DBConnectionError: the connection could not be made.
+        :raises DBQueryError: a probe failed to execute.
         """
-        try:
-            import psycopg2
+        import psycopg2
 
-            from src.settings import settings
+        from src.settings import settings
 
-            schema = settings.CDM_SCHEMA
-            exact_sql = f"""
+        schema = settings.CDM_SCHEMA
+        exact_sql = f"""
                 SELECT concept_id FROM {schema}.concept
                 WHERE LOWER(concept_name) = LOWER(%s)
                   AND standard_concept = 'S'
@@ -6439,7 +6451,7 @@ class TTEService:
                   AND vocabulary_id = %s
                   AND invalid_reason IS NULL
                 """
-            bridge_sql = f"""
+        bridge_sql = f"""
                 SELECT DISTINCT target.concept_id
                 FROM {schema}.concept source
                 JOIN {schema}.concept_relationship rel ON rel.concept_id_1 = source.concept_id
@@ -6452,14 +6464,25 @@ class TTEService:
                   AND target.concept_class_id = 'Ingredient'
                   AND target.invalid_reason IS NULL
                 """
-            name = seed.strip()
-            probes = (
-                (exact_sql, (name, "RxNorm")),
-                (exact_sql, (name, "RxNorm Extension")),
-                (bridge_sql, (name,)),
-            )
+        name = seed.strip()
+        probes = (
+            (exact_sql, (name, "RxNorm")),
+            (exact_sql, (name, "RxNorm Extension")),
+            (bridge_sql, (name,)),
+        )
 
+        try:
             conn = psycopg2.connect(settings.DATABASE_URL)
+        except (psycopg2.Error, OSError) as exc:
+            logging.warning(
+                "[TTE] ingredient lookup could not reach the database for '%s': %s",
+                seed, exc,
+            )
+            raise DBConnectionError(
+                f"ingredient lookup for '{seed}' could not connect", original_error=exc
+            ) from exc
+
+        try:
             try:
                 with conn.cursor() as cur:
                     for sql, params in probes:
@@ -6469,11 +6492,16 @@ class TTEService:
                             continue
                         # Ambiguous -> refuse outright rather than consult a lower probe.
                         return int(rows[0][0]) if len(rows) == 1 else None
-            finally:
-                conn.close()
-        except Exception as exc:
-            logging.debug("[TTE] ingredient lookup failed for '%s': %s", seed, exc)
-            return None
+            except psycopg2.Error as exc:
+                logging.warning(
+                    "[TTE] ingredient lookup probe failed for '%s': %s", seed, exc
+                )
+                raise DBQueryError(
+                    f"ingredient lookup for '{seed}' failed on a probe",
+                    original_error=exc,
+                ) from exc
+        finally:
+            conn.close()
         return None
 
     def _exact_ingredient_mapping(self, seed: str) -> dict[str, Any] | None:
@@ -6687,13 +6715,11 @@ class TTEService:
         if not candidates:
             return
 
+        # No None branch to guard: a subsumption lookup that could not answer now raises
+        # rather than returning a value indistinguishable from "nothing is subsumed",
+        # so an empty set here means the vocabulary genuinely confirms no pair. The
+        # decline this used to make is now the exception refusing the arm build outright.
         subsumed = self._subsumed_concept_pairs(pairs)
-        if subsumed is None:
-            logging.warning(
-                "[TTE] concept-set repair declined for %d set(s): the subsumption lookup "
-                "failed, so a rewrite could not be shown to be lossless", len(candidates),
-            )
-            return
 
         # Pass 2: the closure gate, then the rewrite.
         for cs, cid, stored_ids in candidates:
@@ -6721,17 +6747,32 @@ class TTEService:
         ingredient is absent from the result: an ambiguous name is not a resolution.
 
         :param names: lower-cased concept-set names to look up.
-        :returns: name -> concept_id; empty on any database error, which leaves every
-            concept set exactly as it was.
+        :returns: name -> concept_id, holding only the names that resolve to exactly one
+            ingredient. Empty means the vocabulary matched none of them -- it no longer
+            doubles as the value a database error returns.
+        :raises DBConnectionError: the connection could not be made.
+        :raises DBQueryError: the query failed to execute.
         """
         if not names:
             return {}
+
+        import psycopg2
+
+        from src.settings import settings
+
         try:
-            import psycopg2
-
-            from src.settings import settings
-
             conn = psycopg2.connect(settings.DATABASE_URL)
+        except (psycopg2.Error, OSError) as exc:
+            logging.warning(
+                "[TTE] concept-set repair could not reach the database for %d name(s): %s",
+                len(names), exc,
+            )
+            raise DBConnectionError(
+                f"concept-set repair lookup for {len(names)} name(s) could not connect",
+                original_error=exc,
+            ) from exc
+
+        try:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -6747,11 +6788,17 @@ class TTEService:
                         (list(names),),
                     )
                     rows = cur.fetchall()
-            finally:
-                conn.close()
-        except Exception as exc:
-            logging.debug("[TTE] concept-set repair lookup failed: %s", exc)
-            return {}
+            except psycopg2.Error as exc:
+                logging.warning(
+                    "[TTE] concept-set repair lookup failed for %d name(s): %s",
+                    len(names), exc,
+                )
+                raise DBQueryError(
+                    f"concept-set repair lookup for {len(names)} name(s) failed",
+                    original_error=exc,
+                ) from exc
+        finally:
+            conn.close()
 
         by_name: dict[str, list[int]] = {}
         for lname, cid in rows:
@@ -6760,28 +6807,47 @@ class TTEService:
 
     def _subsumed_concept_pairs(
         self, pairs: set[tuple[int, int]]
-    ) -> set[tuple[int, int]] | None:
+    ) -> set[tuple[int, int]]:
         """Which of the given ``(ancestor, descendant)`` pairs ``concept_ancestor`` holds.
 
         One batched query for every pair the caller is asking about. Identity is NOT
         assumed here — the caller decides what a concept being itself means — so the
         answer is only what the vocabulary says.
 
+        An empty set is now an ANSWER: the vocabulary confirms none of these pairs. It
+        used to share a channel with "the database did not answer", which is why the
+        caller had a None-decline branch; that fact now travels as an exception, so the
+        caller can act on the returned set without first asking whether it means
+        anything.
+
         :param pairs: candidate ``(ancestor_concept_id, descendant_concept_id)`` pairs.
-        :returns: the subset the vocabulary confirms, or None on any database error.
-            None is distinct from an empty set: it means "not established", and a caller
-            that would destroy content on the strength of this answer must decline.
+        :returns: the subset the vocabulary confirms.
+        :raises DBConnectionError: the connection could not be made.
+        :raises DBQueryError: the query failed to execute.
         """
         if not pairs:
             return set()
+
+        import psycopg2
+
+        from src.settings import settings
+
+        ancestors = [a for a, _ in pairs]
+        descendants = [d for _, d in pairs]
+
         try:
-            import psycopg2
-
-            from src.settings import settings
-
-            ancestors = [a for a, _ in pairs]
-            descendants = [d for _, d in pairs]
             conn = psycopg2.connect(settings.DATABASE_URL)
+        except (psycopg2.Error, OSError) as exc:
+            logging.warning(
+                "[TTE] subsumption lookup could not reach the database for %d pair(s): %s",
+                len(pairs), exc,
+            )
+            raise DBConnectionError(
+                f"subsumption lookup for {len(pairs)} pair(s) could not connect",
+                original_error=exc,
+            ) from exc
+
+        try:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -6794,11 +6860,16 @@ class TTEService:
                         (ancestors, descendants),
                     )
                     rows = cur.fetchall()
-            finally:
-                conn.close()
-        except Exception as exc:
-            logging.debug("[TTE] concept-set subsumption lookup failed: %s", exc)
-            return None
+            except psycopg2.Error as exc:
+                logging.warning(
+                    "[TTE] subsumption lookup failed for %d pair(s): %s", len(pairs), exc
+                )
+                raise DBQueryError(
+                    f"subsumption lookup for {len(pairs)} pair(s) failed",
+                    original_error=exc,
+                ) from exc
+        finally:
+            conn.close()
         found = {(int(a), int(d)) for a, d in rows}
         return {p for p in pairs if p in found}
 
@@ -7268,14 +7339,41 @@ class TTEService:
         }
 
     def _fetch_concept_candidates(self, concept_ids: list[int]) -> list[Any]:
-        """Fetch full concept metadata from CDM for Agent2 concept_ids."""
+        """Fetch full concept metadata from CDM for Agent2 concept_ids.
+
+        An empty list means the vocabulary holds none of these ids. It must NOT also
+        mean the database was unreachable: ``_exact_ingredient_mapping`` reads a falsy
+        result as "this seed is not an ingredient" and returns None, so swallowing the
+        error here re-routed the seed to embedding search even after the name probe
+        above had already succeeded -- defeating the whole exact tier from one row
+        further down.
+
+        :param concept_ids: standard concept ids to hydrate.
+        :returns: one candidate per id the vocabulary holds; empty when it holds none.
+        :raises DBConnectionError: the connection could not be made.
+        :raises DBQueryError: the query failed to execute.
+        """
         if not concept_ids:
             return []
         from src.agents.conceptset.rag_search import ConceptCandidate
+
+        import psycopg2
+
+        from src.settings import settings
+
         try:
-            import psycopg2
-            from src.settings import settings
             conn = psycopg2.connect(settings.DATABASE_URL)
+        except (psycopg2.Error, OSError) as exc:
+            logging.warning(
+                "[TTE] concept hydration could not reach the database for %d id(s): %s",
+                len(concept_ids), exc,
+            )
+            raise DBConnectionError(
+                f"concept hydration for {len(concept_ids)} id(s) could not connect",
+                original_error=exc,
+            ) from exc
+
+        try:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -7290,11 +7388,17 @@ class TTEService:
                         (concept_ids,),
                     )
                     rows = cur.fetchall()
-            finally:
-                conn.close()
-        except Exception as e:
-            logging.warning("Failed to fetch concept candidates: %s", e)
-            return []
+            except psycopg2.Error as exc:
+                logging.warning(
+                    "[TTE] concept hydration failed for %d id(s): %s",
+                    len(concept_ids), exc,
+                )
+                raise DBQueryError(
+                    f"concept hydration for {len(concept_ids)} id(s) failed",
+                    original_error=exc,
+                ) from exc
+        finally:
+            conn.close()
         return [
             ConceptCandidate(
                 concept_id=row[0],

@@ -50,6 +50,7 @@ from typing import Any
 import pytest
 
 from src.services.tte_service import TTEService
+from src.utils.exceptions import DBQueryError
 
 # Real ids, from tmp/tte_six_deliver_20260906/studies.json and synthea23m.concept.
 CALCITONIN_INGREDIENT = 42900359          # RxNorm Ingredient, domain Drug
@@ -269,22 +270,48 @@ class TestTheClosureGate:
 
 class TestTheSubsumptionLookupFailing:
     def test_should_rewrite_nothing_when_the_subsumption_lookup_cannot_answer(
-        self, service, monkeypatch, caplog
+        self, service, monkeypatch
     ):
         """A database error is "not established", not "nothing is subsumed". Treating it
         as the latter would send every matched set down the wholly-stale branch and
-        rewrite them all, which is the destructive direction to fail in."""
-        monkeypatch.setattr(service, "_subsumed_concept_pairs", lambda pairs: None)
+        rewrite them all, which is the destructive direction to fail in.
+
+        The channel carrying that fact changed: ``_subsumed_concept_pairs`` used to
+        return None on a database error and the repair declined on it, which meant an
+        empty set and an unreachable database were told apart only by a sentinel the
+        caller had to remember to check. The error now raises (``DBConnectionError`` /
+        ``DBQueryError``), so the decline is structural -- the repair cannot proceed past
+        a lookup that did not answer, and the arm build fails loudly instead of shipping
+        a definition nobody could show was lossless. What this test pins is unchanged:
+        nothing is rewritten.
+        """
+        monkeypatch.setattr(
+            service,
+            "_subsumed_concept_pairs",
+            lambda pairs: (_ for _ in ()).throw(DBQueryError("pool exhausted")),
+        )
         base = _base(
             [{"id": 1, "name": "linagliptin",
               "expression": {"items": [_item(SITAGLIPTIN, "Drug")]}}],
             {1: ["DrugEra"]},
         )
-        with caplog.at_level(logging.WARNING):
+        with pytest.raises(DBQueryError):
             service._repair_stale_drug_concept_sets(base)
         assert _ids(base["ConceptSets"][0]) == [SITAGLIPTIN]
         assert service._test_built == []
-        assert any("subsumption lookup" in r.getMessage() for r in caplog.records)
+
+    def test_should_rewrite_nothing_when_the_vocabulary_confirms_no_pair(
+        self, service, monkeypatch
+    ):
+        """An empty answer is now only ever an ANSWER, and it means wholly stale."""
+        monkeypatch.setattr(service, "_subsumed_concept_pairs", lambda pairs: set())
+        base = _base(
+            [{"id": 1, "name": "linagliptin",
+              "expression": {"items": [_item(SITAGLIPTIN, "Drug")]}}],
+            {1: ["DrugEra"]},
+        )
+        service._repair_stale_drug_concept_sets(base)
+        assert service._test_built == [(LINAGLIPTIN, "linagliptin")]
 
 
 class TestTheDeclineIsReported:
