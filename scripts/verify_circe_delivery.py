@@ -60,7 +60,14 @@ Checks per file:
     the store ``structuredExpression`` produced by the SAME generation, so both
     sides are missing the same criteria and the multiset matches.
     See ``criterion_accounting`` below for the failure condition and for why
-    ``skipped > 0`` is not one.
+    ``skipped > 0`` is not one. A recorded skip is a permit, not a verdict: each
+    one under an allowed reason is re-derived here from the store criterion it
+    names and from the delivered file — a ``group-label`` row must be a group label
+    whose threshold strands no member and at least one of whose members emitted, a
+    ``demographic-no-rule`` row must be demographic-domain and carry no bound, and a
+    restated-* row must have a collapse record naming a survivor that emitted. An
+    ``_unmappedCriteria`` row is never permitted whatever its reason says, and one
+    carrying no reason at all fails on its own line.
 
 And one check across files rather than per file:
 
@@ -98,6 +105,10 @@ from src.services.restated_demographics import (  # noqa: E402
 )
 from src.services.restated_distinctness import (  # noqa: E402
     COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
+)
+from src.services.value_constraint import (  # noqa: E402
+    STRANDED_GROUP_CONSTRAINT_REASON,
+    resolve_group_member_constraint,
 )
 from src.utils.circe_lint import (  # noqa: E402
     DROP_OUTCOME_RULE_KEPT,
@@ -152,10 +163,32 @@ ACCOUNTING_KEYS = ("_generationCensus", "_unmappedCriteria", "_skippedCriteria")
 #: a typo here, a new silent branch — leaves the reason unrecognised and FAILS the
 #: delivery rather than quietly passing it.
 #:
+#: Each entry is a PERMIT that :func:`skipped_criteria_violations` re-judges against
+#: the store criterion and the delivered file — it is not a verdict the record gets to
+#: assert about itself. ``group-label`` is re-judged as: the store row is actually a
+#: group label, its own threshold is not one ``resolve_group_member_constraint``
+#: refuses to hand down, and at least one member of its group emitted.
+#: ``demographic-no-rule`` as: the store row is demographic-domain and carries no
+#: numeric bound. The two restated-* reasons as: the file carries a collapse record
+#: naming the criterion as dropped, whose survivor exists in the store and was not
+#: itself lost. A record the gate cannot re-judge — one naming a criterion absent
+#: from the store, or a collapse list absent from the file — fails closed.
+#:
 #: ``STRANDED_GROUP_CONSTRAINT_REASON`` is deliberately absent. It records a group
 #: label whose absolute threshold reached no member, so the members emit
-#: unconstrained and the exclusion is weaker than the protocol wrote it. It occurs
-#: in the real 2026-09-08 batch (CAROLINA and EMPA-REG, "Glucose").
+#: unconstrained and the exclusion is not what the protocol wrote. It occurs in the
+#: real 2026-09-08 batch (CAROLINA exclusion 44 and EMPA-REG exclusion 56,
+#: "Glucose"), where the file then emits the three members as UNFILTERED absence
+#: criteria — measured in ``carolina_treatment``: rule 36 excludes any glucose
+#: measurement of any value in the last 180 days while inclusion rule 5 REQUIRES an
+#: HbA1c in the same window, and the two codesets overlap on 4 of 6 presence
+#: concepts. So the emitted shape over-excludes rather than under-excludes, and
+#: check (f) cannot see it because it tests absence against the ENTRY set only.
+#: Keeping the reason off this list is what makes the re-judgement above load-bearing:
+#: a producer that stopped recording it and wrote plain ``group-label`` instead would
+#: otherwise launder four real losses straight through the permit.
+#: ``exclusion-demographic-eq-unsupported`` is absent for the same reason — it drops
+#: an exclusion age bound CIRCE cannot invert, which is a lost bound.
 ALLOWED_SKIP_REASONS = frozenset(
     {
         "group-label",
@@ -172,6 +205,17 @@ ALLOWED_SKIP_REASONS = frozenset(
 DROP_OUTCOMES = frozenset(
     {DROP_OUTCOME_RULE_REMOVED, DROP_OUTCOME_RULE_RENAMED, DROP_OUTCOME_RULE_KEPT}
 )
+
+
+#: Where the second record of a collapse lives, per collapse reason. The reasons are
+#: the producer's own constants; the two KEY spellings are not — no module owns them,
+#: they are literals in ``TTEService._build_seeded_target_circe``. That asymmetry is
+#: safe in one direction only and it is this one: a misspelling here finds no list and
+#: the skip FAILS as unreconcilable rather than passing unchecked.
+COLLAPSE_RECORD_KEYS = {
+    RESTATED_DISTINCTNESS_REASON: "_restatedDistinctnessCollapse",
+    RESTATED_DEMOGRAPHICS_REASON: "_restatedDemographicsCollapse",
+}
 
 
 def _describe(record: dict[str, Any]) -> str:
@@ -322,13 +366,310 @@ def reconcile_dropped_rules(
     return list(counter.elements()), violations
 
 
-def criterion_accounting(expression: dict[str, Any]) -> tuple[list[str], str]:
-    """Read a delivered file's own drop records: ``(violations, summary)``.
+def criteria_index(study: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    """``(role, criterionId)`` -> the store criterion row, for both roles.
+
+    Store ids are ints and every record spells them as strings, so the key is
+    stringified on both sides here — the same thing ``TTEService._record_skip`` does
+    when it writes ``str(criterion.get("id", ""))``. A comparison that skipped that
+    would find nothing and turn every reconciliation into a false failure.
+    """
+    eligibility = study.get("eligibility") or {}
+    return {
+        (role, str(criterion.get("id", ""))): criterion
+        for role, rows in (
+            ("inclusion", eligibility.get("inclusionCriteria") or []),
+            ("exclusion", eligibility.get("exclusionCriteria") or []),
+        )
+        for criterion in rows
+        if isinstance(criterion, dict)
+    }
+
+
+def unmapped_criteria_violations(
+    records: Any, index: dict[tuple[str, str], dict[str, Any]]
+) -> list[str]:
+    """Whether each ``_unmappedCriteria`` record is a record at all.
+
+    Deliberately NOT a classification of unmapped criteria: every one of them is
+    criterion loss and fails the file on the line below this one, whatever its reason
+    text says. There is no allowlist and there must not be, because
+    ``"No concept mapping found for 'X'"`` is byte-for-byte the same string for a
+    placeholder the mapper was right to refuse (PLATO's "Table II criteria", a pointer
+    to a table in the protocol) and for a data-gap miss ("Contraindication to
+    clopidogrel", whose concepts are standard and merely absent from the index). No
+    reason string separates the two, so allowlisting any of them allowlists real loss.
+
+    What IS checked is that the record can be re-judged at all: a reason that is empty
+    or whitespace-only, or a ``(role, criterionId)`` the store study does not carry.
+    Six rows of the 2026-09-08 batch (ARISTOTLE 26/27, PLATO 16, over two arms each)
+    carry ``reason: ""`` because the producer records ``str(e)`` and
+    ``str(TimeoutError())`` is the empty string — the run log shows a 5-second Stage 1
+    search timeout booked as a mapping refusal. Such a row is reported on its own line
+    so that no future allowlist can ever cover it.
+
+    :param records: the value under ``_unmappedCriteria``, of any shape.
+    :param index: the store study's criteria, from :func:`criteria_index`.
+    :returns: one line per record that cannot be re-judged; empty when every record is
+        well-formed and attributable.
+    """
+    if records is None:
+        return []
+    if not isinstance(records, list):
+        return [f"_unmappedCriteria is not a list: {type(records).__name__}"]
+
+    violations: list[str] = []
+    for position, record in enumerate(records):
+        where = f"_unmappedCriteria[{position}]"
+        if not isinstance(record, dict):
+            violations.append(f"{where} is not a record: {record!r}")
+            continue
+        role = record.get("role")
+        criterion_id = str(record.get("criterionId") or "").strip()
+        if role not in ("inclusion", "exclusion"):
+            violations.append(
+                f"{where} {_describe(record)} carries an unrecognised role {role!r}"
+            )
+        elif not criterion_id:
+            violations.append(f"{where} {_describe(record)} names no criterion")
+        elif (role, criterion_id) not in index:
+            violations.append(
+                f"{where} {_describe(record)} names a criterion the store study does "
+                "not carry, so the refusal cannot be re-judged"
+            )
+        if not str(record.get("reason") or "").strip():
+            violations.append(
+                f"{where} {_describe(record)} carries no reason — the producer recorded "
+                "str(e) of an exception with an empty message (a TimeoutError on the "
+                "Stage 1 search in the 2026-09-08 batch); a refusal that does not say "
+                "why it refused cannot be reconciled"
+            )
+    return violations
+
+
+def _group_label_violations(
+    where: str,
+    label: dict[str, Any],
+    role: str,
+    index: dict[tuple[str, str], dict[str, Any]],
+    lost: set[tuple[str, str]],
+) -> list[str]:
+    """Re-derive a ``group-label`` permit from the store rows of its own group."""
+    violations: list[str] = []
+    if not label.get("isGroupLabel"):
+        violations.append(
+            f"{where} is recorded as group-label but the store row is not a group label"
+        )
+
+    group_id = label.get("groupId")
+    if not group_id:
+        return violations
+    members = [
+        (key, criterion)
+        for key, criterion in index.items()
+        if key[0] == role
+        and not criterion.get("isGroupLabel")
+        and str(criterion.get("groupId")) == str(group_id)
+    ]
+
+    # The laundering guard. `resolve_group_member_constraint` is the one place that
+    # decides whether a label's threshold reaches its members; asking it here means a
+    # producer that stopped recording STRANDED and wrote plain `group-label` instead
+    # cannot slip the loss past this permit, because the decision is re-made rather
+    # than read off the record.
+    label_constraint = label.get("valueConstraint")
+    if label_constraint and any(
+        criterion.get("valueConstraint") is None for _key, criterion in members
+    ):
+        resolution = resolve_group_member_constraint(label_constraint, None)
+        if resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON:
+            violations.append(
+                f"{where} is recorded as group-label but the producer's own predicate "
+                f"says its absolute threshold {label_constraint!r} reaches no member: "
+                f"that is {STRANDED_GROUP_CONSTRAINT_REASON}, which is loss and is off "
+                "the allowlist"
+            )
+
+    # A container row loses nothing BECAUSE its members emit. When every member was
+    # itself lost the group left the cohort entirely and nothing carries it.
+    if members and all(key in lost for key, _criterion in members):
+        violations.append(
+            f"{where} is a group label skipped while none of its {len(members)} "
+            "member(s) emitted, so the whole group left the cohort"
+        )
+    return violations
+
+
+def _collapse_violations(
+    where: str,
+    reason: str,
+    role: str,
+    criterion_id: str,
+    expression: dict[str, Any],
+    index: dict[tuple[str, str], dict[str, Any]],
+    unmapped_keys: set[tuple[str, str]],
+    skipped_by_key: dict[tuple[str, str], dict[str, Any]],
+) -> list[str]:
+    """Re-derive a restated-* permit from the collapse record in the same file."""
+    key = COLLAPSE_RECORD_KEYS[reason]
+    collapses = expression.get(key)
+    if not isinstance(collapses, list):
+        return [
+            f"{where} is recorded as {reason} but the file carries no {key}, so nothing "
+            "says which criterion it was collapsed onto"
+        ]
+    record = next(
+        (
+            candidate
+            for candidate in collapses
+            if isinstance(candidate, dict)
+            and candidate.get("role") == role
+            and criterion_id in {str(x) for x in (candidate.get("droppedIds") or [])}
+        ),
+        None,
+    )
+    if record is None:
+        return [f"{where} is recorded as {reason} but no collapse record names it as dropped"]
+
+    survivor_id = record.get("survivorId")
+    survivor = (role, str(survivor_id))
+    if survivor not in index:
+        return [
+            f"{where} was collapsed onto survivor #{survivor_id}, which the store study "
+            "does not carry"
+        ]
+    if survivor in unmapped_keys:
+        return [
+            f"{where} was collapsed onto survivor #{survivor_id}, which was itself "
+            "recorded unmapped — the restatement and the row it was folded into are "
+            "both absent"
+        ]
+    survivor_skip = skipped_by_key.get(survivor)
+    if survivor_skip is not None and survivor_skip.get("reason") not in ALLOWED_SKIP_REASONS:
+        return [
+            f"{where} was collapsed onto survivor #{survivor_id}, which was itself "
+            f"skipped for {survivor_skip.get('reason')!r}"
+        ]
+    return []
+
+
+def skipped_criteria_violations(
+    records: Any,
+    index: dict[tuple[str, str], dict[str, Any]],
+    expression: dict[str, Any],
+) -> list[str]:
+    """Whether each ALLOWED skip reason actually holds for the criterion it names.
+
+    :data:`ALLOWED_SKIP_REASONS` read on its own is an amnesty: the reason string is
+    written by the artifact being checked, so a producer that renamed one branch's
+    reason to another's would have its loss forgiven by a gate whose own test pins the
+    original reason off the list. This is the same standard ``b6a4f2f`` set for
+    ``_droppedCriteria`` — a drop is excused exactly as far as its record can be
+    re-judged, and no further — applied to the channel that was still taken on trust.
+
+    Only records whose reason IS on the allowlist are examined; an off-list reason is
+    already failed by the caller and needs no re-derivation. Anything unre-judgeable
+    fails closed: a record naming a criterion the store does not carry, or a collapse
+    list the file does not carry.
+
+    :param records: the value under ``_skippedCriteria``.
+    :param index: the store study's criteria, from :func:`criteria_index`.
+    :param expression: the delivered file, read for its collapse records and for the
+        unmapped list that says which siblings were themselves lost.
+    :returns: one line per permit that does not hold; empty when every allowed skip
+        re-derives.
+    """
+    if not isinstance(records, list):
+        return [f"_skippedCriteria is not a list: {type(records).__name__}"]
+
+    # Deferred, not module-scope: `src.api.models.tte` reaches `src.settings`, whose
+    # import runs `load_dotenv()`, and every src.* import in this tree must stay behind
+    # `resolve_store_path`. Imported from the model module rather than from
+    # `tte_service`, which re-exports it from here.
+    from src.api.models.tte import DEMOGRAPHIC_DOMAINS
+
+    unmapped_records = expression.get("_unmappedCriteria") or []
+    unmapped_keys = {
+        (record.get("role"), str(record.get("criterionId") or ""))
+        for record in unmapped_records
+        if isinstance(record, dict)
+    }
+    skipped_by_key = {
+        (record.get("role"), str(record.get("criterionId") or "")): record
+        for record in records
+        if isinstance(record, dict)
+    }
+    lost = unmapped_keys | set(skipped_by_key)
+
+    violations: list[str] = []
+    for position, record in enumerate(records):
+        if not isinstance(record, dict):
+            continue
+        reason = record.get("reason")
+        if reason not in ALLOWED_SKIP_REASONS:
+            continue
+        where = f"_skippedCriteria[{position}] {_describe(record)}"
+        role = record.get("role")
+        criterion_id = str(record.get("criterionId") or "").strip()
+        criterion = index.get((role, criterion_id))
+        if criterion is None:
+            violations.append(
+                f"{where} names a criterion the store study does not carry, so its "
+                f"{reason!r} permit cannot be re-judged"
+            )
+            continue
+
+        if reason == "group-label":
+            violations.extend(_group_label_violations(where, criterion, role, index, lost))
+        elif reason == "demographic-no-rule":
+            domain = (criterion.get("domain") or "").strip()
+            if domain not in DEMOGRAPHIC_DOMAINS:
+                violations.append(
+                    f"{where} is recorded as demographic-no-rule but the store row's "
+                    f"domain {domain!r} is not a demographic domain"
+                )
+            # Meaning-derived rather than a copy of `_build_demographic_rule`: the
+            # permit says the row had NO usable bound, so a row that carried a number
+            # the builder happened not to support is a lost age bound, not a container.
+            constraint = criterion.get("valueConstraint")
+            if isinstance(constraint, dict) and constraint.get("value") is not None:
+                violations.append(
+                    f"{where} is a demographic criterion carrying a bound {constraint!r} "
+                    "recorded as demographic-no-rule: the producer had a number and "
+                    "built no rule from it"
+                )
+        else:
+            violations.extend(
+                _collapse_violations(
+                    where,
+                    reason,
+                    role,
+                    criterion_id,
+                    expression,
+                    index,
+                    unmapped_keys,
+                    skipped_by_key,
+                )
+            )
+    return violations
+
+
+def criterion_accounting(
+    expression: dict[str, Any], study: dict[str, Any]
+) -> tuple[list[str], str]:
+    """Re-judge a delivered file's own drop records: ``(violations, summary)``.
 
     The failure condition is ``unmapped > 0``, plus ``skipped > 0`` for any reason
-    not in :data:`ALLOWED_SKIP_REASONS`. ``skipped`` alone is not loss — see that
-    constant for what is permitted and why — so a batch with 32 skips and nothing
-    unmapped (the measured CAROLINA case) still passes.
+    not in :data:`ALLOWED_SKIP_REASONS`, plus any allowed skip whose permit does not
+    re-derive. ``skipped`` alone is not loss — see that constant for what is permitted
+    and why — so a batch with 32 skips and nothing unmapped (the measured CAROLINA
+    case) still passes, but only once each of those 32 has been reconciled against the
+    store criterion it names and the collapse record in the file beside it.
+
+    ``study`` is required and has no default. The reconciliation needs the store's
+    criteria rows, and a missing store would silently turn every re-derivation into a
+    no-op — which is the shape of amnesty this function exists to remove. A record the
+    store cannot answer for fails closed instead.
 
     The balance identity ``total == mapped + unmapped + demographicRules + skipped``
     is asserted here against the DELIVERED file.
@@ -434,7 +775,19 @@ def criterion_accounting(expression: dict[str, Any]) -> tuple[list[str], str]:
                 f"mapped {parts['mapped']} + unmapped {parts['unmapped']}"
             )
 
+    # The store's criteria, for the two re-derivations below. Built here rather than at
+    # the top because the two early returns above (a pre-accounting artifact, an
+    # incomplete record set) have nothing to reconcile.
+    index = criteria_index(study)
+
+    # Record integrity first, and on its own line: an unmapped row carrying no reason
+    # at all is a different defect from the loss it also is, and no future allowlist
+    # over reason strings could ever cover it.
+    violations.extend(unmapped_criteria_violations(unmapped, index))
+
     if unmapped:
+        # Every unmapped record is loss, whatever its reason says -- there is no
+        # allowlist here and `unmapped_criteria_violations` deliberately builds none.
         # The producer records `"reason": str(e)`, which is empty for any exception
         # constructed without an argument -- 3 of the 13 distinct unmapped criteria
         # across every exported artifact carry `""` (ARISTOTLE 26/27, PLATO 16).
@@ -446,14 +799,30 @@ def criterion_accounting(expression: dict[str, Any]) -> tuple[list[str], str]:
             details.append(f"{_describe(record)} — {reason or 'reason not recorded'}")
         violations.append(f"unmapped criteria ({len(unmapped)}): " + "; ".join(details))
 
-    off_list = [r for r in skipped if r.get("reason") not in ALLOWED_SKIP_REASONS]
+    off_list = [
+        r for r in skipped if isinstance(r, dict) and r.get("reason") not in ALLOWED_SKIP_REASONS
+    ]
     if off_list:
         violations.append(
             f"criteria skipped for a reason not on the allowlist ({len(off_list)}): "
             + "; ".join(f"{r.get('reason')!r} {_describe(r)}" for r in off_list)
         )
 
-    permitted = "all permitted" if not off_list else f"{len(off_list)} not permitted"
+    # And the permits that ARE on the allowlist, re-derived rather than trusted.
+    unreconciled = skipped_criteria_violations(skipped, index, expression)
+    if unreconciled:
+        violations.append(
+            f"skips recorded under an allowed reason that does not hold "
+            f"({len(unreconciled)}): " + "; ".join(unreconciled)
+        )
+
+    # "all permitted" now means permitted AND reconciled.
+    notes = []
+    if off_list:
+        notes.append(f"{len(off_list)} not permitted")
+    if unreconciled:
+        notes.append(f"{len(unreconciled)} not reconciled")
+    permitted = ", ".join(notes) if notes else "all permitted"
     summary = (
         f"criterion accounting: {census.get('mapped')} mapped, {len(unmapped)} unmapped, "
         f"{len(skipped)} skipped ({permitted}){drop_clause}"
@@ -717,7 +1086,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # (i) the file's own drop records: recorded criterion loss, and whether the
         # census that reports it still balances on the delivered artifact.
-        accounting_violations, accounting_summary = criterion_accounting(expression)
+        accounting_violations, accounting_summary = criterion_accounting(expression, study)
         reasons.extend(accounting_violations)
 
         # (d) manifest cross-check, if present

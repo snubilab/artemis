@@ -428,7 +428,7 @@ def main(argv: list[str] | None = None) -> int:
             # exclusions -- in `output/anchor_after/` and again in the 2026-09-08
             # delivery. A cohort missing an exclusion admits patients the trial
             # excluded, which is the same class of defect as a no-op rule.
-            accounting_violations, _summary = criterion_accounting(expression)
+            accounting_violations, _summary = criterion_accounting(expression, study)
             if accounting_violations:
                 violations.append(
                     {

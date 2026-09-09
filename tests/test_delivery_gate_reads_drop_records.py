@@ -43,9 +43,16 @@ the delivery instead of passing through it.
 
 `group-label-absolute-constraint-stranded` is deliberately NOT on it. It records a
 group label whose absolute threshold reached no member, so the members emit
-unconstrained and the exclusion is weaker than the protocol. It occurs in the real
-2026-09-08 batch (`output/site_gap/2026-09-08/deliver_20260908/`, CAROLINA and
-EMPA-REG, "Glucose").
+unconstrained -- and measured in the delivered file that is an OVER-exclusion, not a
+weaker one: the unfiltered absence rule contradicts an HbA1c presence inclusion over
+the same window. It occurs in the real 2026-09-08 batch
+(`output/site_gap/2026-09-08/deliver_20260908/`, CAROLINA exclusion 44 and EMPA-REG
+exclusion 56, "Glucose").
+
+An allowed reason is not taken on trust either. Each one is re-derived from the store
+criterion it names and from the file beside it -- see
+`tests/test_delivery_gate_reconciles_skip_records.py` -- so the store study here
+carries the criteria rows every record below points at.
 """
 from __future__ import annotations
 
@@ -62,6 +69,62 @@ from src.services.restated_distinctness import COLLAPSE_REASON as RESTATED_DISTI
 from src.services.value_constraint import STRANDED_GROUP_CONSTRAINT_REASON
 
 
+def _criterion(
+    criterion_id: int,
+    label: str,
+    *,
+    domain: str = "Drug",
+    is_group_label: bool = False,
+    group_id: str | None = None,
+) -> dict[str, Any]:
+    """One store criterion row, in the shape `_record_skip` reads it from.
+
+    Every record in this module names one of these. The gate re-derives an allowed
+    skip against the store row rather than trusting the reason string, so a record
+    naming a criterion the store does not carry is unverifiable and fails closed --
+    which is why these rows exist here at all.
+    """
+    return {
+        "id": criterion_id,
+        "sourceText": label,
+        "domain": domain,
+        "isGroupLabel": is_group_label,
+        "groupId": group_id,
+        "valueConstraint": None,
+    }
+
+
+#: One row per criterion any record below names, plus a non-label member for each
+#: group label (a container row loses nothing only because its members emit) and a
+#: survivor for each collapse. None of the members or survivors appears in a record,
+#: so all of them count as emitted.
+STORE_INCLUSION_CRITERIA = [
+    _criterion(2, "Age and AF with risk factors", domain="Demographics"),
+    _criterion(5, "Stroke risk factor OR group", is_group_label=True, group_id="g-risk"),
+    _criterion(6, "Prior stroke", group_id="g-risk"),
+]
+STORE_EXCLUSION_CRITERIA = [
+    _criterion(
+        9,
+        "Liver enzyme elevation or bilirubin",
+        domain="Measurement",
+        is_group_label=True,
+        group_id="g-liver",
+    ),
+    _criterion(10, "Alanine aminotransferase", domain="Measurement", group_id="g-liver"),
+    _criterion(11, "Malignant neoplasm", is_group_label=True, group_id="g-cancer"),
+    _criterion(12, "Breast cancer", group_id="g-cancer"),
+    _criterion(14, "Uncontrolled hypertension", is_group_label=True, group_id="g-htn"),
+    _criterion(15, "Systolic blood pressure", domain="Measurement", group_id="g-htn"),
+    _criterion(26, "Aspirin and thienopyridine combination"),
+    _criterion(27, "Investigational drug use"),
+    _criterion(30, "GLP-1 receptor agonists"),
+    _criterion(31, "GLP-1 receptor agonists (restated)"),
+    _criterion(32, "Pregnancy", domain="Demographics"),
+    _criterion(33, "Pre-menopausal women", domain="Demographics"),
+]
+
+
 def _study(study_id: int = 3, arm_names: tuple[str, ...] = ("apixaban", "warfarin")) -> dict:
     """The minimal two-arm store study the other delivery-gate tests use."""
     return {
@@ -70,6 +133,8 @@ def _study(study_id: int = 3, arm_names: tuple[str, ...] = ("apixaban", "warfari
         "comparisonMode": "target_minus_treatment",
         "treatmentArms": [{"name": n} for n in arm_names],
         "eligibility": {
+            "inclusionCriteria": json.loads(json.dumps(STORE_INCLUSION_CRITERIA)),
+            "exclusionCriteria": json.loads(json.dumps(STORE_EXCLUSION_CRITERIA)),
             "structuredExpression": {
                 "ConceptSets": [
                     {
@@ -103,23 +168,36 @@ def _study(study_id: int = 3, arm_names: tuple[str, ...] = ("apixaban", "warfari
     }
 
 
-def _unmapped(criterion_id: str, label: str, role: str = "exclusion") -> dict[str, Any]:
+def _unmapped(
+    criterion_id: str, label: str, role: str = "exclusion", reason: str = "No concept mapping found"
+) -> dict[str, Any]:
+    """An unmapped record. The reason is non-empty by default: an empty one is a
+    record-integrity violation of its own now, checked in
+    `tests/test_delivery_gate_reconciles_skip_records.py`, and these cases are about
+    the loss the record reports rather than about the record being unreadable."""
     return {
         "criterionId": criterion_id,
         "role": role,
         "label": label,
         "domain": "Drug",
-        "reason": "",
+        "reason": reason,
     }
 
 
-def _skip(criterion_id: str, label: str, reason: str, role: str = "exclusion") -> dict[str, Any]:
+def _skip(
+    criterion_id: str,
+    label: str,
+    reason: str,
+    role: str = "exclusion",
+    domain: str = "Measurement",
+    is_group_label: bool = True,
+) -> dict[str, Any]:
     return {
         "criterionId": criterion_id,
         "role": role,
         "label": label,
-        "domain": "Measurement",
-        "isGroupLabel": True,
+        "domain": domain,
+        "isGroupLabel": is_group_label,
         "reason": reason,
     }
 
@@ -131,15 +209,20 @@ def _records(
     mapped: int = 30,
     demographic_rules: int = 2,
     total: int | None = None,
+    collapses: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    """The three record keys, balanced by construction unless `total` overrides."""
+    """The three record keys, balanced by construction unless `total` overrides.
+
+    `collapses` carries the `_restated*Collapse` lists a restated-* skip is now
+    reconciled against: the gate re-derives that the collapse actually names the
+    criterion as dropped and that its survivor exists in the store and emitted."""
     unmapped = unmapped or []
     skipped = skipped or []
     by_reason: dict[str, int] = {}
     for record in skipped:
         by_reason[record["reason"]] = by_reason.get(record["reason"], 0) + 1
     balanced = mapped + len(unmapped) + demographic_rules + len(skipped)
-    return {
+    payload: dict[str, Any] = {
         "_unmappedCriteria": unmapped,
         "_skippedCriteria": skipped,
         "_generationCensus": {
@@ -152,6 +235,8 @@ def _records(
             "skippedByReason": by_reason,
         },
     }
+    payload.update(collapses or {})
+    return payload
 
 
 #: The real ARISTOTLE records, transcribed from
@@ -166,7 +251,14 @@ ARISTOTLE_RECORDS = _records(
         _skip("9", "Liver enzyme elevation or bilirubin", "group-label"),
         _skip("11", "Malignant neoplasm", "group-label"),
         _skip("14", "Uncontrolled hypertension", "group-label"),
-        _skip("2", "Age and AF with risk factors", "demographic-no-rule", role="inclusion"),
+        _skip(
+            "2",
+            "Age and AF with risk factors",
+            "demographic-no-rule",
+            role="inclusion",
+            domain="Demographics",
+            is_group_label=False,
+        ),
     ],
     mapped=30,
     demographic_rules=2,
@@ -177,11 +269,45 @@ ARISTOTLE_RECORDS = _records(
 CLEAN_RECORDS = _records(
     skipped=ARISTOTLE_RECORDS["_skippedCriteria"]
     + [
-        _skip("31", "GLP-1 receptor agonists", RESTATED_DISTINCTNESS_REASON),
-        _skip("33", "Pre-menopausal women", RESTATED_DEMOGRAPHICS_REASON),
+        _skip(
+            "31",
+            "GLP-1 receptor agonists",
+            RESTATED_DISTINCTNESS_REASON,
+            domain="Drug",
+            is_group_label=False,
+        ),
+        _skip(
+            "33",
+            "Pre-menopausal women",
+            RESTATED_DEMOGRAPHICS_REASON,
+            domain="Demographics",
+            is_group_label=False,
+        ),
     ],
     mapped=32,
     demographic_rules=2,
+    collapses={
+        "_restatedDistinctnessCollapse": [
+            {
+                "role": "exclusion",
+                "domain": "Drug",
+                "survivorId": 30,
+                "droppedIds": [31],
+                "survivorRule": "first-in-document-order",
+                "reason": RESTATED_DISTINCTNESS_REASON,
+            }
+        ],
+        "_restatedDemographicsCollapse": [
+            {
+                "role": "exclusion",
+                "domain": "Demographics",
+                "survivorId": 32,
+                "droppedIds": [33],
+                "survivorRule": "first-in-document-order",
+                "reason": RESTATED_DEMOGRAPHICS_REASON,
+            }
+        ],
+    },
 )
 
 
@@ -224,7 +350,16 @@ class TestTheAllowlistNamesTheProducersOwnReasons:
         assert RESTATED_DISTINCTNESS_REASON in ALLOWED_SKIP_REASONS
 
     def test_should_not_allowlist_the_stranded_group_constraint_when_it_loses_a_threshold(self):
-        """A label threshold that reached no member is loss, not a container row."""
+        """A label threshold that reached no member is loss, not a container row.
+
+        Not merely a weaker exclusion: measured in the real
+        `carolina_treatment.circe.json`, the three stranded members emit as UNFILTERED
+        absence criteria (Occurrence Type 0 / Count 0, window [-180, 0]) -- "no glucose
+        measurement of ANY value in the last 180 days" -- while inclusion rule 5
+        REQUIRES an HbA1c in the same window, and the two codesets overlap on 4 of the 6
+        presence concepts. The emitted shape over-excludes. `empa-reg_treatment` rules
+        3/5 against rule 25 are the same. Check (f) cannot see it: it tests absence
+        against the ENTRY set only."""
         from scripts.verify_circe_delivery import ALLOWED_SKIP_REASONS
 
         assert STRANDED_GROUP_CONSTRAINT_REASON not in ALLOWED_SKIP_REASONS
