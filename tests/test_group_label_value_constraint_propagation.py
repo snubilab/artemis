@@ -22,14 +22,22 @@ or mmol/mol and never in mg/dL -- and inside an ABSENCE exclusion that converts
 today's visible over-exclusion into a silent zero-match.
 ``refuse_domain_contradiction`` cannot catch it: both sides are Measurement.
 
-The distinction that makes a safe fix possible is a property of the CONSTRAINT,
-never of the analyte. A reference-relative bound is unit-free and therefore
-analyte-independent -- "3 times the upper limit of normal" is meaningful for ALT,
-AST and ALP alike. An absolute bound is analyte-specific. That predicate is
-already encoded in ``build_measurement_value_filter``: a reference-relative
-constraint emits ``RangeHighRatio`` / ``RangeLowRatio``, an absolute one emits
-``ValueAsNumber``. So the propagation is gated on what the shared builder would
-emit, not on a re-derived rule and not on any analyte name.
+Blanket refusal is not the fix either. ``> 240 mg/dL`` is a perfectly good bound
+for the Fasting and Random Plasma Glucose members sharing HbA1c's group, so
+refusing all three loses two real filters to protect against one.
+
+Two questions decide it, in order, and both are lookups rather than judgements:
+
+1. Is the bound unit-free? A reference-relative bound is analyte-independent --
+   "3 times the upper limit of normal" is meaningful for ALT, AST and ALP alike --
+   and reaches every member. That predicate is already encoded in
+   ``build_measurement_value_filter``: reference-relative emits ``RangeHighRatio``
+   / ``RangeLowRatio``, absolute emits ``ValueAsNumber``, so it is asked of the
+   shared builder rather than re-derived.
+2. Otherwise: is the member's analyte conventionally reported in the bound's unit?
+   ``_ANALYTE_CONVENTIONAL_UNITS`` answers from a table keyed on the same UCUM
+   concept_ids the unit vocabulary already uses. An analyte the table does not
+   carry refuses; it never falls through to propagate.
 
 The unsafe case must not become silent in the other direction either: refusing to
 propagate is recorded, through each builder's existing refusal channel.
@@ -204,17 +212,22 @@ class TestStoreRowsInheritOnlyUnitFreeThresholds:
                 "RangeHighRatio": {"Value": 3.0, "Op": "gt"}
             }
 
-    def test_should_leave_members_unconstrained_when_group_label_bound_is_absolute(
-        self, service
-    ):
+    def test_should_split_an_absolute_bound_by_the_analyte_it_can_measure(self, service):
         rows = service._criteria_from_ir([_hyperglycemia_group()])
+        members = _member_rows(rows)
 
-        for row in _member_rows(rows):
-            assert row["valueConstraint"] is None, (
-                f"{row['description']!r} was given the label's absolute '> 240 mg/dL'. "
-                f"HbA1c is reported in % or mmol/mol, so inside an ABSENCE exclusion "
-                f"that rule matches zero rows and the exclusion silently stops applying"
-            )
+        assert [row["description"] for row in members] == list(HYPERGLYCEMIA_MEMBER_NAMES)
+        by_name = {row["description"]: row["valueConstraint"] for row in members}
+        for glucose in ("Elevated Fasting Plasma Glucose", "Elevated Random Plasma Glucose"):
+            assert build_measurement_value_filter(by_name[glucose])["ValueAsNumber"] == {
+                "Value": 240.0,
+                "Op": "gt",
+            }, f"{glucose!r} lost a threshold that mg/dL measures perfectly well"
+        assert by_name["Elevated HbA1c"] is None, (
+            "HbA1c was given the label's absolute '> 240 mg/dL'. It is reported in % "
+            "or mmol/mol, so inside an ABSENCE exclusion that rule matches zero rows "
+            "and the exclusion silently stops applying"
+        )
 
     def test_should_not_overwrite_a_member_that_carries_its_own_threshold(self, service):
         group = _liver_group()
@@ -351,13 +364,27 @@ class TestAssemblerInheritsOnlyUnitFreeThresholds:
                 "unfiltered MeasurementOccurrence"
             )
 
-    def test_should_emit_no_value_filter_for_members_of_an_absolute_group(self, assembler):
+    def test_should_emit_only_the_members_an_absolute_bound_can_measure(self, assembler):
+        """Two members take '> 240 mg/dL'; HbA1c is dropped rather than emitted bare.
+
+        The emitted count is pinned BEFORE the bodies are inspected. The previous
+        version of this test looped over `_member_criteria(rule)` asserting an
+        absence, and once every member started being dropped the loop iterated zero
+        times -- it passed while proving nothing. An emptiness assertion inside a
+        loop is only a real assertion when the loop's length is pinned outside it.
+        """
         rule = assembler._build_inclusion_rule(
             _hyperglycemia_group(), [], 0, is_exclusion=True
         )
 
-        for content in _member_criteria(rule):
-            assert "ValueAsNumber" not in content
+        emitted = _member_criteria(rule)
+        assert len(emitted) == 2, (
+            f"expected the two plasma-glucose members to emit and HbA1c to be "
+            f"dropped; got {len(emitted)}: {emitted}"
+        )
+        for content in emitted:
+            assert content["ValueAsNumber"] == {"Value": 240.0, "Op": "gt"}
+            assert [u["CONCEPT_ID"] for u in content["Unit"]] == [8840]
             assert "RangeHighRatio" not in content
 
 
@@ -379,9 +406,12 @@ class TestBothBuildersShareOneResolver:
         seen: list[str] = []
 
         def _spy(caller: str):
-            def _wrapped(parent_vc, member_vc):
+            # *args/**kwargs, not a fixed pair: the resolver takes the member's
+            # analyte as a keyword, and a spy pinned to the old arity would fail as
+            # a TypeError that reads like a defect in the builder it wraps.
+            def _wrapped(*args, **kwargs):
                 seen.append(caller)
-                return vc_mod.resolve_group_member_constraint(parent_vc, member_vc)
+                return vc_mod.resolve_group_member_constraint(*args, **kwargs)
 
             return _wrapped
 
@@ -398,8 +428,17 @@ class TestBothBuildersShareOneResolver:
         assert set(seen) == {"tte_service", "assembler"}
 
 
-class TestPredicateIsAboutTheConstraintNotTheAnalyte:
-    """No per-trial, per-NCT or per-analyte branch: only the bound's kind decides."""
+class TestTheBoundsKindDecidesBeforeTheAnalyteIsConsulted:
+    """With no analyte named, only the bound's kind decides -- and absolute refuses.
+
+    This is the fallback every caller inherits when it cannot say what the member
+    measures, including `scripts/verify_circe_delivery.py`, which asks the resolver
+    the question with the member left out. It is the pre-analyte behaviour, kept
+    verbatim: the analyte table narrows the refusal, it never widens what is emitted.
+
+    There is still no per-trial and no per-NCT branch. The analyte is consulted only
+    through `_ANALYTE_CONVENTIONAL_UNITS`, which is a units-of-measure table.
+    """
 
     @pytest.mark.parametrize(
         "constraint,expected_propagation",
@@ -422,6 +461,144 @@ class TestPredicateIsAboutTheConstraintNotTheAnalyte:
         assert resolution.propagated is expected_propagation
         assert (resolution.constraint is constraint) is expected_propagation
         assert (resolution.refusal_reason is None) is expected_propagation
+
+
+class TestAnAbsoluteBoundGoesToTheAnalytesMeasuredInItsUnit:
+    """The table lookup, exercised directly. Every "no" is a refusal with a reason."""
+
+    ABSOLUTE_MG_DL = _VC(op="gt", value=240.0, unit_text="mg/dL")
+
+    @pytest.mark.parametrize(
+        "analyte",
+        [
+            "Fasting Plasma Glucose",
+            "Random Plasma Glucose",
+            "Elevated Fasting Glucose",
+            "blood glucose",
+        ],
+        ids=["fpg", "rpg", "elevated-fasting", "lowercase"],
+    )
+    def test_should_hand_the_bound_to_an_analyte_reported_in_that_unit(self, analyte):
+        from src.services.value_constraint import resolve_group_member_constraint
+
+        resolution = resolve_group_member_constraint(
+            self.ABSOLUTE_MG_DL, None, member_analyte=analyte
+        )
+
+        assert resolution.propagated is True
+        assert resolution.constraint is self.ABSOLUTE_MG_DL
+        assert resolution.refusal_reason is None
+
+    @pytest.mark.parametrize(
+        "analyte",
+        ["Hemoglobin A1c", "Elevated HbA1c", "Glycosylated haemoglobin", "HbA1c"],
+        ids=["hemoglobin-a1c", "elevated-hba1c", "glycosylated", "abbreviation"],
+    )
+    def test_should_refuse_an_analyte_reported_in_another_unit(self, analyte):
+        """The whole point of the table: mg/dL on HbA1c matches zero rows, and inside
+        an ABSENCE exclusion a rule matching zero rows stops excluding anybody."""
+        from src.services.value_constraint import (
+            STRANDED_GROUP_CONSTRAINT_REASON,
+            resolve_group_member_constraint,
+        )
+
+        resolution = resolve_group_member_constraint(
+            self.ABSOLUTE_MG_DL, None, member_analyte=analyte
+        )
+
+        assert resolution.propagated is False
+        assert resolution.constraint is None
+        assert resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON
+        assert "% (percent)" in resolution.refusal_explanation
+        assert "mg/dL" in resolution.refusal_explanation
+
+    def test_should_not_let_the_haemoglobin_row_capture_hemoglobin_a1c(self):
+        """The trap the table sets for itself: "Hemoglobin A1c" contains "hemoglobin",
+        whose row is g/dL. Resolving to it would hand a g/dL bound to HbA1c -- a wrong
+        propagation, which is the silent direction. Longest-key-wins is what prevents
+        it, so both directions are pinned here."""
+        from src.services.value_constraint import resolve_group_member_constraint
+
+        g_per_dl = _VC(op="lt", value=10.0, unit_text="g/dL")
+
+        assert resolve_group_member_constraint(
+            g_per_dl, None, member_analyte="Haemoglobin"
+        ).propagated is True
+        assert resolve_group_member_constraint(
+            g_per_dl, None, member_analyte="Hemoglobin A1c"
+        ).propagated is False
+
+    def test_should_refuse_an_analyte_the_table_does_not_carry(self):
+        """Never guess and never fall through: an unknown analyte is refused, and the
+        message says it is the TABLE that is short, not the protocol."""
+        from src.services.value_constraint import (
+            STRANDED_GROUP_CONSTRAINT_REASON,
+            resolve_group_member_constraint,
+        )
+
+        resolution = resolve_group_member_constraint(
+            self.ABSOLUTE_MG_DL, None, member_analyte="Microalbuminuria or proteinuria"
+        )
+
+        assert resolution.propagated is False
+        assert resolution.constraint is None
+        assert resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON
+        assert "not in the analyte/unit table" in resolution.refusal_explanation
+
+    def test_should_refuse_a_text_that_names_two_analytes_with_different_units(self):
+        """One bound cannot filter two analytes measured in two units."""
+        from src.services.value_constraint import resolve_group_member_constraint
+
+        resolution = resolve_group_member_constraint(
+            self.ABSOLUTE_MG_DL, None, member_analyte="Haemoglobin and platelet count"
+        )
+
+        assert resolution.propagated is False
+        assert "not in the analyte/unit table" in resolution.refusal_explanation
+
+    def test_should_refuse_when_the_labels_own_unit_does_not_resolve(self):
+        """`normalize_unit` returns None rather than a nearest concept (ADR-031 D5), so
+        there is nothing to check the analyte against and nothing may be handed down."""
+        from src.services.value_constraint import resolve_group_member_constraint
+
+        resolution = resolve_group_member_constraint(
+            _VC(op="gt", value=110.0, unit_text="bpm"), None, member_analyte="Glucose"
+        )
+
+        assert resolution.propagated is False
+        assert "resolves to no UCUM unit" in resolution.refusal_explanation
+
+    def test_should_still_not_overwrite_a_member_that_carries_its_own_threshold(self):
+        """The analyte table decides what an INHERITED bound may measure. It never
+        gets a vote on a threshold the decomposer already grounded in the member's own
+        source text -- even one the table would call incompatible."""
+        from src.services.value_constraint import resolve_group_member_constraint
+
+        own = _VC(op="gte", value=6.5, unit_text="%")
+
+        resolution = resolve_group_member_constraint(
+            self.ABSOLUTE_MG_DL, own, member_analyte="Hemoglobin A1c"
+        )
+
+        assert resolution.constraint is own
+        assert resolution.propagated is False
+        assert resolution.refusal_reason is None
+
+    def test_should_read_the_unit_the_same_way_the_emitted_filter_does(self):
+        """One derivation, not two. If the check and the emitted `Unit` disagreed about
+        which concept a bound is in, a member could be approved against one unit and
+        filtered by another -- and nothing downstream would notice."""
+        from src.services.value_constraint import (
+            absolute_unit_concept_id,
+            build_measurement_value_filter,
+        )
+
+        for spelling in ("mg/dL", "mg/dl", "mmol/L", "%", "[U]/L"):
+            constraint = _VC(op="gt", value=1.0, unit_text=spelling)
+            emitted = build_measurement_value_filter(constraint)["Unit"]
+            assert [u["CONCEPT_ID"] for u in emitted] == [
+                absolute_unit_concept_id(constraint)
+            ], spelling
 
 
 class TestStandInsMatchTheRealIR:

@@ -1,9 +1,11 @@
 """A group threshold that cannot be handed down must refuse the member, not strand it.
 
-``resolve_group_member_constraint`` refuses to copy an ABSOLUTE bound onto a group's
-members, and that refusal is correct: "> 240 mg/dL" on HbA1c -- reported in % or
-mmol/mol -- matches zero rows, and inside an ABSENCE exclusion that turns a visible
-over-exclusion into a silent no-op.
+``resolve_group_member_constraint`` refuses to copy an ABSOLUTE bound onto a member
+whose analyte is measured in another unit, and that refusal is correct: "> 240 mg/dL"
+on HbA1c -- reported in % or mmol/mol -- matches zero rows, and inside an ABSENCE
+exclusion that turns a visible over-exclusion into a silent no-op. The two Plasma
+Glucose members of the same group ARE measured in mg/dL, so the same bound reaches
+them; the refusal is per member, not per group.
 
 The defect was what happened next. ``_build_seeded_eligibility_rule`` read only
 ``.constraint`` off the resolution and dropped ``refusal_reason`` on the floor;
@@ -21,10 +23,15 @@ measurement in the last 180 days while inclusion rule 5 REQUIRED an HbA1c >= 6.5
 same window, over codesets overlapping on 4 of 6 presence concepts.
 
 The stranding WAS recorded -- against the group label, which never emits -- so the three
-members that actually shipped carried no record at all. Refusing them is the same choice
-``refuse_domain_contradiction`` and ``refuse_unreadable_value_filter`` already make:
-raise, let the caller record the criterion and drop it, and leave the rule honestly
-absent instead of present and vacuous.
+members that actually shipped carried no record at all. Refusing a member is the same
+choice ``refuse_domain_contradiction`` and ``refuse_unreadable_value_filter`` already
+make: raise, let the caller record the criterion and drop it, and leave the rule
+honestly absent instead of present and vacuous.
+
+Refusing ALL THREE, though, was only ever half the repair. mg/dL measures #46 and #47
+exactly as the protocol intended; only #45 is reported in another unit. So the bound is
+distributed by analyte and #45 alone refuses -- the protocol's exclusion keeps two of
+its three arms instead of leaving the cohort entirely.
 
 The rows below are transcribed verbatim from that store.
 """
@@ -179,14 +186,11 @@ def _measurement_bodies(built: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 class TestTheRealCarolinaGroupRefusesInsteadOfEmittingUnfiltered:
-    @pytest.mark.parametrize(
-        ("member", "codeset_id"),
-        [(GLUCOSE_MEMBERS[0], 66), (GLUCOSE_MEMBERS[1], 67), (GLUCOSE_MEMBERS[2], 68)],
-        ids=["HbA1c/66", "FastingPlasmaGlucose/67", "RandomPlasmaGlucose/68"],
-    )
-    def test_should_refuse_with_stranded_group_threshold_when_the_label_bound_is_absolute(
-        self, service, member, codeset_id
+    def test_should_refuse_the_member_whose_analyte_is_not_measured_in_that_unit(
+        self, service
     ):
+        member, codeset_id = GLUCOSE_MEMBERS[0], 66
+
         with pytest.raises(CriterionRefused) as excinfo:
             service._build_seeded_eligibility_rule(
                 criterion=member,
@@ -198,9 +202,35 @@ class TestTheRealCarolinaGroupRefusesInsteadOfEmittingUnfiltered:
         assert excinfo.value.code == REFUSAL_STRANDED_GROUP_THRESHOLD, (
             f"criterion #{member['id']} {member['sourceText']!r} emitted "
             f'{{"CodesetId": {codeset_id}}} with no value filter -- an ABSENCE rule '
-            f"over every glucose measurement on record"
+            f"over every HbA1c measurement on record"
         )
         assert excinfo.value.detail == STRANDED_GROUP_CONSTRAINT_REASON
+        assert "% (percent)" in str(excinfo.value), (
+            "a refusal that does not name the analyte, its unit and the label's unit "
+            "leaves a human no way to tell a table gap from a protocol that really "
+            "wrote an incompatible threshold"
+        )
+
+    @pytest.mark.parametrize(
+        ("member", "codeset_id"),
+        [(GLUCOSE_MEMBERS[1], 67), (GLUCOSE_MEMBERS[2], 68)],
+        ids=["FastingPlasmaGlucose/67", "RandomPlasmaGlucose/68"],
+    )
+    def test_should_hand_the_bound_to_the_members_mg_dl_measures(
+        self, service, member, codeset_id
+    ):
+        """Refusing these two was the over-correction: mg/dL is exactly the unit a
+        plasma glucose is reported in, so '> 240' is the protocol's own threshold."""
+        built = service._build_seeded_eligibility_rule(
+            criterion=member,
+            codeset_id=codeset_id,
+            exclusion=True,
+            parent_value_constraint=CAROLINA_GLUCOSE_LABEL_CONSTRAINT,
+        )
+
+        body = built["rule"]["expression"]["CriteriaList"][0]["Criteria"]["Measurement"]
+        assert body["ValueAsNumber"] == {"Value": 240.0, "Op": "gt"}
+        assert [unit["CONCEPT_ID"] for unit in body["Unit"]] == [8840]
 
     def test_should_not_refuse_a_member_of_a_reference_relative_group(self, service):
         """The propagating direction must survive: '> 3x ULN' IS handed down."""
@@ -234,13 +264,14 @@ class TestTheRealCarolinaGroupRefusesInsteadOfEmittingUnfiltered:
         body = built["rule"]["expression"]["CriteriaList"][0]["Criteria"]["Measurement"]
         assert body["ValueAsNumber"] == {"Value": 6.5, "Op": "gt"}
 
-    def test_should_leave_no_rule_at_all_when_every_member_of_the_group_refuses(
-        self, service
-    ):
-        """The deliberate consequence: the exclusion has genuinely left the cohort.
+    def test_should_emit_only_the_two_members_the_bound_can_filter(self, service):
+        """The whole group, built from the real store rows.
 
-        Emitting *something* to keep the gate quiet is the defect, not the fix -- a
-        delivery shipping without the protocol's exclusion should not pass.
+        An unfiltered ABSENCE over the whole concept set is worse than no rule -- it
+        excludes every patient the inclusion criteria required -- so the member that
+        cannot be filtered is absent. The two that can are filtered, not dropped:
+        emitting nothing at all would surrender an exclusion the protocol wrote and
+        mg/dL measures perfectly well.
         """
         built = service._build_seeded_target_circe(
             {
@@ -250,12 +281,16 @@ class TestTheRealCarolinaGroupRefusesInsteadOfEmittingUnfiltered:
             }
         )
 
-        assert _measurement_bodies(built) == [], (
-            "an unfiltered ABSENCE over the whole concept set is worse than no rule: "
-            "it excludes every patient the inclusion criteria required"
+        bodies = _measurement_bodies(built)
+        assert len(bodies) == 2, (
+            f"expected #46 Fasting Plasma Glucose and #47 Random Plasma Glucose to "
+            f"emit and #45 Hemoglobin A1c to refuse; got {len(bodies)}: {bodies}"
         )
+        for body in bodies:
+            assert body["ValueAsNumber"] == {"Value": 240.0, "Op": "gt"}
+            assert [unit["CONCEPT_ID"] for unit in body["Unit"]] == [8840]
 
-    def test_should_record_every_refused_member_with_its_code(self, service):
+    def test_should_record_the_refused_member_with_its_code(self, service):
         """The loss was recorded against the LABEL, which never emits. The members
         that actually shipped carried no record at all -- that is what this pins."""
         built = service._build_seeded_target_circe(
@@ -272,7 +307,7 @@ class TestTheRealCarolinaGroupRefusesInsteadOfEmittingUnfiltered:
             for record in unmapped
             if record.get("refusalCode") == REFUSAL_STRANDED_GROUP_THRESHOLD
         ]
-        assert {record["criterionId"] for record in stranded} == {"45", "46", "47"}
+        assert {record["criterionId"] for record in stranded} == {"45"}
         for record in stranded:
             assert record["refusalDetail"] == STRANDED_GROUP_CONSTRAINT_REASON
             assert record["reason"].strip()
@@ -394,10 +429,16 @@ class TestTheAssemblerDropsTheMemberRatherThanEmittingItUnfiltered:
             is_exclusion=True,
         )
 
-        assert rule["expression"]["CriteriaList"] == [], (
-            "each member emitted {'CodesetId': N} with no value filter, so the ABSENCE "
-            "rule matched every glucose measurement on record"
+        emitted = rule["expression"]["CriteriaList"]
+        assert len(emitted) == 2, (
+            f"each member emitted {{'CodesetId': N}} with no value filter, so the "
+            f"ABSENCE rule matched every glucose measurement on record; expected the "
+            f"two glucose members filtered and HbA1c dropped, got {len(emitted)}"
         )
+        for entry in emitted:
+            body = entry["Criteria"]["Measurement"]
+            assert body["ValueAsNumber"] == {"Value": 240.0, "Op": "gt"}
+            assert [unit["CONCEPT_ID"] for unit in body["Unit"]] == [8840]
 
     def test_should_still_emit_members_of_a_reference_relative_group(self):
         """The propagating direction must survive here too."""

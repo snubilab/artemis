@@ -90,7 +90,6 @@ from src.services.tte_store import TTEStore
 from src.services.value_constraint import (
     STRANDED_GROUP_CONSTRAINT_REASON,
     build_measurement_value_filter,
-    is_reference_relative,
     resolve_group_member_constraint,
 )
 from src.utils.circe_lint import (
@@ -302,22 +301,26 @@ def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]
 def _stranded_group_constraint_labels(
     criteria: list[dict[str, Any]], role: str
 ) -> set[tuple[str, str]]:
-    """``(role, id)`` of group labels whose threshold reached none of their members.
+    """``(role, id)`` of group labels whose threshold failed to reach some member.
 
     A group label is refused unconditionally (``isGroupLabel``), so when it is the
     only row carrying a ``valueConstraint`` the number leaves the cohort entirely.
-    ``resolve_group_member_constraint`` hands it down when it is unit-free; when it
-    is absolute it deliberately does not, because "> 240 mg/dL" on "Elevated HbA1c"
-    matches zero rows. That refusal is correct and must not also be silent, so the
-    label is skipped under its own reason instead of the generic ``group-label``
-    and the census counts it.
+    ``resolve_group_member_constraint`` hands it down when it is unit-free, and hands
+    an absolute bound down to the members whose analyte is reported in ITS unit --
+    "> 240 mg/dL" reaches Fasting and Random Plasma Glucose and stops at HbA1c, which
+    is reported in %. A refusal is correct and must not also be silent, so a label
+    that lost a member is skipped under its own reason instead of the generic
+    ``group-label`` and the census counts it.
 
     Recomputed here from the criteria as they arrive rather than recorded upstream,
     so stores generated before this fix surface the loss too.
 
-    Only flags a label whose group still holds a member that ended up unfiltered:
-    if every member carries its own threshold nothing was lost, and a label with no
-    members at all emits no rule to under-filter.
+    The question is asked of the resolver itself, once per member, never re-derived:
+    "is the member's ``valueConstraint`` null" was the right proxy only while an
+    absolute bound reached nobody. Now that it can reach some members, a null store
+    row is no longer evidence of loss, and a census keyed on it would flag a label
+    whose threshold in fact arrived. A label with no members at all emits no rule to
+    under-filter and is not flagged.
     """
     by_group: dict[str, list[dict[str, Any]]] = {}
     for criterion in criteria:
@@ -327,19 +330,23 @@ def _stranded_group_constraint_labels(
 
     stranded: set[tuple[str, str]] = set()
     for members in by_group.values():
-        unfiltered = [
-            m
-            for m in members
-            if not m.get("isGroupLabel") and m.get("valueConstraint") is None
-        ]
-        if not unfiltered:
-            continue
         for label in members:
             if not label.get("isGroupLabel"):
                 continue
             constraint = label.get("valueConstraint")
-            if constraint and not is_reference_relative(constraint):
-                stranded.add((role, str(label.get("id", ""))))
+            if not constraint:
+                continue
+            for member in members:
+                if member.get("isGroupLabel"):
+                    continue
+                resolution = resolve_group_member_constraint(
+                    constraint,
+                    member.get("valueConstraint"),
+                    member_analyte=member.get("sourceText") or member.get("description"),
+                )
+                if resolution.refusal_reason:
+                    stranded.add((role, str(label.get("id", ""))))
+                    break
     return stranded
 
 
@@ -6313,10 +6320,11 @@ class TTEService:
         refuse_domain_contradiction(criteria_key, mapped_criterion, label)
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
-        # A threshold written once on the group label belongs to every member, but
-        # only when it is unit-free -- `resolve_group_member_constraint` is the one
-        # place that decides, shared with `_criteria_from_ir` and
-        # `agent3/assembler.py`. Reading `criterion["valueConstraint"]` alone was the
+        # A threshold written once on the group label belongs to the members it can
+        # honestly measure -- every member when it is unit-free, and the members
+        # reported in its own unit when it is absolute.
+        # `resolve_group_member_constraint` is the one place that decides, shared
+        # with `_criteria_from_ir` and `agent3/assembler.py`. Reading `criterion["valueConstraint"]` alone was the
         # third path's version of the same defect the other two already fixed: for a
         # member row of a labelled group that column is None in every store written
         # before the import-time fix, so study 10's "> 3x ULN" emitted an unfiltered
@@ -6332,9 +6340,11 @@ class TTEService:
         # ABSENCE rule, which excluded every patient inclusion rule 5 required (the two
         # codesets overlap on 4 of 6 presence concepts). The loss WAS recorded -- against
         # the group label, which never emitted -- and the members that actually shipped
-        # carried no record at all.
+        # carried no record at all. `member_analyte` is what lets the resolver tell the
+        # two Plasma Glucose members (which mg/dL fits) from the HbA1c member (which it
+        # does not), so only the third refuses.
         resolution = resolve_group_member_constraint(
-            parent_value_constraint, criterion.get("valueConstraint")
+            parent_value_constraint, criterion.get("valueConstraint"), member_analyte=label
         )
         # Refuse rather than emit, the same choice `refuse_domain_contradiction` above
         # and `refuse_unreadable_value_filter` below both make: the caller records the
@@ -6346,10 +6356,10 @@ class TTEService:
         if resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON:
             raise CriterionRefused(
                 f"group threshold stranded: the label of {label!r}'s group carries an "
-                f"absolute bound, which is analyte-specific and would match zero rows "
-                f"on a member reported in another unit, so it is not handed down -- and "
-                f"this member carries no threshold of its own, so emitting it would "
-                f"build an unfiltered occurrence over its whole concept set",
+                f"absolute bound and it cannot be handed down to this member -- "
+                f"{resolution.refusal_explanation}. This member carries no threshold of "
+                f"its own, so emitting it would build an unfiltered occurrence over its "
+                f"whole concept set",
                 code=REFUSAL_STRANDED_GROUP_THRESHOLD,
                 detail=resolution.refusal_reason,
             )
@@ -10697,11 +10707,13 @@ class TTEService:
         name = (getattr(item, "name", None) or "").strip()
         entity_text = (getattr(item, "entity_text", None) or "").strip()
         source_text = entity_text
-        # A threshold written once on the group label belongs to every member, but
-        # only when it is unit-free -- `resolve_group_member_constraint` is the one
-        # place that decides, shared with `agent3/assembler.py`. Passing the label's
-        # own constraint here (rather than reading only `item.value_constraint`) is
-        # what stops "> 3x ULN" from dying on the refused `isGroupLabel` row.
+        # A threshold written once on the group label belongs to the members it can
+        # honestly measure -- `resolve_group_member_constraint` is the one place that
+        # decides, shared with `agent3/assembler.py`. Passing the label's own
+        # constraint here (rather than reading only `item.value_constraint`) is what
+        # stops "> 3x ULN" from dying on the refused `isGroupLabel` row; passing the
+        # member's own analyte text is what lets an absolute "> 240 mg/dL" reach the
+        # plasma-glucose sub-items and stop at the HbA1c one.
         #
         # `.constraint` alone is CORRECT here and must stay that way, unlike the
         # identical-looking read in `_build_seeded_eligibility_rule`, which now raises
@@ -10713,7 +10725,9 @@ class TTEService:
         # The loss is surfaced on the store side by `_stranded_group_constraint_labels`,
         # which skips the group label under its own reason so the census counts it.
         vc = resolve_group_member_constraint(
-            parent_value_constraint, getattr(item, "value_constraint", None)
+            parent_value_constraint,
+            getattr(item, "value_constraint", None),
+            member_analyte=source_text or name or description,
         ).constraint
         value_constraint = None
         if vc is not None:

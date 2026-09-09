@@ -21,12 +21,12 @@ stores that exist today were already imported, and ``tte_service.py`` deepcopies
 prebuilt ``structuredExpression`` to avoid re-running Agent2. Fixing it where the
 store row becomes CIRCE reaches them on the next build.
 
-The census guard is deliberately NOT changed. ``_stranded_group_constraint_labels``
-asks ``constraint and not is_reference_relative(constraint)`` -- "was the refusal
-deliberate" -- and once this build path propagates, that is once again the right
-question: a reference-relative label is handed down here, so flagging it as stranded
-would be a false positive. ``TestTheCensusStillDistinguishesTheTwoRefusals`` pins
-both directions.
+The census guard asks the resolver itself, once per member, rather than re-deriving
+the answer from the store rows: a member's ``valueConstraint`` being null stopped
+being evidence of loss once an absolute bound could reach some members and not
+others. A label is flagged only when a member actually ended up refused.
+``TestTheCensusStillDistinguishesTheTwoRefusals`` pins all three directions --
+reference-relative, absolute-and-lossy, absolute-and-complete.
 """
 
 from __future__ import annotations
@@ -47,8 +47,9 @@ LIVER_LABEL_CONSTRAINT = {
     "referenceBound": "absolute",
     "unitConceptId": None,
 }
-# study 8's group, same shape but an absolute bound: mg/dL is meaningless for HbA1c,
-# which is a member, so this one must NOT be handed down.
+# study 8's group, same shape but an absolute bound: mg/dL fits a plasma glucose and
+# is meaningless for HbA1c, and both are members -- so this one is handed down to one
+# member and refused for the other.
 GLUCOSE_GROUP_ID = "a1b2c3d4"
 GLUCOSE_LABEL_CONSTRAINT = {
     "op": "gt",
@@ -165,17 +166,40 @@ class TestStoreRowsInheritTheLabelThresholdAtBuildTime:
                 "exclusion dropped anyone with any liver enzyme result on record"
             )
 
-    def test_should_leave_members_unfiltered_when_the_label_bound_is_absolute(
+    def test_should_hand_an_absolute_bound_to_the_member_measured_in_that_unit(
         self, service
     ):
+        """One member of this group takes '> 240 mg/dL'; the other cannot.
+
+        The count is asserted before the bodies are read. The previous version of this
+        test looped over `_measurement_bodies(built)` asserting an absence, and once
+        every member started refusing the loop iterated zero times -- it passed while
+        proving nothing. An emptiness assertion inside a loop is only a real assertion
+        when the loop's length is pinned outside it.
+        """
         built = service._build_seeded_target_circe(_eligibility(list(GLUCOSE_ROWS)))
 
-        for body in _measurement_bodies(built):
-            assert "ValueAsNumber" not in body, (
-                "'> 240 mg/dL' on Elevated HbA1c matches zero rows; inside an ABSENCE "
-                "exclusion that silently stops excluding anybody"
-            )
-            assert "RangeHighRatio" not in body
+        bodies = _measurement_bodies(built)
+        assert len(bodies) == 1, (
+            f"expected 'Elevated Fasting Glucose' to emit and 'Elevated HbA1c' to "
+            f"refuse; got {len(bodies)} bodies: {bodies}"
+        )
+        assert bodies[0]["ValueAsNumber"] == {"Value": 240.0, "Op": "gt"}
+        assert [u["CONCEPT_ID"] for u in bodies[0]["Unit"]] == [8840]
+
+    def test_should_refuse_the_member_the_absolute_bound_does_not_fit(self, service):
+        """'> 240 mg/dL' on HbA1c matches zero rows; inside an ABSENCE exclusion that
+        silently stops excluding anybody, so the member is refused rather than emitted."""
+        built = service._build_seeded_target_circe(_eligibility(list(GLUCOSE_ROWS)))
+
+        refused = [
+            record
+            for record in built["_unmappedCriteria"]
+            if record.get("refusalCode") == "stranded-group-threshold"
+        ]
+        assert [record["label"] for record in refused] == ["Elevated HbA1c"]
+        assert "% (percent)" in refused[0]["reason"]
+        assert "mg/dL" in refused[0]["reason"]
 
     def test_should_not_overwrite_a_member_that_carries_its_own_threshold(self, service):
         rows = [dict(row) for row in LIVER_ROWS]
@@ -237,7 +261,9 @@ class TestTheCensusStillDistinguishesTheTwoRefusals:
             "ratio bound down, so nothing was lost"
         )
 
-    def test_should_flag_an_absolute_label_whose_threshold_reaches_nobody(self, service):
+    def test_should_flag_an_absolute_label_that_lost_a_member(self, service):
+        """Losing ONE member is loss. 'Elevated Fasting Glucose' takes the bound and
+        'Elevated HbA1c' cannot, so the group's threshold did not survive intact."""
         built = service._build_seeded_target_circe(_eligibility(list(GLUCOSE_ROWS)))
 
         reasons = [
@@ -246,3 +272,27 @@ class TestTheCensusStillDistinguishesTheTwoRefusals:
             if record["isGroupLabel"]
         ]
         assert reasons == [STRANDED_GROUP_CONSTRAINT_REASON]
+
+    def test_should_not_flag_an_absolute_label_whose_bound_fits_every_member(
+        self, service
+    ):
+        """Every member here is a glucose, so mg/dL reaches all of them and nothing
+        was lost. Flagging this would report a loss the build did not incur -- and the
+        delivery gate treats the stranded reason as loss, so it would block for nothing."""
+        rows = [
+            _label(30, GLUCOSE_GROUP_ID, "Uncontrolled hyperglycaemia",
+                   GLUCOSE_LABEL_CONSTRAINT),
+            _member(31, GLUCOSE_GROUP_ID, "Fasting Plasma Glucose"),
+            _member(32, GLUCOSE_GROUP_ID, "Random Plasma Glucose"),
+        ]
+
+        built = service._build_seeded_target_circe(_eligibility(rows))
+
+        bodies = _measurement_bodies(built)
+        assert len(bodies) == 2
+        reasons = [
+            record["reason"]
+            for record in built["_skippedCriteria"]
+            if record["isGroupLabel"]
+        ]
+        assert reasons == ["group-label"]

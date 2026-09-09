@@ -582,14 +582,20 @@ class CohortAssembler:
                     sc_cs_id = self._find_concept_set_id(sc.entity_text, concept_sets)
                     sc_criteria_type = DOMAIN_TO_CRITERIA_TYPE.get(sc.domain, "ConditionOccurrence")
                     sc_content: Dict[str, Any] = {"CodesetId": sc_cs_id}
-                    # A threshold written once on the group label belongs to every
-                    # member, but only when it is unit-free. Reading `sc.value_constraint`
+                    # A threshold written once on the group label belongs to the
+                    # members it can honestly measure. Reading `sc.value_constraint`
                     # alone dropped CAROLINA's "> 3x ULN" from ALT/AST/ALP entirely;
                     # copying it down blindly would put "> 240 mg/dL" on HbA1c, which
-                    # matches zero rows. `resolve_group_member_constraint` is the one
-                    # place that decides, shared with `services/tte_service.py`.
+                    # matches zero rows -- so the member's own analyte text goes in
+                    # too, and the same bound reaches the plasma glucoses beside it.
+                    # `resolve_group_member_constraint` is the one place that decides,
+                    # shared with `services/tte_service.py`.
                     resolution = resolve_group_member_constraint(
-                        rule.value_constraint, sc.value_constraint
+                        rule.value_constraint,
+                        sc.value_constraint,
+                        member_analyte=(
+                            getattr(sc, "entity_text", None) or getattr(sc, "name", None)
+                        ),
                     )
                     if resolution.refusal_reason:
                         # Logging it and emitting anyway was the defect: an unfiltered
@@ -603,18 +609,17 @@ class CohortAssembler:
                         # store row this assembler reads must survive so the threshold
                         # can be re-grounded per sub-criterion at extraction.
                         logger.warning(
-                            "[Agent3] %s: group %r carries %s %s %s but it is an absolute "
-                            "bound, so it is NOT applied to member %r -- an absolute "
-                            "threshold is analyte-specific and would match zero rows on a "
-                            "member reported in another unit. The member is NOT emitted; "
-                            "ground the threshold per sub-criterion at extraction to "
-                            "recover it.",
+                            "[Agent3] %s: group %r carries %s %s %s and it is NOT applied "
+                            "to member %r -- %s. Applying it anyway would match zero rows, "
+                            "so the member is NOT emitted; ground the threshold per "
+                            "sub-criterion at extraction to recover it.",
                             resolution.refusal_reason,
                             rule.name,
                             rule.value_constraint.op,
                             rule.value_constraint.value,
                             rule.value_constraint.unit_text or "(no unit)",
                             sc.name,
+                            resolution.refusal_explanation,
                         )
                         continue
                     # Flat merge: Unit is a sibling of ValueAsNumber in Circe.
