@@ -5,14 +5,31 @@ Handles decomposition of combination concepts and pruning.
 DB operations are OPTIONAL — if DB is unreachable, gracefully falls back
 to returning the original concept IDs without decomposition/pruning.
 """
+import os
 import re
+import time
 from typing import List, Set
 import logging
 
 logger = logging.getLogger(__name__)
 
-# DB availability flag - checked once, cached
+# DB availability probe result.
+#
+# A SUCCESS is cached for the process lifetime: the database answered, and that
+# answer does not go stale in a way this module can act on.
+#
+# A FAILURE is not an answer at all, so it is cached only until
+# `_db_probe_retry_seconds()` has passed. Latching it forever meant one transient
+# error — Postgres still coming up while artemis-api boots is the ordinary case —
+# downgraded the whole process after a single WARNING: all four filters gated on
+# _check_db() failed open together, and `roll_up_to_rxnorm_ingredients` returned
+# its input unchanged, leaving RxNorm Extension product ids in a DrugEra criterion
+# that joins nothing (drug_era is recorded at Ingredient level) so the arm came
+# out at 0 patients.
 _db_available: bool | None = None
+_db_probe_failed_at: float | None = None
+
+_DB_PROBE_RETRY_DEFAULT_SECONDS = 60.0
 
 # Regex to extract the ingredient name from an RxNorm-style concept name.
 # RxNorm drug name patterns: "{ingredient} {dose} {form} [brand/supplier...]"
@@ -26,11 +43,40 @@ _DOSE_PATTERN = re.compile(
 )
 
 
+def _db_probe_retry_seconds() -> float:
+    """How long a FAILED probe stays cached before the database is tried again.
+
+    Read per call so it can be tuned (and tested) without a reimport. An
+    unparseable value falls back to the default rather than to 0 — a bad env value
+    must not turn every gated call into a fresh connect attempt.
+    """
+    raw = os.environ.get("LOGICIAN_DB_PROBE_RETRY_SECONDS")
+    if raw is None:
+        return _DB_PROBE_RETRY_DEFAULT_SECONDS
+    try:
+        return max(0.0, float(raw))
+    except (TypeError, ValueError):
+        logger.warning(
+            "[Logician] LOGICIAN_DB_PROBE_RETRY_SECONDS=%r is not a number; "
+            "using %ss.", raw, _DB_PROBE_RETRY_DEFAULT_SECONDS,
+        )
+        return _DB_PROBE_RETRY_DEFAULT_SECONDS
+
+
 def _check_db() -> bool:
-    """Check if PostgreSQL is available. Result is cached."""
-    global _db_available
-    if _db_available is not None:
-        return _db_available
+    """Is PostgreSQL available?
+
+    A success is cached for the process lifetime. A failure is cached only for
+    `_db_probe_retry_seconds()`, because "the database did not answer" is not the
+    same fact as "the database said no" and must not have the same lifetime — see
+    the module-level note on `_db_available`.
+    """
+    global _db_available, _db_probe_failed_at
+    if _db_available:
+        return True
+    if _db_probe_failed_at is not None:
+        if (time.monotonic() - _db_probe_failed_at) < _db_probe_retry_seconds():
+            return False
 
     try:
         from sqlalchemy import text
@@ -38,12 +84,19 @@ def _check_db() -> bool:
         # Quick connectivity check with 2-second timeout
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
+        recovered = _db_probe_failed_at is not None
         _db_available = True
-        logger.info("[Logician] PostgreSQL connection OK")
+        _db_probe_failed_at = None
+        logger.info(
+            "[Logician] PostgreSQL connection %s",
+            "recovered — filters gated on it are active again" if recovered else "OK",
+        )
     except Exception as e:
         _db_available = False
+        _db_probe_failed_at = time.monotonic()
         logger.warning(f"[Logician] PostgreSQL unavailable ({e}). "
-                      f"Decomposition/pruning will be skipped.")
+                      f"Decomposition/pruning will be skipped for the next "
+                      f"{_db_probe_retry_seconds()}s, then retried.")
     return _db_available
 
 
