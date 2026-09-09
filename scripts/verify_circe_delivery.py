@@ -565,6 +565,17 @@ def _group_label_violations(
 
     group_id = label.get("groupId")
     if not group_id:
+        # The permit reads "this row lost nothing BECAUSE the members it labels
+        # emitted". With no groupId there are no members to find, so neither the
+        # stranded-threshold re-derivation below nor the all-members-lost check can
+        # run, and the permit would be granted on the record's own word -- the amnesty
+        # this whole module exists to remove. Unre-judgeable fails closed, the standard
+        # `skipped_criteria_violations` already holds every other skip to.
+        violations.append(
+            f"{where} is recorded as group-label but the store row carries no groupId, "
+            "so the members it claims to label cannot be found and nothing shows the "
+            "group survived in them"
+        )
         return violations
     members = [
         (key, criterion)
@@ -816,6 +827,14 @@ def criterion_accounting(
     is pruned, deep-copied and written to disk, and nothing re-checked it at the
     boundary where it is handed to a site.
 
+    That identity is self-consistency and nothing more: every term in it is written by
+    the artifact being checked, so a producer that stops writing ``_unmappedCriteria``
+    rows can restore all of it by striking the rows and taking the difference off
+    ``total`` and ``mappable``. ``total`` is therefore also anchored to
+    ``len(criteria_index(study))`` -- the store study's own criteria rows, the one
+    referent outside the file -- and a census short of it names the criteria that left
+    the study with no record at all.
+
     ``summary`` is returned even when there are no violations, and the caller prints
     it on a passing row — a check whose only output is silence cannot be told from a
     check that never ran.
@@ -863,6 +882,12 @@ def criterion_accounting(
             ],
             f"criterion accounting: INCOMPLETE{drop_clause}",
         )
+
+    # The store's criteria: the anchor below and the two re-derivations further down
+    # all read it. Built here rather than at the top because the two early returns
+    # above (a pre-accounting artifact, an incomplete record set) have nothing to
+    # reconcile.
+    index = criteria_index(study)
 
     census = expression["_generationCensus"] or {}
     unmapped = expression["_unmappedCriteria"] or []
@@ -913,10 +938,40 @@ def criterion_accounting(
                 f"mapped {parts['mapped']} + unmapped {parts['unmapped']}"
             )
 
-    # The store's criteria, for the two re-derivations below. Built here rather than at
-    # the top because the two early returns above (a pre-accounting artifact, an
-    # incomplete record set) have nothing to reconcile.
-    index = criteria_index(study)
+    # Every check above compares the census with itself, and self-consistency is
+    # exactly what a producer that stops writing a record list can restore: strike the
+    # rows, zero the counter, take the difference off `total` AND off `mappable`, and
+    # the balance, both counter-vs-list cross-checks and the mappable identity all hold
+    # again. Measured: deleting every `_unmappedCriteria` row from the 2026-09-09 batch
+    # and rebalancing `total` alone fails all 12 files on the mappable identity;
+    # rebalancing `mappable` too passes 8 of them. `total` is the one counter with a
+    # referent OUTSIDE the file -- the store study's own criteria rows -- so anchoring
+    # it there is what makes an unrecorded loss visible at all. On that batch the two
+    # sides agree exactly on every file (39/39, 39/39, 114/114, 73/73, 49/49, 46/46),
+    # so the anchor adds no failure the batch did not already carry.
+    #
+    # Outside the balance branch above on purpose: a census missing `mapped` cannot be
+    # balanced but can still be anchored, and the criterion it lost is worth naming.
+    #
+    # A LOWER bound, not an equality, and the asymmetry is deliberate. `total` short of
+    # the store is loss -- criteria the study has and the file accounts for nowhere.
+    # `total` OVER the store is a different defect (an outcome booked for a criterion
+    # that does not exist), and enforcing it here fires on 11 existing gate tests whose
+    # synthetic census claims 31-41 criteria over fixture stores of 2-15; every one of
+    # those 11 is the over-count direction and none is loss. Closing that direction
+    # means correcting those fixtures first, which is a separate change.
+    #
+    # What this anchor does NOT catch, in either direction: a producer that strikes the
+    # record rows and books the criteria as `mapped` instead of decrementing `total`.
+    # That keeps the balance, the mappable identity AND this anchor, and only anchoring
+    # `mapped` to the emitted rules would see it.
+    if total is not None and total < len(index):
+        violations.append(
+            f"census accounts for {total} of the store study's {len(index)} criteria: "
+            f"{len(index) - total} criterion(s) left the study with no outcome recorded "
+            "anywhere -- not mapped, not refused, not skipped, not built into a "
+            "demographic rule -- and no record in the file says where they went"
+        )
 
     # Record integrity first, and on its own line: an unmapped row carrying no reason
     # at all is a different defect from the loss it also is, and no future allowlist
@@ -951,6 +1006,26 @@ def criterion_accounting(
                 f"{_describe(record)} {block} — {reason or 'reason not recorded'}"
             )
         violations.append(f"unmapped criteria ({len(blocking)}): " + "; ".join(details))
+
+    # An entry that is not a record carries no reason to judge and names no criterion
+    # to reconcile, so the allowlist filter below and the re-derivation after it both
+    # pass over it -- while `census.skipped` still counts it, the balance still holds,
+    # and with `total` anchored the row it stands for is still accounted for. Nothing
+    # else would ever speak: the summary would read "N skipped (all permitted)" over a
+    # permit no one could read. `unmapped_criteria_violations` already reports exactly
+    # this malformation one channel over; the two answer alike here.
+    malformed_skips = [
+        (position, record)
+        for position, record in enumerate(skipped)
+        if not isinstance(record, dict)
+    ]
+    if malformed_skips:
+        violations.append(
+            f"_skippedCriteria carries {len(malformed_skips)} entry(ies) that are not "
+            "records, so the criterion each one counts as skipped names no permit and "
+            "cannot be reconciled: "
+            + "; ".join(f"[{position}] {record!r}" for position, record in malformed_skips)
+        )
 
     off_list = [
         r for r in skipped if isinstance(r, dict) and r.get("reason") not in ALLOWED_SKIP_REASONS
