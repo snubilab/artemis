@@ -4622,6 +4622,24 @@ class TTEService:
             inc_criteria, "inclusion"
         ) | _stranded_group_constraint_labels(exc_criteria, "exclusion")
 
+        # `(role, groupId)` -> the group label's own threshold, for the members to
+        # inherit through `resolve_group_member_constraint`. Keyed by role because a
+        # group id is only unique within one; read here, where the whole role is in
+        # hand, rather than re-derived per criterion inside the mapping threads.
+        group_label_constraints = {
+            (role, str(criterion.get("groupId"))): criterion.get("valueConstraint")
+            for role, criteria in (("inclusion", inc_criteria), ("exclusion", exc_criteria))
+            for criterion in criteria
+            if criterion.get("isGroupLabel") and criterion.get("groupId")
+        }
+
+        def _parent_constraint(criterion: dict[str, Any], exclusion: bool) -> Any:
+            group_id = criterion.get("groupId")
+            if not group_id or criterion.get("isGroupLabel"):
+                return None
+            role = "exclusion" if exclusion else "inclusion"
+            return group_label_constraints.get((role, str(group_id)))
+
         for criterion in inc_criteria:
             # First branch in the loop, ahead of the demographic split: a dropped
             # criterion must not reach the mapper at all, which is the entire point --
@@ -4800,6 +4818,7 @@ class TTEService:
                     exclusion=exclusion,
                     pre_fetched_candidates=pre_fetched.get(index),
                     workflow=shared_workflow,
+                    parent_value_constraint=_parent_constraint(criterion, exclusion),
                 ))
             except Exception as e:
                 logging.warning("Failed to process criterion %s: %s", index, e)
@@ -6170,6 +6189,7 @@ class TTEService:
         exclusion: bool,
         pre_fetched_candidates: list | None = None,
         workflow: Any | None = None,
+        parent_value_constraint: Any = None,
     ) -> dict[str, Any]:
         label = (
             criterion.get("sourceText")
@@ -6195,9 +6215,23 @@ class TTEService:
         refuse_domain_contradiction(criteria_key, mapped_criterion, label)
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
+        # A threshold written once on the group label belongs to every member, but
+        # only when it is unit-free -- `resolve_group_member_constraint` is the one
+        # place that decides, shared with `_criteria_from_ir` and
+        # `agent3/assembler.py`. Reading `criterion["valueConstraint"]` alone was the
+        # third path's version of the same defect the other two already fixed: for a
+        # member row of a labelled group that column is None in every store written
+        # before the import-time fix, so study 10's "> 3x ULN" emitted an unfiltered
+        # Measurement occurrence and the exclusion dropped anyone with any ALT/AST/ALP
+        # result on record. Resolved here rather than written back into the criterion,
+        # because the eligibility dict reaching this builder is the study's own.
+        effective_constraint = resolve_group_member_constraint(
+            parent_value_constraint, criterion.get("valueConstraint")
+        ).constraint
+
         # Flat merge, so Unit lands as a sibling of ValueAsNumber rather than
         # nested inside it, where Circe ignores it.
-        value_filter = build_measurement_value_filter(criterion.get("valueConstraint"))
+        value_filter = build_measurement_value_filter(effective_constraint)
         # ...and only onto a criteria type whose CDM table reads those keys. The
         # merge used to be unconditional, which put `ValueAsNumber` on DrugExposure,
         # ConditionOccurrence and ProcedureOccurrence criteria that silently ignore
