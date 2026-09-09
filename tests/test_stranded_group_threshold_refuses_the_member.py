@@ -526,7 +526,7 @@ class TestTheTemporalSeedIsAlreadyClassifiedAsIntentUnparsed:
         )
 
         with pytest.raises(CriterionRefused) as excinfo:
-            service._recommend_seeded_concept_set_rag_fallback("Risk factor 1")
+            service._recommend_seeded_concept_set_rag_fallback("Contraindication to clopidogrel")
 
         assert describe_mapping_failure(excinfo.value)["refusalCode"] == (
             REFUSAL_NO_CONCEPT_MAPPING
