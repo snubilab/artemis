@@ -547,14 +547,20 @@ def _seed_is_unmappable_placeholder(seed: str) -> bool:
     ``Troponin T``, ``Two or more specified CV risk factors``, and the ``+``-joined
     group-label names (``CV risk factor A + ... + D``).
 
-    What this rule does NOT reach is worth stating where it will be read. The classifier
-    is consulted at two raise sites only -- the RAG fallback that found no concepts, and
-    :func:`_refuse_domain_contradiction_for_seed`. All six CAROLINA ``CV risk factor``
-    rows took NEITHER on 2026-09-10: the mapper answered each with eight ``Observation``
-    "at increased risk of ..." concepts, the emitted criterion is an ``Observation``, so
-    no domain contradicts and all six were counted in ``census.mapped`` (92 of 128).
-    Six names, two distinct concept sets. Classifying the seed correctly is a
-    precondition for refusing it and is not by itself the refusal.
+    Where the classification is consulted is worth stating where it will be read, because
+    for one day it was consulted only where it could not act. There are THREE raise sites
+    -- the RAG fallback that found no concepts,
+    :func:`_refuse_domain_contradiction_for_seed`, and
+    :func:`_refuse_mapped_seed_naming_no_entity`. The first two are both FAILURE paths,
+    and on 2026-09-10 eight of the nine placeholder-seeded criteria in the grounded store
+    took neither -- all six CAROLINA ``CV risk factor`` rows were
+    answered with eight ``Observation`` "at increased risk of ..." concepts under an
+    ``Observation`` criterion, so nothing contradicted and all six were counted in
+    ``census.mapped`` (92 of 128). Six names, two distinct concept sets, two required
+    inclusion rules. The third site is what closed that: a seed naming no entity is
+    refused whether or not the mapper found something to say about it. Classifying the
+    seed correctly is a precondition for refusing it and is still not by itself the
+    refusal.
     """
     text = re.sub(r"\s+", " ", (seed or "").strip()).strip(" .;:,")
     if not text:
@@ -648,6 +654,88 @@ def _refuse_domain_contradiction_for_seed(
         raise CriterionRefused(
             str(refused), code=REFUSAL_UNMAPPABLE_PLACEHOLDER, detail=refused.detail
         ) from refused
+
+
+def _refuse_mapped_seed_naming_no_entity(
+    mapped_criterion: dict[str, Any], seed: str
+) -> None:
+    """Refuse a placeholder seed the mapper ANSWERED, before its concepts become a rule.
+
+    The third and last site that consults :func:`_seed_is_unmappable_placeholder`, and
+    the only one reached on a path where the mapping SUCCEEDED. The other two are both
+    failure paths -- the RAG fallback that found nothing, and
+    :func:`_refuse_domain_contradiction_for_seed`, where the answer's domain betrayed
+    that there was nothing to find -- so until this existed, a seed naming no entity
+    whose mapper happened to answer plausibly, in the criterion's own domain, was
+    emitted with no record of any kind.
+
+    That is the larger half. Measured on
+    ``output/site_gap/2026-09-10/store_grounded/studies.json`` and the delivery that
+    store produces at ``fd8a9d1``
+    (``output/placeholder_refusal/2026-09-10/deliver_before``): nine criteria across the
+    six trials carry a seed the classifier calls a placeholder, ONE of them refused
+    (ARISTOTLE exclusion 26, through the domain path) and the other EIGHT shipped rules
+    that filter patients. What they shipped is why this is a refusal rather than a
+    record:
+
+    * CAROLINA inclusion 6/7 and 25-28 -- "CV risk factor 1/2/A/B/C/D" -- two required
+      ``ANY`` InclusionRules at ``>= 1`` occurrence over Observation risk-ASSESSMENT
+      flags ("At increased risk of thrombophlebitis", "Cardiovascular disease 10Y
+      risk"), not the smoking / hypertension / dyslipidemia the protocol line
+      enumerates. Six protocol branches, two distinct 8-concept sets between them, and a
+      required inclusion over codes a CDM almost never records is a cohort that matches
+      nobody;
+    * CAROLINA exclusion 39 -- "Investigational drug" -- ABSENCE over 25 Procedure
+      concepts including "Drug therapy", "Routine administration of medication" and
+      "Administration of sulfonylurea", in the trial whose active comparator IS a
+      sulfonylurea. The exclusion removes the patients the protocol enrols;
+    * CAROLINA exclusion 71 -- "Investigational Medicinal Product" -- ABSENCE over four
+      Procedure concepts, three of which do name clinical-trial assessment. It is the
+      closest of the eight to the protocol's intent and is refused anyway: the fourth is
+      "Dispensing of pharmaceutical/biologic product" WITH descendants, which inside an
+      absence rule excludes anyone ever dispensed a medicine. A partly plausible set is
+      still a set no criterion asked for.
+
+    Nor is any of the eight what the protocol's own gold encodes. CAROLINA's TROY v1.1
+    definition answers the same two risk-factor lines with concrete entities -- Smoking,
+    dyslipidemia, LDL cholesterol, SBP, eGFR, albumin/creatinine ratio, BMI, and for the
+    "high CV risk" branches PCI, CABG, limb angioplasty, ischemic stroke, PAOD, ACS, MI
+    -- and holds no counterpart of any kind for "investigational drug" or "IMP", which
+    are administrative facts a CDM does not record.
+
+    Placed AFTER :func:`_refuse_domain_contradiction_for_seed` rather than before the
+    mapper call, and the order is load-bearing in both directions. Before the mapper,
+    the domain path becomes unreachable for exactly these seeds and ARISTOTLE exclusion
+    26's delivered record loses the mechanism it carries today -- which domains came
+    back, and which table could not read them. After the mapper, both records survive
+    and this one can say what the answer WAS, which is the only thing separating it from
+    the RAG-fallback refusal that shares its code and found nothing at all.
+
+    :param mapped_criterion: the mapper's answer, in the seeded-concept-set shape.
+    :param seed: the text the mapper was actually asked about.
+    :raises CriterionRefused: with
+        :data:`~src.utils.criterion_refusal.REFUSAL_UNMAPPABLE_PLACEHOLDER` when the
+        seed names no clinical entity. Nothing is raised otherwise.
+    """
+    if not _seed_is_unmappable_placeholder(seed):
+        return
+    items = list(((mapped_criterion or {}).get("expression") or {}).get("items") or [])
+    domains = sorted(
+        {
+            (item.get("concept") or {}).get("DOMAIN_ID")
+            for item in items
+            if (item.get("concept") or {}).get("DOMAIN_ID")
+        }
+    )
+    answered = ", ".join(domains) or "unknown-domain"
+    raise CriterionRefused(
+        f"the mapper answered {seed!r} with {len(items)} {answered} concept(s), and the "
+        f"seed names no clinical entity: an answer to a placeholder is whatever the "
+        f"vocabulary holds NEAREST it, not what the protocol asked for, so emitting it "
+        f"would filter patients on concepts no criterion named",
+        code=REFUSAL_UNMAPPABLE_PLACEHOLDER,
+        detail=f"{len(items)} concepts from {answered}",
+    )
 
 
 def _recode_refusal_for_missing_entity(
@@ -6772,6 +6860,16 @@ class TTEService:
             # is seeded "Investigational Drug" while its description says "Prior
             # investigational drug trial", which names a trial and stays unpermitted).
             _refuse_domain_contradiction_for_seed(criteria_key, mapped_criterion, label, seed)
+            # ...and last, the same classifier on the path where NOTHING went wrong. The
+            # two consults above are both failure paths, so a placeholder seed whose
+            # mapper answered plausibly in the criterion's own domain took neither and
+            # was emitted: eight of the nine placeholder-seeded criteria in the
+            # 2026-09-10 grounded delivery shipped rules, six of them CAROLINA's
+            # `CV risk factor` branches under two required inclusion rules and two of
+            # them ABSENCE rules over "Drug therapy" and "Dispensing of
+            # pharmaceutical/biologic product". Kept after the domain check so a row
+            # that fails both keeps the richer record.
+            _refuse_mapped_seed_naming_no_entity(mapped_criterion, seed)
         except CriterionRefused as refused:
             recoded = _recode_refusal_for_missing_entity(refused, criterion, seed)
             if recoded is None:
