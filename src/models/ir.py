@@ -86,6 +86,34 @@ class Criteria(BaseModel):
     # but cannot be classified until they are re-extracted.
     source_text: Optional[str] = None
 
+    # The fragment of `source_text` that NAMES this criterion, verbatim, when the
+    # protocol named it -- and None when it did not. Only a decomposition member can
+    # carry one: the planner asks the model which part of the parent's line each
+    # sub-term reads, and `_grounded_span` refuses any answer that is not really a
+    # substring of that line.
+    #
+    # This is the field that separates reading from elaboration. Decomposing
+    # "impaired hepatic function" into ALT, AST and ALP is what this pipeline is FOR
+    # -- the phrase names no analyte and is unqueryable as written -- but until this
+    # field existed, those three sub-terms were stored exactly like the three that
+    # ARISTOTLE's line "ALT or AST > 2X ULN or Total Bilirubin >= 1.5X ULN" names
+    # outright. One is a reading of the protocol and the other is clinical knowledge
+    # standing in for a protocol that said nothing, and scoring them the same scores
+    # invention as extraction.
+    #
+    # A verbatim span rather than a boolean, for the reason `source_text`'s own note
+    # gives: a claim the model merely asserts is worth nothing here, because the
+    # asserted-true case and the true case are the ones we cannot currently tell
+    # apart. A span is checkable against the line; `stated: true` is not.
+    #
+    # None is weaker evidence than a span, and deliberately so. It carries "the planner
+    # supplied this member" only for a group the PLANNER built; a group Agent 1 built
+    # itself never reaches the planner at all (`_decompose_criterion` returns early on
+    # a criterion that already has `sub_criteria`), so its members are None for want of
+    # anyone to ask, not for want of a line. A non-empty span means the same thing
+    # everywhere.
+    source_span: Optional[str] = None
+
     # Logic details
     logic_type: Literal["PRESENCE", "ABSENCE"] = "PRESENCE"
     window: Optional[TemporalWindow] = None

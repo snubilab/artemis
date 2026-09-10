@@ -136,6 +136,10 @@ class PaperStatus(BaseModel):
 #: ``src/services/tte_service.py`` imports this rather than writing the string again.
 CRITERION_PROTOCOL_LINE_KEY = "protocolLine"
 
+#: The key under which a criterion records the fragment of that line naming it.
+#: Spelled once here for the same reason as :data:`CRITERION_PROTOCOL_LINE_KEY` above.
+CRITERION_PROTOCOL_SPAN_KEY = "protocolSpan"
+
 
 class CriterionValueConstraint(TTEModel):
     op: str = ""
@@ -166,6 +170,34 @@ class Criterion(TTEModel):
     #: Optional there for the same reason) and for any criterion not built from an IR.
     #: The key is :data:`CRITERION_PROTOCOL_LINE_KEY`.
     protocolLine: str = ""
+    #: The fragment of ``protocolLine`` that NAMES this criterion, verbatim -- empty
+    #: when the line named it nowhere. Only a decomposition member can carry one, and
+    #: only a verified one: the planner refuses any span that is not really a substring
+    #: of the line, so this is a checked reading rather than a claim.
+    #:
+    #: Read next to ``protocolLine`` it answers the question the line alone cannot:
+    #: whether this row is what the protocol wrote or what the model supplied when the
+    #: protocol wrote nothing specific enough to query. CAROLINA/NCT01243424's
+    #: "acute liver disease or impaired hepatic function" names no analyte at all, yet
+    #: reached the store as ALT, AST and ALP rows indistinguishable from the three that
+    #: ARISTOTLE's "ALT or AST > 2X ULN or Total Bilirubin >= 1.5X ULN" names outright.
+    #: Both decompositions are wanted; only one of them is a reading.
+    #:
+    #: Empty means one of four things, and only the second is the elaboration signal:
+    #: the row is a group label or a standalone criterion, neither of which reads a
+    #: fragment of a larger line (``groupId``/``isGroupLabel`` say which); the planner
+    #: decomposed the line and this member is the model's own contribution; the group
+    #: was built by Agent 1 rather than the planner, which makes no span claim at all
+    #: (the planner skips a criterion that already carries ``sub_criteria``, so a
+    #: Pattern-E OR group's members arrive here unmarked); or the study's IR predates
+    #: the field.
+    #:
+    #: Telling the second case from the third needs the store to record WHICH agent
+    #: built a group, which it does not. So an empty span is evidence a row was not
+    #: read off the line only when the group is known to be the planner's; a non-empty
+    #: span is unambiguous in every case. The key is
+    #: :data:`CRITERION_PROTOCOL_SPAN_KEY`.
+    protocolSpan: str = ""
     window: dict[str, int] | None = None
     conceptSetId: int | None = None
     conceptSetName: str = ""

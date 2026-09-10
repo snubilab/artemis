@@ -3,6 +3,7 @@ Criteria Planner (Agent 1.5) - Clinical Criteria Decomposer.
 Decomposes composite clinical criteria into granular, OMOP-searchable sub-criteria.
 """
 import json
+import re
 from typing import Optional, List
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -10,6 +11,90 @@ from src.utils.llm import get_llm
 from src.models.ir import ARTEMISRequest, CohortDefinition, Criteria
 from src.agents.planner.prompts import PLANNER_SYSTEM_PROMPT, DECOMPOSITION_PROMPT
 from src.services.value_constraint import parse_value_constraint
+from src.agents.agent1.threshold_classifier import deescape
+
+
+def _comparison_form(text: str) -> str:
+    """Comparison form for the substring check: de-escaped, whitespace-folded, lowered.
+
+    Same convention as ``threshold_classifier._normalise``, which owns it for ADR-032
+    threshold spans; this is the same decision applied to sub-term spans. Tolerating
+    case and whitespace drift is safe -- a model that re-wraps a line still copied it
+    -- while an analyte the line never mentions is absent under any of these forms.
+    """
+    return " ".join(deescape(text).split()).lower()
+
+
+# Words that carry no naming power. A span overlapping a sub-term only on "or" or "of"
+# has not named it. Single characters go too -- the "e" and "g" of "e.g.".
+_FUNCTION_WORDS = frozenset({
+    "or", "of", "and", "the", "a", "an", "in", "with", "to", "for", "by", "on", "at",
+    "as", "is", "are", "be", "not", "no", "any", "other", "due", "from",
+})
+
+
+def _naming_words(text: str) -> set[str]:
+    """The words in ``text`` that could name something."""
+    words = re.split(r"[^0-9a-z]+", _comparison_form(text))
+    return {w for w in words if len(w) > 1 and w not in _FUNCTION_WORDS}
+
+
+def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Optional[str]:
+    """The fragment of the protocol line that names this sub-term, or None.
+
+    The prompt ASKS the model to copy the naming fragment verbatim. This function is
+    what makes the answer worth anything: the model's own account of where a term came
+    from is exactly what cannot be taken on trust here, since ``stated: true`` on an
+    invented analyte is indistinguishable from the truth. Two gates, and a span has to
+    pass both:
+
+    1. **Really present in the line**, under :func:`_comparison_form`. Not a fuzzy
+       match: fuzz is how an invention scores as a reading.
+    2. **Shares a naming word with the sub-term it claims to name.**
+
+    Gate 2 is not belt-and-braces; gate 1 alone is insufficient, and CAROLINA is the
+    case that shows it. Asked for a span off ``acute liver disease or impaired hepatic
+    function``, the model returned ``impaired hepatic function`` for an *ALT* sub-term.
+    That span is a perfectly real substring -- it passes gate 1 -- and it names the
+    umbrella, not the analyte. Since every elaborated member can cite the umbrella it
+    was elaborated FROM, gate 1 alone would let the whole failure through wearing a
+    grounding mark, which is worse than no mark at all. Gate 2 refuses it: the span
+    shares no word with "Alanine aminotransferase (ALT) elevation".
+
+    Gate 2 also subsumes the operand case. ``> 2X ULN`` is a real substring of a line
+    that states a threshold and names nothing; it shares no word with the analyte. (The
+    obvious alternative, :func:`~src.agents.agent1.threshold_classifier.is_headless`,
+    does NOT catch it -- measured: it returns False, because ``ULN`` is not a unit
+    ``normalize_unit`` recognises.)
+
+    Known and deliberate false negative: a line that names the sub-term by a synonym
+    the sub-term does not repeat -- ``SGPT`` decomposed into ``Alanine
+    aminotransferase`` -- shares no word and is marked elaboration though it is really
+    a reading. The asymmetry is the right way round. An under-credited reading loses
+    nothing, because the sub-term is kept either way; an over-credited elaboration is
+    the defect being fixed.
+
+    Never raises, and never drops a sub-term. Failing both gates marks the member as
+    the model's own; refusing it outright would delete a criterion the pipeline exists
+    to recover.
+    """
+    # `sub_term_text` is deliberately not optional. Defaulted to "", gate 2 would refuse
+    # every span, so a caller that forgot the argument would silently mark every member
+    # as elaboration -- and a marking that says "all elaboration" reads exactly like one
+    # that is working.
+    if not isinstance(claimed, str):
+        return None
+    span = claimed.strip()
+    if not span or span.lower() in {"null", "none", "nil"}:
+        return None
+    if not source_text:
+        return None
+    if _comparison_form(span) not in _comparison_form(source_text):
+        return None
+    span_words = _naming_words(span)
+    if not span_words or not (span_words & _naming_words(sub_term_text)):
+        return None
+    return span
 
 
 class CriteriaPlanner:
@@ -149,6 +234,19 @@ class CriteriaPlanner:
                         # grounded in the member's OWN text and which is still parsed
                         # from `value_constraint_text` above, never inherited.
                         source_text=criterion.source_text,
+                        # Which part of that line this member actually reads -- None
+                        # when the line names it nowhere and the member is the model's
+                        # own contribution. Verified here rather than believed: see
+                        # `_grounded_span`.
+                        source_span=_grounded_span(
+                            sc_data.get("source_span"),
+                            criterion.source_text or "",
+                            # Both, because the naming word can live in either: the
+                            # line says "Total Bilirubin" while the sub-term is named
+                            # "Elevated Bilirubin" and its entity text is "Total
+                            # bilirubin elevation".
+                            f"{sc_data.get('entity_text', '')} {sc_data.get('name', '')}",
+                        ),
                         value_constraint=value_constraint,
                     )
                     sub_criteria.append(sc)
@@ -161,9 +259,18 @@ class CriteriaPlanner:
                 # whole exclusion, silently admitting patients the protocol excludes.
                 criterion.group_type = "ALL" if criterion.logic_type == "ABSENCE" else "ANY"
 
+                # Say how many members the protocol line named and how many the model
+                # supplied. The counts are printed rather than derived later because a
+                # run whose every member is elaboration looks, in the store, exactly
+                # like a run that read a line naming all of them -- which is the
+                # confusion `source_span` exists to end. Naming it in the log too costs
+                # one line and makes the elaboration visible while the run is watched,
+                # not only afterwards.
+                named = sum(1 for sc in sub_criteria if sc.source_span)
                 print(f"  ✂ '{criterion.entity_text}' → "
                       f"{len(sub_criteria)} sub-criteria ({criterion.logic_type}"
-                      f"/{criterion.group_type}): "
+                      f"/{criterion.group_type}; {named} named by the line, "
+                      f"{len(sub_criteria) - named} supplied by the model): "
                       f"{[sc.entity_text for sc in sub_criteria[:5]]}...")
             else:
                 print(f"  ✓ '{criterion.entity_text}' → atomic (no decomposition)")

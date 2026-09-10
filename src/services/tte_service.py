@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from src.api.models.tte import (
     CRITERION_PROTOCOL_LINE_KEY,
+    CRITERION_PROTOCOL_SPAN_KEY,
     DEMOGRAPHIC_DOMAINS,
     is_demographic_domain_but_not_a_demographic_rule,
     AnalysisArtifactMeta,
@@ -11060,6 +11061,13 @@ class TTEService:
         # while the IR that built its criteria did. An index into that list would
         # resolve confidently to the wrong line, which is worse than no index.
         protocol_line = (getattr(item, "source_text", None) or "").strip()
+        # Which fragment of that line names THIS row -- empty when the line named it
+        # nowhere, which is how a sub-term the model supplied is told apart from one
+        # the protocol wrote. Only a decomposition member ever carries one, and the
+        # planner has already refused any span that is not really in the line, so no
+        # verification is repeated here: this function copies a checked value, it does
+        # not re-decide it.
+        protocol_span = (getattr(item, "source_span", None) or "").strip()
         # A threshold written once on the group label belongs to the members it can
         # honestly measure -- `resolve_group_member_constraint` is the one place that
         # decides, shared with `agent3/assembler.py`. Passing the label's own
@@ -11103,6 +11111,7 @@ class TTEService:
             "valueConstraint": value_constraint,
             "sourceText": source_text,
             CRITERION_PROTOCOL_LINE_KEY: protocol_line,
+            CRITERION_PROTOCOL_SPAN_KEY: protocol_span,
             "window": window,
             "logicType": item_logic_type,
             "conceptSetId": None,

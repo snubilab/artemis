@@ -41,7 +41,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.api.models.tte import CRITERION_PROTOCOL_LINE_KEY, Criterion
+from src.api.models.tte import (
+    CRITERION_PROTOCOL_LINE_KEY,
+    CRITERION_PROTOCOL_SPAN_KEY,
+    Criterion,
+)
 from src.services.tte_service import TTEService
 
 FIXTURE = Path(__file__).parent / "fixtures" / "carolina_liver_line_ir.json"
@@ -226,6 +230,12 @@ class TestAdditive:
         assert set(row) - {
             "id", "description", "domain", "valueConstraint", "sourceText", "window",
             "logicType", "conceptSetId", "conceptSetName", "groupId", "groupType",
+            # Landed after this test, from the sub-term grounding change: the fragment
+            # of the line that names a decomposition member. This test guards the
+            # protocol-LINE addition specifically, so the span sits on the baseline
+            # side of the subtraction. Its own additive guard lives in
+            # tests/test_planner_source_span_grounding.py.
+            CRITERION_PROTOCOL_SPAN_KEY,
         } == {CRITERION_PROTOCOL_LINE_KEY}
 
     def test_mappable_is_unaffected(self):

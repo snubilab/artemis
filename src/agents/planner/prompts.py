@@ -40,7 +40,9 @@ Rules:
      Using "ANY" for an exclusion lets one absent sub-term pass the whole rule, admitting
      patients the protocol excludes.
 6. Do NOT over-decompose: "hypertension" is already specific, "cardiovascular disease" is not
-7. Think about what conditions a clinician would actually CHECK FOR when screening a patient for this criterion
+7. Think about what conditions a clinician would actually CHECK FOR when screening a patient for this criterion —
+   but the protocol's own line comes first. Where the line names its sub-conditions, those ARE the answer;
+   anything you add beyond them is elaboration and must be recorded as such (see `source_span` in the task prompt).
 """
 
 DECOMPOSITION_PROMPT = """Analyze this clinical criterion and determine if it needs decomposition.
@@ -52,7 +54,56 @@ DECOMPOSITION_PROMPT = """Analyze this clinical criterion and determine if it ne
 - Logic Type: {logic_type}
 - Source Text (verbatim protocol wording, may be blank): {source_text}
 
-**Question**: Is "{entity_text}" a composite/umbrella clinical term that encompasses multiple distinct, individually codeable conditions?
+**Question**: Read the Source Text above. Is "{entity_text}", *as the protocol wrote it there*, a composite/umbrella clinical term that encompasses multiple distinct, individually codeable conditions?
+
+**Ground each sub-term in the line.** Source Text is what the protocol actually wrote;
+`entity_text` is a normalized label and may have lost detail the line still carries.
+Decompose as far as you must to make every sub-term individually codeable. That goal is
+unchanged: a sub-term that is still an umbrella is not finished, and "impaired hepatic
+function" names no analyte, so stopping there leaves a criterion nothing can query.
+What is new is that every sub-term must say where it came from. Apply this to EVERY
+sub-term, not just the first:
+
+- **The line names it** → copy the fragment of Source Text that names it, verbatim,
+  into `source_span`. "ALT or AST > 2X ULN or Total Bilirubin >= 1.5X ULN" names three
+  analytes, so all three carry spans.
+- **The line does not name it** → `source_span` is `null`. That is not a failure. It is
+  the record that YOU supplied this sub-term and the protocol did not, and that record
+  is what makes the elaboration legible instead of indistinguishable from something the
+  protocol wrote down.
+
+Both kinds belong in the same list, and a sub-term the line named may itself need
+breaking down further. Decomposing "impaired hepatic function" into ALT, AST and
+alkaline phosphatase is exactly what this step is FOR — the point is only that those
+three come back with `source_span: null`, while the three from ARISTOTLE's line above
+come back with spans.
+
+**`source_span` labels the decomposition; it never limits it.** Do not prefer a
+sub-term because it can carry a span. A single sub-term that restates the line is not a
+decomposition at all: "moderate or severe liver disease" must come back as cirrhosis,
+severe hepatitis and advanced fibrosis — each with `source_span: null`, which is the
+correct and expected answer — and NOT as one "liver disease" entry quoting the line
+back. If your list has one entry and that entry echoes Source Text, you have not
+decomposed anything; break it down and mark the pieces `null`.
+
+**Never pad an exhaustive list.** When the line enumerates members that are ALREADY
+individually codeable ("ALT or AST or alkaline phosphatase"), that enumeration IS the
+sub-term list — do not add a fourth analyte the line does not mention. This does not
+conflict with the rule above: that one says keep going while a member is still an
+umbrella, this one says stop once the members are codeable. When the line marks its
+list as open ("including", "such as", "e.g."), you may extend it; the members you add
+still get `source_span: null`.
+
+`source_span` obeys the same rule as `value_constraint_text` below: copy only text that
+is actually present in Source Text, character for character. Do not paraphrase, do not
+expand an abbreviation, and do not write the sub-term's clinical name there unless the
+line itself uses that name.
+
+**A blank Source Text does not reduce the decomposition.** It only means there is no
+line to have named anything, so every `source_span` is `null`. Decompose exactly as
+thoroughly as you otherwise would, and assign each sub-term its domain exactly as
+carefully — a missing line is missing provenance, not permission to return the umbrella
+term back to us unchanged.
 
 For EACH sub-term you produce, also determine whether the Source Text above states a
 numeric threshold that belongs to THAT specific sub-term (not the umbrella as a whole).
@@ -72,6 +123,7 @@ threshold for a different sub-term.
       "name": "<descriptive name>",
       "entity_text": "<specific, OMOP-searchable clinical term>",
       "domain": "<Condition|Drug|Measurement|Procedure|Observation|Device>",
+      "source_span": "<verbatim fragment of Source Text naming this sub-term, or null>",
       "value_constraint_text": "<verbatim threshold phrase from Source Text, or null>"
     }}
   ]
