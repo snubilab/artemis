@@ -53,6 +53,7 @@ import pytest
 from src.services.restated_demographics import COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON
 from src.services.restated_distinctness import COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON
 from src.services.value_constraint import STRANDED_GROUP_CONSTRAINT_REASON, is_reference_relative
+from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
 
 #: The real CAROLINA exclusion-44 / EMPA-REG exclusion-56 label threshold: "> 240
 #: mg/dL" written once on a group whose members are HbA1c, fasting and random plasma
@@ -656,6 +657,271 @@ class TestARestatedSkipIsReconciledAgainstItsCollapseRecord:
         )
         rc, out = gate(records)
         assert rc == 0, out
+
+
+#: The ARISTOTLE exclusion-16/-19 pair, in the store shape. Agent 1 emitted the same
+#: uncontrolled-hypertension criterion twice as two groups with identical members, and
+#: the distinctness collapse removed the second copy member-for-member. `#17`/`#18`
+#: emitted; `#20`/`#21` were folded onto them.
+SYSTOLIC_BOUND = {
+    "op": "gt",
+    "value": 180.0,
+    "unitText": "mm Hg",
+    "referenceBound": "absolute",
+    "unitConceptId": 8876,
+}
+DIASTOLIC_BOUND = {
+    "op": "gt",
+    "value": 100.0,
+    "unitText": "mm Hg",
+    "referenceBound": "absolute",
+    "unitConceptId": 8876,
+}
+
+
+def _restated_hypertension(*, swap_survivor_bounds: bool = False) -> dict[str, Any]:
+    """The two-group ARISTOTLE shape, with no inclusion criteria so the census is
+    readable. `swap_survivor_bounds` gives the two SURVIVING rows each other's
+    threshold: the collapse still books #20 onto #17 and #21 onto #18, but neither
+    survivor states the fact its member stated any more."""
+    survivor_17 = DIASTOLIC_BOUND if swap_survivor_bounds else SYSTOLIC_BOUND
+    survivor_18 = SYSTOLIC_BOUND if swap_survivor_bounds else DIASTOLIC_BOUND
+    return _study(
+        inclusion=[],
+        exclusion=[
+            _criterion(
+                16,
+                "Systolic blood pressure",
+                domain="Measurement",
+                is_group_label=True,
+                group_id="g-htn-a",
+            ),
+            _criterion(
+                17,
+                "Systolic blood pressure",
+                domain="Measurement",
+                group_id="g-htn-a",
+                value_constraint=survivor_17,
+            ),
+            _criterion(
+                18,
+                "Diastolic blood pressure",
+                domain="Measurement",
+                group_id="g-htn-a",
+                value_constraint=survivor_18,
+            ),
+            _criterion(
+                19,
+                "Diastolic blood pressure",
+                domain="Measurement",
+                is_group_label=True,
+                group_id="g-htn-b",
+            ),
+            _criterion(
+                20,
+                "Systolic blood pressure",
+                domain="Measurement",
+                group_id="g-htn-b",
+                value_constraint=SYSTOLIC_BOUND,
+            ),
+            _criterion(
+                21,
+                "Diastolic blood pressure",
+                domain="Measurement",
+                group_id="g-htn-b",
+                value_constraint=DIASTOLIC_BOUND,
+            ),
+        ],
+    )
+
+
+#: #17 and #18 minted a concept set; the two group labels and the two collapsed rows
+#: did not. Bare-id keys sit beside the role keys exactly as the producer writes them,
+#: and are ignored on both sides.
+HYPERTENSION_REFS = {"exclusion:17": 2, "17": 2, "exclusion:18": 3, "18": 3}
+
+
+def _restated_hypertension_records(
+    study: dict[str, Any], *, refs: dict[str, int] | None
+) -> dict[str, Any]:
+    """Both labels skipped, both of #19's members collapsed onto #17/#18.
+
+    `refs` is `_criterionConceptSetRefs` -- the only per-criterion record of an
+    emission the file carries, and therefore the only thing that says whether a NAMED
+    survivor emitted. `None` omits the key.
+    """
+    records = _records(
+        skipped=[
+            _skip("16", "Systolic blood pressure", "group-label"),
+            _skip("19", "Diastolic blood pressure", "group-label"),
+            _skip(
+                "20",
+                "Systolic blood pressure",
+                RESTATED_DISTINCTNESS_REASON,
+                is_group_label=False,
+            ),
+            _skip(
+                "21",
+                "Diastolic blood pressure",
+                RESTATED_DISTINCTNESS_REASON,
+                is_group_label=False,
+            ),
+        ],
+        demographic_rules=0,
+        store_criteria=_store_criteria(study),
+        collapses={
+            "_restatedDistinctnessCollapse": [
+                _collapse(survivor_id=17, dropped_ids=[20], reason=RESTATED_DISTINCTNESS_REASON),
+                _collapse(survivor_id=18, dropped_ids=[21], reason=RESTATED_DISTINCTNESS_REASON),
+            ]
+        },
+    )
+    if refs is not None:
+        records[CRITERION_CONCEPT_SET_REFS_KEY] = refs
+    return records
+
+
+class TestAGroupLabelIsCarriedByAnEmittedRestatementSurvivor:
+    """The group-label permit reads "this row lost nothing BECAUSE its members
+    emitted", and a member folded onto a survivor by a restatement collapse IS
+    carried -- the collapse removed a duplicate, not a fact. Nothing followed that
+    chain, so the gate reported ARISTOTLE exclusion #19 as having left the cohort
+    while the store showed both its members reproduced member-for-member in the
+    sibling group `355ec24f`, whose rows #17/#18 both emitted.
+
+    Four conditions gate the chain and every one is required. Two have a real
+    counterexample in the 2026-09-11 corpus and are pinned below against the shape
+    that produced it; the other two do not occur there, so they are pinned against a
+    fixture built to the shape they would take.
+    """
+
+    def test_should_pass_when_every_member_was_collapsed_onto_a_survivor_that_emitted(
+        self, gate
+    ):
+        """The ARISTOTLE case. Both of #19's members were folded onto rows that minted
+        a concept set and state the same fact, so #19 carried nothing away with it."""
+        study = _restated_hypertension()
+        rc, out = gate(_restated_hypertension_records(study, refs=dict(HYPERTENSION_REFS)), study)
+        assert rc == 0, out
+        assert "left the cohort" not in out
+
+    def test_should_fail_when_the_survivor_did_not_itself_emit(self, gate):
+        """The LEADER #27/#28 shape, verbatim: the only member of a group is collapsed
+        onto the group's own skipped LABEL, which mints nothing. The keys match --
+        both rows read 'Malignant neoplasm' with no bound -- so this condition is the
+        only thing between the record and a permit. CAROLINA #15/#16 and #43/#44 are
+        the same shape; dropping this condition silences all six on the real corpus."""
+        study = _study(
+            inclusion=[],
+            exclusion=[
+                _criterion(27, "Malignant neoplasm", is_group_label=True, group_id="g-cancer"),
+                _criterion(28, "Malignant neoplasm", group_id="g-cancer"),
+            ],
+        )
+        records = _records(
+            skipped=[
+                _skip("27", "Malignant neoplasm", "group-label"),
+                _skip(
+                    "28",
+                    "Malignant neoplasm",
+                    RESTATED_DISTINCTNESS_REASON,
+                    domain="Drug",
+                    is_group_label=False,
+                ),
+            ],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+            collapses={
+                "_restatedDistinctnessCollapse": [
+                    _collapse(
+                        survivor_id=27, dropped_ids=[28], reason=RESTATED_DISTINCTNESS_REASON
+                    )
+                ]
+            },
+        )
+        records[CRITERION_CONCEPT_SET_REFS_KEY] = {}
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert "minted no concept set of its own" in out
+        assert "none of its 1 member(s) emitted" in out
+
+    def test_should_fail_when_the_survivor_states_a_different_fact(self, gate):
+        """The negative case the corpus does not contain, built to the shape it would
+        take: the two surviving rows hold each other's threshold, so the collapse
+        books #20 -- systolic, > 180 mm Hg -- onto a row that now excludes on the
+        diastolic bound instead. Both members are booked as collapsed and neither is
+        carried, which is a silent loss of a systolic exclusion. Reusing the
+        producer's own `distinctness_key` is what sees it."""
+        study = _restated_hypertension(swap_survivor_bounds=True)
+        rc, out = gate(_restated_hypertension_records(study, refs=dict(HYPERTENSION_REFS)), study)
+        assert rc == 1, out
+        assert "does not carry the same sourceText and valueConstraint" in out
+        assert "none of its 2 member(s) emitted" in out
+
+    def test_should_fail_when_the_file_records_no_concept_set_links_at_all(self, gate):
+        """Whether the survivor emitted cannot be re-judged without the refs map, and
+        the standard this module holds every permit to is that unre-judgeable fails
+        closed. A missing key must not become a permit."""
+        study = _restated_hypertension()
+        rc, out = gate(_restated_hypertension_records(study, refs=None), study)
+        assert rc == 1, out
+        assert "to show whether that survivor emitted" in out
+
+    def test_should_fail_when_the_member_was_refused_rather_than_collapsed(self, gate):
+        """The EMPA-REG inclusion #21 shape: its members #22/#23 were refused for
+        `missing-entity-text` and are named by no collapse record. Real loss, and the
+        message stays the one the gate already gave it -- no collapse was recorded, so
+        there is nothing to explain and no clause is appended."""
+        study = _study(
+            exclusion=[
+                _criterion(11, "Malignant neoplasm", is_group_label=True, group_id="g-cancer"),
+                _criterion(12, "Breast cancer", group_id="g-cancer"),
+            ]
+        )
+        records = _records(
+            skipped=[_skip("11", "Malignant neoplasm", "group-label")],
+            unmapped=[_unmapped("12", "Breast cancer", reason="No concept mapping found")],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert (
+            "is a group label skipped while none of its 1 member(s) emitted, so the "
+            "whole group left the cohort;" in out
+        )
+
+    def test_should_not_follow_the_chain_for_a_member_also_recorded_as_refused(self):
+        """A refusal is loss whatever a collapse list says about it, so booking a
+        criterion under both outcomes must not let the collapse speak for it. Asserted
+        against the predicate rather than through the gate: double-booking is already
+        a violation one channel over, and a fixture carrying it cannot also balance
+        its census."""
+        from scripts.verify_circe_delivery import _restatement_survivor
+
+        study = _restated_hypertension()
+        index = {
+            ("exclusion", str(c["id"])): c
+            for c in study["eligibility"]["exclusionCriteria"]
+        }
+        expression = _restated_hypertension_records(study, refs=dict(HYPERTENSION_REFS))
+        skipped_by_key = {
+            (r["role"], r["criterionId"]): r for r in expression["_skippedCriteria"]
+        }
+        emitted = {("exclusion", "17"), ("exclusion", "18")}
+        key = ("exclusion", "20")
+
+        survivor, why = _restatement_survivor(
+            key, expression, index, set(), skipped_by_key, emitted
+        )
+        assert survivor == ("exclusion", "17"), why
+
+        survivor, why = _restatement_survivor(
+            key, expression, index, {key}, skipped_by_key, emitted
+        )
+        assert survivor is None
+        assert why is not None
+        assert "ALSO as refused" in why
 
 
 class TestTheReconciliationDoesNotOverFire:

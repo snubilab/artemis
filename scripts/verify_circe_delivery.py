@@ -121,6 +121,7 @@ from src.services.restated_demographics import (  # noqa: E402
 from src.services.restated_distinctness import (  # noqa: E402
     COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
 )
+from src.services.restated_distinctness import distinctness_key  # noqa: E402
 from src.services.value_constraint import (  # noqa: E402
     STRANDED_GROUP_CONSTRAINT_REASON,
     resolve_group_member_constraint,
@@ -345,6 +346,38 @@ def recorded_criterion_keys(records: Any) -> set[tuple[Any, str]]:
         for record in records
         if isinstance(record, dict)
     }
+
+
+def emitted_criterion_keys(expression: dict[str, Any]) -> set[tuple[str, str]] | None:
+    """``{(role, criterionId)}`` for every criterion the file says minted a concept set.
+
+    The role-keyed half of ``_criterionConceptSetRefs``, read the way
+    :func:`criterion_accounting` reads it and defined once so the two callers cannot
+    drift: the accounting anchor that compares this set's size against
+    ``census.mapped``, and the restatement survivor chain in
+    :func:`_restatement_survivor`, which needs to know whether a NAMED criterion
+    emitted rather than how many did.
+
+    Bare-id keys are dropped for the reason stated at
+    :data:`CRITERION_CONCEPT_SET_REFS_KEY`: inclusion and exclusion criteria are
+    numbered in independent sequences, so a bare key cannot tell ``inclusion:42``
+    from ``exclusion:42``.
+
+    :returns: the key set, or ``None`` when the file carries no refs map at all --
+        which is a legitimate state for an artifact exported on the draft path, and
+        is why the value is three-state rather than an empty set. A caller that
+        cannot tell "nothing emitted" from "no record of what emitted" would grant a
+        permit on the strength of a missing key.
+    """
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    if not isinstance(refs, dict):
+        return None
+    keys: set[tuple[str, str]] = set()
+    for key in refs:
+        role, separator, criterion_id = str(key).partition(":")
+        if separator:
+            keys.add((role, criterion_id))
+    return keys
 
 
 def dropped_criteria_violations(records: Any) -> list[str]:
@@ -609,12 +642,140 @@ def unmapped_criteria_violations(
     return violations
 
 
+def _restatement_survivor(
+    key: tuple[str, str],
+    expression: dict[str, Any],
+    index: dict[tuple[str, str], dict[str, Any]],
+    unmapped_keys: set[tuple[str, str]],
+    skipped_by_key: dict[tuple[str, str], dict[str, Any]],
+    emitted: set[tuple[str, str]] | None,
+) -> tuple[tuple[str, str] | None, str | None]:
+    """Follow a criterion's restatement-collapse chain to the row that carries it.
+
+    A criterion dropped by a restatement collapse is NOT lost: the collapse removed a
+    duplicate and a survivor carries the same clinical content. Nothing in this module
+    followed that chain, so ``_group_label_violations`` read such a member as gone and
+    reported a group as having left the cohort when the store shows it did not --
+    ARISTOTLE exclusion #19, whose members #20/#21 were folded member-for-member onto
+    the identical pair #17/#18 in the sibling group ``355ec24f``, both of which
+    emitted.
+
+    Four conditions, ALL required. Each closes a different way a bookkeeping record
+    could stand in for content that is actually gone, and the corpus supplies a real
+    counterexample to the two that matter most:
+
+    1. The criterion's OWN skip record names a restatement-collapse reason, and it is
+       not also recorded as refused. A refusal is loss whatever a collapse list says
+       about it, and a criterion carrying no record at all has nothing to follow --
+       EMPA-REG inclusion #21's members #22/#23 were refused ``missing-entity-text``
+       and appear in no collapse record, which is a real loss and still fails.
+    2. A collapse record in the list that reason belongs to names it among its
+       ``droppedIds`` AND names a ``survivorId``. Re-derived from the record rather
+       than taken from the skip reason, so a producer writing the reason without the
+       record reconciles nothing.
+    3. The survivor ACTUALLY EMITTED -- it carries a per-criterion entry in
+       ``_criterionConceptSetRefs``. This is the condition that does the work, and the
+       corpus proves it: LEADER exclusion #28 and CAROLINA #16/#44 are each folded onto
+       a survivor that is their own GROUP LABEL (#27, #15, #43), which was itself
+       skipped as a container and minted nothing. Bookkeeping says "collapsed"; the
+       cohort has nothing. Without this condition all three would be forgiven.
+    4. The survivor's :func:`~src.services.restated_distinctness.distinctness_key`
+       equals the dropped member's. The producer's own notion of sameness, imported
+       rather than re-expressed, so the gate and the collapse cannot disagree about
+       which two rows are the same row. This is what makes the substitution clinically
+       honest rather than merely booked: without it a diastolic member reconciles
+       against a systolic survivor, since both sit in the same collapse list.
+
+    A missing refs map (``emitted`` is ``None``) reconciles NOTHING. Condition 3 cannot
+    be evaluated, and the standard this module holds every other permit to is that
+    unre-judgeable fails closed.
+
+    ``distinctness_key`` is applied to the demographics collapse as well as the
+    distinctness one. That path justifies itself by a cardinality argument over
+    constraint-free Demographics rows rather than by key equality, so a group member
+    folded by it will generally fail condition 4 and the group-label permit will be
+    refused. That is the intended direction -- no corpus case exercises it, and a
+    permit this gate cannot re-derive is one a human should look at.
+
+    :returns: ``(survivor key, None)`` when the chain holds, else ``(None, why not)``
+        with a phrase naming what broke -- or ``(None, None)`` when the criterion was
+        never claimed to be a restatement at all, which is not a defect and warrants
+        no clause on the report.
+    """
+    record = skipped_by_key.get(key)
+    reason = record.get("reason") if isinstance(record, dict) else None
+    if reason not in COLLAPSE_RECORD_KEYS:
+        return None, None
+    if key in unmapped_keys:
+        return None, (
+            f"#{key[1]} is recorded as {reason} and ALSO as refused, so the collapse "
+            "cannot be what became of it"
+        )
+
+    collapses = expression.get(COLLAPSE_RECORD_KEYS[reason])
+    if not isinstance(collapses, list):
+        return None, (
+            f"#{key[1]} is recorded as {reason} but the file carries no "
+            f"{COLLAPSE_RECORD_KEYS[reason]}"
+        )
+    collapse = next(
+        (
+            candidate
+            for candidate in collapses
+            if isinstance(candidate, dict)
+            and candidate.get("role") == key[0]
+            and key[1] in {str(x) for x in (candidate.get("droppedIds") or [])}
+        ),
+        None,
+    )
+    if collapse is None:
+        return None, f"#{key[1]} is recorded as {reason} but no collapse record names it"
+
+    survivor_id = collapse.get("survivorId")
+    if survivor_id is None:
+        return None, f"#{key[1]}'s collapse record names no survivorId"
+    survivor_key = (key[0], str(survivor_id))
+    survivor = index.get(survivor_key)
+    if survivor is None:
+        return None, (
+            f"#{key[1]} was collapsed onto survivor #{survivor_id}, which the store "
+            "study does not carry"
+        )
+
+    if emitted is None:
+        return None, (
+            f"#{key[1]} was collapsed onto survivor #{survivor_id}, and the file "
+            f"carries no {CRITERION_CONCEPT_SET_REFS_KEY} to show whether that "
+            "survivor emitted"
+        )
+    if survivor_key not in emitted:
+        return None, (
+            f"#{key[1]} was collapsed onto survivor #{survivor_id}, which minted no "
+            f"concept set of its own -- it carries no {CRITERION_CONCEPT_SET_REFS_KEY} "
+            "entry, so the collapse moved this member onto a row that is not in the "
+            "cohort either"
+        )
+
+    member = index.get(key)
+    if member is None or distinctness_key(member) != distinctness_key(survivor):
+        return None, (
+            f"#{key[1]} was collapsed onto survivor #{survivor_id}, which does not "
+            "carry the same sourceText and valueConstraint: the collapse is booked but "
+            "the surviving row states a different fact"
+        )
+    return survivor_key, None
+
+
 def _group_label_violations(
     where: str,
     label: dict[str, Any],
     role: str,
     index: dict[tuple[str, str], dict[str, Any]],
     lost: set[tuple[str, str]],
+    expression: dict[str, Any],
+    unmapped_keys: set[tuple[str, str]],
+    skipped_by_key: dict[tuple[str, str], dict[str, Any]],
+    emitted: set[tuple[str, str]] | None,
 ) -> list[str]:
     """Re-derive a ``group-label`` permit from the store rows of its own group."""
     violations: list[str] = []
@@ -692,11 +853,36 @@ def _group_label_violations(
 
     # A container row loses nothing BECAUSE its members emit. When every member was
     # itself lost the group left the cohort entirely and nothing carries it.
-    if members and all(key in lost for key, _criterion in members):
-        violations.append(
-            f"{where} is a group label skipped while none of its {len(members)} "
-            "member(s) emitted, so the whole group left the cohort"
-        )
+    #
+    # "Lost" is not the same as "absent from the rules", and reading it that way
+    # reported a loss the store shows did not happen. A member dropped by a
+    # restatement collapse is carried by its survivor, so it is lost only when that
+    # chain does not reach a row that actually emitted -- which is what
+    # `_restatement_survivor` decides, on four conditions it re-derives rather than
+    # reads off the record. Measured on the 2026-09-11 delivery: it forgives ARISTOTLE
+    # exclusion #19 and EMPA-REG exclusion #14 / inclusion #11, whose survivors all
+    # minted concept sets, and forgives nothing on LEADER #27 or CAROLINA #15 / #43,
+    # whose "survivor" is the skipped group label itself.
+    if not members or any(key not in lost for key, _criterion in members):
+        return violations
+
+    chains = [
+        _restatement_survivor(key, expression, index, unmapped_keys, skipped_by_key, emitted)
+        for key, _criterion in members
+    ]
+    if any(survivor_key is not None for survivor_key, _why in chains):
+        return violations
+
+    # `why_not` is None for a member that never claimed to be a restatement, and such a
+    # member is plainly gone -- there is nothing to explain. A phrase is appended only
+    # where a collapse WAS recorded and did not reach an emitted row, because that is
+    # the case a reader would otherwise have to reconstruct by hand from two lists.
+    broken = [why for _survivor, why in chains if why is not None]
+    detail = f" ({'; '.join(broken)})" if broken else ""
+    violations.append(
+        f"{where} is a group label skipped while none of its {len(members)} "
+        f"member(s) emitted, so the whole group left the cohort{detail}"
+    )
     return violations
 
 
@@ -796,6 +982,10 @@ def skipped_criteria_violations(
         if isinstance(record, dict)
     }
     lost = unmapped_keys | set(skipped_by_key)
+    # Read once here rather than per group label: the answer is a property of the file,
+    # and `_restatement_survivor` needs it to tell a survivor that emitted from one
+    # that was itself skipped. `None` (no refs map recorded) reconciles nothing.
+    emitted = emitted_criterion_keys(expression)
 
     violations: list[str] = []
     for position, record in enumerate(records):
@@ -816,7 +1006,19 @@ def skipped_criteria_violations(
             continue
 
         if reason == "group-label":
-            violations.extend(_group_label_violations(where, criterion, role, index, lost))
+            violations.extend(
+                _group_label_violations(
+                    where,
+                    criterion,
+                    role,
+                    index,
+                    lost,
+                    expression,
+                    unmapped_keys,
+                    skipped_by_key,
+                    emitted,
+                )
+            )
         elif reason == "demographic-no-rule":
             domain = (criterion.get("domain") or "").strip()
             if domain not in DEMOGRAPHIC_DOMAINS:
@@ -1221,16 +1423,10 @@ def criterion_accounting(
     # carrying it would fail a correct batch. It is therefore run when present and
     # NAMED IN THE SUMMARY when absent -- the same answer this function already gives a
     # pre-accounting artifact, and the reason `link_clause` is printed on passing rows.
-    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
-    if not isinstance(refs, dict):
+    ref_keys = emitted_criterion_keys(expression)
+    if ref_keys is None:
         link_clause = "no concept-set links recorded"
     else:
-        ref_keys: set[tuple[str, str]] = set()
-        for key in refs:
-            role, separator, criterion_id = str(key).partition(":")
-            if separator:
-                ref_keys.add((role, criterion_id))
-
         contradicted = sorted(ref_keys & (unmapped_keys | skipped_keys))
         if contradicted:
             violations.append(
