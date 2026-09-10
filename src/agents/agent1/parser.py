@@ -1460,10 +1460,23 @@ class LogicDecomposer:
             # Collect all rules in this cluster (preserving original order)
             run = [rules[idx] for idx in cluster_buckets[cluster]]
             cluster_label = cluster.replace("_", " ").title()
+            # This label is synthesised here, so it has no JSON of its own to read a
+            # line from -- yet `_criteria_from_ir` emits it as a store row alongside
+            # its members, and a row with no line is the record this whole field
+            # exists to prevent. Where every member came from one line, that line is
+            # the label's line as well. Where they came from different lines there is
+            # no single line between them, and naming one of them would attribute the
+            # others' criteria to it -- so the label claims none, and each member
+            # keeps its own.
+            member_lines = {(rule.source_text or "").strip() for rule in run}
+            merged_source_text = (
+                member_lines.pop() if len(member_lines) == 1 else None
+            ) or None
             merged = Criteria(
                 name=f"{cluster_label} (OR group)",
                 domain=run[0].domain,
                 entity_text=None,
+                source_text=merged_source_text,
                 logic_type=run[0].logic_type,
                 window=run[0].window,
                 value_constraint=None,
@@ -1557,6 +1570,22 @@ class LogicDecomposer:
             name=data.get("name", "Unnamed Rule"),
             domain=data.get("domain", "Condition"),
             entity_text=entity_text,
+            # The protocol's own line, as the extraction prompt requires the model to
+            # copy it ("`source_text` is MANDATORY on every rule and must be the
+            # protocol's own line, verbatim" -- prompts.py). This constructor names
+            # every field it wants, one at a time, so a field it does not name is a
+            # field the IR object never has -- however faithfully the model emitted
+            # it and however completely `data/cache/agent1_ir/` recorded it.
+            #
+            # `source_text` was that field. It has been mandatory in the prompt and
+            # declared on `Criteria` throughout, and every rule of every cached run
+            # carries it (36/36 on NCT01179048's cache), but nothing read it here, so
+            # the IR reaching the store had `source_text=None` on every criterion of
+            # every study and `protocolLine` was stamped empty 578 times out of 578.
+            # Steps 8a/8b assign `rule.source_text` too, but only on a rule whose
+            # threshold they repair, which is why the field was not uniformly absent
+            # and no downstream reader noticed.
+            source_text=data.get("source_text"),
             logic_type=logic_type,
             window=window,
             value_constraint=value_constraint,

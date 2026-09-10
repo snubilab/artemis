@@ -32,7 +32,9 @@ means; it makes the cardinality readable.
 
 from __future__ import annotations
 
+import importlib
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -382,3 +384,199 @@ class TestCollapseBecomesReadableOnTheRealCase:
         for row in bounded:
             line = row[CRITERION_PROTOCOL_LINE_KEY]
             assert "3 x upper limit of normal" in line
+
+
+# ---------------------------------------------------------------------------
+# The hydration seam the live path uses
+# ---------------------------------------------------------------------------
+
+_IR_MODULES = ("src.models.ir", "src.services.value_constraint", "src.agents.agent1.parser")
+
+
+@pytest.fixture
+def parser_module():
+    """Agent 1's parser, rebuilt against the real ``src.models.ir``.
+
+    ``tests/test_parser_paper_status.py`` replaces that module's classes with
+    ``MagicMock`` at import time and only pops the module in its ``teardown_module``,
+    so any file collected alongside it can be holding mocks by the time it runs.
+    ``tests/test_threshold_repair_role_scoping.py`` documents the same hazard and
+    answers it the same way. Rebuilding here keeps this a property of the parser
+    rather than of the collection order, and ``sys.modules`` is put back exactly as
+    it was found so the sibling suite's own teardown still sees what it expects.
+    """
+    saved = {name: sys.modules.get(name) for name in _IR_MODULES}
+    for name in _IR_MODULES:
+        sys.modules.pop(name, None)
+    try:
+        for name in _IR_MODULES:
+            importlib.import_module(name)
+        assert not isinstance(sys.modules["src.models.ir"].Criteria, MagicMock)
+        yield sys.modules["src.agents.agent1.parser"]
+    finally:
+        for name, previous in saved.items():
+            if previous is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = previous
+
+
+def _hydrate(parser, payload: dict):
+    """Agent 1's own JSON, through Agent 1's own hydration, with no LLM.
+
+    ``__new__`` skips ``__init__``, which is the only part that builds an LLM client;
+    ``_build_cohort_definition`` and everything under it are pure functions over the
+    model's JSON. This is the production hydration, not a stand-in for it -- the same
+    call the live path makes for a fresh extraction and for a replay out of
+    ``data/cache/agent1_ir/``.
+    """
+    decomposer = parser.LogicDecomposer.__new__(parser.LogicDecomposer)
+    return parser.LogicDecomposer._build_cohort_definition(decomposer, payload)
+
+
+def _recorded_exclusion_rules(tag: str) -> list[dict]:
+    """One recorded run's rules as the model emitted them -- raw JSON, not IR."""
+    return json.loads(FIXTURE.read_text(encoding="utf-8"))["runs"][tag]["exclusionRules"]
+
+
+class TestTheHydrationSeamTheLivePathUses:
+    """Every test above starts from a ``Criteria`` that already carries the line --
+    ``model_validate`` on a recorded rule, or a ``SimpleNamespace`` with the attribute
+    set. Both pass against a parser that never reads ``source_text`` at all, and that
+    is exactly the parser the live path had.
+
+    Agent 1's output -- fresh from the model, or replayed out of
+    ``data/cache/agent1_ir/`` -- is hydrated field by field by
+    ``LogicDecomposer._build_criteria``, which names each field it wants. A field it
+    does not name is a field the IR object never has, whatever the JSON said. So the
+    store recorded ``protocolLine`` empty on all 578 criteria of the 2026-09-10 run
+    while every test above was green, and only a test that starts from the model's
+    JSON rather than from an IR object can tell the difference.
+    """
+
+    def test_the_models_own_json_reaches_the_ir_carrying_its_line(self, parser_module):
+        cohort = _hydrate(parser_module, {"exclusion_rules": _recorded_exclusion_rules("fanout_3")})
+
+        assert cohort.exclusion_rules, "the recorded run has rules"
+        assert all(rule.source_text for rule in cohort.exclusion_rules)
+
+    def test_the_line_survives_hydration_all_the_way_into_the_store_row(self, parser_module):
+        cohort = _hydrate(parser_module, {"exclusion_rules": _recorded_exclusion_rules("fanout_3")})
+
+        rows = _service()._criteria_from_ir(cohort.exclusion_rules)
+
+        assert rows
+        assert all(row[CRITERION_PROTOCOL_LINE_KEY] for row in rows)
+        assert sum(1 for r in rows if r[CRITERION_PROTOCOL_LINE_KEY] == LIVER_LINE) == 3
+
+    def test_a_group_label_and_its_members_all_carry_the_line(self, parser_module):
+        """Pattern E as the extraction prompt asks for it: one line, one parent rule,
+        ``sub_criteria`` under it. Label and member are built by different constructor
+        calls and emitted as different store rows, so each has to be checked."""
+        cohort = _hydrate(parser_module, {
+            "exclusion_rules": [
+                {
+                    "name": "Active liver disease/impaired hepatic function",
+                    "domain": "Measurement",
+                    "entity_text": "Liver enzymes",
+                    "source_text": LIVER_LINE,
+                    "logic_type": "ABSENCE",
+                    "group_type": "ANY",
+                    "sub_criteria": [
+                        {"name": "ALT elevation", "domain": "Measurement",
+                         "entity_text": "Alanine aminotransferase",
+                         "source_text": LIVER_LINE, "logic_type": "ABSENCE"},
+                        {"name": "AST elevation", "domain": "Measurement",
+                         "entity_text": "Aspartate aminotransferase",
+                         "source_text": LIVER_LINE, "logic_type": "ABSENCE"},
+                    ],
+                }
+            ]
+        })
+
+        rows = _service()._criteria_from_ir(cohort.exclusion_rules)
+
+        assert [bool(r.get("isGroupLabel")) for r in rows] == [True, False, False]
+        assert [r[CRITERION_PROTOCOL_LINE_KEY] for r in rows] == [LIVER_LINE] * 3
+
+    def test_a_merged_or_group_label_carries_the_line_its_members_share(self, parser_module):
+        """``_repair_pattern_e`` synthesises a label from rules the model emitted
+        flat, so that label has no JSON of its own to read a line from -- and it is
+        still emitted as a store row beside its members. Where every member came from
+        one line, that line is the label's line too."""
+        line = "5. History of myocardial infarction, stroke, or peripheral arterial disease"
+        cohort = _hydrate(parser_module, {
+            "inclusion_rules": [
+                {"name": "Prior myocardial infarction", "domain": "Condition",
+                 "entity_text": "Myocardial infarction", "source_text": line},
+                {"name": "Prior stroke", "domain": "Condition",
+                 "entity_text": "Stroke", "source_text": line},
+            ]
+        })
+
+        rows = _service()._criteria_from_ir(cohort.inclusion_rules)
+
+        assert [r for r in rows if r.get("isGroupLabel")], "the flat rules were merged"
+        assert all(r[CRITERION_PROTOCOL_LINE_KEY] == line for r in rows)
+
+    def test_a_merged_label_whose_members_disagree_claims_no_line(self, parser_module):
+        """Two lines merged under one label have no single line between them, and
+        naming one of them would attribute the other's criteria to it."""
+        cohort = _hydrate(parser_module, {
+            "inclusion_rules": [
+                {"name": "Prior myocardial infarction", "domain": "Condition",
+                 "entity_text": "Myocardial infarction", "source_text": "5. Prior MI"},
+                {"name": "Prior stroke", "domain": "Condition",
+                 "entity_text": "Stroke", "source_text": "6. Prior stroke"},
+            ]
+        })
+
+        rows = _service()._criteria_from_ir(cohort.inclusion_rules)
+
+        label = [r for r in rows if r.get("isGroupLabel")]
+        assert label, "the flat rules were merged"
+        assert label[0][CRITERION_PROTOCOL_LINE_KEY] == ""
+        assert {r[CRITERION_PROTOCOL_LINE_KEY] for r in rows if not r.get("isGroupLabel")} == {
+            "5. Prior MI", "6. Prior stroke",
+        }
+
+    def test_json_without_a_line_hydrates_to_no_line_rather_than_failing(self, parser_module):
+        cohort = _hydrate(parser_module, {
+            "inclusion_rules": [{"name": "T2DM", "domain": "Condition",
+                                 "entity_text": "Type 2 diabetes mellitus"}]
+        })
+
+        rows = _service()._criteria_from_ir(cohort.inclusion_rules)
+
+        assert cohort.inclusion_rules[0].source_text is None
+        assert rows[0][CRITERION_PROTOCOL_LINE_KEY] == ""
+
+    def test_hydration_drops_no_field_that_both_the_json_and_the_ir_declare(self, parser_module):
+        """The general form of this defect, gated.
+
+        ``_build_criteria`` names its fields one at a time, so a field added to the
+        extraction prompt and to ``Criteria`` but not to that constructor is dropped
+        in silence: the JSON has it, the cache records it, the IR does not, and
+        nothing raises. ``source_text`` was that field for as long as it existed.
+        """
+        criteria_cls = sys.modules["src.models.ir"].Criteria
+        payload = {
+            "name": "Calcitonin >= 50 ng/L",
+            "domain": "Measurement",
+            "entity_text": "Calcitonin",
+            "source_text": "3. Calcitonin >= 50 ng/L",
+            "logic_type": "PRESENCE",
+            "window": {"start": -180, "end": 0},
+            "value_constraint": {"op": "gte", "value": 50.0, "unit_text": "ng/L"},
+            "group_type": "ALL",
+        }
+        declared = [key for key in payload if key in criteria_cls.model_fields]
+        assert "source_text" in declared, "the field this gate exists for"
+
+        rule = _hydrate(parser_module, {"inclusion_rules": [payload]}).inclusion_rules[0]
+
+        dropped = [key for key in declared if getattr(rule, key, None) in (None, "")]
+        assert not dropped, (
+            f"{dropped} present in Agent 1's JSON and declared on Criteria, but absent "
+            f"from the hydrated IR -- _build_criteria does not name them"
+        )
