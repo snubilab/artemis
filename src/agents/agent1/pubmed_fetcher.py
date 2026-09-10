@@ -450,10 +450,19 @@ def _collapse_hierarchical_groups(text: str) -> str:
                     # the same enumeration resumes after them; otherwise the group
                     # has really ended. ARISTOTLE's list is broken between c) and
                     # d) by a stray "37".
+                    # A blank line sitting immediately after the header is the
+                    # same step, not a different one: no child has been seen yet,
+                    # so there is no style to match and the group used to end with
+                    # zero children. CAROLINA's "any one (or more) of A), B), C)
+                    # or D):" is separated from its A) by exactly one blank line,
+                    # and the surviving header was answered downstream with
+                    # invented placeholder concept sets. When style is still
+                    # unset, any plausible child resumes the group and sets it.
                     k = j + 1
                     while k < len(lines) and (not lines[k].strip() or _noise_line.match(lines[k])):
                         k += 1
-                    if k < len(lines) and style is not None and _child_style(lines[k]) == style:
+                    next_style = _child_style(lines[k]) if k < len(lines) else None
+                    if next_style is not None and (style is None or next_style == style):
                         j = k
                         continue
                     break
