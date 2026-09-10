@@ -139,3 +139,59 @@ def test_should_not_absorb_the_next_criterion_when_the_bullet_is_complete():
     assert lines[0].count(" | ") == 1
     assert "informed consent" not in lines[0]
     assert lines[1] == "Patients must give written informed consent before any trial procedure."
+
+
+def test_should_nest_bullets_under_an_enumerator_child_rather_than_end_the_group():
+    """CAROLINA's inclusion tree is two levels deep and mixes styles flush left.
+
+    The child loop enforced one enumeration per group, so the first "-" bullet
+    under "A)" ended the group at a single child -- below the two-child floor --
+    and no group was emitted at all. The header then survived as a
+    colon-terminated criterion, which extraction answered with invented "CV risk
+    factor A/B/C/D" placeholders that map to nothing and are refused, taking the
+    whole criterion out of the cohort.
+
+    "A)" only announces its bullets, so it is not an alternative in its own
+    right; "C)" is a leaf and is.
+    """
+    text = (
+        "High risk of CV events defined as any one (or more) of A), B), C) or D):\n"
+        "A) Previous Vascular Disease:\n"
+        "- Myocardial infarction (> 6 weeks prior to informed consent)\n"
+        "- Ischemic or hemorrhagic stroke (> 3 months prior to informed consent)\n"
+        "C) Age ≥ 70 years (at Visit 1a)\n"
+    )
+
+    lines = _collapse_hierarchical_groups(text).splitlines()
+
+    assert len(lines) == 1
+    assert lines[0].startswith("[OR-GROUP]")
+    assert lines[0].partition(" with any of: ")[2].split(" | ") == [
+        "Myocardial infarction (> 6 weeks prior to informed consent)",
+        "Ischemic or hemorrhagic stroke (> 3 months prior to informed consent)",
+        "Age ≥ 70 years (at Visit 1a)",
+    ]
+
+
+def test_should_not_flatten_a_sublist_announced_with_an_all_quantifier():
+    """Promoting a conjunction's bullets would silently widen an AND into an OR.
+
+    The sublist stays one alternative carrying its own items. "at least two of"
+    is deliberately not treated as an all-quantifier: such a group is already
+    emitted as an ANY node, so flattening it widens nothing that was not
+    already widened.
+    """
+    text = (
+        "Eligible if any one of A) or B):\n"
+        "A) All of the following liver findings:\n"
+        "- ALT above 3 x ULN\n"
+        "- AST above 3 x ULN\n"
+        "B) Age ≥ 70 years\n"
+    )
+
+    group = _collapse_hierarchical_groups(text).splitlines()[0]
+
+    assert group.partition(" with any of: ")[2].split(" | ") == [
+        "All of the following liver findings: ALT above 3 x ULN; AST above 3 x ULN",
+        "Age ≥ 70 years",
+    ]

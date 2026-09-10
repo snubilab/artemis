@@ -47,8 +47,47 @@ DOCUMENTS = {
 # extraction answered with invented "CV risk factor 1/2" placeholders. Every
 # other inclusion item is still present and in the same order, the exclusion
 # count is untouched, and the other five studies did not move.
+#
+# CAROLINA's inclusion count moved 16 -> 3 on 2026-09-11, and every item that
+# left the list is accounted for below. The umbrella "High risk of CV events
+# defined as any one (or more) of A), B), C) or D):" opens a two-level tree that
+# mixes enumeration styles flush left: A) and B) are colon-announced sublists of
+# "-" bullets, C) is a leaf, D) carries an "at least two of" quantifier this
+# codebase already widens to ANY. The child loop enforced ONE style per group,
+# so the first bullet under A) ended the group at a single child -- below the
+# two-child floor -- and no group was emitted at all; the header survived as a
+# colon-terminated criterion that extraction answered with invented "CV risk
+# factor A/B/C/D" placeholders, which map to nothing and are refused. A bullet
+# following an enumerator child is now that child's sub-item, and the tree
+# flattens to one ANY node of 14 alternatives: 6 from A), 3 from B), C) itself,
+# 4 from D). The 15 items that left, one by one:
+#   - the umbrella header became the group's header text, trailing colon stripped;
+#   - "Previous Vascular Disease:" and "Evidence of vascular related end-organ
+#     damage:" are dropped -- they announce their bullets, they are not criteria;
+#   - their 6 and 3 bullets became alternatives 1-6 and 7-9;
+#   - "Peripheral occlusive arterial disease (...bilateral ankle:" and its
+#     orphaned tail "arm blood pressure ratio < 0.90)" are one alternative
+#     again (6): the group now absorbs the wrap before _parse_criteria_items
+#     can split it at the line break;
+#   - "Age >= 70 years (at Visit 1a) ! 2016 Boehringer Ingelheim ..." split in
+#     two, the criterion becoming alternative 10 and the page footer standing
+#     alone as its own (still noise) item;
+#   - the separate "[OR-GROUP] D) At least two of the following CV risk factors"
+#     is absorbed into the outer group, its four bullets becoming alternatives
+#     11-14. Its header TEXT is the one thing this change loses: a nested
+#     announcer is dropped like any other, so "at least two" is no longer
+#     carried in a string. The widening is unchanged -- that group was already
+#     emitted as an ANY node.
+# TROY's gold standard answers this same line with 13 factors. 14 is
+# corroboration, not a target. The exclusion count is untouched and the other
+# five studies did not move.
+#
+# One consequence these numbers do not show: a 3-item inclusion list crosses the
+# `len(regex_items) < 5` gate in _parse_criteria_items, so CAROLINA's inclusion
+# span now invokes the LLM validation pass. The stub above keeps that
+# deterministic here; in production it is a real call.
 BASELINE = {
-    "CAROLINA": (16, 29, 1),
+    "CAROLINA": (3, 29, 1),
     "ARISTOTLE": (8, 21, 1),
     "CARMELINA": (3, 16, 1),
     "EMPA-REG": (0, 15, 1),

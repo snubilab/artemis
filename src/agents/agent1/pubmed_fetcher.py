@@ -414,6 +414,12 @@ def _collapse_hierarchical_groups(text: str) -> str:
     )
     # A page number stranded between children by pdftotext.
     _noise_line = re.compile(r"^\s*\d{1,4}\s*$")
+    # An enumerator child announcing its bullets with an all-quantifier is a
+    # conjunction; promoting its bullets into the outer group would silently
+    # widen an AND into an OR. "at least N of" is deliberately NOT here: the
+    # group is already emitted as an ANY node (see the note above
+    # _header_trigger), so flattening it widens nothing that was not widened.
+    _all_quantifier = re.compile(r"\b(?:all|each|both)\s+of\b", re.IGNORECASE)
 
     def _child_style(candidate: str) -> Optional[str]:
         """Which enumeration a line uses, or None if it is not a list item."""
@@ -437,8 +443,13 @@ def _collapse_hierarchical_groups(text: str) -> str:
         # Check if this line is a potential parent header
         if stripped and _header_trigger.search(stripped):
             children: List[str] = []
-            # The children share one enumeration; a different one ends the group.
-            # That is what separates ARISTOTLE's a)-e) from the 4) after them.
+            # Bullets under an enumerator child belong to THAT child, not to the
+            # outer group. subs[n] holds them for children[n], parallel by
+            # construction.
+            subs: List[List[str]] = []
+            # The children share one enumeration; a different one ends the group,
+            # with the one exception handled below. That is what separates
+            # ARISTOTLE's a)-e) from the 4) after them.
             style: Optional[str] = None
             j = i + 1
             while j < len(lines):
@@ -469,11 +480,14 @@ def _collapse_hierarchical_groups(text: str) -> str:
 
                 this_style = _child_style(child)
                 if this_style is None:
+                    # The most recent accumulated text, which is the last
+                    # sub-item when the current child has opened a sublist.
+                    tail = subs[-1] if subs and subs[-1] else children
                     # A wrapped child, e.g. c) running onto a second line. Only
                     # enumerated lists wrap this way; for indented bullets the
                     # indentation is the signal and its absence ends the group.
-                    if children and style in ("alpha", "roman", "digit"):
-                        children[-1] = children[-1] + " " + child_stripped
+                    if tail and style in ("alpha", "roman", "digit"):
+                        tail[-1] = tail[-1] + " " + child_stripped
                         j += 1
                         continue
                     # A bullet wraps too, once pdftotext has flattened the
@@ -487,8 +501,8 @@ def _collapse_hierarchical_groups(text: str) -> str:
                     # An unclosed parenthesis is the deterministic part of that
                     # shape: it says the child cannot have ended here. A blank
                     # line still ends the group, which bounds the absorption.
-                    if children and style == "bullet" and _has_unclosed_paren(children[-1]):
-                        children[-1] = children[-1] + " " + child_stripped
+                    if tail and style == "bullet" and _has_unclosed_paren(tail[-1]):
+                        tail[-1] = tail[-1] + " " + child_stripped
                         j += 1
                         continue
                     break
@@ -496,20 +510,60 @@ def _collapse_hierarchical_groups(text: str) -> str:
                 if style is None:
                     style = this_style
                 elif this_style != style:
-                    break
+                    # A bullet following an enumerator child is that child's
+                    # SUB-ITEM, not a rival enumeration ending the group.
+                    # CAROLINA's inclusion tree is two levels deep and mixes the
+                    # styles flush left: "A) Previous Vascular Disease:" then six
+                    # "-" bullets. Breaking here left the group with one child,
+                    # below the two-child floor, so no group was emitted at all
+                    # and the header survived as a colon-terminated criterion
+                    # that extraction answered with invented "CV risk factor
+                    # A/B/C/D" placeholders, which map to nothing and are
+                    # refused. The reverse order still ends the group: only
+                    # enumerator-then-bullet nests.
+                    if not (children and this_style == "bullet"
+                            and style in ("alpha", "roman", "digit")):
+                        break
+                    sub_text = _bullet_start.sub("", child).strip()
+                    if sub_text:
+                        subs[-1].append(sub_text)
+                    j += 1
+                    continue
 
                 child_text = (_bullet_start.sub("", child) if style == "bullet"
                               else _enum_marker.sub("", child)).strip()
                 if child_text:
                     children.append(child_text)
+                    subs.append([])
                 j += 1
 
-            if len(children) >= 2:
-                # Build [OR-GROUP] string from header + children
+            # Every level of CAROLINA's tree is ANY -- A) and B) are
+            # colon-announced sublists, C) is a leaf, D) carries an N-of-M
+            # quantifier already widened to ANY -- so the tree flattens to one
+            # ANY over its leaf items. A child that only announced its bullets
+            # is dropped: it is a header, not a criterion, and keeping it would
+            # offer "Previous Vascular Disease" as an alternative in its own
+            # right. A leaf child keeps its place.
+            alternatives: List[str] = []
+            for child_text, sub_items in zip(children, subs):
+                if not sub_items:
+                    alternatives.append(child_text)
+                elif _all_quantifier.search(child_text):
+                    # Conjunction: one alternative carrying its own bullets,
+                    # never several alternatives.
+                    head = re.sub(r"[\s:]+$", "", child_text)
+                    alternatives.append(f"{head}: " + "; ".join(sub_items))
+                else:
+                    if not child_text.rstrip().endswith(":"):
+                        alternatives.append(child_text)
+                    alternatives.extend(sub_items)
+
+            if len(alternatives) >= 2:
+                # Build [OR-GROUP] string from header + alternatives
                 # Strip trailing colon/whitespace from header
                 header_text = re.sub(r"[\s:]+$", "", stripped)
                 or_group = (f"{OR_GROUP_PREFIX}{header_text}"
-                            f"{OR_GROUP_JOIN}{OR_GROUP_SEP.join(children)}")
+                            f"{OR_GROUP_JOIN}{OR_GROUP_SEP.join(alternatives)}")
                 result_lines.append(or_group)
                 i = j  # skip consumed child lines
                 continue
