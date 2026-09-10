@@ -59,6 +59,22 @@ REAL_SEEDS = [
 #: Real seeds from the same batch, each shaped like a placeholder and each naming
 #: something a vocabulary holds. None of these may be permitted.
 REDUCIBLE_SEEDS_FROM_THE_BATCH = [
+    # A cardinality phrase, not an ordinal placeholder: it counts an unnamed set rather
+    # than indexing into one, so the ordinal rule never reaches it and no rule here
+    # claims it. Whether "specified" makes it irreducible is a separate judgement on a
+    # separate word list, and this row pins that the ordinal rule did not silently make
+    # it. Its six siblings ("CV risk factor A" ...) ARE permitted below.
+    "Two or more specified CV risk factors",
+    # The `+`-joined names a group label carries, transcribed from
+    # `carolina_treatment.circe.json`. Every component is itself a placeholder, and the
+    # rule still declines them: a prefix is one measured word, never a whole clause, so
+    # a real entity can never ride in front of an ordinal ("Prior stroke + Risk factor
+    # 1"). A group label is never handed to the mapper, so declining costs nothing.
+    "CV risk factor 1 + CV risk factor 2",
+    "CV risk factor A + CV risk factor B + CV risk factor C + CV risk factor D",
+    "Sub condition 1 + Sub condition 2",
+    "CVD criterion 1 + Age >= 50",
+    "Prior CVD criteria met + Age >= 50",
     "Platelet count",
     "Contraindication against clopidogrel use",
     "Contraindication to clopidogrel or other reason",
@@ -108,12 +124,45 @@ REDUCIBLE_SEEDS_OUTSIDE_THE_BATCH = [
     "Cesarean section",
     "Appendix",
     "Vitamin supplement",
+    # A single trailing letter is an ordinal ONLY after a stem on the list. Each of
+    # these ends in one and names something the vocabulary holds: two are in the
+    # delivered batch ("Troponin I", "Troponin T"), and `Hepatitis B` and `Vitamin D`
+    # are the shape the letter rule would swallow if the stem requirement were dropped.
+    "Troponin T",
+    "Hepatitis B",
+    "Vitamin D",
+    "Child-Pugh class C",
+    # Clinical terms with no placeholder scaffolding at all -- the floor the rule is
+    # measured against.
+    "Type 2 diabetes",
+    "Hypertension",
+    "Obesity",
 ]
 
 #: Placeholder shapes beyond the four in `REAL_SEEDS`, one per rule.
 PLACEHOLDER_SHAPES = [
     "Risk factor 2",
     "Exclusion criterion 3",
+    # The nine the ordinal rule missed until 2026-09-10, every one transcribed from
+    # `output/site_gap/2026-09-10/store_grounded/studies.json`. Two things defeated the
+    # rule and both are visible here: a one-word modifier in front of the stem
+    # ("CV risk factor 1" against the bare "Risk factor 1" it already caught), and a
+    # LETTER where it only read arabic digits. CAROLINA writes seven distinct protocol
+    # risk factors this way; the concept sets they minted collapse to two distinct
+    # 8-concept sets of "at increased risk of ..." Observation concepts, which is the
+    # vocabulary answering a question that was never asked of it.
+    "CV risk factor 1",
+    "CV risk factor 2",
+    "CV risk factor A",
+    "CV risk factor B",
+    "CV risk factor C",
+    "CV risk factor D",
+    "CVD criterion 1",
+    "Sub condition 1",
+    "Sub condition 2",
+    # A letter ordinal after a bare stem, and the lowercase the store also writes.
+    "Risk factor A",
+    "exclusion criteria b",
     "Table 3",
     "Appendix B criteria",
     "Supplementary Table 1",

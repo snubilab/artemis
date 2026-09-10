@@ -366,11 +366,11 @@ def _stranded_group_constraint_labels(
 
 
 #: Stems that name nothing on their own, so a trailing ordinal after one is an index
-#: into the protocol rather than part of a name. Only ARABIC digits count as ordinals
-#: here: "Factor V" and "NYHA class IV" are entities a vocabulary holds, so a roman
-#: numeral is never read as an index. `factor` alone is out of the set for the same
-#: reason -- "Factor 8" is haemophilia B's clotting factor, "Risk factor 1" is a row
-#: number.
+#: into the protocol rather than part of a name. A single ARABIC digit or a single
+#: LETTER counts as an ordinal after one of these (see :data:`_PLACEHOLDER_ORDINAL`);
+#: multi-letter roman numerals do not, because "NYHA class IV" is an entity a vocabulary
+#: holds and no stem here is worth reaching for one. `factor` alone is out of the set --
+#: "Factor 8" is haemophilia B's clotting factor, "Risk factor 1" is a row number.
 _PLACEHOLDER_ORDINAL_STEMS = frozenset(
     {
         "risk factor",
@@ -387,6 +387,33 @@ _PLACEHOLDER_ORDINAL_STEMS = frozenset(
         "items",
     }
 )
+
+#: What a protocol writes between an ordinal and the stem it indexes: one word that
+#: modifies the SCAFFOLDING rather than naming an entity. CAROLINA writes "CV risk
+#: factor A", not "Risk factor A", and until 2026-09-10 that two-word prefix was enough
+#: to defeat the whole rule.
+#:
+#: A closed measured list, and exactly ONE word wide, for the same reason
+#: :data:`_UNMAPPABLE_DRUG_CATEGORIES` matches the whole residue: the prefix is the only
+#: place a real entity could ride in front of an ordinal, and an unbounded prefix would
+#: read "Prior stroke + Risk factor 1" as naming nothing. These three are what the
+#: corpus writes -- `cv` and `cvd` on CAROLINA's seven risk-factor rows and its
+#: "CVD criterion 1", `sub` on "Sub condition 1" and "Sub condition 2". Every wider
+#: word would be imagined rather than measured.
+#:
+#: Note what a prefix does NOT do: it never makes the residue mappable. "CV risk factor
+#: A" is the risk factor labelled A in the protocol's CV list, and the letter is the
+#: whole of its identity -- which is why the mapper answered it with eight "at increased
+#: risk of ..." Observation concepts, and answered "CV risk factor B", "C" and "D" with
+#: the same eight.
+_PLACEHOLDER_ORDINAL_PREFIXES = frozenset({"cv", "cvd", "sub"})
+
+#: The index itself: one arabic number, or ONE letter. The single-letter form is what
+#: CAROLINA's "CV risk factor A/B/C/D" needs and it is deliberately not the roman
+#: numerals :data:`_POINTER_IDENTIFIER` accepts -- a document pointer is anchored by
+#: "Table"/"Appendix" and can afford them, while this rule is anchored only by a stem
+#: and "Troponin I" would be one word away if the stem list ever grew.
+_PLACEHOLDER_ORDINAL = re.compile(r"^(?:\d+|[a-z])$")
 
 #: Words that point INTO the source document. Each must be FOLLOWED by an identifier to
 #: count, which is the whole of what keeps the anatomical "Appendix" and "Cesarean
@@ -488,7 +515,9 @@ def _seed_is_unmappable_placeholder(seed: str) -> bool:
     ``False``. Four rules, each answering "what is left once the placeholder scaffolding
     is removed?" with "nothing":
 
-    * a trailing arabic ordinal after a stem that names nothing -- "Risk factor 1";
+    * a trailing ordinal -- an arabic number or a single letter -- after a stem that
+      names nothing, optionally carrying one modifier word in front of it: "Risk factor
+      1", "CV risk factor A";
     * a pointer into the source document -- "Table II criteria", "Appendix B criteria";
     * a tally of protocol rows -- "Preexisting Conditions Count";
     * a bare relational qualifier -- "Contraindication", alone;
@@ -506,6 +535,26 @@ def _seed_is_unmappable_placeholder(seed: str) -> bool:
     ``output/site_gap/2026-09-10/store/studies.json``: the rule newly permits 6 of them,
     every one the bare category, and none of the 22 further strings that carry an
     investigational- or study-drug phrase beside a real entity.
+
+    Re-verified again 2026-09-10 when the ordinal rule gained its one-word prefix and
+    its letter index, over the 2,091 distinct strings of the same two keys in
+    ``tmp/tte_cold6_20260908/studies.json`` and
+    ``output/site_gap/2026-09-10/store_grounded/studies.json``: 13 permitted before, 22
+    after, and the 9 it newly permits are exactly CAROLINA's ``CV risk factor``
+    ``1``/``2``/``A``/``B``/``C``/``D``, its ``CVD criterion 1``, and
+    ``Sub condition 1``/``2``. Nothing lost the classification, and the near misses the
+    prefix and the letter put in reach all stayed refused -- ``Troponin I``,
+    ``Troponin T``, ``Two or more specified CV risk factors``, and the ``+``-joined
+    group-label names (``CV risk factor A + ... + D``).
+
+    What this rule does NOT reach is worth stating where it will be read. The classifier
+    is consulted at two raise sites only -- the RAG fallback that found no concepts, and
+    :func:`_refuse_domain_contradiction_for_seed`. All six CAROLINA ``CV risk factor``
+    rows took NEITHER on 2026-09-10: the mapper answered each with eight ``Observation``
+    "at increased risk of ..." concepts, the emitted criterion is an ``Observation``, so
+    no domain contradicts and all six were counted in ``census.mapped`` (92 of 128).
+    Six names, two distinct concept sets. Classifying the seed correctly is a
+    precondition for refusing it and is not by itself the refusal.
     """
     text = re.sub(r"\s+", " ", (seed or "").strip()).strip(" .;:,")
     if not text:
@@ -522,8 +571,20 @@ def _seed_is_unmappable_placeholder(seed: str) -> bool:
         ):
             return True
 
-    if words[-1].isdigit() and " ".join(words[:-1]) in _PLACEHOLDER_ORDINAL_STEMS:
-        return True
+    # The stem may carry ONE modifier word in front of it ("CV risk factor A"), drawn
+    # from a closed list, and nothing wider. An unbounded prefix would read the group
+    # label "CV risk factor A + CV risk factor B + ... + D" -- and, worse, any
+    # "<real entity> + Risk factor 1" -- as naming nothing.
+    if _PLACEHOLDER_ORDINAL.match(words[-1]):
+        stem = words[:-1]
+        if " ".join(stem) in _PLACEHOLDER_ORDINAL_STEMS:
+            return True
+        if (
+            len(stem) >= 2
+            and stem[0] in _PLACEHOLDER_ORDINAL_PREFIXES
+            and " ".join(stem[1:]) in _PLACEHOLDER_ORDINAL_STEMS
+        ):
+            return True
 
     if len(words) >= 2 and words[-1] == "count" and words[-2] in _TALLIED_PLACEHOLDER_NOUNS:
         return True
