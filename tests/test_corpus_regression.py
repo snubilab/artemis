@@ -36,8 +36,19 @@ DOCUMENTS = {
 # point, dropping 5 real exclusion criteria written after it. Fixed by scoping
 # the terminator to an actual heading phrase (follow-up period/schedule/visit/
 # procedures/assessment) -- see src/agents/agent1/pubmed_fetcher.py.
+#
+# CAROLINA's inclusion count moved 20 -> 16 on 2026-09-10, and the four items
+# are accounted for exactly: "D) At least two of the following CV risk factors:"
+# now opens an OR group, so that header plus its four bullets (type 2 diabetes
+# duration, systolic blood pressure, cigarette smoking, LDL cholesterol) became
+# one [OR-GROUP] item instead of five. Before the fix the header matched no
+# arm of the trigger -- the numeral was "two", not "one" -- and survived as a
+# colon-terminated criterion promising items it did not contain, which
+# extraction answered with invented "CV risk factor 1/2" placeholders. Every
+# other inclusion item is still present and in the same order, the exclusion
+# count is untouched, and the other five studies did not move.
 BASELINE = {
-    "CAROLINA": (20, 29, 1),
+    "CAROLINA": (16, 29, 1),
     "ARISTOTLE": (8, 21, 1),
     "CARMELINA": (3, 16, 1),
     "EMPA-REG": (0, 15, 1),

@@ -320,6 +320,26 @@ def extract_eligibility_from_text(text: str) -> Dict[str, List[str]]:
     return result
 
 
+def _has_unclosed_paren(text: str) -> bool:
+    """Whether ``text`` leaves a parenthesis open, so a following line continues it.
+
+    Counting rather than matching is deliberate: pdftotext drops the occasional
+    closing bracket, and a count that never goes negative reads a stray ")" as
+    balanced instead of opening an absorption that would run to the next blank
+    line.
+
+    :param text: one accumulated child criterion.
+    :returns: True when an unmatched "(" is still open at the end.
+    """
+    depth = 0
+    for char in text:
+        if char == "(":
+            depth += 1
+        elif char == ")" and depth:
+            depth -= 1
+    return depth > 0
+
+
 def _collapse_hierarchical_groups(text: str) -> str:
     """
     Pre-process text to collapse "parent header + indented bullets" into
@@ -360,10 +380,28 @@ def _collapse_hierarchical_groups(text: str) -> str:
     # one of") still collapse; they only refuse relative pronouns and
     # possessives, which is what "at least one of which should be performed" and
     # "one or more of its affiliated companies" are.
+    # The cardinality is not always one. CAROLINA announces its risk-factor list
+    # as "At least two of the following CV risk factors:" and its umbrella as
+    # "any one (or more) of A), B), C) or D):" -- a numeral the arm did not
+    # accept, and a parenthetical wedged between "one" and "of". Neither fired,
+    # so both headers survived as colon-terminated criteria promising items they
+    # did not contain, and extraction answered them with invented placeholders
+    # ("CV risk factor 1", "CV risk factor A"). The numeral is widened and the
+    # parenthetical tolerated; `\s+of\b` still has to follow, which is what keeps
+    # "at least two major coronary arteries" from opening a group.
+    #
+    # A group carrying a cardinality above one is still emitted as an ANY node,
+    # so "at least two of" reads downstream as "at least one of". That is a
+    # widening, and it is the honest one to take: the header text is preserved
+    # verbatim in the collapsed string, whereas the alternative measured here is
+    # placeholder concept sets that are refused and take the whole group out of
+    # the cohort. Narrowing an ANY node to an N-of-M threshold is a Circe-side
+    # change and is not attempted here.
     _header_trigger = re.compile(
-        r"(?:[≥>]=?\s*1|\bat\s+least\s+(?:one|1)|\bone\s+or\s+more|\beither)"
+        r"(?:[≥>]=?\s*1|\bat\s+least\s+(?:one|two|three|four|five|1|2|3|4|5)"
+        r"|\bone\s+or\s+more|\beither)"
         r"\s+of\b(?!\s+(?:which|whom|its|their|his|her)\b)"
-        r"|\bany\s+(?:one\s+)?of"
+        r"|\bany\s+(?:one\s+)?(?:\([^)\n]{0,20}\)\s*)?of"
         r"(?:\s+(?:the\s+|these\s+|those\s+)?(?:following|below|listed)\b"
         r"|[^:\n]{0,40}:\s*$)",
         re.IGNORECASE,
@@ -426,6 +464,21 @@ def _collapse_hierarchical_groups(text: str) -> str:
                     # enumerated lists wrap this way; for indented bullets the
                     # indentation is the signal and its absence ends the group.
                     if children and style in ("alpha", "roman", "digit"):
+                        children[-1] = children[-1] + " " + child_stripped
+                        j += 1
+                        continue
+                    # A bullet wraps too, once pdftotext has flattened the
+                    # hanging indent that used to mark the continuation.
+                    # CAROLINA's "- Current* systolic blood pressure (SBP) >
+                    # 140 mmHg (or on at least" ends mid-parenthesis and its
+                    # remainder starts flush left, so indentation carries no
+                    # signal at all and the group ended two children early --
+                    # emitting a truncated alternative and stranding cigarette
+                    # smoking and LDL cholesterol as separate criteria.
+                    # An unclosed parenthesis is the deterministic part of that
+                    # shape: it says the child cannot have ended here. A blank
+                    # line still ends the group, which bounds the absorption.
+                    if children and style == "bullet" and _has_unclosed_paren(children[-1]):
                         children[-1] = children[-1] + " " + child_stripped
                         j += 1
                         continue

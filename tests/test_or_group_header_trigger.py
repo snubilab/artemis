@@ -31,6 +31,11 @@ MUST_FIRE = [
     "any one of the following:",
     "Clinical manifestations of heart failure including at least one of",
     "meets any of these criteria:",
+    # The cardinality is not always one, and the numeral is not always adjacent
+    # to "of". Both are CAROLINA's, verbatim from the protocol supplement.
+    "D) At least two of the following CV risk factors:",
+    "At least three of the following:",
+    "High risk of CV events defined as any one (or more) of A), B), C) or D):",
 ]
 
 MUST_NOT_FIRE = [
@@ -46,6 +51,11 @@ MUST_NOT_FIRE = [
     "any of these products are part of your normal diet.",
     "criteria of acute MI (NSTEMI or STEMI). If neither of these",
     "randomization to first occurrence of any of the components of each secondary efficacy",
+    # Widening the numeral must not turn every counted noun into a list header.
+    # "of" still has to follow the numeral, and this line is CAROLINA's too --
+    # it sits inside inclusion criterion A) as ordinary prose.
+    "Documented coronary artery disease (>=50% in at least two major coronary",
+    "in two of three unrelated specimens in previous 12 months prior Visit 1a",
 ]
 
 
@@ -79,3 +89,53 @@ def test_should_not_swallow_independent_exclusions_after_hypersensitivity_line()
 
     assert "[OR-GROUP]" not in out
     assert len(out.splitlines()) == 3
+
+
+def test_should_keep_a_wrapped_bullet_whole_when_pdftotext_drops_the_indent():
+    """CAROLINA's four CV risk factors, verbatim, with the real line breaks.
+
+    pdftotext flattens the hanging indent, so the remainder of a wrapped bullet
+    starts flush left and looks like the end of the list. The group used to stop
+    at the second child, emitting "...(or on at least" as a truncated
+    alternative and leaving cigarette smoking and LDL cholesterol behind as
+    separate criteria.
+    """
+    text = (
+        "D) At least two of the following CV risk factors:\n"
+        "- Type 2 diabetes mellitus duration > 10 years at Visit 1a.\n"
+        "- Current* systolic blood pressure (SBP) > 140 mmHg (or on at least\n"
+        "one blood pressure lowering treatment at Visit 1a)\n"
+        "- Current daily cigarette smoking\n"
+        "- Current* LDL cholesterol ≥ 135 mg/dL (3.5 mmol/l) (or specific current\n"
+        "treatment for this lipid abnormality at Visit 1a)\n"
+    )
+
+    group = _collapse_hierarchical_groups(text).splitlines()[0]
+
+    assert group.startswith("[OR-GROUP]")
+    alternatives = group.partition(" with any of: ")[2].split(" | ")
+    assert len(alternatives) == 4
+    assert alternatives[1].endswith("treatment at Visit 1a)")
+    assert alternatives[2] == "Current daily cigarette smoking"
+    assert alternatives[3].endswith("lipid abnormality at Visit 1a)")
+
+
+def test_should_not_absorb_the_next_criterion_when_the_bullet_is_complete():
+    """Absorption is bounded by the parenthesis, not by appetite.
+
+    A balanced child ends where it ends; the line after it is a criterion in its
+    own right, not a continuation.
+    """
+    text = (
+        "At least two of the following:\n"
+        "- Current daily cigarette smoking\n"
+        "- Body mass index above 30 kg/m2\n"
+        "Patients must give written informed consent before any trial procedure.\n"
+    )
+
+    lines = _collapse_hierarchical_groups(text).splitlines()
+
+    assert lines[0].startswith("[OR-GROUP]")
+    assert lines[0].count(" | ") == 1
+    assert "informed consent" not in lines[0]
+    assert lines[1] == "Patients must give written informed consent before any trial procedure."
