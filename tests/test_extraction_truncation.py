@@ -19,6 +19,7 @@ mechanism rather than a hand-placed field.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, List, Optional
 from unittest.mock import Mock
 
@@ -31,7 +32,13 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from src.agents.agent1.nct_fetcher import TrialData
 from src.agents.agent1.parser import LogicDecomposer
 from src.utils.exceptions import LLMTruncationError
-from src.utils.llm import finish_reason, raise_if_truncated, token_usage
+from src.utils.llm import (
+    DEGENERATE_TAIL_CHARS,
+    degenerate_tail,
+    finish_reason,
+    raise_if_truncated,
+    token_usage,
+)
 
 # A prefix of a real answer, ending inside a string -- the shape CAROLINA produced.
 TRUNCATED_BODY = '{"target": {"inclusion_rules": [{"entity_text": "Type 2 diabetes'
@@ -78,6 +85,17 @@ class _Server(BaseChatModel):
                 "model_name": "google/gemma-4-E4B-it",
             },
         )
+
+
+@pytest.fixture(autouse=True)
+def _evidence_dir(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    """Every raise in this module writes the cut-off body; keep it out of data/.
+
+    Returns the directory so a test can read back what was written.
+    """
+    directory = tmp_path / "truncations"
+    monkeypatch.setenv("ARTEMIS_TRUNCATION_DIR", str(directory))
+    return directory
 
 
 def _decomposer(monkeypatch: pytest.MonkeyPatch, **server: Any) -> LogicDecomposer:
@@ -174,3 +192,113 @@ def test_should_treat_unreadable_response_metadata_as_no_information() -> None:
     assert finish_reason(Mock()) is None
     assert token_usage(Mock()) == {}
     raise_if_truncated(Mock(), what="unit test")
+
+
+def test_should_write_the_cut_off_body_verbatim_when_the_completion_is_truncated(
+    monkeypatch: pytest.MonkeyPatch, _evidence_dir
+) -> None:
+    """The counts say how much; only the body says what, and it was being discarded.
+
+    A completion that fills a 32k ceiling and then fills a 64k one is not short of
+    room -- it is not terminating -- and the two are indistinguishable from
+    prompt/completion counts alone.
+    """
+    with pytest.raises(LLMTruncationError) as excinfo:
+        _decomposer(monkeypatch).parse("apixaban vs warfarin")
+
+    saved = sorted(_evidence_dir.glob("*.txt"))
+    assert len(saved) == 1
+    assert saved[0].read_text() == TRUNCATED_BODY
+    assert excinfo.value.body_path == str(saved[0])
+    assert str(saved[0]) in str(excinfo.value)
+
+
+def test_should_record_the_token_counts_beside_the_saved_body(
+    monkeypatch: pytest.MonkeyPatch, _evidence_dir
+) -> None:
+    """The body is kept header-free so it stays a genuine prefix; counts go alongside."""
+    import json
+
+    with pytest.raises(LLMTruncationError):
+        _decomposer(monkeypatch).parse("apixaban vs warfarin")
+
+    meta = json.loads(sorted(_evidence_dir.glob("*.meta.json"))[0].read_text())
+    assert meta["prompt_tokens"] == PROMPT_TOKENS
+    assert meta["completion_tokens"] == COMPLETION_TOKENS
+    assert meta["finish_reason"] == "length"
+    assert meta["body_chars"] == len(TRUNCATED_BODY)
+
+
+def test_should_not_write_a_body_when_the_model_finished_normally(
+    monkeypatch: pytest.MonkeyPatch, _evidence_dir
+) -> None:
+    _decomposer(monkeypatch, body=WHOLE_BODY, reason="stop").parse("apixaban vs warfarin")
+    assert not _evidence_dir.exists() or list(_evidence_dir.glob("*.txt")) == []
+
+
+def test_should_still_raise_the_truncation_error_when_the_body_cannot_be_saved(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Evidence is best-effort; the raise is not.
+
+    An unwritable evidence directory must not replace a budget exhaustion with an
+    I/O error -- that would hide the very failure the save exists to explain.
+    """
+    blocked = tmp_path / "not-a-directory"
+    blocked.write_text("")
+    monkeypatch.setenv("ARTEMIS_TRUNCATION_DIR", str(blocked / "under-a-file"))
+
+    with pytest.raises(LLMTruncationError) as excinfo:
+        _decomposer(monkeypatch).parse("apixaban vs warfarin")
+    assert excinfo.value.body_path is None
+    assert "could NOT be saved" in str(excinfo.value)
+
+
+# The real body CAROLINA produced on 2026-09-10 under `google/gemma-4-E4B-it`,
+# excerpted around the point it stopped producing content: the malformed key
+# `"entity_text null, "` (where `"entity_text": null,` was meant) followed by the
+# whitespace it then emitted for the rest of the budget. A synthetic run of spaces
+# would exercise the same branch, but only the real case proves the detector fires
+# on what actually happened.
+TRAP_EXCERPT = (
+    Path(__file__).parent / "fixtures" / "carolina_whitespace_trap_excerpt.txt"
+).read_text()
+
+
+def test_should_measure_a_degenerate_tail_on_the_real_carolina_runaway() -> None:
+    assert degenerate_tail(TRAP_EXCERPT) >= DEGENERATE_TAIL_CHARS
+    assert '"entity_text null, "' in TRAP_EXCERPT
+
+
+def test_should_not_call_a_normally_formatted_body_degenerate() -> None:
+    """Indented JSON carries whitespace runs; the longest measured healthy one is 19."""
+    assert degenerate_tail(WHOLE_BODY) < DEGENERATE_TAIL_CHARS
+    assert degenerate_tail('{\n  "a": 1\n}\n') < DEGENERATE_TAIL_CHARS
+
+
+def test_should_say_the_generation_did_not_terminate_when_the_tail_is_degenerate(
+    monkeypatch: pytest.MonkeyPatch, _evidence_dir
+) -> None:
+    """The old message sent the reader to max_model_len, which cannot fix this.
+
+    A generation emitting whitespace under a JSON grammar expands to fill any
+    ceiling -- CAROLINA filled 32,768 tokens, then filled 65,536 -- so the advice
+    has to differ from the exhausted-budget case or it costs another full run.
+    """
+    decomposer = _decomposer(monkeypatch, body=TRAP_EXCERPT)
+    with pytest.raises(LLMTruncationError) as excinfo:
+        decomposer.parse("apixaban vs warfarin")
+    message = str(excinfo.value)
+    assert "did not terminate" in message
+    assert "Do NOT raise max_model_len" in message
+
+
+def test_should_still_advise_more_room_when_the_body_ends_in_content(
+    monkeypatch: pytest.MonkeyPatch, _evidence_dir
+) -> None:
+    """A genuinely exhausted budget keeps the original advice."""
+    with pytest.raises(LLMTruncationError) as excinfo:
+        _decomposer(monkeypatch).parse("apixaban vs warfarin")
+    message = str(excinfo.value)
+    assert "did not terminate" not in message
+    assert "raise" in message and "max_model_len" in message

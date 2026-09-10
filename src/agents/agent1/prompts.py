@@ -354,19 +354,12 @@ Pattern C — "No prior X" / "Without X" / "X-naive":
   "treatment-naive", "drug-naive", "anti-diabetic drug naive", "insulin-naïve", "no prior
   use of", "not currently treated with", "washout of". Every one of them says the patient
   has NOT had the drug, and every one takes logic_type "ABSENCE".
-  CRITICAL — the negation belongs to `logic_type` and NEVER to `entity_text`. `entity_text`
-  is the string handed to the vocabulary, so it must name the DRUG ALONE — the ingredient
-  the line implies ("insulin", "metformin") or the class it names ("anti-diabetic agent").
-  A seed carrying the negation is not a drug, so it resolves to whatever concepts share
-  its words, and a DrugExposure rule over a concept set holding no Drug concept matches no
-  row at all: the criterion is refused downstream and the protocol's requirement is lost
-  entirely, not merely weakened.
-  Measured 2026-09-10: LEADER's "Anti-diabetic drug naive" (two criteria) and CARMELINA's
-  "Drug Naïve or Pre-treated (Excluding GLP-1/DPP-4/SGLT-2)" (two criteria) were each
-  emitted as domain "Drug", logic_type "PRESENCE", with no `entity_text` at all. The
-  refusal record for the LEADER pair, verbatim: the concept set mapped for "Anti-diabetic
-  drug naive" "holds only Condition, Measurement, Observation, Procedure concepts, so the
-  rule would match nothing". Four criteria, two trials, all four lost.
+  CRITICAL — the negation belongs to `logic_type`, never to `entity_text`. `entity_text` is
+  the string handed to the vocabulary, so it names the DRUG ALONE — the ingredient the line
+  implies ("insulin", "metformin") or the class it names ("anti-diabetic agent"). A seed
+  carrying the negation is not a drug, so its concept set holds no Drug concept and the
+  DrugExposure rule matches no row at all: the criterion is refused downstream and the
+  protocol's requirement is lost entirely, not merely weakened.
   When the line offers a CHOICE ("drug naive OR pre-treated with X"), Pattern E governs and
   this rule applies INSIDE it: one ANY group whose naive member is an ABSENCE of the drug
   class and whose pre-treated member is a PRESENCE of the drugs the line actually names.

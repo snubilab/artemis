@@ -68,6 +68,11 @@ class LLMTruncationError(LLMError):
 
     :param prompt_tokens: tokens the request consumed, when the provider reported it.
     :param completion_tokens: tokens generated before the ceiling stopped it.
+    :param body_path: file holding the generated prefix verbatim, when it was saved.
+        The counts say how much was generated; only the body says WHAT, which is the
+        difference between "needs more room" and "never terminated". Tens of thousands
+        of tokens do not belong in an exception message, so the body goes to a file and
+        the message carries its path.
     """
 
     def __init__(
@@ -75,11 +80,13 @@ class LLMTruncationError(LLMError):
         message: str,
         prompt_tokens: Optional[int] = None,
         completion_tokens: Optional[int] = None,
+        body_path: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.prompt_tokens = prompt_tokens
         self.completion_tokens = completion_tokens
+        self.body_path = body_path
 
 
 # ============================================================================

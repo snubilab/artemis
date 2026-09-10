@@ -60,6 +60,116 @@ def token_usage(response: Any) -> dict[str, int]:
     return {str(k): v for k, v in usage.items() if isinstance(v, int)}
 
 
+def _truncation_evidence_dir() -> "Path":
+    """Where a truncated body is kept, overridable by ``ARTEMIS_TRUNCATION_DIR``.
+
+    Same shape as the other evidence homes in this repo -- the comparator's
+    literature snapshots (``data/comparator_literature``, ``COMPARATOR_EVIDENCE_DIR``)
+    and the Agent 1 IR cache (``data/cache/agent1_ir``) -- so this lands beside them
+    under the gitignored ``data/`` root rather than inventing a new location.
+    """
+    import os
+    from pathlib import Path
+
+    override = os.getenv("ARTEMIS_TRUNCATION_DIR")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parents[2] / "data" / "llm_truncations"
+
+
+def save_truncated_body(
+    response: Any,
+    *,
+    what: str,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+) -> "Path | None":
+    """Write the cut-off completion to a file and return its path, or None.
+
+    The counts alone cannot tell a budget that was merely too small from a
+    generation that never terminates, and those need opposite fixes: more room
+    versus a prompt or schema change. The body is the evidence that separates
+    them -- measured on CAROLINA, whose completion filled a 32,768-token ceiling
+    and then filled a 65,536-token one, which only the body explains.
+
+    It is written to a file rather than into the exception message because it runs
+    to tens of thousands of tokens: a message that large is unreadable in a log and
+    unusable in a traceback.
+
+    Verbatim, and with no header prepended, so the file is a genuine prefix of what
+    the model produced and a JSON-repair pass can be pointed straight at it. The
+    counts and the call name ride in a ``.meta.json`` sidecar, the same split the
+    Agent 1 IR cache already uses.
+
+    Failure to save is logged and swallowed. This runs on the way to raising
+    :class:`LLMTruncationError`; an unwritable directory must not replace the real
+    error with an I/O one.
+    """
+    from datetime import datetime, timezone
+
+    content = getattr(response, "content", None)
+    if not isinstance(content, str):
+        content = "" if content is None else str(content)
+
+    try:
+        directory = _truncation_evidence_dir()
+        directory.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+        slug = re.sub(r"[^a-z0-9]+", "_", what.lower()).strip("_") or "llm_call"
+        body_path = directory / f"{stamp}_{slug}.txt"
+        body_path.write_text(content, encoding="utf-8")
+        (directory / f"{stamp}_{slug}.meta.json").write_text(
+            json.dumps(
+                {
+                    "what": what,
+                    "saved_at": datetime.now(timezone.utc).isoformat(),
+                    "finish_reason": finish_reason(response),
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "body_chars": len(content),
+                    "model": _response_metadata(response).get("model_name"),
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        return body_path
+    except Exception as exc:  # noqa: BLE001 - evidence is best-effort, the raise is not
+        logger.warning("[llm] could not save the truncated body for %s: %s", what, exc)
+        return None
+
+
+# A trailing run of whitespace this long is not formatting. Measured on the two
+# healthy CAROLINA and ARISTOTLE bodies, the longest whitespace run anywhere is 19
+# characters; the degenerate one below ran to 7,129 and was still growing.
+DEGENERATE_TAIL_CHARS = 200
+
+
+def degenerate_tail(content: str) -> int:
+    """Length of the completion's trailing whitespace run.
+
+    A cut-off completion has two very different causes that ``finish_reason`` cannot
+    tell apart, and they take opposite fixes. Measured on CAROLINA (2026-09-10,
+    ``google/gemma-4-E4B-it``, ``max_model_len`` 65536): the model emitted a
+    malformed object key -- ``"entity_text null, "`` where ``"entity_text": null,``
+    was meant -- at completion token 8,590, and then emitted nothing but newlines
+    and spaces for the rest of the budget. Under ``response_format={"type":
+    "json_object"}`` the grammar requires a ``:`` after a completed key and allows
+    unbounded whitespace before it, so whitespace stays legal forever and the
+    generation can never reach an end-of-object. It filled a 32,768-token ceiling,
+    then filled a 65,536-token one.
+
+    That is why the ceiling is the wrong lever here: the completion expands to fill
+    whatever it is given. Telling the reader to raise ``max_model_len`` -- which the
+    generic message did -- costs an hour of generation and changes nothing.
+
+    :param content: the completion body as generated.
+    :returns: the number of trailing whitespace characters (0 when it ends in text).
+    """
+    return len(content) - len(content.rstrip())
+
+
 def raise_if_truncated(response: Any, *, what: str) -> None:
     """Fail loudly when the completion was cut off at the token ceiling.
 
@@ -97,17 +207,45 @@ def raise_if_truncated(response: Any, *, what: str) -> None:
             f" The provider reported prompt={prompt_tokens} completion={completion_tokens} "
             f"total={total} token(s)."
         )
-    message = (
-        f"{what} was cut off at the token ceiling (finish_reason='length'): the model "
-        f"stopped mid-answer because prompt + completion reached the server's "
-        f"max_model_len, not because the answer ended.{budget} The body is a prefix of "
-        f"a valid response, so no parse of it can succeed -- this is an exhausted "
-        f"output budget, not malformed generation. Shorten the prompt, raise the "
-        f"server's max_model_len, or split the request."
+    body_path = save_truncated_body(
+        response,
+        what=what,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
     )
+    evidence = (
+        f" The generated prefix is kept verbatim at {body_path}."
+        if body_path is not None
+        else " The generated prefix could NOT be saved (see the warning above), so the "
+        "only evidence of what was produced is gone."
+    )
+    content = getattr(response, "content", "")
+    tail = degenerate_tail(content) if isinstance(content, str) else 0
+    if tail >= DEGENERATE_TAIL_CHARS:
+        message = (
+            f"{what} did not terminate (finish_reason='length'): the completion ends in "
+            f"{tail} characters of unbroken whitespace, so the model stopped producing "
+            f"content long before the ceiling stopped it.{budget}{evidence} Read the end "
+            f"of that file -- the last text it contains is where generation went wrong. "
+            f"Do NOT raise max_model_len: a generation that emits whitespace under a JSON "
+            f"grammar expands to fill any budget, and a bigger ceiling only buys a longer "
+            f"run of spaces. Fix the prompt or the request instead."
+        )
+    else:
+        message = (
+            f"{what} was cut off at the token ceiling (finish_reason='length'): the model "
+            f"stopped mid-answer because prompt + completion reached the server's "
+            f"max_model_len, not because the answer ended.{budget} The body is a prefix of "
+            f"a valid response, so no parse of it can succeed -- this is an exhausted "
+            f"output budget, not malformed generation.{evidence} Shorten the prompt, raise "
+            f"the server's max_model_len, or split the request."
+        )
     logger.error("[llm] %s", message)
     raise LLMTruncationError(
-        message, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
+        message,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        body_path=str(body_path) if body_path is not None else None,
     )
 
 

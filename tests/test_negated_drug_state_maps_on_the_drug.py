@@ -155,8 +155,30 @@ class TestTheExtractionPromptCarriesTheRule:
         text = prompts.NCT_SYSTEM_PROMPT
 
         assert text.count(
-            "the negation belongs to `logic_type` and NEVER to `entity_text`"
+            "the negation belongs to `logic_type`, never to `entity_text`"
         ) == 1
+
+    def test_should_not_restate_the_measured_failure_inside_pattern_c(self):
+        """The paragraph narrating the defect is what stopped CAROLINA terminating.
+
+        Measured 2026-09-10 on CAROLINA's 64 criteria against ``google/gemma-4-E4B-it``
+        at temperature 0, five system prompts over the identical human message. Both
+        arms carrying this paragraph stopped producing content mid-object -- on
+        ``"patients considered reliable by the investigator"``, a line that names no
+        vocabulary term -- and then emitted only whitespace, at completion tokens 8,590
+        and 9,100. Under ``response_format={"type": "json_object"}`` whitespace stays
+        grammatical forever, so neither generation could reach an end-of-object and each
+        filled whatever ceiling it was given. The three arms without the paragraph
+        terminated, including a placebo that differs from one of them by a single space
+        -- so this is not merely the re-roll every prompt edit causes.
+
+        Pinned out so that re-adding it is a deliberate act with this measurement in
+        view, rather than a well-meant restoration of context.
+        """
+        text = prompts.NCT_SYSTEM_PROMPT
+
+        assert "Four criteria, two trials, all four lost." not in text
+        assert "holds only Condition, Measurement, Observation, Procedure" not in text
 
     def test_should_make_entity_text_mandatory_on_a_leaf_criterion(self):
         text = prompts.NCT_SYSTEM_PROMPT

@@ -1,0 +1,78 @@
+icinal/Medical Product (IMP) start",
+        "logic_type": "ABSENCE",
+        "window": {
+          "start": -60,
+          "end": 0
+        }
+      },
+      {
+        "name": "Patient reliability",
+        "domain": "Observation",
+        "entity_text null, "
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+     
