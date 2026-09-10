@@ -97,6 +97,80 @@ REFUSAL_DOMAIN_CONTRADICTION = "domain-contradiction"
 #: :func:`src.utils.circe_lint.refuse_unreadable_value_filter`.
 REFUSAL_UNREADABLE_VALUE_FILTER = "unreadable-value-filter"
 
+#: The criterion reached the mapper on a seed that is NOT its own ``entity_text``,
+#: because extraction left that mandatory field empty and
+#: :func:`src.utils.criterion_seed.criterion_mapper_seed` fell back to ``description``.
+#: The loss is booked against EXTRACTION, not against the vocabulary.
+#:
+#: The distinction this code exists to draw is which half of the pipeline to work on. A
+#: row refused as ``no-concept-mapping`` says "the vocabulary was asked and has no
+#: counterpart", and that sentence is only true if the vocabulary was asked the right
+#: question. It was not: verbatim from the 2026-09-10 grounded delivery, EMPA-REG
+#: inclusion 15 refused as "No concept mapping found for 'Drug naive'", where
+#: ``'Drug naive'`` is the criterion's human-facing NAME. The line it came from names an
+#: antidiabetic drug class; the mapper was never told.
+#:
+#: Not a hypothesis. Over two independent stores, counting only the criteria that
+#: REACH the mapper (store ``mappable``, not skipped) across the six delivered trials,
+#: an empty ``entity_text`` multiplies the loss rate by 6x and 20x:
+#:
+#:     store                        reach   entity present      entity EMPTY
+#:       store_grounded (09-10)      293    4/223 = 0.018      8/70 = 0.114
+#:       tte_cold6_20260908          274    1/184 = 0.005     10/90 = 0.111
+#:
+#: The two runs agree on the EMPTY column to within 0.003 and disagree on the present
+#: column, so the stable quantity is the ~11% loss on a substituted seed rather than the
+#: ratio. Not fatal, though: ~89% of substituted seeds still map, which is why the
+#: remedy is a record and a re-coding rather than a refusal.
+#:
+#: What the code deliberately does NOT claim is that the protocol had an entity to
+#: extract. CAROLINA exclusion 72 ("patients considered reliable by the investigator")
+#: carries no ``entity_text`` and names no clinical entity either, so its loss is
+#: irreducible and the code still reads correctly on it: the mapper was refused on a
+#: substituted seed. Deciding WHICH of the two it is means reading the protocol line,
+#: which is a judgement no deterministic rule at this site can make -- so the code
+#: states the mechanism it can observe and leaves the diagnosis to the reader it routes.
+#:
+#: NEVER permitted by the delivery gate, and it must not become permitted: the loss is a
+#: loss. What changes is which defect a reader is sent to look at.
+REFUSAL_MISSING_ENTITY_TEXT = "missing-entity-text"
+
+#: The codes a SUBSTITUTED SEED can cause, and therefore the only ones
+#: :data:`REFUSAL_MISSING_ENTITY_TEXT` may re-code. Every one of them is a verdict ON
+#: THE SEED: the vocabulary was asked this text and had nothing, or answered from the
+#: wrong domain, or the intent router could not parse it, or the search returned an
+#: empty expression. Change the seed and every one of them can change.
+#:
+#: An allow-list rather than a deny-list, and the direction is the load-bearing part. A
+#: refusal wrongly re-coded sends a reader to extraction for a defect that lives
+#: somewhere else; a refusal left alone merely keeps the record it already had. So a
+#: code not named here is never re-coded, including any added later.
+#:
+#: Three codes are deliberately absent:
+#:
+#: * :data:`REFUSAL_UNMAPPABLE_PLACEHOLDER` -- the ONE code the delivery gate permits,
+#:   and these rows earn it on the seed's own words. "Investigational drug use"
+#:   (ARISTOTLE exclusion 26, empty ``entity_text``) names a role in the study rather
+#:   than a substance, so no ``entity_text`` would have helped and the loss is
+#:   irreducible either way. Re-coding it would take a real permit away and flip both
+#:   ARISTOTLE arms from PASS to FAIL for a row nothing is wrong with.
+#: * :data:`REFUSAL_STRANDED_GROUP_THRESHOLD` and
+#:   :data:`REFUSAL_UNREADABLE_VALUE_FILTER` -- both are refused AFTER the mapper
+#:   answered, and both are about the NUMBER rather than the concepts. A different seed
+#:   changes neither.
+#:
+#: :data:`REFUSAL_EMPTY_SEED` is absent for a different reason: it already says the
+#: stronger thing ("no seed text at all"), so re-coding would lose information.
+SEED_CAUSED_REFUSAL_CODES = frozenset(
+    {
+        REFUSAL_NO_CONCEPT_MAPPING,
+        REFUSAL_INTENT_UNPARSED,
+        REFUSAL_EMPTY_CONCEPT_SET,
+        REFUSAL_DOMAIN_CONTRADICTION,
+    }
+)
+
+
 #: Every code a record's ``refusalCode`` may hold. A consumer that permits a code not in
 #: this set is permitting something no mapper can emit.
 REFUSAL_CODES = frozenset(
@@ -109,6 +183,7 @@ REFUSAL_CODES = frozenset(
         REFUSAL_STRANDED_GROUP_THRESHOLD,
         REFUSAL_DOMAIN_CONTRADICTION,
         REFUSAL_UNREADABLE_VALUE_FILTER,
+        REFUSAL_MISSING_ENTITY_TEXT,
     }
 )
 

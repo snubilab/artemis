@@ -159,3 +159,80 @@ def criterion_mapper_seed(criterion: Mapping[str, Any]) -> str:
     if not seed or not criterion.get("window"):
         return seed
     return strip_window_expressed_temporal(seed)
+
+
+#: Where the record below is written in a study's ``structuredExpression``, and read from
+#: the delivered payload by ``scripts/verify_circe_delivery.py``. Same present-and-empty
+#: contract as ``_defaultedWindowCriteria``: an ABSENT key means the artifact predates
+#: the record, while a key present and empty is the positive claim that every criterion
+#: reaching the mapper carried its own ``entity_text``. Only one of those two can be made
+#: by an absent key, and it is the wrong one.
+MISSING_ENTITY_CRITERIA_KEY = "_missingEntityCriteria"
+
+
+def criterion_entity_text_missing(criterion: Mapping[str, Any]) -> bool:
+    """Did the extraction leave this criterion's MANDATORY ``entity_text`` empty?
+
+    ``entity_text`` is the only text the concept mapper is ever given, which is why
+    ``agent1/prompts.NCT_SYSTEM_PROMPT`` makes it mandatory on every criterion with no
+    ``sub_criteria`` (``8bbd50d``). When it is empty, :func:`criterion_mapper_seed`
+    falls back to ``description`` -- a phrase written for a human ("Drug naive",
+    "Stable Background Medication (8 weeks prior to screening)") -- and nothing said so.
+    This function is the one place that fact is decided, so the record, the re-coded
+    refusal, and the seed itself cannot disagree about which rows it covers.
+
+    Reads the store column ``sourceText``, which carries the IR's ``entity_text``:
+    ``_criterion_dict_from_ir_item`` assigns ``source_text = entity_text``, while the
+    IR's own ``source_text`` -- the verbatim protocol line -- reaches the store as
+    ``protocolLine``. The two names look alike and are not the same field.
+
+    A GROUP LABEL is excluded, and that exclusion is the mandate's own: null is correct
+    "ONLY on a parent row that has [sub_criteria]". A label never reaches the mapper
+    (:attr:`~src.api.models.tte.EligibilityCriterion.mappable` is False for one), so it
+    has no seed to substitute and firing here would report correct extraction as a
+    defect. Measured on ``output/site_gap/2026-09-10/store_grounded/studies.json``,
+    six delivered trials: 30 of the 117 rows with an empty ``sourceText`` are group
+    labels, and three of the five rows that opened this investigation are among them.
+
+    Whitespace counts as empty, because :func:`criterion_mapper_seed` strips before it
+    chooses -- a ``sourceText`` of ``"   "`` seeds the mapper on the description exactly
+    as an empty one does, and a predicate that disagreed would write a record
+    contradicting the seed it describes.
+
+    :param criterion: a store eligibility-criterion dict.
+    :returns: ``True`` when the mapper will be seeded on something other than this
+        criterion's own entity text.
+    """
+    if criterion.get("isGroupLabel"):
+        return False
+    return not (criterion.get("sourceText") or "").strip()
+
+
+def missing_entity_record(
+    criterion: Mapping[str, Any], *, role: str, mapped: bool
+) -> dict[str, Any]:
+    """One row of :data:`MISSING_ENTITY_CRITERIA_KEY`.
+
+    Written for every criterion that reached the mapper on a substituted seed, whether
+    or not the substitution cost anything. The survivors are the reason the record
+    exists at all: on the 2026-09-10 grounded store 62 of the 70 substituted seeds
+    MAPPED, each of them on a human-facing label ("CV risk factor A", "Positive
+    biomarker", "Life expectancy"), and the only trace anywhere was a ``queryUsed``
+    buried in mapping metadata. The 8 that did not map are already visible in
+    ``_unmappedCriteria``; these are not.
+
+    ``seed`` is recorded rather than re-derived by a consumer, so what the mapper was
+    actually asked is on file even after the seed rules change.
+
+    :param criterion: a store eligibility-criterion dict.
+    :param role: ``"inclusion"`` or ``"exclusion"``, matching the sibling records.
+    :param mapped: whether the criterion became a rule.
+    """
+    return {
+        "criterionId": str(criterion.get("id", "")),
+        "role": role,
+        "label": (criterion.get("description") or "").strip(),
+        "domain": (criterion.get("domain") or "").strip() or None,
+        "seed": criterion_mapper_seed(criterion),
+        "outcome": "mapped" if mapped else "unmapped",
+    }

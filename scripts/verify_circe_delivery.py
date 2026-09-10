@@ -149,6 +149,7 @@ from src.utils.criterion_refusal import (  # noqa: E402
     REFUSAL_CODES,
     REFUSAL_UNMAPPABLE_PLACEHOLDER,
 )
+from src.utils.criterion_seed import MISSING_ENTITY_CRITERIA_KEY  # noqa: E402
 from src.utils.delivery_mode import (  # noqa: E402
     DeliveryModeConflictError,
     resolve_drug_anchored_entry,
@@ -985,6 +986,34 @@ def criterion_accounting(
     else:
         defaulted_clause = ", 0 windows defaulted"
 
+    # The criteria whose MANDATORY `entity_text` extraction left empty, so the mapper
+    # was seeded on the criterion's human-facing `description` instead. Reported and
+    # never a violation, for the reason the producer records survivors at all: 62 of the
+    # grounded store's 70 substituted seeds MAPPED, and failing a delivery over them
+    # would block 12 files to surface 8 losses `_unmappedCriteria` already carries. What
+    # this line buys is the other direction -- a file that PASSES can still be carrying
+    # dozens of concept sets mapped from a label rather than an entity, and until this
+    # clause existed the report said nothing about it either way.
+    #
+    # Three-state, same as `defaulted_clause`: absent means the artifact predates the
+    # record and no claim can be made; present-and-empty is the positive claim that every
+    # criterion carried its own entity.
+    missing_entity = expression.get(MISSING_ENTITY_CRITERIA_KEY)
+    if missing_entity is None:
+        missing_entity_clause = ""
+    elif isinstance(missing_entity, list) and missing_entity:
+        lost = sum(
+            1
+            for record in missing_entity
+            if not isinstance(record, dict) or record.get("outcome") != "mapped"
+        )
+        missing_entity_clause = (
+            f", {len(missing_entity)} seeds substituted for a missing entity_text "
+            f"({lost} lost, {len(missing_entity) - lost} mapped on the criterion's name)"
+        )
+    else:
+        missing_entity_clause = ", 0 seeds substituted"
+
     present = [key for key in ACCOUNTING_KEYS if key in expression]
     if not present:
         # Every current export writes all three. An artifact carrying none of them
@@ -995,7 +1024,8 @@ def criterion_accounting(
         return (
             drop_violations,
             "criterion accounting: NOT RECORDED "
-            f"(artifact predates _generationCensus){drop_clause}{defaulted_clause}",
+            f"(artifact predates _generationCensus){drop_clause}{defaulted_clause}"
+            f"{missing_entity_clause}",
         )
 
     missing = [key for key in ACCOUNTING_KEYS if key not in expression]
@@ -1006,7 +1036,8 @@ def criterion_accounting(
                 "criterion accounting incomplete: "
                 f"{', '.join(missing)} absent while {', '.join(present)} present"
             ],
-            f"criterion accounting: INCOMPLETE{drop_clause}{defaulted_clause}",
+            f"criterion accounting: INCOMPLETE{drop_clause}{defaulted_clause}"
+            f"{missing_entity_clause}",
         )
 
     # The store's criteria: the anchor below and the two re-derivations further down
@@ -1346,7 +1377,7 @@ def criterion_accounting(
     summary = (
         f"criterion accounting: {census.get('mapped')} mapped, {unmapped_clause}, "
         f"{len(skipped)} skipped ({permitted}), {anchor_clause}, "
-        f"{link_clause}{drop_clause}{defaulted_clause}"
+        f"{link_clause}{drop_clause}{defaulted_clause}{missing_entity_clause}"
     )
     return violations, summary
 
