@@ -386,6 +386,43 @@ def or_group_subsumed_by(
     return False
 
 
+# Numeric literals appearing anywhere in a criterion. Deliberately crude: no
+# unit awareness, no range parsing. The question it answers is only "do these
+# two strings state the same numbers?", and for that a bag of literals is enough.
+_NUMERIC_LITERAL = re.compile(r"\d+(?:\.\d+)?")
+
+
+def numerically_distinct(a: str, b: str) -> bool:
+    """True when two criteria state different numeric literals.
+
+    A veto on merging, consulted by every similarity gate before it calls two
+    items duplicates. An eligibility criterion IS its thresholds, so two strings
+    that differ in a number are two criteria however alike they read.
+
+    The case that forced it is CAROLINA inclusion criterion 1, whose tiers a)
+    and b) differ only in the HbA1c band and the background therapy it is tied
+    to. Measured on the production rendering, the two tiers as parsed score
+    0.2045 whole-string -- safe, but only because pdftotext happens to append
+    tier b)'s six-therapy list to it. Compare the two heads alone, the wording a
+    document wrapping one line earlier would produce, and they score 0.857:
+    comfortably over the 0.7 duplicate threshold, and fused. Their literals
+    ({6.5, 8.5, 48, 69} against {6.5, 7.5, 48, 58}) differ either way, which is
+    why the veto keys on those rather than on the similarity margin.
+
+    Sets, not multisets: a repeated literal is far more often pdftotext noise
+    than meaning, and the direction of the error matters. This predicate can
+    only ever RETAIN a criterion, never delete one -- the same asymmetry
+    :data:`_NEGATORS` is documented under. A duplicate that survives is visible;
+    a threshold silently merged away is not.
+
+    :param a: one criterion string.
+    :param b: the criterion it is being compared against.
+    :returns: True when the two carry different sets of numeric literals.
+    """
+    return (set(_NUMERIC_LITERAL.findall(str(a)))
+            != set(_NUMERIC_LITERAL.findall(str(b))))
+
+
 # What a caller must do with an item. UNDECIDED is the only verdict that hands
 # control back to the caller's own legacy similarity gate; DROP and KEEP are
 # both final, and KEEP is the half that fixes the defect -- it says the legacy

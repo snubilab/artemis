@@ -19,6 +19,7 @@ from src.agents.agent1.criteria_dedup import (
     OR_GROUP_JOIN,
     OR_GROUP_PREFIX,
     OR_GROUP_SEP,
+    numerically_distinct,
     structural_verdict,
 )
 
@@ -130,31 +131,86 @@ def fetch_pubmed_abstracts(pmids: List[str], timeout: int = 20) -> Dict[str, Pub
     return out
 
 
-def _best_section_match(text: str, patterns: List[str]) -> List[str]:
-    """Find the best (longest substantive) section match across all regex matches.
+# A section heading occupies its own line, give or take a caption label: the
+# corpus writes "eAppendix 3. Inclusion Criteria", "Section D. Exclusion ..."
+# and "Table I. Inclusion ...", so a bare start-of-line test would reject three
+# studies outright. A mention inside a sentence never has this shape. Measured
+# separation across the six protocol PDFs: all 12 real headings carry a prefix
+# of 0 or 2 tokens, the one false heading ("Each subject who meets the
+# inclusion/exclusion criteria will be randomly assigned ...") carries 6.
+_HEADING_LINE_PREFIX = re.compile(r"^\s*(?:\S+\s+)?\S*[.:)]\s*$")
 
-    Supplement PDFs often have a Table of Contents that also matches
-    "inclusion/exclusion criteria" headers. The TOC match captures only
-    dot-fill lines or whitespace. We iterate *all* matches from finditer
-    and pick the one whose captured group has the most non-whitespace
-    content, skipping TOC-like entries (mostly dots, digits, whitespace).
+
+def _opens_a_line(text: str, start: int) -> bool:
+    """Whether the heading matched at ``start`` opens its line, or only a sentence.
+
+    :param text: the text finditer scanned.
+    :param start: offset of the heading match.
+    :returns: True when the heading is preceded on its line by nothing or by a
+        caption label.
     """
-    best_text = ""
-    best_weight = 0
+    prefix = text[text.rfind("\n", 0, start) + 1:start]
+    return not prefix.strip() or bool(_HEADING_LINE_PREFIX.match(prefix))
+
+
+def _best_section_match(text: str, patterns: List[str]) -> List[str]:
+    """Union the criteria of every substantive section match, item by item.
+
+    Two kinds of false heading have to be dropped before anything is unioned,
+    and they need different tests. A Table of Contents entry matches the header
+    but captures only dot-fill and page numbers, so it is caught by weight. A
+    heading MENTIONED inside a sentence captures real prose and weighs enough to
+    pass, so it is caught by position (:func:`_opens_a_line`) -- ARISTOTLE's
+    protocol contributes exactly one, and it parses into two plausible-looking
+    criteria about randomisation that no weight test can distinguish.
+
+    What survives is unioned rather than reduced to the single heaviest match,
+    which is what this function used to return. CAROLINA's supplement repeats
+    "Inclusion criteria:" as a running page header, so ONE criteria list arrives
+    as three page-sized captures; keeping only the heaviest dropped the T2DM
+    diagnosis, both HbA1c tiers, BMI, age and the consent criterion. The three
+    captures are consecutive pages, not three renderings of one list at
+    different detail levels: measured on the production rendering, the only
+    cross-block pairs scoring >= 0.7 are the page-footer boilerplate, and real
+    criteria overlap zero.
+
+    The heaviest block seeds the result so its wording wins ties; the rest fold
+    in document order. Deduplication is :func:`_merge_parsed_items` -- the same
+    structural_verdict-then-similarity decision every other merge site uses, so
+    there is still one authoritative answer to "is this already represented?".
+
+    :param text: the text to search, already stripped of running headers.
+    :param patterns: heading regexes, each capturing its section body in group 1.
+    :returns: the unioned criteria items.
+    """
+    blocks = []  # (weight, start, items)
 
     for pattern in patterns:
         for m in re.finditer(pattern, text, re.IGNORECASE | re.DOTALL):
             captured = m.group(1).strip()
             # Skip TOC-like captures: mostly dots, page numbers, whitespace
-            stripped = re.sub(r"[.\s\d]", "", captured)
-            weight = len(stripped)
-            if weight > best_weight:
-                best_weight = weight
-                best_text = captured
+            weight = len(re.sub(r"[.\s\d]", "", captured))
+            if not weight or not _opens_a_line(text, m.start()):
+                continue
+            blocks.append((weight, m.start(), _parse_criteria_items(captured)))
 
-    if best_text:
-        return _parse_criteria_items(best_text)
-    return []
+    if not blocks:
+        return []
+
+    heaviest = max(blocks, key=lambda b: (b[0], -b[1]))
+    merged = list(heaviest[2])
+    for block in sorted(blocks, key=lambda b: b[1]):
+        if block is heaviest:
+            continue
+        merged = _merge_parsed_items(merged, block[2])
+
+    if len(blocks) > 1:
+        logger.info(
+            "[PubMed Fetcher] Unioned %d substantive section blocks into %d items "
+            "(heaviest block contributed %d)",
+            len(blocks), len(merged), len(heaviest[2]),
+        )
+    return merged
 
 
 # A page header repeats once per page; a criterion is written once. Measured over
@@ -990,6 +1046,12 @@ def _merge_parsed_items(
             continue
         is_duplicate = False
         for existing in merged:
+            # A criterion IS its thresholds. Two items stating different numbers
+            # are different criteria however alike they read, so the veto is
+            # consulted BEFORE the ratio rather than as a tie-break -- see
+            # criteria_dedup.numerically_distinct for the measured case.
+            if numerically_distinct(llm_item, existing):
+                continue
             similarity = SequenceMatcher(
                 None, llm_item.lower(), existing.lower()
             ).ratio()

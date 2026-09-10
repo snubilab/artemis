@@ -86,8 +86,52 @@ DOCUMENTS = {
 # `len(regex_items) < 5` gate in _parse_criteria_items, so CAROLINA's inclusion
 # span now invokes the LLM validation pass. The stub above keeps that
 # deterministic here; in production it is a real call.
+#
+# CAROLINA's inclusion count moved 3 -> 17 on 2026-09-11, and all 14 items are
+# accounted for below. _best_section_match kept the single heaviest regex match
+# and discarded the rest. CAROLINA's supplement repeats "Inclusion criteria:" as
+# a running page header, so ONE criteria list arrives as three page-sized
+# captures -- protocol pages 5, 6 and 7, weights 964 / 1818 / 1244. Only page 6
+# (the CV-risk OR-GROUP) survived. They are NOT three renderings of one list at
+# different detail levels: measured on the production rendering, the only
+# cross-block item pairs scoring >= 0.7 are the page-footer boilerplate, and real
+# criteria overlap zero. The union is now taken at the ITEM level, heaviest block
+# seeding the result and the rest folding in document order through
+# _merge_parsed_items. Recovered from page 5 (6 items) and page 7 (12 items):
+#   - "Documented diagnosis of T2DM and concurrently insufficient glycaemic
+#     control and a high risk of CV events prior to informed consent:";
+#   - its announcer "∀ Insufficient glycaemic control (at Visit 1a) defined as:";
+#   - BOTH HbA1c tiers, separately: a) 6.5-8.5% while treatment naive, and
+#     b) 6.5-7.5% while on SU/glinide. These are different criteria -- different
+#     bands tied to different background therapy -- and they read almost alike,
+#     so criteria_dedup.numerically_distinct now vetoes any merge whose two sides
+#     state different numeric literals. tests/test_section_block_union.py pins
+#     both halves: that the tiers score 0.857 whole-string (over the 0.7
+#     duplicate threshold, i.e. the veto is proven to fire) and that they survive
+#     as two items;
+#   - tier a)'s therapy list "metformin monotherapy, or alpha-glucosidase ...";
+#   - BMI <= 45 kg/m2, age 40-85, the informed-consent criterion, stable
+#     anti-diabetic background medication, and the 80-120% run-in compliance rule;
+#   - four non-criteria that page 7 carries and no existing filter removes: the
+#     "Note: To ensure appropriate representation ..." recruitment note and its
+#     two continuation lines, and the fragment "Criteria for" left by the
+#     exclusion terminator. They are noise, not criteria, and they are counted
+#     here rather than silently trimmed.
+# Four of the 21 raw block items collapsed, each one named: page 5's and page 7's
+# copies of "This document may not ..." and page 7's "! 2016 Boehringer ..."
+# are exact duplicates (ratio 1.000) of page 6's; and page 7's asterisk footnote
+# "Current = Blood pressure or LDL cholesterol measurement < 6 months prior V1a"
+# is dropped by structural_verdict, which already reads it as restating the
+# OR-GROUP alternatives "Current* systolic blood pressure" and "Current* LDL
+# cholesterol". Nothing that was in the list before this change left it: the
+# corpus-wide item-level diff is +14 / -0, and the other five studies plus every
+# exclusion list are byte-identical.
+#
+# The LLM gate does NOT stop firing at 17 items. It is evaluated per block inside
+# _parse_criteria_items, not on the unioned list, so CAROLINA's 2236-char page-6
+# span still yields 3 items and still opens it -- one opening before, one after.
 BASELINE = {
-    "CAROLINA": (3, 29, 1),
+    "CAROLINA": (17, 29, 1),
     "ARISTOTLE": (8, 21, 1),
     "CARMELINA": (3, 16, 1),
     "EMPA-REG": (0, 15, 1),
