@@ -16,6 +16,7 @@ from src.agents.agent3.mappings import (
 )
 from src.services.value_constraint import (
     build_measurement_value_filter,
+    unstated_absolute_unit,
     resolve_group_member_constraint,
 )
 from src.utils.circe_lint import default_criterion_window, unreadable_value_attributes
@@ -688,6 +689,22 @@ class CohortAssembler:
                             ", ".join(sc_unreadable),
                         )
                         continue
+                    # ...and only when the number says what it MEANS. A dropped Unit
+                    # used to leave the bare bound behind; see
+                    # `value_constraint.unstated_absolute_unit`. Same refusal channel as
+                    # `sc_unreadable` above -- this assembler logs and skips rather than
+                    # raising, so the store row survives and the unit can be corrected
+                    # at extraction.
+                    sc_unstated_unit = unstated_absolute_unit(resolution.constraint)
+                    if sc_unstated_unit:
+                        logger.warning(
+                            "[Agent3] %s: member %r carries a bound in %r, which resolves "
+                            "to no UCUM unit, so it would be emitted as a bare number and "
+                            "compared against whatever scale the CDM stores. The member is "
+                            "NOT emitted; fix the extracted unit spelling to recover it.",
+                            rule.name, sc.name, sc_unstated_unit,
+                        )
+                        continue
                     sc_content.update(sc_value_filter)
                     criteria_list.append({
                         "Criteria": {sc_criteria_type: sc_content},
@@ -736,6 +753,27 @@ class CohortAssembler:
                 "would be dropped by Circe and the rule would match every occurrence "
                 "of its concept set",
                 rule.name, criteria_type, ", ".join(unreadable),
+            )
+            return {
+                "name": rule.name,
+                "expression": {
+                    "Type": "ALL",
+                    "CriteriaList": [],
+                    "DemographicCriteriaList": [],
+                    "Groups": [],
+                },
+            }
+        # ...and only when the number says what it MEANS, which is the second half of
+        # the same question and is checked second for the same reason tte_service checks
+        # it second: "this table reads no value at all" is the more actionable verdict,
+        # and the unit is moot under it.
+        unstated_unit = unstated_absolute_unit(rule.value_constraint)
+        if unstated_unit:
+            logger.warning(
+                "[Agent3] SKIP rule '%s' — its bound is written in %r, which resolves to "
+                "no UCUM unit, so it would be emitted as a bare number and compared "
+                "against whatever scale the CDM stores",
+                rule.name, unstated_unit,
             )
             return {
                 "name": rule.name,

@@ -93,6 +93,7 @@ from src.services.tte_store import TTEStore
 from src.services.value_constraint import (
     STRANDED_GROUP_CONSTRAINT_REASON,
     build_measurement_value_filter,
+    refuse_unstated_unit_bound,
     resolve_group_member_constraint,
 )
 from src.utils.circe_lint import (
@@ -6977,6 +6978,16 @@ class TTEService:
         # criterion and drops it, leaving the claim absent rather than present and
         # wrong.
         refuse_unreadable_value_filter(criteria_key, value_filter, label)
+        # ...and only when the number says what it MEANS. `build_measurement_value_filter`
+        # drops a `Unit` it cannot resolve -- correctly, since a guessed unit matches
+        # nothing -- and used to ship the bare number anyway. ARISTOTLE exclusion 23
+        # ("Platelet count <= 100,000/ mm", the superscript of /mm3 lost upstream) then
+        # emitted `ValueAsNumber lte 100000` with no unit, which every one of the 41,114
+        # platelet rows in `postgres.synthea_cdm` satisfies -- an ABSENCE rule removing
+        # anyone who has ever had the lab drawn. Placed AFTER the readability check so a
+        # criterion failing both keeps the more actionable verdict: "this table cannot
+        # read a value at all" routes to domain mapping, and the unit is moot there.
+        refuse_unstated_unit_bound(effective_constraint, label)
         criteria_attrs.update(value_filter)
 
         # Heuristic: derive minimum era length from the total temporal window span

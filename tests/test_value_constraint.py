@@ -334,26 +334,40 @@ def test_production_builder_emits_unit_beside_value() -> None:
 
 @pytest.mark.parametrize(
     ("unit_text", "expected_concept_id"),
-    [("bpm", None), ("mg/dL", 8840), ("kg/m²", 9531), ("years", 9448)],
-    ids=["unresolvable-bpm", "mg-dL", "kg-m2-superscript", "years"],
+    [("mg/dL", 8840), ("kg/m²", 9531), ("years", 9448)],
+    ids=["mg-dL", "kg-m2-superscript", "years"],
 )
-def test_production_builder_sets_unit_only_when_resolvable(
-    unit_text: str, expected_concept_id: int | None
+def test_production_builder_sets_unit_when_resolvable(
+    unit_text: str, expected_concept_id: int
 ) -> None:
-    """Paired so the unresolvable row cannot pass vacuously.
-
-    The current builder emits no Unit for anything, which is right for bpm and
-    wrong for the other three; parametrising them together makes that visible.
-    """
     criteria = _production_criteria(
         {"op": "gt", "value": 42.0, "unitText": unit_text}, f"threshold > 42 {unit_text}"
     )
     assert criteria.get("ValueAsNumber") == {"Value": 42.0, "Op": "gt"}
-    if expected_concept_id is None:
-        assert "Unit" not in criteria
-    else:
-        assert isinstance(criteria.get("Unit"), list)
-        assert criteria["Unit"][0]["CONCEPT_ID"] == expected_concept_id
+    assert isinstance(criteria.get("Unit"), list)
+    assert criteria["Unit"][0]["CONCEPT_ID"] == expected_concept_id
+
+
+def test_production_builder_refuses_a_bound_whose_declared_unit_does_not_resolve() -> None:
+    """Was the ``unresolvable-bpm`` row of the parametrised test above, which asserted
+    a bare ``ValueAsNumber`` and no ``Unit``. That pinned half a decision: dropping the
+    unit is right (a guessed unit matches nothing, ADR-031 D5) and shipping the NUMBER
+    alone was never decided at all.
+
+    ARISTOTLE exclusion 23 is what it cost. "Platelet count <= 100,000/ mm" -- the
+    superscript of ``/mm3`` lost upstream -- emitted ``ValueAsNumber lte 100000`` with
+    no unit, and all 41,114 platelet rows in ``postgres.synthea_cdm`` satisfy it, so an
+    ABSENCE exclusion removed every patient who had ever had the lab. Gold's ``<= 100``
+    matches 75 of them. The builder's fragment is unchanged -- the CALLER now refuses;
+    see ``tests/test_unit_bound_gates.py``.
+    """
+    from src.utils.criterion_refusal import REFUSAL_UNSTATED_UNIT_BOUND, CriterionRefused
+
+    with pytest.raises(CriterionRefused) as excinfo:
+        _production_criteria(
+            {"op": "gt", "value": 42.0, "unitText": "bpm"}, "threshold > 42 bpm"
+        )
+    assert excinfo.value.code == REFUSAL_UNSTATED_UNIT_BOUND
 
 
 # ---------------------------------------------------------------------------

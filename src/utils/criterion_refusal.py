@@ -97,6 +97,33 @@ REFUSAL_DOMAIN_CONTRADICTION = "domain-contradiction"
 #: :func:`src.utils.circe_lint.refuse_unreadable_value_filter`.
 REFUSAL_UNREADABLE_VALUE_FILTER = "unreadable-value-filter"
 
+#: An ABSOLUTE bound declared a unit and the pipeline could not resolve it to a UCUM
+#: concept, so the number was about to be emitted ALONE. A bound with no stated unit is
+#: not a narrower bound -- it is a claim in an unknown unit, and Circe compares it
+#: against whatever scale the CDM happens to store.
+#:
+#: Measured on ARISTOTLE exclusion 23. The protocol writes "Platelet count <=
+#: 100,000/mm3"; extraction lost the superscript and stored ``unitText: "/ mm"``, which
+#: :func:`~src.services.value_constraint.normalize_unit` correctly refuses to guess at.
+#: The ``Unit`` sibling was therefore dropped and ``ValueAsNumber {100000.0, lte}``
+#: shipped bare. In ``postgres.synthea_cdm`` -- 7.8M measurements, units populated, not
+#: generated from ``data/gold/`` -- all 41,114 platelet rows (concept 3024929, unit 8848
+#: ``10*3/uL``, min 99.0 / median 287.3 / max 450.0) satisfy it, so the exclusion removed
+#: every patient who has ever had the lab drawn. Gold's ``<= 100`` matches 75 (0.18%).
+#:
+#: Distinct from :data:`REFUSAL_UNREADABLE_VALUE_FILTER`: there the filter is well formed
+#: and the TABLE cannot read it. Here the table reads it perfectly and the FILTER does
+#: not say what it means. Distinct from a bound that declared no unit at all (LEADER's
+#: ``HbA1c >= 7.0``, PLATO's ST-segment criteria): nothing was dropped from those, so
+#: they are not refused -- 12 of the 2026-09-13 store's 22 bare bounds are that shape and
+#: refusing them would be a different decision on a different defect.
+#:
+#: NEVER permitted by the delivery gate. Converting instead of refusing was considered
+#: and rejected: it needs a per-analyte conversion table, which is a clinical decision
+#: with nowhere auditable to live, and for this very criterion the converted-and-correct
+#: ``Unit [8785]`` matches 0 of those same 41,114 rows anyway.
+REFUSAL_UNSTATED_UNIT_BOUND = "unstated-unit-bound"
+
 #: The criterion reached the mapper on a seed that is NOT its own ``entity_text``,
 #: because extraction left that mandatory field empty and
 #: :func:`src.utils.criterion_seed.criterion_mapper_seed` fell back to ``description``.
@@ -146,7 +173,7 @@ REFUSAL_MISSING_ENTITY_TEXT = "missing-entity-text"
 #: somewhere else; a refusal left alone merely keeps the record it already had. So a
 #: code not named here is never re-coded, including any added later.
 #:
-#: Three codes are deliberately absent:
+#: Four codes are deliberately absent:
 #:
 #: * :data:`REFUSAL_UNMAPPABLE_PLACEHOLDER` -- the ONE code the delivery gate permits,
 #:   and these rows earn it on the seed's own words. "Investigational drug use"
@@ -154,10 +181,10 @@ REFUSAL_MISSING_ENTITY_TEXT = "missing-entity-text"
 #:   than a substance, so no ``entity_text`` would have helped and the loss is
 #:   irreducible either way. Re-coding it would take a real permit away and flip both
 #:   ARISTOTLE arms from PASS to FAIL for a row nothing is wrong with.
-#: * :data:`REFUSAL_STRANDED_GROUP_THRESHOLD` and
-#:   :data:`REFUSAL_UNREADABLE_VALUE_FILTER` -- both are refused AFTER the mapper
-#:   answered, and both are about the NUMBER rather than the concepts. A different seed
-#:   changes neither.
+#: * :data:`REFUSAL_STRANDED_GROUP_THRESHOLD`, :data:`REFUSAL_UNREADABLE_VALUE_FILTER`
+#:   and :data:`REFUSAL_UNSTATED_UNIT_BOUND` -- all three are refused AFTER the mapper
+#:   answered, and all three are about the NUMBER rather than the concepts. A different
+#:   seed changes none of them.
 #:
 #: :data:`REFUSAL_EMPTY_SEED` is absent for a different reason: it already says the
 #: stronger thing ("no seed text at all"), so re-coding would lose information.
@@ -184,6 +211,7 @@ REFUSAL_CODES = frozenset(
         REFUSAL_DOMAIN_CONTRADICTION,
         REFUSAL_UNREADABLE_VALUE_FILTER,
         REFUSAL_MISSING_ENTITY_TEXT,
+        REFUSAL_UNSTATED_UNIT_BOUND,
     }
 )
 

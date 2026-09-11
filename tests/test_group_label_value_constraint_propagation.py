@@ -618,7 +618,12 @@ class TestRangeOperand:
         )
 
         assert emitted["ValueAsNumber"] == {"Value": 30.0, "Extent": 59.0, "Op": "bt"}
-        assert [u["CONCEPT_ID"] for u in emitted["Unit"]] == [720870]
+        # 720870 FIRST and its retired UCUM spellings behind it. `== [720870]` was what
+        # stood here, and it pinned the filter that matched 0 of the 13,845 eGFR rows
+        # across ajou/donga/keimyung -- every one of them carries 9117, the concept
+        # 720870 replaced on 2022-04-07. See `value_constraint._UNIT_DEPRECATED_FORMS`.
+        assert [u["CONCEPT_ID"] for u in emitted["Unit"]][0] == 720870
+        assert {u["CONCEPT_ID"] for u in emitted["Unit"]} == {720870, 9117, 9062}
 
     def test_should_emit_nothing_when_a_range_reaches_circe_without_its_upper_bound(self):
         """Half a range would emit ``{Value: 30, Op: "bt"}``, which Circe cannot complete."""

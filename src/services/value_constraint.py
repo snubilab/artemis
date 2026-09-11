@@ -25,6 +25,13 @@ from typing import Any, Literal, NamedTuple
 
 from src.models.ir import ValueConstraint
 
+# `criterion_refusal` is a pure constants module with no I/O and no imports of its
+# own, so importing it here keeps this module unit-testable without a database. The
+# refusal below lives beside the unit resolution it reasons about rather than in
+# `circe_lint`, whose stated contract is "pure lint functions over a CIRCE cohort
+# expression dict" -- this one is handed a ValueConstraint, not an expression.
+from src.utils.criterion_refusal import REFUSAL_UNSTATED_UNIT_BOUND, CriterionRefused
+
 ReferenceBound = Literal["absolute", "uln", "lln"]
 
 # Circe accepts these operator tokens verbatim; the IR Literal already matches.
@@ -64,6 +71,48 @@ _UNIT_CONCEPTS: dict[int, tuple[str, str]] = {
     9593: ("ms", "millisecond"),
     720843: ("mV", "millivolt"),
     720870: ("mL/min/(173.10*-2.m2)", "milliliter per minute per 1.73 square meter"),
+}
+
+# Standard unit concept -> the DEPRECATED UCUM spellings of the SAME unit.
+#
+# Circe emits `AND unit_concept_id IN (...)`, an AND with no fallback, so a unit the
+# CDM's ETL wrote under an older code zeroes the criterion silently. EMPA-REG exclusion
+# 8 and CAROLINA inclusion 25 both declare 720870 over eGFR and matched 0 rows in every
+# CDM checked; the three delivery sites carry 13,845 eGFR rows between them (ajou 4,266,
+# donga 2,331, keimyung 7,248) and every one of them is 9117, the concept 720870
+# REPLACED on 2022-04-07. The emitted filter excluded exactly the rows it selected for.
+#
+# Derived from the vocabulary, never authored. Each row is a `Maps to` edge into the
+# standard concept whose source is a UCUM Unit concept the vocabulary marks INVALID:
+#
+#   SELECT cr.concept_id_2, c.concept_id, c.concept_code, c.concept_name, c.invalid_reason
+#     FROM {CDM_SCHEMA}.concept_relationship cr
+#     JOIN {CDM_SCHEMA}.concept c ON c.concept_id = cr.concept_id_1
+#    WHERE cr.relationship_id = 'Maps to' AND cr.invalid_reason IS NULL
+#      AND cr.concept_id_2 = ANY(<_UNIT_CONCEPTS keys>) AND cr.concept_id_1 <> cr.concept_id_2
+#      AND c.vocabulary_id = 'UCUM' AND c.domain_id = 'Unit' AND c.invalid_reason IS NOT NULL
+#
+# run 2026-09-11 against `synthea23m` (vocabulary shared with `omop_vocab`). It returns
+# exactly the three rows below across all 27 units, which is why this is a derivation
+# rather than a maintenance burden -- `verify_unit_table_against_database` re-runs it.
+#
+# The 'UCUM + invalid' filter is the load-bearing narrowing, not decoration. Dropping it
+# admits 51 further `Maps to` sources, nearly all SNOMED, including 25 distinct concepts
+# that map to 8554 ("Percentage energy intake from fat", "Percentage oxyhemoglobin", ...).
+# Those are different QUANTITIES that happen to normalise to percent; adding them would
+# widen a filter rather than restate it, which is the opposite of the defect being fixed.
+#
+# What this deliberately does NOT fix: a site whose ETL left `unit_concept_id = 0`.
+# 8876 `mm[Hg]` has no deprecated predecessor and matches 0 systolic-pressure rows at
+# all three sites because their rows carry 0. That is a site ETL gap with no vocabulary
+# answer, and stretching this table to cover it would mean guessing. It is reported
+# instead -- see `scripts/audit_declared_units.py`.
+_UNIT_DEPRECATED_FORMS: dict[int, tuple[tuple[int, str, str], ...]] = {
+    9448: ((8528, "y", "year"),),
+    720870: (
+        (9117, "mL/min/1.73.m2", "milliliter per minute per 1.73 square meter"),
+        (9062, "mL/min/{1.73}m", "Milliliter per minute per 1.73 meter"),
+    ),
 }
 
 # Protocol spelling (already run through _clean) -> UCUM concept_id.
@@ -201,6 +250,32 @@ def unit_concept(concept_id: int) -> dict[str, Any]:
     }
 
 
+def unit_concepts(concept_id: int) -> list[dict[str, Any]]:
+    """Every UCUM concept a ``Unit`` filter must accept for ``concept_id``.
+
+    The standard concept FIRST -- callers and tests read ``Unit[0]`` as "the unit this
+    bound is written in", and :func:`absolute_unit_concept_id` must keep agreeing with
+    it -- followed by the deprecated UCUM spellings of the same unit from
+    :data:`_UNIT_DEPRECATED_FORMS`.
+
+    Restating one unit, never widening to a second. Circe ANDs the filter, so a CDM
+    whose ETL predates a UCUM retirement matched nothing at all: 720870 replaced 9117 in
+    2022 and all 13,845 eGFR rows across the three delivery sites still carry 9117.
+    """
+    return [unit_concept(concept_id)] + [
+        {
+            "CONCEPT_CODE": code,
+            "CONCEPT_ID": deprecated_id,
+            "CONCEPT_NAME": name,
+            "DOMAIN_ID": "Unit",
+            "INVALID_REASON_CAPTION": "Unknown",
+            "STANDARD_CONCEPT_CAPTION": "Unknown",
+            "VOCABULARY_ID": "UCUM",
+        }
+        for deprecated_id, code, name in _UNIT_DEPRECATED_FORMS.get(concept_id, ())
+    ]
+
+
 def split_reference_bound(unit_text: str | None) -> tuple[ReferenceBound, str | None]:
     """Recover a reference bound that legacy IR stored inside ``unit_text``.
 
@@ -324,8 +399,96 @@ def build_measurement_value_filter(vc: Any) -> dict[str, Any]:
     concept_id = absolute_unit_concept_id(vc)
     if concept_id is not None:
         # Sibling of ValueAsNumber, not a key inside it — Circe ignores it nested.
-        fragment["Unit"] = [unit_concept(concept_id)]
+        # ...and the whole equivalence class, not just the standard concept: Circe ANDs
+        # `unit_concept_id IN (...)`, so a site whose ETL still writes the retired
+        # spelling matched nothing. See `_UNIT_DEPRECATED_FORMS`.
+        fragment["Unit"] = unit_concepts(concept_id)
     return fragment
+
+
+def unstated_absolute_unit(vc: Any) -> str | None:
+    """The unit this absolute bound DECLARED and that did not resolve, or None.
+
+    The predicate half of the gate, deliberately shaped like
+    :func:`~src.utils.circe_lint.unreadable_value_attributes`: it answers a question
+    and raises nothing, so the delivery-gate reader and the emission-time refusal
+    cannot drift apart.
+
+    The defect it names. ``build_measurement_value_filter`` emits ``Unit`` only when
+    :func:`absolute_unit_concept_id` resolves, and drops it SILENTLY when it does not --
+    which is right, because guessing a nearest unit writes a filter that matches nothing
+    (ADR-031 D5). What was never decided is what happens to the NUMBER. It shipped
+    alone, and a number alone is not a narrower bound; it is a claim in an unknown unit,
+    compared by Circe against whatever scale the CDM stores.
+
+    Measured on ARISTOTLE exclusion 23. ``"Platelet count <= 100,000/ mm"`` -- the
+    superscript of ``/mm3`` lost upstream -- emitted
+    ``ValueAsNumber {Value: 100000.0, Op: "lte"}`` with no ``Unit``. Against
+    ``postgres.synthea_cdm`` (7,834,306 measurements, units populated, NOT generated
+    from ``data/gold/``) all 41,114 platelet rows satisfy it: concept 3024929, unit 8848
+    ``10*3/uL``, min 99.0 / median 287.3 / max 450.0. Inside an ABSENCE exclusion that
+    removed every patient who has ever had the lab drawn. Gold's ``<= 100`` matches 75
+    of the same rows (0.18%), the thrombocytopenic population.
+
+    Three shapes are deliberately NOT named, because nothing was dropped from them:
+
+    * a bound that declared no unit at all (``unitText`` empty or absent). LEADER's
+      ``HbA1c >= 7.0`` and PLATO's ST-segment criteria are this, and 12 of the 22 bare
+      bounds in the 2026-09-13 store are. Whether an undeclared unit is safe is a real
+      question and a DIFFERENT one; answering it here would fold two decisions into one
+      predicate and make the blast radius unreadable.
+    * a reference-relative bound. "3 x ULN" emits ``RangeHighRatio``, which Circe
+      divides by the row's own ``range_high`` -- unit-free by construction.
+    * a constraint that emits no ``ValueAsNumber`` at all (a ``bt`` missing its upper
+      bound, a malformed op). There is no bound to refuse.
+
+    :param vc: a ``ValueConstraint`` model or a raw camelCase IR dict.
+    :returns: the declared unit spelling, verbatim as stored, or None when the bound is
+        fine. The spelling is returned rather than a bool so the refusal can print the
+        thing a human has to go and fix.
+    """
+    fragment = build_measurement_value_filter(vc)
+    if "ValueAsNumber" not in fragment or "Unit" in fragment:
+        return None
+    _, residual = resolve_reference_bound(vc)
+    return residual if (residual or "").strip() else None
+
+
+def refuse_unstated_unit_bound(vc: Any, label: str) -> None:
+    """Raise when an absolute bound is about to be emitted in an unstated unit.
+
+    The emission-time half, and the same choice
+    :func:`~src.utils.circe_lint.refuse_unreadable_value_filter` makes: raising rather
+    than emitting leaves the caller to record the criterion under its own refusal reason
+    and drop it, so the claim is honestly absent instead of present and wrong.
+
+    Converting to the CDM's conventional unit is the alternative, and it was rejected on
+    both halves. It needs a per-analyte conversion table -- a clinical decision with
+    nowhere auditable to live, and one this module already refuses to grow for the
+    related question (see :data:`_ANALYTE_CONVENTIONAL_UNITS`, which records units and
+    deliberately records no factors). And on the motivating criterion it buys nothing:
+    ``/mm3`` resolves to 8785, and ``Unit [8785]`` matches 0 of the same 41,114
+    ``synthea_cdm`` platelet rows, because that CDM writes 8848 ``10*3/uL``.
+
+    :param vc: the constraint about to be built into a value filter.
+    :param label: the criterion's seed text, for the recorded reason.
+    :raises CriterionRefused: carrying
+        :data:`~src.utils.criterion_refusal.REFUSAL_UNSTATED_UNIT_BOUND`.
+    """
+    unit_text = unstated_absolute_unit(vc)
+    if unit_text is None:
+        return
+    value = _field(vc, "value", "Value")
+    op = _field(vc, "op", "Op")
+    raise CriterionRefused(
+        f"criterion bound in an unstated unit: {label!r} carries {op} {value} "
+        f"{unit_text!r}, and {unit_text!r} resolves to no UCUM unit concept, so the "
+        f"bound would be emitted as a bare number and compared against whatever scale "
+        f"the CDM stores. Fix the extracted unit spelling, or express the threshold in "
+        f"a unit this pipeline resolves",
+        code=REFUSAL_UNSTATED_UNIT_BOUND,
+        detail=f"unresolved unit {unit_text!r} on {op} {value}",
+    )
 
 
 # --------------------------------------------------------------------------
@@ -1074,11 +1237,18 @@ def annotate_value_constraints(line: str) -> str:
 
 
 def verify_unit_table_against_database() -> list[str]:
-    """Compare _UNIT_CONCEPTS against the live vocabulary; return discrepancies.
+    """Compare _UNIT_CONCEPTS and _UNIT_DEPRECATED_FORMS against the live vocabulary.
 
-    The static table keeps normalize_unit a pure function that tests can run
-    without Postgres. This is how the table is kept honest: run it after a
+    The static tables keep normalize_unit a pure function that tests can run
+    without Postgres. This is how they are kept honest: run it after a
     vocabulary refresh rather than assuming no drift.
+
+    Both halves are re-DERIVED here rather than spot-checked. The codes and names in
+    :data:`_UNIT_CONCEPTS` are compared row by row; :data:`_UNIT_DEPRECATED_FORMS` is
+    rebuilt from ``concept_relationship`` by the same query its comment records, and any
+    difference in either direction is reported -- a retirement the vocabulary has since
+    added is as much a discrepancy as a row that no longer holds, because a MISSING
+    deprecated spelling is exactly the silent zero-match this table exists to prevent.
     """
     import psycopg2
 
@@ -1095,8 +1265,37 @@ def verify_unit_table_against_database() -> list[str]:
                 (list(_UNIT_CONCEPTS),),
             )
             rows = {r[0]: r[1:] for r in cur.fetchall()}
+            # The derivation the `_UNIT_DEPRECATED_FORMS` comment records, run live.
+            cur.execute(
+                f"SELECT cr.concept_id_2, c.concept_id, c.concept_code, c.concept_name "
+                f"FROM {settings.CDM_SCHEMA}.concept_relationship cr "
+                f"JOIN {settings.CDM_SCHEMA}.concept c ON c.concept_id = cr.concept_id_1 "
+                f"WHERE cr.relationship_id = 'Maps to' AND cr.invalid_reason IS NULL "
+                f"  AND cr.concept_id_2 = ANY(%s) AND cr.concept_id_1 <> cr.concept_id_2 "
+                f"  AND c.vocabulary_id = 'UCUM' AND c.domain_id = 'Unit' "
+                f"  AND c.invalid_reason IS NOT NULL",
+                (list(_UNIT_CONCEPTS),),
+            )
+            derived: dict[int, set[tuple[int, str, str]]] = {}
+            for standard_id, concept_id, code, name in cur.fetchall():
+                derived.setdefault(standard_id, set()).add((concept_id, code, name))
     finally:
         conn.close()
+
+    for standard_id in set(derived) | set(_UNIT_DEPRECATED_FORMS):
+        live = derived.get(standard_id, set())
+        recorded = set(_UNIT_DEPRECATED_FORMS.get(standard_id, ()))
+        for missing in sorted(live - recorded):
+            problems.append(
+                f"{standard_id}: vocabulary retires {missing!r} onto it and "
+                f"_UNIT_DEPRECATED_FORMS does not carry it, so a CDM still writing "
+                f"that spelling matches nothing"
+            )
+        for stale in sorted(recorded - live):
+            problems.append(
+                f"{standard_id}: _UNIT_DEPRECATED_FORMS carries {stale!r}, which the "
+                f"vocabulary no longer maps onto it"
+            )
 
     for concept_id, (code, name) in _UNIT_CONCEPTS.items():
         row = rows.get(concept_id)
