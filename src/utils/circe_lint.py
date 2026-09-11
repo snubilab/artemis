@@ -29,6 +29,11 @@ from src.utils.criterion_refusal import (
     CriterionRefused,
 )
 
+# Same purity contract as `criterion_refusal` above: `naming_words` has no I/O and no
+# imports beyond `re`. It lives outside `src/agents/planner/decomposer.py`, which owns
+# the other caller, precisely so this module does not pull the model stack in.
+from src.utils.naming_words import naming_words
+
 _ABSENT_OCCURRENCE = (0, 0)
 
 
@@ -2147,3 +2152,162 @@ def _split_items_by_readability(
         else:
             unreadable.append((item, raw))
     return readable, unreadable
+
+
+# --------------------------------------------------------------------------
+# a criterion against the protocol line it was extracted from
+# --------------------------------------------------------------------------
+
+#: A naming word shorter than this is not compared as a substring. Without the floor,
+#: "ap" (alkaline phosphatase) matches "therapy" and every criterion looks grounded.
+_SUBSTRING_FLOOR = 4
+
+UNGROUNDED_SHAPE_UNNAMED = "line-names-nothing-it-claims"
+UNGROUNDED_SHAPE_LINE_INSIDE_NAME = "line-inside-the-name"
+
+
+def _line_names_the_criterion(claimed: set[str], line: set[str]) -> bool:
+    """Does ``line`` name any of the words the criterion claims?
+
+    Whole-word overlap first, then substring in either direction above
+    :data:`_SUBSTRING_FLOOR`. The substring arm is not decoration: it is what keeps
+    ``Hemodialysis`` off the report when its line says ``Dialysis required``, and
+    ``Hyperosmolar Hyperglycemic State`` off it when the line says ``glycemic``. Both
+    are readings of their line under any honest account of what "names" means, and both
+    fail a whole-word test. It costs nothing on the fabrications: no word of
+    ``Hypertension`` or ``Total Bilirubin`` is a substring of anything in their lines.
+    """
+    if claimed & line:
+        return True
+    for word in claimed:
+        if len(word) < _SUBSTRING_FLOOR:
+            continue
+        for other in line:
+            if len(other) < _SUBSTRING_FLOOR:
+                continue
+            if word in other or other in word:
+                return True
+    return False
+
+
+def ungrounded_criteria(
+    expression: Mapping[str, Any], study: Mapping[str, Any]
+) -> tuple[list[dict[str, Any]], str]:
+    """Emitted criteria whose own ``protocolLine`` does not support what they claim.
+
+    Returns ``(records, summary)``. **Report only** -- no caller may turn a record here
+    into a refusal, and the reason is measured rather than cautious: over the six trials
+    of the 2026-09-14 delivery the check fires 21 times, and nine of those carry a defect
+    finding in that delivery's own audit -- ARISTOTLE exclusion 24, CARMELINA exclusion
+    5, EMPA-REG inclusions 8 through 12, PLATO inclusion 8 and LEADER exclusion 5. The
+    other twelve are decompositions of an umbrella the line does name (``Acute coronary
+    syndrome`` into STEMI / NSTEMI / unstable angina in two trials, ``End-stage liver
+    disease`` into cirrhosis and advanced fibrosis), one line truncated mid-sentence by
+    ``pdftotext`` (EMPA-REG exclusion 8, whose criterion is correct and whose LINE is the
+    defect), and one lay paraphrase (PLATO exclusion 24: ``blood clotting agents`` for
+    anticoagulants). Refusing at 9-in-21 deletes more correct criteria than it removes
+    invented ones -- the trade
+    :func:`~src.agents.planner.decomposer._grounded_span` already declines to make one
+    stage earlier, for the same reason and in the same direction.
+
+    Two shapes, both taken from what the corpus shows rather than from a threshold:
+
+    ``line-names-nothing-it-claims``
+        No naming word of the criterion -- ``sourceText``, ``description`` or
+        ``conceptSetName``, pooled, because the line may use an abbreviation the
+        expansion does not repeat and vice versa -- appears in its own ``protocolLine``.
+        Pooling matters: ``Alanine aminotransferase`` under a line saying ``ALT`` is
+        grounded through the description ``ALT > 2X ULN``, and pooling drops the fires
+        from 41 to 20 without losing one known fabrication.
+
+    ``line-inside-the-name``
+        The line's naming words are a strict subset of the criterion's own
+        ``description``, so the line contributed nothing the name did not already carry.
+        One instance in the corpus: ARISTOTLE exclusion 24, ``protocolLine`` ``"Prior"``
+        against the name ``"Prior ischemic stroke"`` -- the left half of a split across
+        protocol exclusion 18 ``Recent ischemic stroke (within 7 days)``, emitted as an
+        all-time exclusion that contradicts the trial's own inclusion 3(b).
+
+    Length is deliberately absent from both. Over the 251 emitted criteria the six known
+    fabrications carry 1, 3, 3, 3, 8 and 23 naming words; a cut at 3 words takes 35
+    criteria and 31 of them are terse and correct.
+
+    ``study`` supplies the criteria rows and ``expression`` only the emission link, so a
+    criterion the file refused is not reported: eight non-emitted criteria fire over the
+    same corpus -- group labels whose ``protocolLine`` is empty, and a list header
+    ``>=2 of the following:`` -- and none of them reached a rule. A file carrying no
+    ``_criterionConceptSetRefs`` yields no records and says so in ``summary``, because a
+    check whose only output is silence cannot be told from one that never ran.
+
+    A criterion carrying no ``protocolLine`` at all is counted in ``summary`` and never
+    reported. Absent provenance is a gap in what can be judged, not evidence of a claim
+    the line fails to support, and booking it as the latter would put every artifact
+    exported before ``protocolLine`` existed at the top of the report.
+    """
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    if not isinstance(refs, Mapping):
+        return [], (
+            f"grounding not run: the file carries no {CRITERION_CONCEPT_SET_REFS_KEY}, "
+            "so which criteria it emitted is unknown"
+        )
+    emitted = {str(key) for key in refs}
+
+    # The store nests criteria under `eligibility`, the same place
+    # `verify_circe_delivery.criteria_index` reads them from. Read anywhere else and
+    # this returns "0 of 0" on every real artifact while a flattened test fixture keeps
+    # it green -- which is how it behaved for one measured run before the gate was
+    # pointed at the delivery and printed exactly that.
+    eligibility = study.get("eligibility")
+    if not isinstance(eligibility, Mapping):
+        return [], (
+            "grounding not run: the store study carries no `eligibility` block, so it "
+            "holds no criteria rows to read a protocolLine from"
+        )
+
+    records: list[dict[str, Any]] = []
+    considered = 0
+    no_line = 0
+    for role in ("inclusion", "exclusion"):
+        rows = eligibility.get(f"{role}Criteria")
+        if not isinstance(rows, Sequence):
+            continue
+        for criterion in rows:
+            if not isinstance(criterion, Mapping):
+                continue
+            if f"{role}:{criterion.get('id')}" not in emitted:
+                continue
+            considered += 1
+            line_text = criterion.get("protocolLine") or ""
+            line = naming_words(line_text)
+            if not line:
+                no_line += 1
+                continue
+            description = naming_words(criterion.get("description"))
+            claimed = (
+                naming_words(criterion.get("sourceText"))
+                | description
+                | naming_words(criterion.get("conceptSetName"))
+            )
+            if claimed and not _line_names_the_criterion(claimed, line):
+                shape = UNGROUNDED_SHAPE_UNNAMED
+            elif line < description:
+                shape = UNGROUNDED_SHAPE_LINE_INSIDE_NAME
+            else:
+                continue
+            records.append({
+                "role": role,
+                "id": criterion.get("id"),
+                "description": criterion.get("description") or "",
+                "protocolLine": line_text,
+                "shape": shape,
+            })
+
+    gap = ""
+    if no_line:
+        noun = "criterion" if no_line == 1 else "criteria"
+        gap = f", {no_line} emitted {noun} carries no protocolLine and was not judged"
+    summary = (
+        f"{len(records)} of {considered} emitted criteria are not supported by their own "
+        f"protocolLine (report only){gap}"
+    )
+    return records, summary

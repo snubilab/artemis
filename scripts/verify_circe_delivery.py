@@ -224,6 +224,7 @@ from src.utils.circe_lint import (  # noqa: E402
     noop_exclusion_rules,
     rule_names,
     unfiltered_measurement_absence_criteria,
+    ungrounded_criteria,
     unreadable_value_attributes,
 )
 from src.utils.criterion_refusal import (  # noqa: E402
@@ -2131,6 +2132,34 @@ def main(argv: list[str] | None = None) -> int:
         accounting_violations, accounting_summary = criterion_accounting(expression, study)
         reasons.extend(accounting_violations)
 
+        # (p) criteria whose own protocolLine does not support what they claim.
+        # REPORTED, NEVER JUDGED -- it appends no violation on any path below and
+        # cannot move a verdict, exactly like `defaulted_clause` in
+        # `criterion_accounting`. The reason is measured: over this batch the check
+        # fires 21 times and nine of them carry a defect finding in the delivery audit,
+        # the other twelve being decompositions of an umbrella the line does name (ACS
+        # into STEMI/NSTEMI/unstable angina), a line truncated by pdftotext, and a lay
+        # paraphrase. At 9-in-21 a gate would delete more correct criteria than
+        # invented ones.
+        #
+        # Every other check in this file reads the emitted expression against itself or
+        # against the store's structure. This is the only one that reads the protocol
+        # line a criterion came from against what the criterion went on to claim -- the
+        # question `protocolLine` was added to make answerable and that nothing asked.
+        # ARISTOTLE InclusionRules[13] is why: an all-time "Prior ischemic stroke"
+        # exclusion built from the one-word line "Prior", contradicting the trial's own
+        # inclusion 3(b) emitted as rule 19, and it passed every existing check.
+        grounding_records, grounding_summary = ungrounded_criteria(expression, study)
+        if grounding_records:
+            detail = "; ".join(
+                f"{record['role']} {record['id']} \"{record['description']}\" "
+                f"[{record['shape']}] line={record['protocolLine'][:60]!r}"
+                for record in grounding_records
+            )
+            grounding_clause = f"{grounding_summary}: {detail}"
+        else:
+            grounding_clause = grounding_summary
+
         # (d) manifest cross-check, if present
         if manifest is not None:
             manifest_entry = next(
@@ -2159,9 +2188,12 @@ def main(argv: list[str] | None = None) -> int:
                 # recorded criterion loss, so a summary printed only on success would
                 # never once have said what the emission-time repair removed.
                 "reasons": (
-                    reasons + [accounting_summary]
+                    reasons + [accounting_summary, grounding_clause]
                     if reasons
-                    else [f"entry: {case}; rules: {rules_detail}; {accounting_summary}"]
+                    else [
+                        f"entry: {case}; rules: {rules_detail}; {accounting_summary}",
+                        grounding_clause,
+                    ]
                 ),
             }
         )

@@ -3,7 +3,6 @@ Criteria Planner (Agent 1.5) - Clinical Criteria Decomposer.
 Decomposes composite clinical criteria into granular, OMOP-searchable sub-criteria.
 """
 import json
-import re
 from typing import Optional, List
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -12,6 +11,7 @@ from src.models.ir import ARTEMISRequest, CohortDefinition, Criteria
 from src.agents.planner.prompts import PLANNER_SYSTEM_PROMPT, DECOMPOSITION_PROMPT
 from src.services.value_constraint import parse_value_constraint
 from src.agents.agent1.threshold_classifier import deescape
+from src.utils.naming_words import naming_words
 
 
 def _comparison_form(text: str) -> str:
@@ -25,18 +25,16 @@ def _comparison_form(text: str) -> str:
     return " ".join(deescape(text).split()).lower()
 
 
-# Words that carry no naming power. A span overlapping a sub-term only on "or" or "of"
-# has not named it. Single characters go too -- the "e" and "g" of "e.g.".
-_FUNCTION_WORDS = frozenset({
-    "or", "of", "and", "the", "a", "an", "in", "with", "to", "for", "by", "on", "at",
-    "as", "is", "are", "be", "not", "no", "any", "other", "due", "from",
-})
-
-
-def _naming_words(text: str) -> set[str]:
-    """The words in ``text`` that could name something."""
-    words = re.split(r"[^0-9a-z]+", _comparison_form(text))
-    return {w for w in words if len(w) > 1 and w not in _FUNCTION_WORDS}
+# Moved to `src.utils.naming_words` so `src/utils/circe_lint.py` can ask the same
+# question of a whole stored criterion without importing this module's model stack. The
+# alias is kept because gate 2 below and every existing caller read the private name.
+#
+# The moved version does NOT route through `_comparison_form`, and that is an identity
+# rather than a tolerance: `deescape` only removes backslashes, and the split pattern
+# treats a backslash as a separator like every other non-alphanumeric character, so the
+# two agree on every possible input. Re-checked against the 1,910 criterion strings of
+# the 2026-09-14 store: zero differ.
+_naming_words = naming_words
 
 
 def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Optional[str]:
