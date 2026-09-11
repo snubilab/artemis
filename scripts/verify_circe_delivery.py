@@ -143,6 +143,18 @@ Checks per file:
     is why the check reads structure rather than names. See
     ``src.utils.circe_lint.contradictory_presence_absence_criteria``.
 
+(o) no rule is emitted as a conjunction over alternatives its protocol line states
+    as a disjunction. Reads the emitted ``Type`` and the store group's own
+    ``protocolLine``; no database, no vocabulary. The connective alone is NOT the
+    signal -- 33 of the 82 groups in the six-trial store declare ``ALL`` under a line
+    stating a disjunction and 31 of those are correct all-ABSENCE exclusions, where
+    ``ALL`` IS the De Morgan reading -- so the check fires only when the rule's
+    criteria are not all absences. Measured on the twelve delivered files: LEADER
+    ``InclusionRules[2]``, both arms, and nothing else. Check (n) catches that rule
+    too, but only because codesets 10 and 11 happen to be byte-identical; a conjoined
+    disjunction over sets that merely differ is invisible to every other check here.
+    See ``src.utils.circe_lint.conjoined_disjunction_rules``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -201,6 +213,7 @@ from src.utils.circe_lint import (  # noqa: E402
     DROPPED_CRITERIA_KEY,
     aliased_concept_sets,
     asserted_bound_missing_criteria,
+    conjoined_disjunction_rules,
     contradictory_absence_rules,
     contradictory_presence_absence_criteria,
     domain_mismatched_criteria,
@@ -2099,6 +2112,18 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"contradictory presence/absence ({len(presence_absence)}): "
                 f"{'; '.join(presence_absence)}"
+            )
+
+        # (o) a rule emitted as a conjunction over a stated disjunction. Check (n)
+        # reaches LEADER's rule 2 only because codesets 10 and 11 are byte-identical;
+        # the same inversion over sets that merely differ contradicts nothing a
+        # structural check can see, and this is the only one that reads the protocol
+        # line the alternatives were written on.
+        conjoined_disjunctions = conjoined_disjunction_rules(expression, study)
+        if conjoined_disjunctions:
+            reasons.append(
+                f"conjoined disjunction ({len(conjoined_disjunctions)}): "
+                f"{'; '.join(conjoined_disjunctions)}"
             )
 
         # (i) the file's own drop records: recorded criterion loss, and whether the

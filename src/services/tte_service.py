@@ -107,9 +107,11 @@ from src.utils.circe_lint import (
     end_entry_colliding_washouts_before_index,
     entry_concept_ids,
     entry_concept_set,
+    group_protocol_line,
     partially_readable_criteria,
     refuse_domain_contradiction,
     refuse_unreadable_value_filter,
+    states_flat_disjunction,
 )
 from src.utils.criterion_refusal import (
     REFUSAL_DOMAIN_CONTRADICTION,
@@ -280,7 +282,10 @@ def describe_mapping_failure(exc: BaseException) -> dict[str, Any]:
 def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]) -> str:
     """Return the CIRCE group Type to emit for a criterion group.
 
-    SPEC-INFRA-003 REQ-004. An exclusion criterion is emitted with
+    Two corrections, in opposite directions, and the De Morgan one is checked first so
+    no group it owns can be reached by the other.
+
+    **ANY -> ALL (SPEC-INFRA-003 REQ-004).** An exclusion criterion is emitted with
     `Occurrence {Type: 0, Count: 0}` -- "exactly zero occurrences" -- and CIRCE
     AND-combines top-level InclusionRules, so N separate ABSENCE rules mean *absent
     from A and absent from B*, which by De Morgan is absence from the **union**. That
@@ -294,24 +299,56 @@ def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]
     The same holds for demographic members even though they invert the operator rather
     than the Occurrence axis: separate top-level rules AND-combine either way.
 
+    **ALL -> ANY (the 2026-09-11 conversion audit's largest logical-defect class:
+    AND/OR inverted, 7 instances across 4 trials).** The declared type can also be a
+    conjunction over alternatives the protocol wrote as a disjunction. LEADER store
+    group `4a712697` declares `ALL` under the line "Anti-diabetic drug naive **or**
+    treated with one or more oral anti-diabetic drugs **or** treated with human NPH
+    insulin ...", and reaches the delivery as `InclusionRules[2]`: zero exposures to
+    codeset 10 AND at least one to codeset 11, two byte-identical sets, satisfiable
+    only by a patient whose sole exposure falls on the index day.
+
+    Two guards make that correction safe, and neither is decoration:
+
+    * The all-ABSENCE branch returns first, so a group De Morgan owns is never
+      widened. Measured on the delivered corpus, 47 of the 51 `ALL` groups are
+      all-ABSENCE and 31 of those 47 sit under a line that states a flat disjunction;
+      widening on the connective alone would invert 31 working exclusions.
+    * `circe_lint.states_flat_disjunction` declines a line stating a cardinality over
+      a list ("Age >=60 y and >=1 of the following criteria"), where the conjunction
+      is half right and a flat flip would admit a patient on the age bound alone.
+
+    This runs on every build from the store, which is why the correction lives here
+    rather than in the extractor: the wrong value is already recorded for all six
+    delivered trials, and a repair at extraction time cannot reach a study that has
+    already been extracted.
+
     Args:
         group_type: The group type agent1 declared, "ALL" or "ANY".
         member_criteria: The criteria that actually contribute to the group expression.
 
     Returns:
-        "ALL" for a non-empty all-ABSENCE group that declared "ANY"; otherwise
-        `group_type` unchanged. A missing `logicType` is not read as ABSENCE -- an
-        unestablished group keeps the behavior it already had.
+        "ALL" for a non-empty all-ABSENCE group that declared "ANY"; "ANY" for a
+        declared-"ALL" group of two or more members that are not all absences and
+        whose one protocol line states a flat disjunction; otherwise `group_type`
+        unchanged. A missing `logicType` is not read as ABSENCE, and a group whose
+        members carry no single protocol line states nothing -- an unestablished
+        group keeps the behavior it already had.
     """
     if not member_criteria:
         return group_type
-    if (group_type or "").strip().upper() != "ANY":
-        return group_type
-    if all(
+    declared = (group_type or "").strip().upper()
+    all_absence = all(
         (crit.get("logicType") or "").strip().upper() == "ABSENCE"
         for crit in member_criteria
-    ):
-        return "ALL"
+    )
+    if declared == "ANY":
+        return "ALL" if all_absence else group_type
+    if declared == "ALL" and not all_absence and len(member_criteria) >= 2:
+        if states_flat_disjunction(
+            group_protocol_line(member_criteria, CRITERION_PROTOCOL_LINE_KEY)
+        ):
+            return "ANY"
     return group_type
 
 

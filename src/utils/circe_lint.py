@@ -1530,6 +1530,202 @@ def contradictory_presence_absence_criteria(expression: dict[str, Any]) -> list[
     return findings
 
 
+#: A connective that joins alternatives. ``and/or`` is matched by ``\bor\b`` -- the
+#: slash is a non-word character, so the word boundary holds.
+_DISJUNCTIVE_CONNECTIVE = re.compile(r"\bor\b|\beither\b", re.IGNORECASE)
+
+#: "N of the following" -- a cardinality over a LIST, which is a different shape from a
+#: flat disjunction and needs a nested Group with a Count rather than a type flip.
+#:
+#: The ``of`` is load-bearing and is required in every branch. Without it the pattern
+#: matches "treated with one or more oral anti-diabetic drugs", where "one or more"
+#: counts DRUGS rather than group members -- and that phrase sits in the middle of
+#: LEADER's own line, so a looser guard silences the exact defect this reads for. That
+#: is not hypothetical: the first draft of this pattern did exactly that and the check
+#: reported nothing on the whole corpus.
+_LIST_CARDINALITY = re.compile(
+    r"at\s+least\s+(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+of\b"
+    r"|[\u2265>]=?\s*\d+\s+of\b"
+    r"|\b(any\s+)?one\s+(\(or\s+more\)\s+)?of\s+the\s+following\b"
+    r"|\bone\s+or\s+more\s+of\b"
+    r"|\bany\s+one\s+of\b",
+    re.IGNORECASE,
+)
+
+
+def states_flat_disjunction(protocol_line: str | None) -> bool:
+    """Whether a protocol line joins its alternatives with a bare disjunction.
+
+    "Flat" excludes the cardinality shape -- "Age >=60 y and >=1 of the following
+    criteria" -- on purpose. There the conjunction is half right: the age bound IS
+    conjoined with the list, and flipping the whole group to ``ANY`` would admit a
+    patient on age alone. CIRCE can express it, as a nested Group carrying a Count, and
+    until something builds that nesting the honest answer is to decline the line rather
+    than half-fix it. Two such groups exist in the delivered corpus (LEADER ``38a60fc2``
+    and ``1157e3c3``) and both are excluded by this branch rather than by luck.
+
+    The line, not the label. The store writes a group's ``description`` from the IR
+    ``name``, which a prior measurement found flips between runs on the same input, and
+    its protocol line from the IR ``source_text``, copied verbatim from the document.
+    The difference is measurable on this corpus rather than assumed: LEADER
+    ``38a60fc2``'s description reads "Age >= 60 years AND at least one of: Prior MI,
+    Prior stroke or TIA, Prior coronary, carotid or peripheral arterial
+    revascularization", whose two "or"s sit INSIDE member names and read as a
+    group-level disjunction to any text test, while its protocol line carries no bare
+    disjunction at all.
+
+    :param protocol_line: the protocol's own line, or None.
+    :returns: True when the line states a disjunction between alternatives.
+    """
+    text = (protocol_line or "").strip()
+    if not text:
+        return False
+    if _LIST_CARDINALITY.search(text):
+        return False
+    return bool(_DISJUNCTIVE_CONNECTIVE.search(text))
+
+
+def _store_groups_by_id(study: Mapping[str, Any]) -> dict[str, list[Mapping[str, Any]]]:
+    """Store criteria bucketed by ``groupId``, both roles together."""
+    eligibility = study.get("eligibility") or {}
+    groups: dict[str, list[Mapping[str, Any]]] = {}
+    for role in ("inclusionCriteria", "exclusionCriteria"):
+        for criterion in eligibility.get(role) or []:
+            if not isinstance(criterion, Mapping):
+                continue
+            group_id = criterion.get("groupId")
+            if group_id:
+                groups.setdefault(group_id, []).append(criterion)
+    return groups
+
+
+def group_protocol_line(members: Sequence[Mapping[str, Any]], key: str) -> str:
+    """The one protocol line that covers a store group, or ``""``.
+
+    The group-label row first -- it is the row the extractor wrote the whole clause on.
+    Failing that, a line shared by every member: where the members carry DIFFERENT
+    lines there is no single sentence between them, so no disjunction between the
+    members was stated anywhere and the group is left alone.
+    """
+    for member in members:
+        if member.get("isGroupLabel") and (member.get(key) or "").strip():
+            return str(member[key]).strip()
+    lines = {
+        str(member.get(key) or "").strip()
+        for member in members
+        if not member.get("isGroupLabel")
+    }
+    lines.discard("")
+    return lines.pop() if len(lines) == 1 else ""
+
+
+def conjoined_disjunction_rules(
+    expression: dict[str, Any], study: Mapping[str, Any]
+) -> list[str]:
+    """Locators for a rule emitted as a conjunction over a stated disjunction.
+
+    The 2026-09-11 conversion audit counts AND/OR inversion at 7 instances across 4
+    trials, its largest logical-defect class. The clearest is LEADER store group
+    ``4a712697``: ``groupType: "ALL"`` under a line reading "Anti-diabetic drug naive
+    **or** treated with one or more oral anti-diabetic drugs **or** treated with human
+    NPH insulin ...". It reaches the delivery as ``InclusionRules[2]``, which demands
+    zero exposures to codeset 10 AND at least one to codeset 11 -- byte-identical sets
+    -- so only a patient whose sole exposure falls on the index day can satisfy it.
+
+    Three conditions, and all three are needed:
+
+    * the emitted ``Type`` is ``ALL`` over two or more groups. One group is not a
+      combination; there is no connective to get wrong.
+    * the rule's criteria are not ALL absences. An ``ALL`` over ``ABSENCE`` is the De
+      Morgan encoding of "exclude if ANY of these" -- the same reading
+      :func:`~src.services.tte_service._effective_group_type` produces on the ``ANY``
+      side -- so an exclusion group reading "Stroke or TIA" belongs as ``ALL``.
+      Measured on the twelve delivered files: 181 emitted ``ALL`` rules are
+      all-absence, and flagging them would invert 181 working exclusions.
+    * the store group's protocol line states a flat disjunction
+      (:func:`states_flat_disjunction`).
+
+    The connective on its own is NOT the signal, which is why the polarity condition is
+    not decoration. Swept across all six trials (82 groups): 17 declare ``ALL`` under a
+    label stating "or", and only 2 of those 17 are defects; 31 of the 47 all-ABSENCE
+    ``ALL`` groups sit under a line that states a flat disjunction, and every one of
+    them is correct. A connective-only rule scores 2/33.
+
+    The store is joined to the file through ``conceptSetId``: each store criterion
+    records the codeset its mapping produced, and the audit established that mapping is
+    1:1 in all six trials. A rule whose codesets reach two store groups, or none, is
+    left alone -- nothing about its line has been established.
+
+    No database, no vocabulary, no concept-set resolution.
+
+    Measured at ``da1c10a`` on the twelve delivered files: one finding on each LEADER
+    arm (``InclusionRules[2]``), zero on the other ten.
+
+    :param expression: a CIRCE cohort expression.
+    :param study: the store study the expression was built from.
+    :returns: one locator per rule, empty when none.
+    """
+    # Imported here rather than at module scope on purpose: the key's home is
+    # `src.api.models.tte`, which pulls pydantic and `src.utils.llm` and costs ~370ms
+    # to import -- roughly ninety times this module's own import. Paying that on every
+    # consumer of a pure lint module, to read one string, is the wrong trade; retyping
+    # the literal instead would give the key a second home, which is the failure
+    # `CRITERION_CONCEPT_SET_REFS_KEY` documents at length above.
+    from src.api.models.tte import CRITERION_PROTOCOL_LINE_KEY
+
+    groups_by_id = _store_groups_by_id(study)
+    group_id_by_codeset: dict[Any, str] = {}
+    for group_id, members in groups_by_id.items():
+        for member in members:
+            codeset_id = member.get("conceptSetId")
+            if codeset_id is not None:
+                group_id_by_codeset[codeset_id] = group_id
+
+    findings: list[str] = []
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        body = rule.get("expression") or {}
+        if (body.get("Type") or "ALL").strip().upper() != "ALL":
+            continue
+        if len(body.get("Groups") or []) < 2:
+            continue
+
+        entries = _walk_criteria_entries(body)
+        if not entries:
+            continue
+        occurrences = [
+            (
+                (entry.get("Occurrence") or {}).get("Type"),
+                (entry.get("Occurrence") or {}).get("Count"),
+            )
+            for entry in entries
+        ]
+        if all(occurrence == _ABSENT_OCCURRENCE for occurrence in occurrences):
+            continue
+
+        group_ids = {
+            group_id_by_codeset.get(_leaf_codeset_id(entry)) for entry in entries
+        }
+        group_ids.discard(None)
+        if len(group_ids) != 1:
+            continue
+        group_id = group_ids.pop()
+
+        line = group_protocol_line(
+            groups_by_id[group_id], CRITERION_PROTOCOL_LINE_KEY
+        )
+        if not states_flat_disjunction(line):
+            continue
+
+        findings.append(
+            f"InclusionRules[{index}] {(rule.get('name') or '')!r}: emitted "
+            f"Type ALL over {len(body['Groups'])} groups while store group "
+            f"{group_id} states a disjunction -- {line!r}. The members are not all "
+            f"absences, so De Morgan does not make the conjunction correct; the "
+            f"alternatives were conjoined and every one of them is now mandatory"
+        )
+    return findings
+
+
 #: The key ``TTEService._build_emittable_expression`` writes the drop records under.
 #: Spelled once and imported by every reader -- the delivery gate keys its rule-set
 #: reconciliation on it, and a second copy of the string would make that reconciliation
