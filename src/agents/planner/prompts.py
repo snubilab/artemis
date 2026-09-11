@@ -65,7 +65,7 @@ What is new is that every sub-term must say where it came from. Apply this to EV
 sub-term, not just the first:
 
 - **The line names it** → copy the fragment of Source Text that names it, verbatim,
-  into `source_span`. "ALT or AST > 2X ULN or Total Bilirubin >= 1.5X ULN" names three
+  into `source_span`. "ALT or AST > 2X ULN or GGT >= 2.5X ULN" names three
   analytes, so all three carry spans.
 - **The line does not name it** → `source_span` is `null`. That is not a failure. It is
   the record that YOU supplied this sub-term and the protocol did not, and that record
