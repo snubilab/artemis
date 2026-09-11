@@ -106,3 +106,13 @@ count. The lints in `src/utils/circe_lint.py` are where soundness checks belong.
 - **`conceptset_overlap_eval.py` reads only concept sets.** It cannot see a value
   bound, so every bound correction scores exactly 0.0000 — not "no improvement",
   *not measurable*. `bound_agreement` in the same script is the measure for that.
+
+## Running work in parallel on this checkout
+
+One agent at a time runs the full test suite. Three concurrent pytest processes
+took a 10-minute suite to **34 minutes**, and two `prompt_ab.py` arms on the one
+vLLM halved each other's throughput — a 30-minute arm became 95. Both were
+self-inflicted by fanning out without asking what the agents would contend for.
+
+Read-only investigation parallelises freely. Anything that runs the suite, holds
+the GPU, or writes `src/` does not.
