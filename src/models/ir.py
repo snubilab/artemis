@@ -264,6 +264,22 @@ class CohortDefinition(BaseModel):
     exclusion_rules: List[Criteria] = [] # Added for explicit exclusions
     exit_strategy: Union[str, ExitStrategy] = "OBSERVATION_END"
 
+    # What the post-parse repairs in `agent1/parser.py` did to the rule list: every
+    # criterion they removed, every criterion they moved under a synthesised group,
+    # and every boundary they corrected. Written by `_build_cohort_definition` and
+    # surfaced on the stored study as `eligibility._repairAccounting`.
+    #
+    # It exists because the store's own census is computed AFTER the repairs run, so
+    # a criterion the repairs remove is invisible to every check downstream of them:
+    # it is not in `_unmappedCriteria`, not in `_droppedCriteria`, not anywhere. A
+    # `logger.info` was the only trace, and a log line reaches no delivery. A recorded
+    # refusal is an acceptable outcome for a criterion; a silent disappearance is not,
+    # and this field is what makes the difference checkable.
+    #
+    # Shape per entry: see `agent1/repair_accounting.py`. Default empty, so IR stored
+    # before this field existed loads unchanged.
+    repair_accounting: List[Dict[str, Any]] = Field(default_factory=list)
+
 
 
 class ARTEMISRequest(BaseModel):

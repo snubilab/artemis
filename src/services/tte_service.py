@@ -11132,6 +11132,12 @@ class TTEService:
 
         inclusion_criteria = self._criteria_from_ir(getattr(ir.target, "inclusion_rules", []) or [])
         exclusion_criteria = self._criteria_from_ir(getattr(ir.target, "exclusion_rules", []) or [])
+        # What Agent 1's post-parse repairs removed, demoted or rewrote. Carried onto
+        # the study because the store's own census (`_unmappedCriteria`,
+        # `_skippedCriteria`, `_droppedCriteria`) is computed from the rows BELOW --
+        # so a criterion a repair removed never reaches any of them, and without this
+        # key its removal is visible nowhere.
+        repair_accounting = list(getattr(ir.target, "repair_accounting", []) or [])
         eligibility_target_name = self._derive_target_population_name_from_ir(
             target_primary,
             getattr(ir.target, "inclusion_rules", []) or [],
@@ -11166,6 +11172,7 @@ class TTEService:
                 "inclusionCriteria": inclusion_criteria,
                 "exclusionCriteria": exclusion_criteria,
                 "observationWindow": target_obs_window,
+                "_repairAccounting": repair_accounting,
             },
             "treatmentArms": treatment_arms,
             "outcomes": {

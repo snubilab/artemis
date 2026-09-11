@@ -38,6 +38,7 @@ from src.agents.agent1.pubmed_fetcher import (
     fetch_pubmed_abstract, extract_eligibility_from_text
 )
 from src.agents.agent1.enricher import enrich_trial_data
+from src.agents.agent1.repair_accounting import RepairLedger, assert_repairs_accounted
 from src.api.models.tte import PaperStatus, PaperDownloadInfo, DownloadUrl, DownloadResult
 from src.agents.agent1.paper_url_mapper import (
     extract_doi_from_pubmed,
@@ -86,6 +87,51 @@ def _normalize_trial_data_for_stable_hash(trial_data: "TrialData") -> "TrialData
         "inclusion_criteria": _normalize_list(trial_data.inclusion_criteria),
         "exclusion_criteria": _normalize_list(trial_data.exclusion_criteria),
     })
+
+
+_NUMBER = r"[0-9]+(?:\.[0-9]+)?"
+
+#: `<= X`, and the three other ways these protocols write it. `=<` is not a typo we
+#: are tolerating: CAROLINA's own line 24 reads "age between >= 40 and =< 85 years",
+#: and CARMELINA writes `=>` for the lower bound on the same line as a `<=` upper one.
+_INCLUSIVE_UPPER_OP = re.compile(r"(?:<=|=<|≤|≦)\s*(" + _NUMBER + r")")
+
+#: `6.5 - 8.5%`, `30-59`, `40 to 85`. A protocol that states a band as a range means
+#: both ends: CAROLINA writes one of its HbA1c bands as "6.5 - 8.5%, inclusive" and
+#: the next as a bare "HbA1c 6.5 - 7.5% (48 - 58 mmol/mol)", and reading the second
+#: as open at the top would exclude a patient at exactly 7.5% from a band the trial
+#: ran on. The same trial's TROY v1.1 gold encodes its band `!bt [6.5, 8.5]`, which
+#: is inclusive at both ends.
+_RANGE = re.compile(r"(" + _NUMBER + r")\s*(?:-|–|—|to)\s*(" + _NUMBER + r")")
+
+
+def inclusive_upper_bounds(source_text: Optional[str]) -> set[float]:
+    """Every value the protocol line states as an INCLUSIVE upper bound.
+
+    Read from ``source_text`` -- the line the model was handed, verbatim -- and
+    never from ``name``. That is not a stylistic preference: measured over the 65
+    current-model IR caches, the same ``name`` string occurs on a correctly encoded
+    criterion and an incorrectly encoded one, six name strings doing so across
+    runs, so the name carries no information about which encoding this criterion
+    actually got. The line does.
+
+    Used by :meth:`LogicDecomposer._repair_inclusive_upper_bounds` to find the
+    De Morgan error that is the subject of this function's existence. ``<= X`` is
+    ``NOT (> X)``. It is NOT ``NOT (>= X)``, which is ``< X`` -- and the two
+    coincide only on integers. Every analyte here is decimal.
+
+    Deliberately silent about lower bounds. ``>= X`` on the same line is a real
+    bound and a correct ``ABSENCE gte`` elsewhere may sit at that value; returning
+    it would let a correct exclusion rule be "corrected" into the wrong direction.
+    """
+    bounds: set[float] = set()
+    if not source_text:
+        return bounds
+    for match in _INCLUSIVE_UPPER_OP.finditer(source_text):
+        bounds.add(float(match.group(1)))
+    for match in _RANGE.finditer(source_text):
+        bounds.add(float(match.group(2)))
+    return bounds
 
 
 class LogicDecomposer:
@@ -1323,6 +1369,36 @@ class LogicDecomposer:
             for c in data.get("exclusion_rules", [])
         ]
         
+        # Everything below rewrites `inclusion_rules`. `before_repair` is the list of
+        # criteria as the model emitted them, and `assert_repairs_accounted` below
+        # checks it against what survives: a repair that removes a criterion without
+        # recording it fails HERE, at the removal, rather than as an absence in a
+        # delivery three stages later.
+        ledger = RepairLedger()
+
+        def _gated(step: str, repair) -> list:
+            """Run one repair and hold it to its own accounting, immediately.
+
+            Per STEP rather than once at the end, because the ledger accumulates:
+            checked only once, a record written by the last repair would sign off a
+            criterion the first repair deleted, and the gate would go green on the
+            defect it exists to catch.
+            """
+            nonlocal inclusion_rules
+            before = list(inclusion_rules)
+            after = repair(inclusion_rules)
+            assert_repairs_accounted(before, after, ledger, role=f"inclusion/{step}")
+            return after
+
+        # `<= X` is `NOT (> X)`, and a model that writes `NOT (>= X)` has moved the
+        # boundary. This runs FIRST because it is what makes a half-open pair whole:
+        # an upper bound corrected from `gte` to `gt` is exactly what
+        # `_repair_split_bands` needs to merge the pair into an inclusive `bt`.
+        inclusion_rules = _gated(
+            "inclusive-upper-bound",
+            lambda rules: self._repair_inclusive_upper_bounds(rules, ledger),
+        )
+
         # Split-band repair BEFORE Pattern E: a band's two halves are adjacent flat
         # rules, and Pattern E rewrites the flat list (it merges cluster members into
         # an ANY group), so running it first would hide one half of a pair behind a
@@ -1330,15 +1406,21 @@ class LogicDecomposer:
         # `logic_type="ABSENCE"` on every one of them, so the PRESENCE lower bound a
         # pair needs cannot exist on that side -- measured 0 PRESENCE exclusion rules
         # across all 65 current-model IR caches.
-        inclusion_rules = self._repair_split_bands(inclusion_rules)
+        inclusion_rules = _gated(
+            "split-band", lambda rules: self._repair_split_bands(rules, ledger)
+        )
 
         # ...then the tiers that band leaves adjacent. Bands must be whole before they
         # can be recognised as alternatives, so this runs second and both run before
         # Pattern E, which rewrites the flat list into groups of its own.
-        inclusion_rules = self._repair_band_tiers(inclusion_rules)
+        inclusion_rules = _gated(
+            "band-tier", lambda rules: self._repair_band_tiers(rules, ledger)
+        )
 
         # Pattern E post-parse repair: merge flat CV/risk factor OR groups
-        inclusion_rules = self._repair_pattern_e(inclusion_rules)
+        inclusion_rules = _gated(
+            "pattern-e", lambda rules: self._repair_pattern_e(rules, ledger)
+        )
 
         # C2Q-inspired post-parse validation
         self._validate_measurement_rules(inclusion_rules, "inclusion")
@@ -1348,8 +1430,95 @@ class LogicDecomposer:
             primary_criteria=primary_criteria,
             inclusion_rules=inclusion_rules,
             exclusion_rules=exclusion_rules,
-            exit_strategy=data.get("exit_strategy", "OBSERVATION_END")
+            exit_strategy=data.get("exit_strategy", "OBSERVATION_END"),
+            repair_accounting=ledger.records(),
         )
+
+    def _repair_inclusive_upper_bounds(self, rules: list, ledger: "RepairLedger" = None) -> list:
+        """Correct an upper bound the model negated with the wrong operator.
+
+        A protocol states `<= X`. Agent 1 encodes the upper half of a band as an
+        ABSENCE rule, which is right -- `<= X` is `NOT (> X)` -- but it writes the
+        operator as `gte`, giving `NOT (>= X)`, which is `< X`. The two agree only
+        when X is an integer and the analyte is integral. HbA1c 8.5%, eGFR 59, an
+        age of 85: none of them are.
+
+        Measured over the 65 current-model IR caches, both cohorts, 1520 parsed
+        constraints: 191 ABSENCE `gte` constraints, of which 116 sit at a value the
+        criterion's OWN protocol line states as an inclusive upper bound. All 116
+        are on the inclusion side, across three trials -- NCT01243424 (69),
+        NCT01131676 (36), NCT01897532 (11). Seven of them are `Age <= 85`, which as
+        written excluded 85-year-olds from CAROLINA; the rest are HbA1c.
+
+        The grounding is `source_text` and not `name`, for the reason
+        :func:`inclusive_upper_bounds` gives: the same name string occurs on both
+        encodings, so the name cannot tell them apart.
+
+        Inclusion rules only. On the exclusion side `ABSENCE gte X` is the CORRECT
+        encoding of "exclude if >= X" -- ARISTOTLE's `Total Bilirubin >= 1.5X ULN`,
+        LEADER's `Calcitonin >= 50 ng/L`, CARMELINA's `ALT >= 3x ULN` are all of
+        that shape -- and rewriting one would invert it. `_build_criteria` forces
+        `ABSENCE` on every exclusion rule, so the operator alone cannot tell the two
+        apart; the side can.
+
+        Measured, that restriction currently prevents nothing: of the 191 ABSENCE
+        `gte` constraints in the corpus, all 116 that this detector matches are on
+        the inclusion side and zero on the exclusion side, because those exclusion
+        lines state `>= X` and the detector reads only inclusive UPPER bounds. The
+        restriction is a boundary, not a filter that is doing work today, and it is
+        stated as such rather than credited with a save it did not make.
+
+        Recurses into `sub_criteria`: an upper bound is no more correct for sitting
+        inside a group the model emitted.
+
+        :returns: the same list, with each corrected criterion replaced by a copy.
+        """
+        ledger = ledger if ledger is not None else RepairLedger()
+
+        def _repair(criterion: "Criteria") -> "Criteria":
+            # Members are rewired IN PLACE rather than by rebuilding the parent around
+            # them. Rebuilding replaces the parent object too, and the accounting gate
+            # matches by identity -- so a group whose only change was one member's
+            # operator read as the group itself vanishing. Correcting a child's bound
+            # is not a statement about the parent, and the ledger should not claim it is.
+            if criterion.sub_criteria:
+                criterion.sub_criteria = [_repair(child) for child in criterion.sub_criteria]
+            vc = criterion.value_constraint
+            needs_fix = (
+                vc is not None
+                and vc.op == "gte"
+                and criterion.logic_type == "ABSENCE"
+                and vc.value is not None
+                and float(vc.value) in inclusive_upper_bounds(criterion.source_text)
+            )
+            if not needs_fix:
+                return criterion
+            corrected = criterion.model_copy(update={
+                "value_constraint": vc.model_copy(update={"op": "gt"}),
+            })
+            # The ORIGINAL, not the copy: the gate matches by object identity, and
+            # it is the original that leaves the tree here. Recording the copy would
+            # leave the original looking like an unexplained deletion.
+            ledger.rewritten(
+                criterion,
+                action="inclusive-upper-bound-corrected",
+                reason=(
+                    f"the protocol line states an inclusive upper bound at {vc.value}, "
+                    f"and an ABSENCE rule carrying 'gte' encodes NOT(>= {vc.value}), "
+                    f"which is < {vc.value} and excludes a patient at exactly "
+                    f"{vc.value}; NOT(> {vc.value}) is the inclusive reading"
+                ),
+                before={"op": "gte", "value": vc.value, "effectiveBound": f"< {vc.value}"},
+                after={"op": "gt", "value": vc.value, "effectiveBound": f"<= {vc.value}"},
+            )
+            logger.info(
+                "[Agent 1] Inclusive-upper-bound repair: '%s' ABSENCE gte %s -> gt %s "
+                "(line states an inclusive bound: %r)",
+                criterion.name, vc.value, vc.value, (criterion.source_text or "")[:120],
+            )
+            return corrected
+
+        return [_repair(rule) for rule in rules]
     
     # A band's upper half is written with De Morgan, never with lt/lte: measured over
     # the 65 current-model IR caches, every one of the 58 upper bounds is an ABSENCE
@@ -1391,7 +1560,7 @@ class LogicDecomposer:
             return None
         return (rule.domain, analyte.casefold(), " ".join(source.split()).casefold())
 
-    def _repair_split_bands(self, rules: list) -> list:
+    def _repair_split_bands(self, rules: list, ledger: "RepairLedger" = None) -> list:
         """Merge a band Agent 1 split into a lower-bound rule and an upper-bound rule.
 
         CAROLINA's "Elevated glycosylated haemoglobin (HbA1c): 6.5 - 8.5%, inclusive"
@@ -1409,15 +1578,32 @@ class LogicDecomposer:
         merged: lower ``gte`` (``>= lo``) with upper ``gt`` (``<= hi``), which is Circe's
         inclusive ``bt`` exactly. A lower ``gt`` or an upper ``gte`` is a half-open band,
         Circe's NumericRange has no half-open operator, and merging one into ``bt`` would
-        silently widen the rule by one boundary -- on the corpus that is 46 of the 58
-        pairs, every one of them on NCT01131676 and NCT01897532. Those are left split and
-        counted, not quietly widened: the widening would be a real change in who the
-        cohort matches, made as a side effect of a repair that was asked for something else.
+        silently widen the rule by one boundary. Those are left split and counted, not
+        quietly widened: the widening would be a real change in who the cohort matches,
+        made as a side effect of a repair that was asked for something else.
+
+        The docstring used to claim the declined pairs were "every one of them on
+        NCT01131676 and NCT01897532". That was false -- a large share were on
+        NCT01243424 -- and it was false because the declining had ONE cause, not two:
+        the upper half carried `ABSENCE gte`, which is the mis-encoded `<= X` that
+        `_repair_inclusive_upper_bounds` now corrects BEFORE this repair runs. The
+        merged pairs and the declined ones were never different kinds of band; they
+        were one kind, encoded correctly or incorrectly.
+
+        Measured over the 65 current-model IR caches, both cohorts, adjacent inclusion
+        pairs: 24 merged and 93 declined before that correction existed; 87 of the 93
+        merge once it runs. The 6 that still decline are all one criterion, CAROLINA's
+        eGFR pair, and they decline for a DIFFERENT defect: the line reads
+        `eGFR 30-59`, the model named its rule `eGFR <= 59`, and it wrote the
+        constraint as `gte 60.0` -- a number the criterion never mentions. Correcting
+        only the operator would give `[30, 60]`, which is not gold's `[30, 59]` either,
+        so it is left split rather than half-corrected.
 
         :param rules: this cohort's inclusion rules, in the order the model emitted them.
         :returns: the same list with each exactly-representable pair replaced by one
             ``bt`` criterion at the lower bound's position.
         """
+        ledger = ledger if ledger is not None else RepairLedger()
         keys = [self._band_key(r) for r in rules]
         merged_into: dict[int, "Criteria"] = {}
         consumed: set[int] = set()
@@ -1473,6 +1659,17 @@ class LogicDecomposer:
                 ),
             })
             consumed.add(j)
+            merged = merged_into[i]
+            reason = (
+                f"the two halves of one band stated on one protocol line; merged into "
+                f"the inclusive range {lo_vc.value}-{up_vc.value}"
+                + (f" {lo_vc.unit_text}" if lo_vc.unit_text else "")
+            )
+            # Both halves leave the tree: the lower one is replaced by a copy carrying
+            # the `bt`, the upper one is consumed outright. Recording only the drop
+            # would leave the lower half looking deleted.
+            ledger.departed(rule, action="merged-into-band", reason=reason, survivor=merged)
+            ledger.departed(upper, action="merged-into-band", reason=reason, survivor=merged)
             logger.info(
                 "[Agent 1] Split-band repair: merged '%s' + '%s' into one inclusive "
                 "band %s-%s%s",
@@ -1583,6 +1780,42 @@ class LogicDecomposer:
         return not rule.sub_criteria and rule.group_type == "ALL"
 
     @staticmethod
+    def _record_demotions(ledger: "RepairLedger", members: list, group_name: str,
+                          *, action: str) -> None:
+        """Record that a repair moved these rules from top level into a group.
+
+        Not a departure -- every member is still in the tree, and the gate does not
+        ask about them. They are recorded because the move is not free.
+
+        The Criteria Planner (Agent 1.5) iterates TOP-LEVEL rules only, and
+        ``_decompose_criterion`` returns early on a criterion that already carries
+        ``sub_criteria``. So a rule that a repair demotes stops being decomposed,
+        and every sub-criterion the planner used to derive from its protocol line
+        stops being produced.
+
+        That is not hypothetical. CAROLINA's ``HbA1c 6.5 - 7.5% (SU/Glinide/Metformin
+        combos)`` was a top-level rule on 2026-09-11 and the planner decomposed its
+        line into an HbA1c measurement plus six drug-therapy criteria, all six of
+        which reached the store and were refused there with a named reason. On
+        2026-09-12, with the same IR cache and the same model, the band repairs had
+        demoted that rule into an ANY group; the planner never visited it; the six
+        were never generated, and appeared in no record at all. Nothing dropped
+        them -- the line they came FROM stopped being read.
+        """
+        for member in members:
+            ledger.demoted(
+                member,
+                action=action,
+                group_name=group_name,
+                reason=(
+                    "moved from a top-level rule into a synthesised group; the Criteria "
+                    "Planner decomposes top-level rules only, so this criterion's "
+                    "protocol line is no longer decomposed and any sub-criteria it "
+                    "would have produced are not generated"
+                ),
+            )
+
+    @staticmethod
     def _build_any_group(name: str, run: list) -> "Criteria":
         """One ANY group over `run`, preserving each member unchanged.
 
@@ -1649,7 +1882,7 @@ class LogicDecomposer:
         )
 
     @staticmethod
-    def _repair_band_tiers(rules: list) -> list:
+    def _repair_band_tiers(rules: list, ledger: "RepairLedger" = None) -> list:
         """Merge adjacent alternative bands on one analyte into a single ANY group.
 
         After `_repair_split_bands`, CAROLINA holds three whole HbA1c bands in a row::
@@ -1670,6 +1903,7 @@ class LogicDecomposer:
 
         Adjacent runs only, so a band cannot be pulled across an unrelated criterion.
         """
+        ledger = ledger if ledger is not None else RepairLedger()
         if not rules:
             return rules
         keys = [LogicDecomposer._band_tier_key(r) for r in rules]
@@ -1693,6 +1927,22 @@ class LogicDecomposer:
                 vc = member.value_constraint
                 band = (vc.value, vc.value_high)
                 if band in seen:
+                    # This drop is the one that used to leave no trace anywhere but a
+                    # log line. The store's census is computed after the repairs run,
+                    # so a criterion removed here was invisible to every downstream
+                    # check -- which is why the record, not the log, is the fix.
+                    ledger.departed(
+                        member,
+                        action="dropped-as-restatement",
+                        reason=(
+                            f"an earlier alternative states the same band "
+                            f"{vc.value}-{vc.value_high}, and an ANY group over "
+                            f"identical bands matches exactly the patients the group "
+                            f"without the duplicate matches; this criterion's protocol "
+                            f"line is no longer carried by any criterion"
+                        ),
+                        survivor=seen[band],
+                    )
                     logger.info(
                         "[Agent 1] Band-tier repair: dropped '%s' as a restatement of "
                         "'%s' (both %s-%s); its protocol line %r is no longer carried "
@@ -1710,9 +1960,12 @@ class LogicDecomposer:
                 result.append(members[0])
             else:
                 analyte = members[0].entity_text or "value"
+                group_name = f"{analyte} band (OR group)"
                 result.append(
-                    LogicDecomposer._build_any_group(f"{analyte} band (OR group)", members)
+                    LogicDecomposer._build_any_group(group_name, members)
                 )
+                LogicDecomposer._record_demotions(ledger, members, group_name,
+                                                  action="demoted-into-band-tier-group")
                 logger.info(
                     "[Agent 1] Band-tier repair: merged %d alternative band(s) on '%s' "
                     "into one ANY group (%s)",
@@ -1724,7 +1977,7 @@ class LogicDecomposer:
         return result
 
     @staticmethod
-    def _repair_pattern_e(rules: list) -> list:
+    def _repair_pattern_e(rules: list, ledger: "RepairLedger" = None) -> list:
         """
         Post-parse repair: merge flat inclusion rules that match the same
         CV/risk cluster into a single ANY group.
@@ -1733,6 +1986,7 @@ class LogicDecomposer:
         Merges if 2+ flat rules belong to the same cluster.
         Already-grouped rules (with sub_criteria) are untouched.
         """
+        ledger = ledger if ledger is not None else RepairLedger()
         if not rules:
             return rules
 
@@ -1772,7 +2026,10 @@ class LogicDecomposer:
             # Collect all rules in this cluster (preserving original order)
             run = [rules[idx] for idx in cluster_buckets[cluster]]
             cluster_label = cluster.replace("_", " ").title()
-            merged = LogicDecomposer._build_any_group(f"{cluster_label} (OR group)", run)
+            group_name = f"{cluster_label} (OR group)"
+            merged = LogicDecomposer._build_any_group(group_name, run)
+            LogicDecomposer._record_demotions(ledger, run, group_name,
+                                              action="demoted-into-pattern-e-group")
             logger.info(
                 "[Agent 1] Pattern E repair: merged %d non-consecutive '%s' rules into ANY group",
                 len(run),
