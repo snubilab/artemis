@@ -51,6 +51,7 @@ import re
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any
 
 ARTEMIS_DIR = Path(__file__).resolve().parents[1]
 if str(ARTEMIS_DIR) not in sys.path:
@@ -634,6 +635,236 @@ def micro_totals(gold_sets: list[ResolvedSet], generated_sets: list[ResolvedSet]
     }
 
 
+# --------------------------------------------------------------------------- bounds
+#
+# A concept set is a bag of concept ids. A BOUND -- "HbA1c <= 10.0", "eGFR between 30
+# and 59", "ALT >= 3x ULN" -- lives on the Circe criterion that READS the set, never in
+# the set. So every number this script computed before these three functions existed was
+# structurally blind to one: `9ec4b3a` corrected EMPA-REG's HbA1c upper bound from
+# `< 10.0` to `<= 10.0` and both recall and precision moved by exactly 0.0000.
+#
+# The measure below is reported BESIDE the macro numbers and never folded into them.
+# `AGENTS.md` (EVALUATION) pins how those are computed and they are the comparison
+# baseline across many runs; a score that silently started including a different
+# quantity would invalidate every historical comparison rather than improve one.
+
+#: Every Circe attribute that carries a numeric or date bound, across every domain.
+#: Taken from what the gold and generated cohorts actually use rather than from the
+#: Circe schema, so an attribute nobody writes cannot inflate the denominator. A bound
+#: this tuple does not name is INVISIBLE to the measure, which is why `bound_agreement`
+#: reports how many it read on each side -- see `gold_bounds_seen`.
+VALUE_ATTRS = (
+    "ValueAsNumber", "RangeLow", "RangeHigh", "RangeLowRatio", "RangeHighRatio",
+    "EraLength", "EraStartDate", "EraEndDate", "AgeAtStart", "AgeAtEnd",
+    "DoseValue", "Quantity", "RefillCount", "Age", "OccurrenceCount",
+)
+
+#: Operator pairs that mean the SAME restriction written from opposite sides. Gold
+#: writes "BMI > 45" as an exclusion where the generated cohort writes "BMI <= 45" as an
+#: inclusion; both admit the same patients. Measured in the 2026-09-13 export: CAROLINA
+#: BMI, CAROLINA HbA1c (`!bt` against `bt`) and EMPA-REG BMI are all this shape.
+#:
+#: They are counted apart from `operator_only` deliberately. Folding them in would have
+#: the measure report three disagreements that are not disagreements, and a metric whose
+#: headline defect count is mostly false is one that gets switched off -- which is how
+#: the bound class came to be unmeasured in the first place.
+COMPLEMENTARY_OPS = frozenset(
+    {("lt", "gte"), ("gte", "lt"), ("lte", "gt"), ("gt", "lte"),
+     ("bt", "!bt"), ("!bt", "bt"), ("eq", "neq"), ("neq", "eq")}
+)
+
+
+def _bound_number(value: Any) -> Any:
+    """A bound's value as a float when it is one, and unchanged when it is not.
+
+    `EraStartDate gte 2009-07-31` is a real gold bound, so a blanket `float()` would
+    raise on it. Numbers are normalised because gold writes `3` where the generator
+    writes `3.0` and those are the same bound; a string compare would report every one
+    of them as a value mismatch.
+    """
+    if value is None or isinstance(value, bool):
+        return value
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return value
+
+
+def cohort_bounds(cohort: dict) -> dict[str, list[tuple]]:
+    """Every value bound in a Circe cohort, keyed by the codeset the rule reads.
+
+    Keyed by codeset because that is the only handle a bound and a concept set share,
+    and the concept set is what `pair_concept_sets` already matched. A bound on a
+    criterion with no `CodesetId` -- a bare demographic `Age` rule -- has no set to be
+    paired through and is deliberately not collected; it would have no gold counterpart
+    to be compared against and would only inflate `generated_only`.
+
+    Values are deduplicated per codeset. The same criterion is emitted once per arm and
+    often twice within one arm, so the raw walk returns each bound two to four times;
+    counting those repeats would weight a trial by how many rules happen to read a set.
+    """
+    found: dict[str, list[tuple]] = {}
+
+    def _collect(codeset_id: Any, domain: str, body: dict) -> None:
+        if codeset_id is None:
+            return
+        key = str(codeset_id)
+        for attr in VALUE_ATTRS:
+            bound = body.get(attr)
+            if not isinstance(bound, dict) or bound.get("Op") is None:
+                continue
+            row = (
+                domain,
+                attr,
+                bound.get("Op"),
+                _bound_number(bound.get("Value")),
+                _bound_number(bound.get("Extent")),
+            )
+            rows = found.setdefault(key, [])
+            if row not in rows:
+                rows.append(row)
+
+    def _walk(node: Any) -> None:
+        if isinstance(node, dict):
+            for name, value in node.items():
+                if isinstance(value, dict) and "CodesetId" in value:
+                    _collect(value.get("CodesetId"), name, value)
+                _walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                _walk(value)
+
+    _walk(cohort)
+    return found
+
+
+def _classify_bound(gold: tuple, generated: tuple) -> str:
+    """How two bounds on the same attribute disagree, if they do."""
+    _, _, gold_op, gold_value, gold_extent = gold
+    _, _, gen_op, gen_value, gen_extent = generated
+    same_numbers = gold_value == gen_value and gold_extent == gen_extent
+    if same_numbers and gold_op == gen_op:
+        return "exact"
+    if same_numbers and (gold_op, gen_op) in COMPLEMENTARY_OPS:
+        return "polarity_flip"
+    if same_numbers:
+        return "operator_only"
+    return "value"
+
+
+#: Best outcome first. A gold bound is matched against the generated bound it agrees
+#: with MOST, not the first one found: a set read by two rules (CAROLINA's HbA1c is read
+#: at 8.5 and at 7.5) would otherwise have its agreement decided by rule order.
+_OUTCOME_RANK = ("exact", "polarity_flip", "operator_only", "value")
+
+
+def bound_agreement(
+    pairs: list[PairRow], gold_cohort: dict, generated_cohort: dict
+) -> dict:
+    """Compare bounds through the pairing the scorer already made.
+
+    The pairing is NOT re-derived. `pair_concept_sets` has already decided which
+    generated set answers which gold set; deciding it a second time here on a different
+    rule would be a second answer to one question, and the two would drift.
+
+    `pairs_compared`, `gold_bounds_seen` and `generated_bounds_seen` are reported
+    alongside the outcomes and are the reason a clean result can be believed. Without
+    them a run in which the extractor read NOTHING reports `exact=0, value=0,
+    operator_only=0` -- identical to a run in which every bound agreed. The denominators
+    are what tell those two apart.
+    """
+    gold_bounds = cohort_bounds(gold_cohort)
+    generated_bounds = cohort_bounds(generated_cohort)
+
+    counts = {name: 0 for name in _OUTCOME_RANK}
+    counts.update(gold_only=0, generated_only=0)
+    rows: list[dict] = []
+    pairs_compared = 0
+    gold_seen = 0
+    generated_seen = 0
+
+    for pair in pairs:
+        if pair.gen_key is None:
+            continue
+        gold_side = list(gold_bounds.get(pair.gold_key, []))
+        gen_side = list(generated_bounds.get(pair.gen_key, []))
+        if not gold_side and not gen_side:
+            continue
+        pairs_compared += 1
+        gold_seen += len(gold_side)
+        generated_seen += len(gen_side)
+
+        unclaimed = list(gen_side)
+        for gold in gold_side:
+            candidates = [
+                (
+                    _OUTCOME_RANK.index(_classify_bound(gold, candidate)),
+                    position,
+                    candidate,
+                )
+                for position, candidate in enumerate(unclaimed)
+                # Matched on the ATTRIBUTE, not the domain node: CAROLINA's systolic
+                # blood pressure is a `Measurement` in gold and an `Observation` in the
+                # generated cohort while carrying the identical `gt 140` bound. That is
+                # a domain-routing difference, which check (g) of the delivery gate
+                # already owns, and reporting it here as a lost bound would double-count
+                # one defect as two.
+                if candidate[1] == gold[1]
+            ]
+            if not candidates:
+                counts["gold_only"] += 1
+                rows.append(
+                    {
+                        "outcome": "gold_only",
+                        "gold_set": pair.gold_name,
+                        "generated_set": pair.gen_name,
+                        "gold": _bound_text(gold),
+                        "generated": None,
+                    }
+                )
+                continue
+            rank, position, candidate = min(candidates)
+            outcome = _OUTCOME_RANK[rank]
+            counts[outcome] += 1
+            unclaimed.pop(position)
+            if outcome != "exact":
+                rows.append(
+                    {
+                        "outcome": outcome,
+                        "gold_set": pair.gold_name,
+                        "generated_set": pair.gen_name,
+                        "gold": _bound_text(gold),
+                        "generated": _bound_text(candidate),
+                    }
+                )
+
+        for candidate in unclaimed:
+            counts["generated_only"] += 1
+            rows.append(
+                {
+                    "outcome": "generated_only",
+                    "gold_set": pair.gold_name,
+                    "generated_set": pair.gen_name,
+                    "gold": None,
+                    "generated": _bound_text(candidate),
+                }
+            )
+
+    return {
+        "pairs_compared": pairs_compared,
+        "gold_bounds_seen": gold_seen,
+        "generated_bounds_seen": generated_seen,
+        **counts,
+        "disagreements": rows,
+    }
+
+
+def _bound_text(bound: tuple) -> str:
+    domain, attr, op, value, extent = bound
+    body = f"{op} {value}" if extent is None else f"{op} {value}..{extent}"
+    return f"{domain}.{attr} {body}"
+
+
 def over_expansion_rows(pairs: list[PairRow], min_ratio: float) -> list[dict]:
     """Matched pairs where the generated set is at least ``min_ratio`` times gold.
 
@@ -666,6 +897,8 @@ def build_report(
     thresholds: Thresholds = DEFAULT_THRESHOLDS,
     meta: dict | None = None,
     out_of_scope_gold: list[ResolvedSet] | None = None,
+    gold_cohort: dict | None = None,
+    generated_cohort: dict | None = None,
 ) -> dict:
     pairing = pair_concept_sets(gold_sets, generated_sets, thresholds)
     counts: dict[str, int] = {}
@@ -711,6 +944,16 @@ def build_report(
             "sets": unresolvable,
         },
     }
+    # Reported BESIDE `per_criterion` and never folded into it. The macro numbers are
+    # the comparison baseline across many runs and `AGENTS.md` (EVALUATION) pins how
+    # they are computed; a score that quietly began including bound agreement would
+    # invalidate every historical comparison rather than improve one. Added only when
+    # the caller supplies the cohorts, so an embedder calling `build_report` with sets
+    # alone keeps exactly the schema it had.
+    if gold_cohort is not None and generated_cohort is not None:
+        report["bound_agreement"] = bound_agreement(
+            pairing.pairs, gold_cohort, generated_cohort
+        )
     if meta:
         report.update(meta)
     return report
@@ -809,6 +1052,8 @@ def main(argv: list[str] | None = None) -> int:
         reports.append(
             build_report(
                 label, args.mode, gold_sets, gen_sets, thresholds,
+                gold_cohort=gold,
+                generated_cohort=gen,
                 meta={
                     "gold_file": gold_path.name,
                     "generated_file": gen_path.name,
@@ -877,6 +1122,43 @@ def _print_console(payload: dict) -> None:
         for row in sorted(zo, key=lambda x: -(x["gold_size"] or 0)):
             print(f"  gold {row['gold_size']:>6} {row['gold_name'][:44]:<46}"
                   f"ours {row['gen_size']:>6}  {row['gen_name'][:34]}")
+
+    # Printed between the macro table and micro, and NOT folded into either. A bound is
+    # a different quantity from concept overlap -- it is the only one of the two that
+    # `9ec4b3a` moved -- so it gets its own table rather than a column in someone
+    # else's.
+    if any("bound_agreement" in r for r in payload["trials"]):
+        print("\nBOUND AGREEMENT (value constraints -- reported separately, "
+              "NOT in the macro score)")
+        hdr = (f"{'trial':<18}{'pairs':>6}{'gold_b':>7}{'ours_b':>7}{'exact':>6}"
+               f"{'op_only':>8}{'value':>6}{'flip':>5}{'gold_only':>10}{'ours_only':>10}")
+        print(hdr)
+        print("-" * len(hdr))
+        for r in payload["trials"]:
+            b = r.get("bound_agreement")
+            if not b:
+                continue
+            if not b["pairs_compared"]:
+                # Never printed as agreement. A run that read nothing scores zero
+                # mismatches, which is byte-identical to a run where everything matched.
+                print(f"{r['trial']:<18}{'0':>6}"
+                      "   (no matched pair carries a bound on either side)")
+                continue
+            print(f"{r['trial']:<18}{b['pairs_compared']:>6}{b['gold_bounds_seen']:>7}"
+                  f"{b['generated_bounds_seen']:>7}{b['exact']:>6}{b['operator_only']:>8}"
+                  f"{b['value']:>6}{b['polarity_flip']:>5}{b['gold_only']:>10}"
+                  f"{b['generated_only']:>10}")
+
+        # Named, not buried in a rate. A rate says "87% agree"; only the rows say WHICH
+        # bound disagrees, and a bound is acted on one at a time.
+        for r in payload["trials"]:
+            rows = (r.get("bound_agreement") or {}).get("disagreements") or []
+            if not rows:
+                continue
+            print(f"\nBOUND DISAGREEMENTS -- {r['trial']}  [{len(rows)}]")
+            for row in rows:
+                print(f"  {row['outcome']:<15}{(row['gold_set'] or '')[:40]:<42}"
+                      f"gold {str(row['gold']):<34} ours {row['generated']}")
 
     print("\nMICRO (concept mass -- secondary, do not quote as quality)")
     hdr = (f"{'trial':<18}{'gsets':>6}{'asets':>6}{'g|U|':>9}{'a|U|':>8}"

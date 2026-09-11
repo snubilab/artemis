@@ -37,6 +37,23 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+#: The one spelling of the key, for every producer and every reader of it. The store
+#: writer (`TTEService._study_from_ir`), the apply-path carry-forward
+#: (`TTEService._merge_eligibility_section`) and the delivery gate
+#: (`scripts/verify_circe_delivery.py`) all import it from here, so a rename cannot
+#: leave one of the three writing or reading a key the others do not.
+REPAIR_ACCOUNTING_KEY = "_repairAccounting"
+
+#: The three dispositions :class:`RepairLedger` writes, and the only three a reader may
+#: recognise. A reader that meets a fourth must FAIL rather than pass it unread: the
+#: ledger is a reconciliation, and an unreadable record is an unreconciled criterion.
+DISPOSITION_DEPARTURE = "departure"
+DISPOSITION_DEMOTION = "demotion"
+DISPOSITION_REWRITE = "rewrite"
+KNOWN_DISPOSITIONS = frozenset(
+    {DISPOSITION_DEPARTURE, DISPOSITION_DEMOTION, DISPOSITION_REWRITE}
+)
+
 
 class UnaccountedDepartureError(RuntimeError):
     """A criterion left the rule tree and no repair recorded taking it."""

@@ -84,6 +84,20 @@ Checks per file:
     "systolic BP > 180 mm Hg" exclusion. See
     ``src.utils.circe_lint.asserted_bound_missing_criteria``.
 
+(k) the STORE study's repair ledger (``eligibility._repairAccounting``) reconciles
+    against the store's own criteria. Every check above reconciles the delivered file
+    against the store, and the store's criteria rows are written AFTER Agent 1's
+    post-parse repairs run -- so a criterion a repair removed is on NEITHER side of any
+    of them, and ``total``, ``mappable``, the residual identity and the store anchor all
+    balance exactly while it is gone. Measured: CAROLINA's inclusion criteria fell 52 ->
+    32 between the 2026-09-11 and 2026-09-12 stores, six of them the drug-therapy rows
+    18-23, and the 2026-09-13 delivery still reported "84 of 84 store criteria accounted
+    for" on both CAROLINA arms. A ``demotion`` record claims its criterion is still in
+    the tree, so one naming a criterion the store does not carry is a departure nothing
+    recorded, and it fails. A ``departure`` is counted and not judged on presence -- a
+    band merge's survivor legitimately keeps a departed half's name, 5 such rows in that
+    store. See ``repair_ledger_violations``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -115,6 +129,11 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.agents.agent1.repair_accounting import (  # noqa: E402
+    DISPOSITION_DEMOTION,
+    KNOWN_DISPOSITIONS,
+    REPAIR_ACCOUNTING_KEY,
+)
 from src.services.restated_demographics import (  # noqa: E402
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
 )
@@ -1052,6 +1071,154 @@ def skipped_criteria_violations(
     return violations
 
 
+def repair_ledger_violations(study: dict[str, Any]) -> tuple[list[str], str]:
+    """Check (k): re-judge the store study's repair ledger. ``(violations, summary)``.
+
+    ``eligibility._repairAccounting`` is the only record of what Agent 1's post-parse
+    repairs did to the rule list. It matters to a DELIVERY gate because every other
+    check in this file reconciles the delivered file against the store, and the store's
+    own criteria rows are written AFTER those repairs run -- so a criterion a repair
+    removed is on neither side of every reconciliation here. `total`, `mappable`,
+    `mapped`, the residual identity and the store anchor all balance exactly while the
+    criterion is gone. That is not hypothetical: CAROLINA's inclusion criteria fell from
+    52 to 32 between the 2026-09-11 and 2026-09-12 stores, six of them the drug-therapy
+    rows 18 to 23, and the 2026-09-13 delivery still reported "84 of 84 store criteria
+    accounted for" on both CAROLINA arms.
+
+    What is judged, and what is deliberately not:
+
+    ``demotion`` -- JUDGED, and this is the check that catches a real loss. A demotion
+        says the criterion is still in the tree and merely moved under a synthesised
+        group. So a demotion naming a criterion the store does NOT carry is a departure
+        with no departure record: the ledger says "moved", the store says "gone", and
+        between them nothing says where. ``RepairLedger.accounted_ids`` already refuses
+        to let a demotion satisfy the parse-time gate for exactly this reason; this is
+        the same refusal one stage later, where the delivery is.
+
+    ``departure`` -- COUNTED, never judged on presence. Verified against the six real
+        ledgers in the 2026-09-13 store before this was written: 5 departures across
+        studies 8, 9 and 10 name a criterion that IS still in the store, because
+        ``_repair_band_tiers`` merges two halves of a band into one survivor and the
+        survivor legitimately keeps a departed half's own name (2 of CAROLINA's 7).
+        Failing those would fail correct rows, and a gate that fires on a correct batch
+        is one someone switches off.
+
+    ``rewrite`` -- COUNTED. The criterion is where it was; only a boundary moved, and
+        the record exists so that a moved boundary is not silent.
+
+    An unrecognised ``disposition``, a record that is not a record, a ledger that is not
+    a list, and a record naming no criterion all FAIL. This is a reconciliation, so a
+    record it cannot read is an unreconciled criterion -- the same direction
+    :data:`ALLOWED_SKIP_REASONS` and :data:`PERMITTED_REFUSAL_CODES` fail in, where drift
+    blocks a delivery rather than passing unread.
+
+    Three-state on presence, like ``_droppedCriteria``: ABSENT means the store predates
+    ``9ec4b3a`` and no claim can be made, and the row says so rather than staying silent
+    -- a check whose only output is silence cannot be told from a check that never ran,
+    which is precisely how ``_unmappedCriteria`` went unread for a month.
+    """
+    eligibility = study.get("eligibility") or {}
+    if not isinstance(eligibility, dict) or REPAIR_ACCOUNTING_KEY not in eligibility:
+        return [], "repair accounting: NOT RECORDED (store predates the ledger)"
+
+    ledger = eligibility.get(REPAIR_ACCOUNTING_KEY)
+    if not isinstance(ledger, list):
+        return (
+            [
+                f"{REPAIR_ACCOUNTING_KEY} is not a list: {type(ledger).__name__} -- the "
+                "record of what the post-parse repairs removed cannot be read, so no "
+                "criterion they removed can be accounted for"
+            ],
+            "repair accounting: UNREADABLE",
+        )
+
+    # The store's criteria by their own text. The ledger records a criterion's `name`,
+    # which `TTEService._criteria_from_ir` writes onto the store row as `description`;
+    # measured on the 2026-09-13 store, all 16 real demotions match on exactly that
+    # pair. Ids are NOT usable here: a criterion the repairs removed never reached the
+    # store, so it never received one.
+    present = {
+        (criterion.get("description") or "").strip()
+        for rows in (
+            eligibility.get("inclusionCriteria") or [],
+            eligibility.get("exclusionCriteria") or [],
+        )
+        for criterion in rows
+        if isinstance(criterion, dict)
+    }
+    present.discard("")
+
+    violations: list[str] = []
+    counts = Counter()
+    lost: list[str] = []
+
+    for position, record in enumerate(ledger):
+        where = f"{REPAIR_ACCOUNTING_KEY}[{position}]"
+        if not isinstance(record, dict):
+            violations.append(
+                f"{where} is not a record ({record!r}), so the repair it stands for "
+                "names no criterion and cannot be reconciled"
+            )
+            continue
+
+        disposition = record.get("disposition")
+        if disposition not in KNOWN_DISPOSITIONS:
+            violations.append(
+                f"{where} carries disposition {disposition!r}, which this gate does not "
+                f"recognise (known: {', '.join(sorted(KNOWN_DISPOSITIONS))}) -- an "
+                "unreadable repair record is an unreconciled criterion, so it blocks"
+            )
+            continue
+
+        counts[disposition] += 1
+        criterion = record.get("criterion")
+        if not isinstance(criterion, dict):
+            violations.append(
+                f"{where} ({disposition}) names no criterion, so nothing says which "
+                "criterion the repair acted on"
+            )
+            continue
+
+        name = (criterion.get("name") or "").strip()
+        if not name:
+            violations.append(
+                f"{where} ({disposition}) names a criterion with no name, so it cannot "
+                "be reconciled against the store"
+            )
+            continue
+
+        if disposition == DISPOSITION_DEMOTION and name not in present:
+            lost.append(
+                f"{where} records {name!r} as demoted into "
+                f"{str(record.get('groupName') or 'a synthesised group')!r}, which says "
+                "it is STILL in the rule tree -- and the store study carries no "
+                "criterion by that name. It left, and no repair recorded taking it"
+                + (
+                    f" (protocol line: {(criterion.get('sourceText') or '')[:120]!r})"
+                    if criterion.get("sourceText")
+                    else ""
+                )
+            )
+
+    if lost:
+        violations.append(
+            f"criteria recorded as demoted that the store does not carry ({len(lost)}): "
+            + "; ".join(lost)
+        )
+
+    if not ledger:
+        summary = "repair accounting: 0 repairs recorded"
+    else:
+        summary = "repair accounting: " + ", ".join(
+            f"{counts[disposition]} {disposition}"
+            for disposition in sorted(KNOWN_DISPOSITIONS)
+            if counts[disposition]
+        )
+        if lost:
+            summary += f", {len(lost)} demoted criteria MISSING from the store"
+    return violations, summary
+
+
 def criterion_accounting(
     expression: dict[str, Any], study: dict[str, Any]
 ) -> tuple[list[str], str]:
@@ -1118,6 +1285,15 @@ def criterion_accounting(
     # "incomplete" rather than reporting it as unrecorded.
     dropped = expression.get(DROPPED_CRITERIA_KEY)
     drop_violations = dropped_criteria_violations(dropped)
+
+    # Check (k), folded in here rather than called beside this function because it must
+    # reach EVERY return path below -- including the two early ones. A store whose
+    # ledger records a loss is carrying that loss whether or not the file beside it
+    # predates `_generationCensus`, and returning early on the file's age would drop the
+    # only record of it. Same reason `drop_violations` is threaded through all three.
+    ledger_violations, ledger_summary = repair_ledger_violations(study)
+    drop_violations = drop_violations + ledger_violations
+    ledger_clause = f", {ledger_summary}"
     if dropped is None:
         drop_clause = ""
     elif isinstance(dropped, list) and dropped:
@@ -1227,7 +1403,7 @@ def criterion_accounting(
             drop_violations,
             "criterion accounting: NOT RECORDED "
             f"(artifact predates _generationCensus){drop_clause}{defaulted_clause}"
-            f"{missing_entity_clause}",
+            f"{missing_entity_clause}{ledger_clause}",
         )
 
     missing = [key for key in ACCOUNTING_KEYS if key not in expression]
@@ -1239,7 +1415,7 @@ def criterion_accounting(
                 f"{', '.join(missing)} absent while {', '.join(present)} present"
             ],
             f"criterion accounting: INCOMPLETE{drop_clause}{defaulted_clause}"
-            f"{missing_entity_clause}",
+            f"{missing_entity_clause}{ledger_clause}",
         )
 
     # The store's criteria: the anchor below and the two re-derivations further down
@@ -1574,6 +1750,7 @@ def criterion_accounting(
         f"criterion accounting: {census.get('mapped')} mapped, {unmapped_clause}, "
         f"{len(skipped)} skipped ({permitted}), {anchor_clause}, "
         f"{link_clause}{drop_clause}{defaulted_clause}{missing_entity_clause}"
+        f"{ledger_clause}"
     )
     return violations, summary
 

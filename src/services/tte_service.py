@@ -83,6 +83,7 @@ from src.services.restated_distinctness import (
     collapse_all_restated_criteria,
 )
 from src.agents.agent1.parser import get_agent1  # lazy factory; import does not construct Agent 1
+from src.agents.agent1.repair_accounting import REPAIR_ACCOUNTING_KEY
 from src.agents.agent2.criterion_cache import (
     CriterionCacheEntry,
     _cache_enabled as _criterion_cache_enabled,
@@ -3201,10 +3202,40 @@ class TTEService:
     def _merge_eligibility_section(
         self, current: dict[str, Any] | None, proposed: dict[str, Any] | None
     ) -> dict[str, Any]:
+        """The proposed section, plus the two keys a wholesale replace would drop.
+
+        This is named for a merge it does not perform: it deep-copies the proposal and
+        carries over only what the proposal cannot regenerate. ``structuredExpression``
+        was the first such key. ``_repairAccounting`` is the second, and it was lost
+        for the same reason.
+
+        A study is built by a CHAIN of applies, not one: ``draft_generation`` carries
+        the parse's repair ledger and lands it correctly, and then
+        ``eligibility_processing`` -- applied two to four minutes later, refining the
+        mapping without re-parsing -- proposes a section with no ledger at all, and the
+        replace takes it with the rest. Measured on
+        ``output/site_gap/2026-09-13/store/studies.json``: 32 ledger records survive
+        across six ``draft_generation`` artifacts and NOT ONE of the ten studies carries
+        the key. Every one of the six lost it at its next apply.
+
+        So the account of where a criterion went reached the artifact and never the
+        delivery, which is the half that ships -- and
+        ``scripts/verify_circe_delivery.py`` reads the STORE, so it could not consult a
+        ledger that never arrives there.
+
+        Carried forward only when the proposal offers none. A proposal that carries its
+        own ledger replaces the standing one, because a fresh parse earns a fresh
+        account and pinning the old one would leave a stale record describing repairs
+        that no longer happened.
+        """
         merged = deepcopy(proposed) if isinstance(proposed, dict) else {}
         current_structured_expression = self._get_eligibility_structured_expression(current)
         if "structuredExpression" not in merged and current_structured_expression is not None:
             merged["structuredExpression"] = deepcopy(current_structured_expression)
+        if REPAIR_ACCOUNTING_KEY not in merged and isinstance(current, dict):
+            standing = current.get(REPAIR_ACCOUNTING_KEY)
+            if standing is not None:
+                merged[REPAIR_ACCOUNTING_KEY] = deepcopy(standing)
         return merged
 
     def _structured_expression_has_target_definition(
@@ -11172,7 +11203,7 @@ class TTEService:
                 "inclusionCriteria": inclusion_criteria,
                 "exclusionCriteria": exclusion_criteria,
                 "observationWindow": target_obs_window,
-                "_repairAccounting": repair_accounting,
+                REPAIR_ACCOUNTING_KEY: repair_accounting,
             },
             "treatmentArms": treatment_arms,
             "outcomes": {
