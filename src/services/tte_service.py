@@ -6776,13 +6776,25 @@ class TTEService:
 
         op = (vc.get("op") or "").lower()
         val = vc["value"]
-        op_map = {"gt": "gt", "gte": "gte", "lt": "lt", "lte": "lte", "eq": "eq"}
+        op_map = {"gt": "gt", "gte": "gte", "lt": "lt", "lte": "lte", "eq": "eq", "bt": "bt"}
         circe_op = op_map.get(op)
         if not circe_op:
             return None
 
+        # An inclusive range carries a second number, and CIRCE's Age NumericRange reads
+        # it as `Extent`. Without this an `Age between 40 and 85` would emit
+        # `{"Value": 40, "Op": "bt"}` -- a node CIRCE cannot complete, from a row that
+        # reads as fully translated.
+        extent = vc.get("valueHigh") if circe_op == "bt" else None
+        if circe_op == "bt" and extent is None:
+            return None
+
         if exclusion:
-            exclusion_inversion = {"gt": "lte", "gte": "lt", "lt": "gte", "lte": "gt"}
+            # "not in the excluded range" for a range is CIRCE's own `!bt`, the same
+            # token `agent3/mappings.OPERATOR_MAP` already records for `nbt`.
+            exclusion_inversion = {
+                "gt": "lte", "gte": "lt", "lt": "gte", "lte": "gt", "bt": "!bt",
+            }
             circe_op = exclusion_inversion.get(circe_op)
             if not circe_op:
                 return None
@@ -6797,7 +6809,7 @@ class TTEService:
                 "Type": "ALL",
                 "CriteriaList": [],
                 "DemographicCriteriaList": [
-                    {"Age": {"Value": val, "Op": circe_op}}
+                    {"Age": {"Value": val, "Op": circe_op, **({"Extent": extent} if extent is not None else {})}}
                 ],
                 "Groups": [],
             },
@@ -11376,6 +11388,12 @@ class TTEService:
             value_constraint = {
                 "op": getattr(vc, "op", ""),
                 "value": getattr(vc, "value", None),
+                # The upper bound of an `op: "bt"` range. Written unconditionally (None
+                # for every other op) rather than only when set, so a row's shape does
+                # not depend on its operator -- a reader that has to ask whether the key
+                # exists before asking what it holds is one `.get` away from reading a
+                # range as a bare lower bound.
+                "valueHigh": getattr(vc, "value_high", None),
                 "unitText": getattr(vc, "unit_text", None) or "",
                 "referenceBound": getattr(vc, "reference_bound", None) or "absolute",
                 "unitConceptId": getattr(vc, "unit_concept_id", None),

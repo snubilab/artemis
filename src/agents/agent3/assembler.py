@@ -816,6 +816,11 @@ class CohortAssembler:
                 "Value": vc.value,
                 "Op": op
             }
+            # An inclusive range's upper bound. CIRCE's Age NumericRange reads it as
+            # `Extent`; emitting `{"Value": 40, "Op": "bt"}` alone is a half-written
+            # node on a rule that reads as fully translated.
+            if op == "bt" and vc.value_high is not None:
+                entry["Age"]["Extent"] = vc.value_high
         
         # Gender constraint
         if "gender" in entity or "sex" in entity:

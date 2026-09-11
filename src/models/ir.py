@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from typing import List, Optional, Literal, Union, Any, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # --- Part 1: OHDSI ConceptSet Structure (matches docs/sample.json) ---
 
@@ -48,12 +49,35 @@ class TemporalWindow(BaseModel):
     start: int # Days relative to index
     end: int   # Days relative to index
 
+#: Spellings the model actually uses for an inclusive range, mapped to Circe's own
+#: token. Kept here rather than in ``LogicDecomposer._normalize_operator`` because
+#: that table normalises the ``operator`` key only, and the model writes the range
+#: under ``op`` -- so it never reached it.
+_RANGE_OP_ALIASES = frozenset({"between", "bt"})
+
+
 class ValueConstraint(BaseModel):
     """
     For Measurements (e.g., HbA1c > 6.5).
     """
-    op: Literal["gt", "lt", "eq", "gte", "lte"]
+    op: Literal["gt", "lt", "eq", "gte", "lte", "bt"]
     value: float
+    # The upper bound of an inclusive range. Set only when `op == "bt"`, None otherwise.
+    #
+    # A scalar `value` cannot hold two numbers, so every range the model emitted used
+    # to be rejected at parse time -- 27 of them across the current IR caches, CAROLINA's
+    # "Moderately impaired renal function (eGFR 30-59)" among them. Worse than the loss
+    # was the diagnosis: `_validate_measurement_rules` then reported each one as a rule
+    # "missing value_constraint - likely LLM omission", blaming the model for a
+    # constraint it had supplied and this schema had discarded.
+    #
+    # `value` is the low bound and this is the high one, so the pair maps 1:1 onto
+    # Circe's own `NumericRange` {Value, Extent, Op} -- see
+    # `src/services/value_constraint.build_measurement_value_filter`. Naming the second
+    # bound rather than widening `value` to a list keeps every existing reader of
+    # `.value` (the demographic builders, the store row, `parse_value_constraint`)
+    # reading a float.
+    value_high: Optional[float] = None
     # What `value` is measured against. "ALT > 3x ULN" means three times this
     # lab's own upper limit, not the number 3 — real ALT runs 10-40 U/L, so
     # emitting it as an absolute matches every patient who had a liver panel.
@@ -62,6 +86,68 @@ class ValueConstraint(BaseModel):
     reference_bound: Literal["absolute", "uln", "lln"] = "absolute"
     unit_text: Optional[str] = None
     unit_concept_id: Optional[int] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_range_operand(cls, data: Any) -> Any:
+        """Accept the range shape the model actually emits: ``{"op": "between", "value": [lo, hi]}``.
+
+        Here rather than in ``LogicDecomposer._build_criteria`` because the parser is not
+        the only constructor -- ``agent3/assembler`` and the TTE store both build a
+        ``ValueConstraint`` from a raw mapping, and a conversion that lives in one caller
+        is a conversion the other two silently lack.
+
+        A two-element ``value`` is unpacked into ``(value, value_high)``. Anything else
+        raises rather than being coerced: a one-element or three-element range is a
+        constraint we cannot represent, and inventing the missing bound would put a
+        number in Circe that no protocol wrote.
+        """
+        if not isinstance(data, Mapping):
+            return data
+        op = data.get("op")
+        value = data.get("value")
+        is_range_op = isinstance(op, str) and op.strip().lower() in _RANGE_OP_ALIASES
+        is_pair = isinstance(value, (list, tuple))
+        if not (is_range_op or is_pair):
+            return data
+        data = dict(data)
+        if is_range_op:
+            data["op"] = "bt"
+        if is_pair:
+            bounds = list(value)
+            if len(bounds) != 2:
+                raise ValueError(
+                    f"a range needs exactly two bounds, got {len(bounds)}: {bounds!r}"
+                )
+            data["value"], data["value_high"] = bounds
+        return data
+
+    @model_validator(mode="after")
+    def _check_range_bounds(self) -> "ValueConstraint":
+        """Refuse a range that Circe would accept and then match nothing with.
+
+        ``BETWEEN 59 AND 30`` is valid SQL and returns no rows, so an inverted pair is
+        exactly the shape that ships looking correct. A ``bt`` with no upper bound is
+        the other half of the same hazard -- the model emitted four of those.
+        """
+        if self.op == "bt":
+            if self.value_high is None:
+                raise ValueError(
+                    "op 'bt' needs an upper bound in value_high; only the lower bound "
+                    f"({self.value}) was supplied"
+                )
+            if self.value_high < self.value:
+                raise ValueError(
+                    f"range bounds are inverted (value={self.value} is above "
+                    f"value_high={self.value_high}); Circe's BETWEEN over an inverted "
+                    "pair matches no rows at all"
+                )
+        elif self.value_high is not None:
+            raise ValueError(
+                f"value_high is an upper bound and only op 'bt' has one; op is {self.op!r}"
+            )
+        return self
+
 
 class Criteria(BaseModel):
     """
@@ -118,6 +204,15 @@ class Criteria(BaseModel):
     logic_type: Literal["PRESENCE", "ABSENCE"] = "PRESENCE"
     window: Optional[TemporalWindow] = None
     value_constraint: Optional[ValueConstraint] = None
+
+    # Why `value_constraint` is None when the model DID supply one and this schema
+    # refused it. None means the model supplied nothing -- the two cases are
+    # indistinguishable from `value_constraint` alone, and telling them apart is the
+    # whole point: `_validate_measurement_rules` reported every rejected range as a
+    # rule "missing value_constraint - likely LLM omission" for as long as ranges were
+    # rejected, which diagnosed our own schema as the model's mistake and is why the
+    # defect survived. Never set on a criterion whose constraint parsed.
+    value_constraint_error: Optional[str] = None
     
     # Composite criteria: fan-out into sub-criteria
     sub_criteria: List["Criteria"] = Field(default_factory=list)

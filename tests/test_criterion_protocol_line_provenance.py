@@ -220,6 +220,10 @@ class TestAdditive:
         assert row["groupType"] == "ALL"
         assert row["valueConstraint"] == {
             "op": "gt", "value": 3.0, "unitText": "x ULN",
+            # Written unconditionally, like `unitConceptId` beside it: a row whose
+            # SHAPE depends on its operator is one `.get` away from being read as a
+            # bare lower bound. None here says "this constraint is not a range".
+            "valueHigh": None,
             "referenceBound": "uln", "unitConceptId": None,
         }
 

@@ -1323,6 +1323,20 @@ class LogicDecomposer:
             for c in data.get("exclusion_rules", [])
         ]
         
+        # Split-band repair BEFORE Pattern E: a band's two halves are adjacent flat
+        # rules, and Pattern E rewrites the flat list (it merges cluster members into
+        # an ANY group), so running it first would hide one half of a pair behind a
+        # group. Exclusion rules are not repaired: `_build_criteria` forces
+        # `logic_type="ABSENCE"` on every one of them, so the PRESENCE lower bound a
+        # pair needs cannot exist on that side -- measured 0 PRESENCE exclusion rules
+        # across all 65 current-model IR caches.
+        inclusion_rules = self._repair_split_bands(inclusion_rules)
+
+        # ...then the tiers that band leaves adjacent. Bands must be whole before they
+        # can be recognised as alternatives, so this runs second and both run before
+        # Pattern E, which rewrites the flat list into groups of its own.
+        inclusion_rules = self._repair_band_tiers(inclusion_rules)
+
         # Pattern E post-parse repair: merge flat CV/risk factor OR groups
         inclusion_rules = self._repair_pattern_e(inclusion_rules)
 
@@ -1337,6 +1351,147 @@ class LogicDecomposer:
             exit_strategy=data.get("exit_strategy", "OBSERVATION_END")
         )
     
+    # A band's upper half is written with De Morgan, never with lt/lte: measured over
+    # the 65 current-model IR caches, every one of the 58 upper bounds is an ABSENCE
+    # rule carrying gt or gte, and not one uses lt or lte. So the pairing reads the
+    # EFFECTIVE bound -- `ABSENCE gt 8.5` is `<= 8.5`, `ABSENCE gte 10.0` is `< 10.0`
+    # -- rather than the raw operator.
+    _BAND_LOWER_OPS = frozenset({"gt", "gte"})
+    _BAND_UPPER_OPS = frozenset({"gt", "gte"})
+
+    @staticmethod
+    def _band_key(rule: "Criteria") -> Optional[tuple]:
+        """What two halves of one band must agree on, or None if this rule is not a half.
+
+        Deliberately NOT the name's parenthetical. Measured over the 65 caches:
+        requiring the parenthetical to match blocked 16 correct merges across 11 files
+        and prevented zero wrong ones, because roughly half the runs restate the bound
+        inside it -- `(>=6.5%)` against `(<=10.0%)`, `(no >=10%)` -- so the two halves
+        can never carry the same one.
+
+        The key is the protocol line plus the analyte plus the domain. The line is what
+        makes two bounds halves of the SAME band rather than two bands on one analyte:
+        CAROLINA writes three HbA1c bands on three different lines, and grouping them
+        by analyte alone would pair the first line's lower bound with the second line's
+        upper one. The domain is in the key so a Measurement bound can never pair with
+        a Drug one; it is not FILTERED on, because one arm labels the whole HbA1c group
+        Observation and its band is a band regardless of what the model called the domain.
+        """
+        vc = rule.value_constraint
+        if vc is None or rule.sub_criteria:
+            return None
+        if vc.op == "bt":
+            return None
+        source = (rule.source_text or "").strip()
+        analyte = (rule.entity_text or "").strip()
+        if not source or not analyte:
+            # Without the line there is nothing anchoring two bounds to one band, and
+            # without the analyte nothing anchoring them to one quantity. Declining is
+            # the safe direction: the rules stay exactly as they are.
+            return None
+        return (rule.domain, analyte.casefold(), " ".join(source.split()).casefold())
+
+    def _repair_split_bands(self, rules: list) -> list:
+        """Merge a band Agent 1 split into a lower-bound rule and an upper-bound rule.
+
+        CAROLINA's "Elevated glycosylated haemoglobin (HbA1c): 6.5 - 8.5%, inclusive"
+        arrives as::
+
+            6  'HbA1c 6.5 - 8.5% (Naive/Metformin/Alpha-glucosidase)'  PRESENCE gte 6.5
+            7  'HbA1c <= 8.5% (Naive/Metformin/Alpha-glucosidase)'     ABSENCE  gt  8.5
+
+        Flat rules are conjunctive, so as written the pair demands a measurement at or
+        above 6.5 AND no measurement above 8.5. The protocol states one inclusive band,
+        and the TROY v1.1 gold for this trial encodes it as one operand --
+        ``ValueAsNumber {Value: 6.5, Extent: 8.5, Op: "!bt"}`` on the exclusion side.
+
+        ONLY a pair whose merged form matches the flat pair's own bounds exactly is
+        merged: lower ``gte`` (``>= lo``) with upper ``gt`` (``<= hi``), which is Circe's
+        inclusive ``bt`` exactly. A lower ``gt`` or an upper ``gte`` is a half-open band,
+        Circe's NumericRange has no half-open operator, and merging one into ``bt`` would
+        silently widen the rule by one boundary -- on the corpus that is 46 of the 58
+        pairs, every one of them on NCT01131676 and NCT01897532. Those are left split and
+        counted, not quietly widened: the widening would be a real change in who the
+        cohort matches, made as a side effect of a repair that was asked for something else.
+
+        :param rules: this cohort's inclusion rules, in the order the model emitted them.
+        :returns: the same list with each exactly-representable pair replaced by one
+            ``bt`` criterion at the lower bound's position.
+        """
+        keys = [self._band_key(r) for r in rules]
+        merged_into: dict[int, "Criteria"] = {}
+        consumed: set[int] = set()
+        declined = 0
+
+        for i, rule in enumerate(rules):
+            key = keys[i]
+            if key is None or i in consumed or rule.logic_type != "PRESENCE":
+                continue
+            if rule.value_constraint.op not in self._BAND_LOWER_OPS:
+                continue
+            j = i + 1
+            # Adjacent only. Measured: all 58 pairs in the corpus are adjacent, so this
+            # costs nothing here and refuses to reach across an intervening rule whose
+            # relationship to the band nothing has established.
+            if j >= len(rules) or keys[j] != key or j in consumed:
+                continue
+            upper = rules[j]
+            if upper.logic_type != "ABSENCE":
+                continue
+            lo_vc, up_vc = rule.value_constraint, upper.value_constraint
+            if up_vc.op not in self._BAND_UPPER_OPS:
+                continue
+            if (lo_vc.unit_text or "") != (up_vc.unit_text or ""):
+                continue
+            if lo_vc.reference_bound != up_vc.reference_bound:
+                continue
+            if rule.window != upper.window:
+                continue
+            if not lo_vc.value < up_vc.value:
+                continue
+            if lo_vc.op != "gte" or up_vc.op != "gt":
+                # Half-open: representable only by keeping the two rules apart.
+                declined += 1
+                logger.info(
+                    "[Agent 1] Split-band repair DECLINED for '%s' + '%s': the merged "
+                    "band would be %s%s, %s%s and Circe's bt is inclusive at both ends, "
+                    "so merging would move a boundary",
+                    rule.name, upper.name,
+                    "[" if lo_vc.op == "gte" else "(", lo_vc.value,
+                    up_vc.value, "]" if up_vc.op == "gt" else ")",
+                )
+                continue
+
+            merged_into[i] = rule.model_copy(update={
+                "value_constraint": ValueConstraint(
+                    op="bt",
+                    value=lo_vc.value,
+                    value_high=up_vc.value,
+                    reference_bound=lo_vc.reference_bound,
+                    unit_text=lo_vc.unit_text,
+                    unit_concept_id=lo_vc.unit_concept_id or up_vc.unit_concept_id,
+                ),
+            })
+            consumed.add(j)
+            logger.info(
+                "[Agent 1] Split-band repair: merged '%s' + '%s' into one inclusive "
+                "band %s-%s%s",
+                rule.name, upper.name, lo_vc.value, up_vc.value,
+                f" {lo_vc.unit_text}" if lo_vc.unit_text else "",
+            )
+
+        if not merged_into and not declined:
+            return rules
+        if declined:
+            logger.info(
+                "[Agent 1] Split-band repair: %d half-open pair(s) left split", declined
+            )
+        return [
+            merged_into.get(i, rule)
+            for i, rule in enumerate(rules)
+            if i not in consumed
+        ]
+
     def _validate_measurement_rules(self, rules: list, rule_type: str) -> None:
         """Post-parse validation: warn if Measurement criteria lack value_constraint.
         
@@ -1345,16 +1500,32 @@ class LogicDecomposer:
         """
         for rule in rules:
             if rule.domain == "Measurement" and rule.value_constraint is None:
-                logger.warning(
-                    f"[Agent 1] ⚠ Measurement {rule_type} rule '{rule.name}' "
-                    f"(entity: '{rule.entity_text}') has NO value_constraint. "
-                    f"This may produce incorrect cohort results. "
-                    f"Consider adding op/value/unit_text."
-                )
-                print(
-                    f"[Agent 1] ⚠ WARNING: Measurement rule '{rule.name}' "
-                    f"missing value_constraint — likely LLM omission."
-                )
+                # Two different defects wear the same symptom, and attributing both to
+                # the model is how one of them survived: `value_constraint_error` is set
+                # only when the model supplied a constraint that THIS schema refused.
+                if rule.value_constraint_error:
+                    logger.warning(
+                        f"[Agent 1] ⚠ Measurement {rule_type} rule '{rule.name}' "
+                        f"(entity: '{rule.entity_text}') has NO value_constraint because "
+                        f"ARTEMIS dropped the one the model supplied: "
+                        f"{rule.value_constraint_error}"
+                    )
+                    print(
+                        f"[Agent 1] ⚠ WARNING: Measurement rule '{rule.name}' lost its "
+                        f"value_constraint to the ARTEMIS schema, not to the LLM — "
+                        f"{rule.value_constraint_error}"
+                    )
+                else:
+                    logger.warning(
+                        f"[Agent 1] ⚠ Measurement {rule_type} rule '{rule.name}' "
+                        f"(entity: '{rule.entity_text}') has NO value_constraint. "
+                        f"This may produce incorrect cohort results. "
+                        f"Consider adding op/value/unit_text."
+                    )
+                    print(
+                        f"[Agent 1] ⚠ WARNING: Measurement rule '{rule.name}' "
+                        f"missing value_constraint — likely LLM omission."
+                    )
             # Recurse into sub_criteria
             if rule.sub_criteria:
                 self._validate_measurement_rules(rule.sub_criteria, rule_type)
@@ -1412,6 +1583,147 @@ class LogicDecomposer:
         return not rule.sub_criteria and rule.group_type == "ALL"
 
     @staticmethod
+    def _build_any_group(name: str, run: list) -> "Criteria":
+        """One ANY group over `run`, preserving each member unchanged.
+
+        The single group builder: `_repair_pattern_e` (CV/risk clusters) and
+        `_repair_band_tiers` (alternative bands on one analyte) both call it, so a
+        group's shape is decided once rather than in each repair that wants one.
+
+        A synthesised label has no JSON of its own to read a line from -- yet
+        `_criteria_from_ir` emits it as a store row alongside its members, and a row
+        with no line is the record `source_text` exists to prevent. Where every member
+        came from one line, that line is the label's line as well. Where they came from
+        different lines there is no single line between them, and naming one of them
+        would attribute the others' criteria to it -- so the label claims none, and
+        each member keeps its own.
+        """
+        member_lines = {(rule.source_text or "").strip() for rule in run}
+        merged_source_text = (member_lines.pop() if len(member_lines) == 1 else None) or None
+        return Criteria(
+            name=name,
+            domain=run[0].domain,
+            entity_text=None,
+            source_text=merged_source_text,
+            logic_type=run[0].logic_type,
+            window=run[0].window,
+            value_constraint=None,
+            sub_criteria=run,
+            group_type="ANY",
+        )
+
+    @staticmethod
+    def _band_tier_key(rule: "Criteria") -> Optional[tuple]:
+        """What makes two criteria alternative BANDS on one quantity, or None.
+
+        NOT `source_text`. CAROLINA's three HbA1c tiers each carry a different one --
+        the first comes from a combined line naming two bands at once, the third from
+        protocol line a) -- so the line neither groups the tiers nor identifies the
+        restatement. It is the wrong key here for the same reason it is the RIGHT key
+        in `_band_key`: there it separates bands that share an analyte, and separating
+        them is exactly what must not happen once each band is whole.
+
+        The key is instead what the criteria are measuring and how: domain, analyte,
+        unit, polarity and window, over a criterion carrying a CLOSED band (`op ==
+        "bt"`). The closed band is the load-bearing half. Two closed bands on one
+        analyte are never a conjunction a protocol would write -- one value cannot sit
+        in two disjoint bands, and where they overlap the conjunction is just the
+        intersection, which a protocol would have stated directly. An open bound is
+        not like that: `>= 6.5` and `<= 8.5` on one analyte ARE conjunctive, being the
+        two halves of one band, which is why `_repair_split_bands` pairs them rather
+        than grouping them, and why this key does not look at them at all.
+        """
+        vc = rule.value_constraint
+        if vc is None or vc.op != "bt" or rule.sub_criteria:
+            return None
+        analyte = (rule.entity_text or "").strip()
+        if not analyte:
+            return None
+        return (
+            rule.domain,
+            analyte.casefold(),
+            (vc.unit_text or "").strip().casefold(),
+            vc.reference_bound,
+            rule.logic_type,
+            str(rule.window),
+        )
+
+    @staticmethod
+    def _repair_band_tiers(rules: list) -> list:
+        """Merge adjacent alternative bands on one analyte into a single ANY group.
+
+        After `_repair_split_bands`, CAROLINA holds three whole HbA1c bands in a row::
+
+            6  'HbA1c 6.5 - 8.5% (Naive/Metformin/Alpha-glucosidase)'  bt 6.5..8.5
+            7  'HbA1c 6.5 - 7.5% (SU/Glinide/Metformin combos)'        bt 6.5..7.5
+            8  'HbA1c 6.5 - 8.5% (Naive/Intolerant/Treated)'           bt 6.5..8.5
+
+        Flat rules are conjunctive, so as written a patient must have a reading in
+        every one of them and the 8.5 tier is dead: the conjunction is just the
+        narrowest band. The protocol writes these as "a) ... or b)", so they are one
+        ANY group.
+
+        Two members carrying the SAME band are one alternative, not two: an ANY over
+        `[6.5, 8.5]`, `[6.5, 7.5]` and `[6.5, 8.5]` matches exactly the patients an ANY
+        over the first two does. The duplicate is dropped and its protocol line is
+        logged, because dropping it does lose that line from the store.
+
+        Adjacent runs only, so a band cannot be pulled across an unrelated criterion.
+        """
+        if not rules:
+            return rules
+        keys = [LogicDecomposer._band_tier_key(r) for r in rules]
+        result: list = []
+        i = 0
+        while i < len(rules):
+            key = keys[i]
+            if key is None:
+                result.append(rules[i]); i += 1
+                continue
+            j = i + 1
+            while j < len(rules) and keys[j] == key:
+                j += 1
+            run = rules[i:j]
+            if len(run) < 2:
+                result.append(rules[i]); i += 1
+                continue
+
+            seen: dict[tuple, "Criteria"] = {}
+            for member in run:
+                vc = member.value_constraint
+                band = (vc.value, vc.value_high)
+                if band in seen:
+                    logger.info(
+                        "[Agent 1] Band-tier repair: dropped '%s' as a restatement of "
+                        "'%s' (both %s-%s); its protocol line %r is no longer carried "
+                        "by any criterion",
+                        member.name, seen[band].name, vc.value, vc.value_high,
+                        (member.source_text or "")[:120],
+                    )
+                    continue
+                seen[band] = member
+            members = list(seen.values())
+
+            if len(members) < 2:
+                # Every alternative but one was a restatement, so there is no choice to
+                # express: emit the survivor flat rather than an ANY group of one.
+                result.append(members[0])
+            else:
+                analyte = members[0].entity_text or "value"
+                result.append(
+                    LogicDecomposer._build_any_group(f"{analyte} band (OR group)", members)
+                )
+                logger.info(
+                    "[Agent 1] Band-tier repair: merged %d alternative band(s) on '%s' "
+                    "into one ANY group (%s)",
+                    len(members), analyte,
+                    ", ".join(f"{m.value_constraint.value}-{m.value_constraint.value_high}"
+                              for m in members),
+                )
+            i = j
+        return result
+
+    @staticmethod
     def _repair_pattern_e(rules: list) -> list:
         """
         Post-parse repair: merge flat inclusion rules that match the same
@@ -1460,29 +1772,7 @@ class LogicDecomposer:
             # Collect all rules in this cluster (preserving original order)
             run = [rules[idx] for idx in cluster_buckets[cluster]]
             cluster_label = cluster.replace("_", " ").title()
-            # This label is synthesised here, so it has no JSON of its own to read a
-            # line from -- yet `_criteria_from_ir` emits it as a store row alongside
-            # its members, and a row with no line is the record this whole field
-            # exists to prevent. Where every member came from one line, that line is
-            # the label's line as well. Where they came from different lines there is
-            # no single line between them, and naming one of them would attribute the
-            # others' criteria to it -- so the label claims none, and each member
-            # keeps its own.
-            member_lines = {(rule.source_text or "").strip() for rule in run}
-            merged_source_text = (
-                member_lines.pop() if len(member_lines) == 1 else None
-            ) or None
-            merged = Criteria(
-                name=f"{cluster_label} (OR group)",
-                domain=run[0].domain,
-                entity_text=None,
-                source_text=merged_source_text,
-                logic_type=run[0].logic_type,
-                window=run[0].window,
-                value_constraint=None,
-                sub_criteria=run,
-                group_type="ANY",
-            )
+            merged = LogicDecomposer._build_any_group(f"{cluster_label} (OR group)", run)
             logger.info(
                 "[Agent 1] Pattern E repair: merged %d non-consecutive '%s' rules into ANY group",
                 len(run),
@@ -1507,23 +1797,37 @@ class LogicDecomposer:
             window = TemporalWindow(**data["window"])
         
         value_constraint = None
+        value_constraint_error = None
         if "value_constraint" in data and data["value_constraint"]:
             vc_data = data["value_constraint"]
             # Normalize field names from LLM output variations
             normalized_vc = {
                 "op": vc_data.get("op") or self._normalize_operator(vc_data.get("operator", "gt")),
                 "value": vc_data.get("value", 0),
+                "value_high": vc_data.get("value_high"),
                 "unit_text": vc_data.get("unit_text") or vc_data.get("unit"),
                 "unit_concept_id": vc_data.get("unit_concept_id")
             }
             try:
                 value_constraint = ValueConstraint(**normalized_vc)
             except ValidationError as exc:
+                # The model DID supply a constraint and this schema refused it. Say so,
+                # and say which operand could not be represented: for as long as ranges
+                # were rejected here, the only thing downstream ever heard was
+                # `_validate_measurement_rules` reporting the rule as "missing
+                # value_constraint - likely LLM omission", which named the wrong party
+                # and is why 27 dropped ranges survived unnoticed.
+                value_constraint_error = (
+                    f"rejected by ValueConstraint: op={normalized_vc.get('op')!r} "
+                    f"value={normalized_vc.get('value')!r} "
+                    f"value_high={normalized_vc.get('value_high')!r} "
+                    f"unit_text={normalized_vc.get('unit_text')!r} - {exc}"
+                )
                 logger.warning(
-                    "[Agent 1] Ignoring invalid value_constraint for rule '%s': %s (input=%s)",
+                    "[Agent 1] Dropped the value_constraint the model supplied for rule "
+                    "'%s' - this schema could not represent it, NOT an LLM omission: %s",
                     data.get("name", "Unnamed Rule"),
-                    exc,
-                    normalized_vc,
+                    value_constraint_error,
                 )
                 value_constraint = None
         
@@ -1589,6 +1893,7 @@ class LogicDecomposer:
             logic_type=logic_type,
             window=window,
             value_constraint=value_constraint,
+            value_constraint_error=value_constraint_error,
             sub_criteria=sub_criteria,
             group_type=group_type,
             conditional=bool(data.get("conditional", False)),

@@ -144,6 +144,10 @@ CRITERION_PROTOCOL_SPAN_KEY = "protocolSpan"
 class CriterionValueConstraint(TTEModel):
     op: str = ""
     value: float | None = None
+    #: Upper bound of an ``op: "bt"`` inclusive range; ``value`` is the lower one.
+    #: None for every other operator, and None on a row written before the range
+    #: operand existed.
+    valueHigh: float | None = None
     unitText: str = ""
 
 

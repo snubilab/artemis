@@ -28,7 +28,9 @@ from src.models.ir import ValueConstraint
 ReferenceBound = Literal["absolute", "uln", "lln"]
 
 # Circe accepts these operator tokens verbatim; the IR Literal already matches.
-_CIRCE_OPS = frozenset({"gt", "gte", "lt", "lte", "eq"})
+# "bt" is an inclusive range and is the only one that reads a SECOND number: Circe's
+# NumericRange carries it as `Extent`, alongside `Value` as the low bound.
+_CIRCE_OPS = frozenset({"gt", "gte", "lt", "lte", "eq", "bt"})
 
 # UCUM concept_id -> (concept_code, concept_name), verified against
 # ``{CDM_SCHEMA}.concept`` (see verify_unit_table_against_database).
@@ -284,6 +286,12 @@ def build_measurement_value_filter(vc: Any) -> dict[str, Any]:
     | uln             | -             | RangeHighRatio                 |
     | lln             | -             | RangeLowRatio                  |
 
+    ``op == "bt"`` adds ``Extent`` to whichever operand the table selects: Circe's
+    ``NumericRange`` spells an inclusive range ``{Value: lo, Extent: hi, Op: "bt"}``,
+    and the low bound stays in ``Value`` so every other op keeps the shape it had.
+    A ``bt`` reaching here without an upper bound returns ``{}`` for the same reason
+    a missing value does -- half a range is not a narrower range, it is a different one.
+
     ``uln``/``lln`` must not also emit ``ValueAsNumber``: Circe ANDs the two, so
     ``RangeHighRatio > 3`` combined with ``ValueAsNumber > 3`` leaves defect #10
     fully intact. Returns an empty dict when the constraint is unusable, so a
@@ -301,7 +309,12 @@ def build_measurement_value_filter(vc: Any) -> dict[str, Any]:
 
     bound, unit_text = resolve_reference_bound(vc)
 
-    operand = {"Value": float(value), "Op": circe_op}
+    operand: dict[str, Any] = {"Value": float(value), "Op": circe_op}
+    if circe_op == "bt":
+        extent = _field(vc, "value_high", "valueHigh")
+        if extent is None:
+            return {}
+        operand["Extent"] = float(extent)
     if bound == "uln":
         return {"RangeHighRatio": operand}
     if bound == "lln":

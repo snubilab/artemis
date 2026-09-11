@@ -5386,7 +5386,11 @@ def test_criterion_model_includes_metadata_fields(monkeypatch, tmp_path):
     study = client.get(f"/tte/studies/{create_response.json()['id']}").json()
     inc = study["eligibility"]["inclusionCriteria"]
     assert inc[0]["domain"] == "Demographics"
-    assert inc[0]["valueConstraint"] == {"op": "gte", "value": 50, "unitText": "years"}
+    # `valueHigh` is the upper bound of an `op: "bt"` range and is None for every
+    # other operator; the key is always present so a reader never has to ask.
+    assert inc[0]["valueConstraint"] == {
+        "op": "gte", "value": 50, "valueHigh": None, "unitText": "years",
+    }
     assert inc[0]["sourceText"] == "Patients aged 50 years or older with established cardiovascular disease"
     assert inc[0]["mappable"] is False
     assert inc[1]["domain"] == "Condition"

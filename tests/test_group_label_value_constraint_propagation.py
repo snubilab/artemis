@@ -75,6 +75,8 @@ class _VC:
 
     op: str
     value: float
+    #: Upper bound of an `op="bt"` inclusive range; `value` is the lower one.
+    value_high: float | None = None
     reference_bound: str = "absolute"
     unit_text: str | None = None
     unit_concept_id: int | None = None
@@ -599,6 +601,36 @@ class TestAnAbsoluteBoundGoesToTheAnalytesMeasuredInItsUnit:
             assert [u["CONCEPT_ID"] for u in emitted] == [
                 absolute_unit_concept_id(constraint)
             ], spelling
+
+
+class TestRangeOperand:
+    """An inclusive range is a real threshold that Circe has always been able to carry."""
+
+    def test_should_emit_value_and_extent_when_the_constraint_is_a_range(self):
+        """Pinned against the TROY v1.1 gold for the very criterion this repairs.
+
+        ``data/gold/CAROLINA/[TROY v1.1] Linagliptin (CAROLINA).json`` encodes
+        "eGFR 30-59" as ``ValueAsNumber {Value: 30, Extent: 59, Op: "bt"}``. `Value`
+        is the LOW bound there, which is the half a hand-written emitter gets wrong.
+        """
+        emitted = build_measurement_value_filter(
+            _VC(op="bt", value=30.0, value_high=59.0, unit_text="mL/min/1.73 m2")
+        )
+
+        assert emitted["ValueAsNumber"] == {"Value": 30.0, "Extent": 59.0, "Op": "bt"}
+        assert [u["CONCEPT_ID"] for u in emitted["Unit"]] == [720870]
+
+    def test_should_emit_nothing_when_a_range_reaches_circe_without_its_upper_bound(self):
+        """Half a range would emit ``{Value: 30, Op: "bt"}``, which Circe cannot complete."""
+        assert build_measurement_value_filter(_VC(op="bt", value=30.0)) == {}
+
+    def test_should_read_the_upper_bound_from_a_camel_case_store_row(self):
+        """The TTE store writes `valueHigh`; the IR model writes `value_high`."""
+        emitted = build_measurement_value_filter(
+            {"op": "bt", "value": 6.5, "valueHigh": 8.5, "unitText": "%"}
+        )
+
+        assert emitted["ValueAsNumber"] == {"Value": 6.5, "Extent": 8.5, "Op": "bt"}
 
 
 class TestStandInsMatchTheRealIR:
