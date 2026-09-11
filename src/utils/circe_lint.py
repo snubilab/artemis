@@ -276,8 +276,8 @@ def missing_arm_roles(study: dict[str, Any], produced_roles: Any) -> list[str]:
 INDEX_EXCLUSIVE_END = {"Days": 1, "Coeff": -1}
 
 
-def _absence_entries_under_conjunction(node: dict[str, Any]) -> list[dict[str, Any]]:
-    """Absence criteria ENTRIES reachable through ``ALL`` nodes only.
+def _conjoined_entries(node: dict[str, Any]) -> list[dict[str, Any]]:
+    """Criteria ENTRIES reachable through ``ALL`` nodes only.
 
     An entry is the dict carrying ``Criteria``, ``StartWindow`` and ``Occurrence``
     together -- the whole entry rather than just its ``Criteria`` body, because the
@@ -287,17 +287,28 @@ def _absence_entries_under_conjunction(node: dict[str, Any]) -> list[dict[str, A
     ``ANY`` means at least one alternative holds, so a single unsatisfiable
     alternative does not empty the rule; descending into one would produce false
     positives, which is the expensive direction for a delivery gate to be wrong in.
+
+    One home for the descent, because two readers disagreeing about which nodes are
+    mandatory is how a gate goes quiet on half a file:
+    :func:`_absence_entries_under_conjunction` and
+    :func:`contradictory_presence_absence_criteria` both read it.
     """
     if (node.get("Type") or "ALL") != "ALL":
         return []
-    found: list[dict[str, Any]] = []
-    for entry in node.get("CriteriaList") or []:
-        occurrence = entry.get("Occurrence") or {}
-        if (occurrence.get("Type"), occurrence.get("Count")) == _ABSENT_OCCURRENCE:
-            found.append(entry)
+    found: list[dict[str, Any]] = list(node.get("CriteriaList") or [])
     for group in node.get("Groups") or []:
-        found.extend(_absence_entries_under_conjunction(group))
+        found.extend(_conjoined_entries(group))
     return found
+
+
+def _absence_entries_under_conjunction(node: dict[str, Any]) -> list[dict[str, Any]]:
+    """The :data:`_ABSENT_OCCURRENCE` entries among :func:`_conjoined_entries`."""
+    return [
+        entry
+        for entry in _conjoined_entries(node)
+        if ((entry.get("Occurrence") or {}).get("Type"),
+            (entry.get("Occurrence") or {}).get("Count")) == _ABSENT_OCCURRENCE
+    ]
 
 
 def _leaf_codeset_id(entry: dict[str, Any]) -> Any:
@@ -1244,6 +1255,279 @@ def _entry_unreadable_summary(entry: dict[str, Any]) -> str:
         f"{detail['criteriaType']} carrying {', '.join(detail['attributes'])}"
         for detail in _entry_unreadable_details(entry)
     )
+
+
+def _concept_set_members(concept_set: Mapping[str, Any]) -> frozenset[tuple[int, bool]]:
+    """The ``(concept id, isExcluded)`` pairs a concept set carries -- its identity here.
+
+    ``isExcluded`` is part of that identity because it is the axis a missing negation
+    should have used: two sets over the same ids that disagree about it are genuinely
+    different sets, and collapsing them would hide the one repair this defect has.
+    ``includeDescendants`` is deliberately NOT part of it -- resolving what it expands to
+    needs ``concept_ancestor``, and this module is I/O-free, so two sets differing only
+    by it are compared on what the file can prove.
+
+    An item with no integer ``CONCEPT_ID`` is skipped rather than reported: a malformed
+    item is its own defect and ``verify_circe_delivery`` reads the set separately.
+    """
+    items = (concept_set.get("expression") or {}).get("items") or []
+    return frozenset(
+        (item["concept"]["CONCEPT_ID"], bool(item.get("isExcluded")))
+        for item in items
+        if isinstance(item, Mapping)
+        and isinstance(item.get("concept"), Mapping)
+        and isinstance(item["concept"].get("CONCEPT_ID"), int)
+        and not isinstance(item["concept"]["CONCEPT_ID"], bool)
+    )
+
+
+def aliased_concept_sets(expression: dict[str, Any]) -> list[str]:
+    """Locators for concept sets holding identical members under different names.
+
+    Pure set comparison on the emitted JSON -- no vocabulary, no database, no English.
+    Two names over one member set can only mean one of two things, and both are defects:
+    a name says more than its members do, or one criterion was mapped twice.
+
+    The motivating case, LEADER 2026-09-14, both arms::
+
+        ConceptSet 12  'human NPH insulin'                     26 ids
+        ConceptSet 54  'insulin other than human NPH insulin'  the SAME 26 ids
+        ConceptSet 56  'insulin other than premixed insulin'   the SAME 26 ids
+
+    The ``other than`` negation was never applied: the exclusion set IS the inclusion
+    set, and ``InclusionRules[2]`` requires the patient to have codeset 12 while
+    ``InclusionRules[24]`` requires zero exposures to codeset 54. Nothing in the file
+    can make those two demands compatible, which is what makes this readable without a
+    vocabulary. The qualifier is not lost on the way in -- the store's
+    ``_criterionMappingMetadata`` records ``queryUsed`` verbatim as
+    ``'insulin other than human NPH insulin'`` and the emitted NAME still carries it.
+    Only its effect is absent.
+
+    Three deliberate silences, each a shape the file settles on its own:
+
+    * **identical names.** LEADER's codesets 10, 11 and 13 are the same 71 ids under the
+      same name ``'oral anti-diabetic drugs'`` -- one seed mapped three times. Redundant,
+      but no name contradicts its members, and the consequence is what
+      :func:`contradictory_presence_absence_criteria` reads.
+    * **a genuine subset.** A narrowing name that really did narrow ('long-acting insulin
+      analogue' under 'insulin') produces FEWER members, so an equality test never sees
+      it. That is the whole reason the comparison is equality rather than overlap.
+    * **empty sets.** Two empty sets are equal on members and say nothing. An empty
+      concept set is its own defect and the delivery gate already fails on one; reporting
+      it here would bury that finding under a wrong headline.
+
+    What it CANNOT separate, measured rather than assumed. A synonym pair mapped twice
+    is structurally identical to a dropped negation, and no name test separates the two:
+    substring containment was tried across every firing in both corpora and holds for
+    the real defects AND for gold's ``'[TROY intervention] Warfarin'`` /
+    ``'... Warfarin (ATC)'``, so it buys nothing. The measured cost, at ``953d6b2``:
+    three groups across the twelve delivered files (LEADER's insulins, ARISTOTLE's
+    ``'Aspirin and thienopyridine use'`` holding aspirin alone, EMPA-REG's two 'eGFR
+    < 30' rules emitted under two names with different unit lists) -- all three point at
+    something real -- and three more across the 18 hand-built TROY v1.1 files under
+    ``data/gold/``, where they are authoring conventions. The gate never reads
+    ``data/gold/``, so those cost no delivery.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per group of aliased sets, empty when none.
+    """
+    by_members: dict[frozenset[tuple[int, bool]], list[dict[str, Any]]] = {}
+    for concept_set in expression.get("ConceptSets") or []:
+        if not isinstance(concept_set, Mapping):
+            continue
+        members = _concept_set_members(concept_set)
+        if not members:
+            continue
+        by_members.setdefault(members, []).append(concept_set)
+
+    findings: list[str] = []
+    for members, group in by_members.items():
+        names = {(concept_set.get("name") or "") for concept_set in group}
+        if len(group) < 2 or len(names) < 2:
+            continue
+        quoted = ", ".join(
+            f"{concept_set.get('id')} {(concept_set.get('name') or '')!r}"
+            for concept_set in sorted(group, key=lambda c: str(c.get("id")))
+        )
+        findings.append(
+            f"codesets {quoted} hold the IDENTICAL {len(members)} concept ids under "
+            f"{len(names)} different names, so at least one name describes something "
+            f"its members do not"
+        )
+    return findings
+
+
+def _entry_interval(entry: dict[str, Any]) -> tuple[float, float] | None:
+    """The entry's ``StartWindow`` as ``(start days, end days)`` relative to index.
+
+    ``None`` when the offsets are not provable from the file -- no window, a missing or
+    non-numeric ``Days``/``Coeff``, or a window rebased by ``UseIndexEnd`` /
+    ``UseEventEnd`` onto an era end whose distance from index the file does not record.
+    Callers treat every unprovable case as overlapping, so uncertainty never silences a
+    check. Kept separate from :func:`_effective_end_days`, which reads only the END and
+    whose exemption ``contradictory_absence_rules`` depends on being measured against a
+    WebAPI experiment; widening that one to need both ends would change its verdicts.
+    """
+    window = entry.get("StartWindow")
+    if not isinstance(window, Mapping):
+        return None
+    if window.get("UseIndexEnd") or window.get("UseEventEnd"):
+        return None
+    offsets: list[float] = []
+    for boundary in ("Start", "End"):
+        edge = window.get(boundary)
+        if not isinstance(edge, Mapping):
+            return None
+        days, coeff = edge.get("Days"), edge.get("Coeff")
+        if isinstance(days, bool) or isinstance(coeff, bool):
+            return None
+        if not isinstance(days, (int, float)) or not isinstance(coeff, (int, float)):
+            return None
+        offsets.append(days * coeff)
+    return offsets[0], offsets[1]
+
+
+def _intervals_overlap(
+    left: tuple[float, float] | None, right: tuple[float, float] | None
+) -> bool:
+    """Whether two day-offset intervals share a day. Unprovable counts as overlapping."""
+    if left is None or right is None:
+        return True
+    return max(left[0], right[0]) <= min(left[1], right[1])
+
+
+def _unnarrowed_codeset(entry: dict[str, Any]) -> tuple[str, Any] | None:
+    """``(criteria type, CodesetId)`` when the entry selects its WHOLE concept set.
+
+    An entry carrying any attribute besides ``CodesetId`` -- a value bound, a unit, an
+    era length, a correlated criterion -- selects a subset of its concept set. Applied to
+    an ABSENCE that matters: "no HbA1c below 6" forbids only part of the set, so "an
+    HbA1c of at least 7" can still hold and there is no contradiction to report.
+
+    Deliberately asymmetric, and the asymmetry is the point. A narrowed PRESENCE is still
+    contradicted by an unnarrowed absence -- "no HbA1c on record at all" kills "an HbA1c
+    of at least 7" however the presence is qualified -- so
+    :func:`contradictory_presence_absence_criteria` applies this guard to the absence side
+    only and reads the presence with :func:`_leaf_codeset_id`. Measured on the twelve
+    delivered files and the 18 gold files, the symmetric and asymmetric readings return
+    the same four findings; the asymmetric one is used because it is the one that is
+    right when they differ.
+
+    Measured across the same 30 files: 377 of 555 absence criteria carry ``CodesetId``
+    alone, so the guard costs about a third of the reachable absences and buys a shape
+    that needs no judgement.
+    """
+    body = entry.get("Criteria")
+    body = body if isinstance(body, Mapping) else entry
+    for criteria_type, payload in body.items():
+        if not isinstance(payload, Mapping) or "CodesetId" not in payload:
+            continue
+        if set(payload) != {"CodesetId"}:
+            return None
+        return criteria_type, payload["CodesetId"]
+    return None
+
+
+def contradictory_presence_absence_criteria(expression: dict[str, Any]) -> list[str]:
+    """Locators for a mandatory presence and a mandatory absence over one concept set.
+
+    CIRCE conjoins every ``InclusionRules`` entry, so the whole list is one implicit
+    ``ALL``: a presence in rule 2 and an absence in rule 3 are as conjoined as two
+    criteria inside a single rule, and the check reads both the same way. When the two
+    reference the same ``CodesetId`` -- or two codesets whose members are byte-identical
+    -- and their windows share a day, the conjunction is empty and the cohort is blocked.
+
+    The motivating case, LEADER 2026-09-14, four findings per arm::
+
+        InclusionRules[2]  G0 zero exposures to codeset 10  [-365,-1]  identical
+        InclusionRules[2]  G1 >=1  exposure  to codeset 11  [-365, 0]  71 ids
+        InclusionRules[3]     zero exposures to codeset 13  [-365,-1]  the same 71
+        InclusionRules[24] G0 zero exposures to codeset 54  [ -90,-1]  identical
+        InclusionRules[2]  G2 >=1  exposure  to codeset 12  [-365, 0]  26 ids
+
+    The first pair is an OR emitted as ``Type: ALL`` -- three mutually exclusive
+    enrolment alternatives conjoined -- and carries no exclusion-qualified name at all.
+    The last pair is the dropped ``other than`` negation. Two defects, one signature,
+    which is why this reads structure rather than names.
+
+    Four deliberate silences, each of them a satisfiable shape:
+
+    * **non-overlapping windows.** "No exposure in [-365,-91] and at least one in
+      [-30,0]" is an ordinary washout-then-treatment pattern and is common.
+    * **a presence under ``ANY``.** Alternatives survive a contradicted branch.
+    * **a narrowed absence.** See :func:`_unnarrowed_codeset` -- an absence carrying a
+      bound selects a subset, and the presence may live outside it.
+    * **different concept sets.** Overlap short of equality is not provable here without
+      resolving descendants, which needs the vocabulary this module does not touch.
+      LEADER's codeset 29 ('Elevated HbA1c', 5 of 6 ids shared with codeset 17) is a
+      real contradiction this check does NOT report; it is already reported by
+      :func:`unfiltered_measurement_absence_criteria` and
+      :func:`asserted_bound_missing_criteria`, and widening this one to overlap would
+      double-report it while inviting false positives everywhere else.
+
+    Measured at ``953d6b2``: four findings on each delivered LEADER arm, zero on the
+    other ten delivered files, and zero on all 18 hand-built TROY v1.1 files under
+    ``data/gold/``.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per contradicting pair, empty when none.
+    """
+    presences: list[tuple[str, Any, dict[str, Any]]] = []
+    absences: list[tuple[str, str, Any, dict[str, Any]]] = []
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        where = f"InclusionRules[{index}] {(rule.get('name') or '')!r}"
+        for entry in _conjoined_entries(rule.get("expression") or {}):
+            occurrence = entry.get("Occurrence") or {}
+            if (occurrence.get("Type"), occurrence.get("Count")) == _ABSENT_OCCURRENCE:
+                leaf = _unnarrowed_codeset(entry)
+                if leaf is not None:
+                    absences.append((where, leaf[0], leaf[1], entry))
+            elif (
+                occurrence.get("Type") == 2
+                and isinstance(occurrence.get("Count"), int)
+                and not isinstance(occurrence.get("Count"), bool)
+                and occurrence["Count"] >= 1
+            ):
+                codeset_id = _leaf_codeset_id(entry)
+                if codeset_id is not None:
+                    presences.append((where, codeset_id, entry))
+
+    if not presences or not absences:
+        return []
+
+    members_by_codeset = {
+        concept_set.get("id"): _concept_set_members(concept_set)
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+    }
+    names_by_codeset = {
+        concept_set.get("id"): concept_set.get("name") or ""
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+    }
+
+    findings: list[str] = []
+    for absent_where, absent_type, absent_id, absent_entry in absences:
+        absent_members = members_by_codeset.get(absent_id)
+        for present_where, present_id, present_entry in presences:
+            if present_id != absent_id:
+                present_members = members_by_codeset.get(present_id)
+                if not absent_members or absent_members != present_members:
+                    continue
+            if not _intervals_overlap(
+                _entry_interval(absent_entry), _entry_interval(present_entry)
+            ):
+                continue
+            same = "the same" if present_id == absent_id else "an IDENTICAL"
+            findings.append(
+                f"{absent_where}: {absent_type} over codeset {absent_id} "
+                f"{names_by_codeset.get(absent_id, '')!r} requires ZERO occurrences "
+                f"while {present_where} requires at least one over {same} concept set, "
+                f"codeset {present_id} {names_by_codeset.get(present_id, '')!r}, in an "
+                f"overlapping window -- CIRCE conjoins every InclusionRules entry, so "
+                f"no patient can satisfy both"
+            )
+    return findings
 
 
 #: The key ``TTEService._build_emittable_expression`` writes the drop records under.

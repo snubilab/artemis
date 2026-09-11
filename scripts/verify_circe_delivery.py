@@ -112,6 +112,37 @@ Checks per file:
     same defect on ARISTOTLE's SBP/DBP under "systolic BP > 180 mm Hg".
     See ``src.utils.circe_lint.unfiltered_measurement_absence_criteria``.
 
+(m) no two concept sets in one file hold byte-identical members under different
+    names. Pure set comparison -- no vocabulary, no database. Two names over one member
+    set mean either that a name says more than its members do, or that one criterion was
+    mapped twice; nothing in the file can make them mean anything else. Measured on
+    ``leader_{treatment,comparator}.circe.json``: codeset 12 ``'human NPH insulin'``,
+    codeset 54 ``'insulin other than human NPH insulin'`` and codeset 56
+    ``'insulin other than premixed insulin'`` are the same 26 concept ids, so the
+    exclusion set IS the inclusion set and the delivered cohort excludes patients for
+    taking the insulins ``InclusionRules[2]`` requires them to be on. The ``other than``
+    qualifier is not lost on the way in -- the store's ``_criterionMappingMetadata``
+    records ``queryUsed`` verbatim -- it is simply never read. ARISTOTLE
+    (``'Aspirin and thienopyridine use'`` holding aspirin alone) and EMPA-REG (one
+    ``eGFR < 30`` criterion emitted as two rules under two names) also fire, and both
+    are real. See ``src.utils.circe_lint.aliased_concept_sets`` for the measured cost on
+    the hand-built gold, and for why no name test separates a synonym pair from a
+    dropped negation.
+
+(n) no mandatory presence and mandatory absence sit over the same -- or a
+    member-identical -- concept set in overlapping windows. CIRCE conjoins every
+    ``InclusionRules`` entry, so the list is one implicit ``ALL`` and the pair is empty
+    by construction whether it spans one rule or two. Check (f) is the near miss: it
+    tests an absence against the cohort's own ENTRY set, and LEADER's codesets
+    10/11/12/13/54/56 are none of them, which is how four such pairs shipped with every
+    other lint green. Measured on both LEADER arms: ``InclusionRules[2]`` demands zero
+    exposures to codeset 10 and at least one to the identical codeset 11 (an OR emitted
+    as ``Type: ALL``), ``InclusionRules[3]`` repeats it, and ``InclusionRules[24]``
+    demands zero exposures to codesets 54 and 56 against ``InclusionRules[2]``'s demand
+    for codeset 12 -- the dropped negation. Two different defects, one signature, which
+    is why the check reads structure rather than names. See
+    ``src.utils.circe_lint.contradictory_presence_absence_criteria``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -168,8 +199,10 @@ from src.utils.circe_lint import (  # noqa: E402
     DROP_OUTCOME_RULE_REMOVED,
     DROP_OUTCOME_RULE_RENAMED,
     DROPPED_CRITERIA_KEY,
+    aliased_concept_sets,
     asserted_bound_missing_criteria,
     contradictory_absence_rules,
+    contradictory_presence_absence_criteria,
     domain_mismatched_criteria,
     entry_concept_ids,
     entry_concept_set_name,
@@ -2045,6 +2078,27 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"unfiltered measurement absence ({len(unfiltered_absences)}): "
                 f"{'; '.join(unfiltered_absences)}"
+            )
+
+        # (m) two concept sets holding identical members under different names. Every
+        # check above reads ONE concept set and asks whether the criterion using it is
+        # wrong; this one reads a PAIR, which is the only way a name that describes an
+        # exclusion its members never had becomes visible without a vocabulary.
+        aliases = aliased_concept_sets(expression)
+        if aliases:
+            reasons.append(
+                f"aliased concept sets ({len(aliases)}): {'; '.join(aliases)}"
+            )
+
+        # (n) a mandatory presence and a mandatory absence over one concept set. Check
+        # (f) tests an absence against the cohort's ENTRY set only, so a rule that
+        # contradicts another RULE passed every lint; four such pairs shipped on both
+        # LEADER arms.
+        presence_absence = contradictory_presence_absence_criteria(expression)
+        if presence_absence:
+            reasons.append(
+                f"contradictory presence/absence ({len(presence_absence)}): "
+                f"{'; '.join(presence_absence)}"
             )
 
         # (i) the file's own drop records: recorded criterion loss, and whether the
