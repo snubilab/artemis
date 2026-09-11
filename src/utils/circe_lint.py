@@ -1079,6 +1079,129 @@ def asserted_bound_missing_criteria(expression: dict[str, Any]) -> list[str]:
     return findings
 
 
+def unfiltered_measurement_absence_criteria(expression: dict[str, Any]) -> list[str]:
+    """Locators for absence criteria over a lab that carry no result filter at all.
+
+    ``Occurrence {Type: 0, Count: 0}`` on a ``Measurement`` with no value condition
+    selects on whether the TEST WAS PERFORMED, not on what it found. That is a property
+    of the emitted SQL rather than of any dataset: with no ``value_as_number`` predicate
+    the join matches every ``MEASUREMENT`` row carrying one of the concepts, so "zero
+    occurrences" means "never tested". The protocol PLATO's rule 18 came from says
+    "Known clinically important thrombocytopenia" -- a RESULT below a threshold.
+
+    The magnitude, for scale only and NOT measured here: the site-gap fixture run that
+    motivated this check reports rule 18 removing 63.1% / 56.3% / 38.7% of each site's
+    population. This module neither reproduces nor relies on that number -- every CDM on
+    this host is synthetic (``CLAUDE.md``), so a patient count from one is not evidence
+    about a site, and the check rests on the SQL property above instead.
+
+    In the same locator format :func:`asserted_bound_missing_criteria` uses::
+
+        "<where>: Measurement over codeset <id> <name!r> is an ABSENCE with no value
+         condition, so it excludes every patient who has ever had <analytes> measured
+         rather than those whose result crossed a bound"
+
+    Entirely structural -- three exact conditions, no vocabulary and no English:
+
+    * the criteria type is :data:`_BOUND_BEARING_CRITERIA_TYPE`. Measurement is the one
+      CDM table whose rows carry a ``value_as_number``, so it is the only type where an
+      absent value condition is a LOSS rather than the shape of the data. On a
+      ``ConditionOccurrence`` or an ``Observation`` there was never a result to filter,
+      which is also what keeps this check silent on the corpus's three "not pregnant /
+      not nursing" exclusions -- they are emitted as ``Observation``.
+    * the occurrence is :data:`_ABSENT_OCCURRENCE`. A PRESENCE criterion over an
+      unfiltered lab is over-broad in the other direction (it keeps everyone who was
+      tested) and is real and uncaught -- PLATO's ``'Biomarker'``, codeset 14 -- but it
+      is a different consequence with a different repair, so it is out of scope rather
+      than folded in.
+    * the criterion carries no key from :data:`VALUE_CONDITION_ATTRIBUTES` -- the same
+      predicate :func:`asserted_bound_missing_criteria` applies, so the two checks
+      cannot drift apart about what "filtered" means.
+
+    Why it is a separate check from the three beside it, rather than a widening of one.
+    :func:`unreadable_value_filter_criteria` needs a filter the table cannot read and
+    :func:`domain_mismatched_criteria` needs a concept set the table cannot join: here
+    the filter is absent and the join is perfect.
+    :func:`asserted_bound_missing_criteria` needs a NAME that asserts a bound and reads
+    a BROKEN PROMISE; ``'Thrombocytopenia'`` promises nothing, because a diagnosis needs
+    no threshold. That is precisely why PLATO shipped this from 2026-09-10 to
+    2026-09-14 with all seven lints green on it.
+
+    The two checks overlap on purpose where a name does assert (LEADER's
+    ``'Elevated HbA1c'`` fires in both). They say different things: that one says the
+    name promised a bound, this one says what the rule selects without it, and a reader
+    needs the second sentence to know the size of the loss.
+
+    What this check CANNOT separate, stated rather than papered over: a criterion whose
+    subject really is the testing event ("never had an HbA1c measured") has exactly this
+    structure and is correct. No such criterion exists in either corpus as a
+    ``Measurement`` -- swept across every produced corpus and the 18 TROY v1.1 files,
+    the shape occurs on nine concept sets and all nine name a clinical state or an
+    explicitly bounded lab, gold's own ``'[TROY lab] Systolic blood pressure (SBP)'``
+    under "systolic BP > 180 mm Hg" among them. If one ever appears it will FAIL a
+    delivery, and that is the intended cost: the finding names the rule, the codeset and
+    the member concepts, so the reading takes one line. See the module docstring of
+    ``tests/test_unfiltered_measurement_absence_lint.py`` for the two discriminators
+    that were measured over all 83 Measurement rows, which one works, and why it is
+    deliberately not wired in.
+
+    Silent, like the checks beside it, on what the file cannot settle: a criteria type
+    other than ``Measurement``. A ``CodesetId`` with no matching ``ConceptSets`` entry
+    is still REPORTED -- the missing concept set is a different defect, and dropping the
+    finding into it would hide this one.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per offending criterion, empty when none.
+    """
+    findings: list[str] = []
+    for where, entry in _criterion_locations(expression):
+        occurrence = entry.get("Occurrence") or {}
+        if (occurrence.get("Type"), occurrence.get("Count")) != _ABSENT_OCCURRENCE:
+            continue
+        body = entry.get("Criteria")
+        body = body if isinstance(body, dict) else entry
+        for criteria_type, payload in body.items():
+            if criteria_type != _BOUND_BEARING_CRITERIA_TYPE or not isinstance(payload, dict):
+                continue
+            if "CodesetId" not in payload:
+                continue
+            if any(key in VALUE_CONDITION_ATTRIBUTES for key in payload):
+                continue
+            codeset_id = payload["CodesetId"]
+            concept_set = _find_concept_set(expression, codeset_id) or {}
+            findings.append(
+                f"{where}: {criteria_type} over codeset {codeset_id} "
+                f"{concept_set.get('name') or ''!r} is an ABSENCE with no value "
+                f"condition, so it excludes every patient who has ever had "
+                f"{_analyte_summary(concept_set)} measured rather than those whose "
+                f"result crossed a bound"
+            )
+    return findings
+
+
+#: How many member concept names a finding quotes. The reader's whole question is
+#: whether the concept set's NAME describes what its CONCEPTS measure, so quoting none
+#: sends them back to the file; quoting all of them buries the answer in a set that can
+#: run to hundreds of descendants.
+_ANALYTE_SUMMARY_LIMIT = 3
+
+
+def _analyte_summary(concept_set: Mapping[str, Any]) -> str:
+    """The first few member concept names, for a finding a reader can act on."""
+    items = (concept_set.get("expression") or {}).get("items") or []
+    names = [
+        name
+        for item in items
+        if isinstance(item, dict)
+        and (name := ((item.get("concept") or {}).get("CONCEPT_NAME") or "").strip())
+    ]
+    if not names:
+        return "its concept set"
+    shown = ", ".join(repr(name) for name in names[:_ANALYTE_SUMMARY_LIMIT])
+    remainder = len(names) - _ANALYTE_SUMMARY_LIMIT
+    return f"{shown} (+{remainder} more)" if remainder > 0 else shown
+
+
 def _entry_is_unreadable(entry: dict[str, Any]) -> bool:
     body = entry.get("Criteria")
     body = body if isinstance(body, dict) else entry

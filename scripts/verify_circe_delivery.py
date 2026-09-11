@@ -98,6 +98,20 @@ Checks per file:
     band merge's survivor legitimately keeps a departed half's name, 5 such rows in that
     store. See ``repair_ledger_violations``.
 
+(l) no ``Measurement`` criterion is an ABSENCE carrying no value condition at all.
+    Check (j) reads a NAME that promised a bound and finds it gone; this one reads what
+    the emitted rule SELECTS without one. ``Occurrence {Type: 0, Count: 0}`` over a lab
+    with no result filter excludes every patient who has ever had the test — not those
+    whose result crossed a threshold. PLATO's InclusionRule 18 'Thrombocytopenia'
+    (codeset 33 → three platelet-count LOINC concepts, no value condition) shipped in
+    every delivery from 2026-09-10 to 2026-09-14 with all seven lints green on it,
+    because neither its rule name nor its concept-set name asserts a bound: the name is
+    a diagnosis, and a diagnosis needs no threshold. For scale, and not measured by this
+    gate: the site-gap fixture run that motivated the check reports it removing 63.1% /
+    56.3% / 38.7% of each site's population. The hand-built TROY v1.1 gold carries the
+    same defect on ARISTOTLE's SBP/DBP under "systolic BP > 180 mm Hg".
+    See ``src.utils.circe_lint.unfiltered_measurement_absence_criteria``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -163,6 +177,7 @@ from src.utils.circe_lint import (  # noqa: E402
     missing_arm_roles,
     noop_exclusion_rules,
     rule_names,
+    unfiltered_measurement_absence_criteria,
     unreadable_value_attributes,
 )
 from src.utils.criterion_refusal import (  # noqa: E402
@@ -2018,6 +2033,18 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"asserted bound missing ({len(missing_bounds)}): "
                 f"{'; '.join(missing_bounds)}"
+            )
+
+        # (l) an absence over a lab with no result filter. Check (j) reads a NAME
+        # that promised a bound; this one reads what the rule SELECTS without one --
+        # "excluded anyone ever tested" rather than "anyone whose result crossed a
+        # bound". PLATO's 'Thrombocytopenia' promises nothing, which is how it shipped
+        # from 2026-09-10 to 2026-09-14 with every other lint green on it.
+        unfiltered_absences = unfiltered_measurement_absence_criteria(expression)
+        if unfiltered_absences:
+            reasons.append(
+                f"unfiltered measurement absence ({len(unfiltered_absences)}): "
+                f"{'; '.join(unfiltered_absences)}"
             )
 
         # (i) the file's own drop records: recorded criterion loss, and whether the
