@@ -44,6 +44,35 @@ THE VERDICT RULE (per row -- never aggregated, never averaged, never scored)
   NOT differs(baseline, candidate)
       -> NO EFFECT
 
+WHAT A ROW'S STATE INCLUDES (and why the group structure is part of it)
+-----------------------------------------------------------------------
+A row is compared on its emitted substance -- section, name, domain, entity_text --
+AND on the group structure it sits in: whether it heads a group, what that group's
+``group_type`` is, which group it is a member of, and what THAT group's type is.
+
+Without the group fields an edit that flips a group from ANY to ALL, or that turns
+two flat rules into one group, reads as NO EFFECT: every name, domain and
+entity_text is unchanged and only the logic connecting them moved. That is the
+exact class of edit this harness was extended to measure, so an instrument blind
+to it would answer the wrong question confidently.
+
+A group's identity (``group_id``) is CONTENT-DERIVED, never a uuid: a uuid is
+minted per run and would differ between arms for a group that did not change,
+making every group look moved. The identity is a short hash of the group label's
+own text (name, entity_text, source_text) plus the sorted normalized text of its
+members. So:
+
+  * the same group emitted by two arms hashes to the same id;
+  * a group whose MEMBERSHIP or LABEL changed hashes to a different id -- which is
+    a structural difference the verdict should see, not noise to be smoothed over;
+  * ``group_type`` is deliberately NOT part of the id, so a pure type flip shows up
+    in the ``group_type`` field rather than by silently renaming the group.
+
+Members carry ``member_of`` (their group's id) and ``member_of_type`` (their
+group's type), so a type flip is visible on every member as well as on the label.
+Nested groups fall out of this: a sub-criterion that itself has sub_criteria
+carries both its own ``group_id``/``group_type`` and its parent's.
+
 WHAT IT DOES NOT MEASURE
 ------------------------
 Agent 1 only. ``parse_nct`` output, before ``TTEService.process_eligibility``,
@@ -78,6 +107,7 @@ edit that copy.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -153,6 +183,84 @@ def load_targets(args) -> list[tuple[str, str]]:
         seen.add(norm(match))
         targets.append((label, match))
     return targets
+
+
+def cell(value) -> str:
+    """One comparable cell of a row's state.
+
+    ``None`` becomes a visible sentinel rather than an empty string: a criterion
+    with no ``entity_text`` and a criterion with an empty one are different
+    defects, and a tuple mixing ``None`` with ``str`` cannot be sorted at all.
+    """
+    return "∅" if value is None else str(value)
+
+
+# --------------------------------------------------------------------------
+# group structure
+# --------------------------------------------------------------------------
+
+def group_id(rule) -> str:
+    """Content-derived identity of the group *rule* heads. Stable across arms.
+
+    NOT a uuid: a uuid is minted per run, so two arms emitting the identical group
+    would disagree on it and every group would read as moved. The id is derived
+    from what the group IS -- the label's own text plus the sorted text of its
+    members -- so an unchanged group hashes the same in every arm, and a group
+    whose membership or label really changed hashes differently.
+
+    ``group_type`` is excluded on purpose: a pure ANY<->ALL flip must show up as a
+    changed ``group_type`` on a group that is otherwise recognisably the same
+    group, not as a different group appearing where one vanished.
+
+    Members are identified by ``entity_text`` and ``name`` together because either
+    alone is routinely reworded between arms while the pair is the member.
+    """
+    parts = [norm(rule.name), norm(rule.entity_text), norm(rule.source_text)]
+    parts += sorted(
+        f"{norm(sc.entity_text)} {norm(sc.name)}" for sc in rule.sub_criteria
+    )
+    blob = "\x1f".join(parts).encode("utf-8")
+    return hashlib.sha1(blob).hexdigest()[:10]
+
+
+def walk_rule(rule, section: str, *, parent_id: str | None = None,
+              parent_type: str | None = None) -> list[dict]:
+    """One record per criterion in *rule*'s tree, group structure included.
+
+    Sub-criteria are emitted as rows of their own. Before this, only top-level
+    rules were recorded, so a group's members were invisible and an edit that
+    changed what a group CONTAINS could not be told from one that changed nothing.
+    """
+    is_group = bool(rule.sub_criteria)
+    gid = group_id(rule) if is_group else None
+    out = [{
+        "section": section,
+        "name": rule.name,
+        "domain": rule.domain,
+        "entity_text": rule.entity_text,
+        "source_text": rule.source_text,
+        # The group this criterion HEADS, if any.
+        "group_id": gid,
+        "group_type": rule.group_type if is_group else None,
+        # The group this criterion BELONGS TO, if any. Both are set at once only
+        # for a nested group -- a member that is itself a group.
+        "member_of": parent_id,
+        "member_of_type": parent_type,
+    }]
+    for sc in rule.sub_criteria:
+        out.extend(walk_rule(sc, section, parent_id=gid, parent_type=rule.group_type))
+    return out
+
+
+def role_of(record: dict) -> str:
+    """How this record sits in the group structure, for display only."""
+    if record["group_id"] and record["member_of"]:
+        return "nested-group"
+    if record["group_id"]:
+        return "group-label"
+    if record["member_of"]:
+        return "member"
+    return "flat"
 
 
 # --------------------------------------------------------------------------
@@ -253,13 +361,7 @@ def run_arm(nct_id: str, system_prompt: str, arm: str, *, verify_thresholds: boo
         out = []
         for kind in ("inclusion_rules", "exclusion_rules"):
             for r in getattr(cohort, kind):
-                out.append({
-                    "section": f"{section}.{kind.split('_')[0]}",
-                    "name": r.name,
-                    "domain": r.domain,
-                    "entity_text": r.entity_text,
-                    "source_text": r.source_text,
-                })
+                out.extend(walk_rule(r, f"{section}.{kind.split('_')[0]}"))
         return out
 
     return {
@@ -305,14 +407,22 @@ def match_rows(rules: list[dict], match_text: str, *, include_comparator: bool) 
     return hits
 
 
+_STATE_FIELDS = ("section", "name", "domain", "entity_text",
+                 "group_id", "group_type", "member_of", "member_of_type")
+
+
 def row_state(hits: list[dict]) -> list[tuple]:
     """The comparable state of a row: absent (empty) or its emitted substance.
 
     Includes ``entity_text`` and ``domain`` so a row that survives in name but
-    changes in substance registers as a difference rather than as stability.
+    changes in substance registers as a difference rather than as stability, and
+    the four group fields so a row that survives in substance but changes in the
+    LOGIC connecting it to its neighbours registers as one too. An ANY->ALL flip
+    changes no name, no domain and no entity_text; without the group fields it
+    read as stability, which is the one answer that would be wrong.
     """
     return sorted(
-        (h["section"], h["name"], h["domain"], h["entity_text"]) for h in hits
+        tuple(cell(h[f]) for f in _STATE_FIELDS) for h in hits
     )
 
 
@@ -333,6 +443,11 @@ def decide(moved_candidate: bool, moved_placebo: bool, blocked: bool) -> str:
     return "EFFECT"
 
 
+def top_level(rules: list[dict]) -> list[dict]:
+    """Only the rules Agent 1 emitted at the top level, not their members."""
+    return [r for r in rules if r["member_of"] is None]
+
+
 def churn(a: list[dict], b: list[dict]) -> tuple[int, int]:
     sa = {norm(r["source_text"]) for r in a if r["section"].startswith("target")}
     sb = {norm(r["source_text"]) for r in b if r["section"].startswith("target")}
@@ -346,11 +461,17 @@ def churn(a: list[dict], b: list[dict]) -> tuple[int, int]:
 def fmt_state(hits: list[dict]) -> list[str]:
     if not hits:
         return ["            (absent)"]
-    return [
-        f"            [{h['section']}] name={h['name']!r}\n"
-        f"                 domain={h['domain']} entity_text={h['entity_text']!r}"
-        for h in hits
-    ]
+    out = []
+    for h in hits:
+        line = (f"            [{h['section']}] ({role_of(h)}) name={h['name']!r}\n"
+                f"                 domain={h['domain']} entity_text={h['entity_text']!r}")
+        if h["group_id"]:
+            line += f"\n                 heads group {h['group_id']} group_type={h['group_type']}"
+        if h["member_of"]:
+            line += (f"\n                 member of group {h['member_of']} "
+                     f"(group_type={h['member_of_type']})")
+        out.append(line)
+    return out
 
 
 def main() -> int:
@@ -533,11 +654,19 @@ def main() -> int:
     print("-" * 78)
     for k in ("candidate", "placebo"):
         lost, gained = churn(arms["baseline"]["rules"], arms[k]["rules"])
-        n_base = len([r for r in arms['baseline']['rules'] if r['section'].startswith('target')])
-        n_arm = len([r for r in arms[k]['rules'] if r['section'].startswith('target')])
-        print(f"  baseline -> {k:<10} target rules {n_base} -> {n_arm};  lost {lost}, gained {gained}")
+        n_base = len([r for r in top_level(arms['baseline']['rules'])
+                      if r['section'].startswith('target')])
+        n_arm = len([r for r in top_level(arms[k]['rules'])
+                     if r['section'].startswith('target')])
+        g_base = len([r for r in arms['baseline']['rules']
+                      if r['group_id'] and r['section'].startswith('target')])
+        g_arm = len([r for r in arms[k]['rules']
+                     if r['group_id'] and r['section'].startswith('target')])
+        print(f"  baseline -> {k:<10} top-level target rules {n_base} -> {n_arm};  "
+              f"lost {lost}, gained {gained};  groups {g_base} -> {g_arm}")
         out["churn_context_only"][k] = {"lost": lost, "gained": gained,
-                                        "baseline_rows": n_base, "arm_rows": n_arm}
+                                        "baseline_rows": n_base, "arm_rows": n_arm,
+                                        "baseline_groups": g_base, "arm_groups": g_arm}
 
     print("\n" + "=" * 78)
     if blocked:
