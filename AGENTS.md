@@ -206,11 +206,19 @@ output/circe_be/
     tte_circe_6studies_arms_20260912.zip
 ```
 
+**The default delivery is three studies, not six** — CARMELINA, CAROLINA and EMPA-REG,
+as `tte_circe_3studies_arms_<yyyymmdd>.zip` (standing instruction, user, 2026-09-12).
+Build the six-study zip only when asked for it; the other three are not wanted by
+default. Keep both beside each other when both exist.
+
 Adding one:
 
 ```bash
 D=output/circe_be/$(date +%Y-%m-%d)
 mkdir -p "$D" && cp <run>/DELIVERY/*.circe.json "$D"/
+(cd "$D" && zip -qX ../tte_circe_3studies_arms_$(date +%Y%m%d).zip \
+   carmelina_*.circe.json carolina_*.circe.json empa-reg_*.circe.json)
+# only when asked:
 (cd "$D" && zip -qX ../tte_circe_6studies_arms_$(date +%Y%m%d).zip *.circe.json)
 ```
 
