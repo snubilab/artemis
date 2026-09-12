@@ -146,6 +146,30 @@ free (file reads plus `pdftotext`, ~2 s, no LLM, no DB). **Any prompt edit also
 invalidates the Agent-1 IR cache key**, so the next extraction re-runs all six trials
 (~132 min measured).
 
+## The coverage-gap warning counts across the grouping boundary
+
+`parser.py` Step 5 warns when `output_count < input_count * 0.5`, comparing **input
+lines** against **top-level output rules**. A group of k members is k input lines and one
+output rule, so the ratio understates coverage by construction.
+
+Measured on the delivery's own reingest: it fired once, on CAROLINA, as
+`59 input criteria -> 25 output rules`. The IR for that run holds 30 top-level rules and
+**48 nodes** once sub_criteria are counted, against roughly 55 real input lines. A ~13%
+gap was reported as 58%.
+
+Two things follow:
+
+- **Do not read that warning as a measured loss.** Count nodes, not top-level rules, and
+  subtract the input lines that are not criteria.
+- **It is wrong in both directions.** Here it overstated; where a group genuinely absorbs
+  a dropped member it will stay silent. A warning that overstates gets ignored, and the
+  habit of ignoring it carries into the run where it is right.
+
+Four of CAROLINA's 59 input lines are not criteria at all: the Boehringer copyright
+footer, `Criteria for`, `Test product:` and `dose:`. The last two are colon-terminated
+headers, which is the shape that produces empty group labels — see the 2026-09-10
+colon-header note.
+
 ## Condition or Measurement is a real fork, and nothing decides it
 
 Measured against the live vocabulary: **518 standard concept names exist in more than
