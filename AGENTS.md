@@ -157,6 +157,15 @@ moves the defect rather than removing it** — 4aa1f08 rewrote a bilirubin examp
 and both ARISTOTLE's clause opening and GGT itself were still in the corpus. Synthesise
 the line instead; an invented protocol sentence cannot be in the corpus by construction.
 
+**The falsifiable test of 623e663.** The contamination is not only a measurement
+problem; it reached the output. CARMELINA's delivered Circe carries a bilirubin leaf at
+1.5x ULN, and the string `bilirubin` occurs **zero** times in both CARMELINA source PDFs —
+the prompt's own example read `ALT or AST > 2X ULN or Total Bilirubin >= 1.5X ULN`. So the
+prediction is concrete: **re-extract with the cleaned prompts and that leaf should be
+gone.** If it survives, 623e663 did not fix what it was written for, and the cause is
+elsewhere. Check it before claiming the decontamination worked; the IR caches still carry
+the contaminated runs, so nothing changes until a re-extraction.
+
 A prompt experiment needs a trial outside `EVALUATED_TRIALS` — `data/papers/NCT01730534`
 (DECLARE-TIMI 58) has protocol text and no gold, which costs nothing when the measures are
 computed against protocol text and the arms themselves. Verify any such pick with the
