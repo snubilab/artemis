@@ -153,6 +153,52 @@ def _opens_a_line(text: str, start: int) -> bool:
     return not prefix.strip() or bool(_HEADING_LINE_PREFIX.match(prefix))
 
 
+def _prefer_wording(
+    merged: List[str],
+    preferred: List[str],
+    similarity_threshold: float = 0.7,
+) -> List[str]:
+    """Restore a preferred block's wording in place, without moving anything.
+
+    Folding blocks in document order means the EARLIEST wording of a
+    near-duplicate wins, because :func:`_merge_parsed_items` keeps what is
+    already in the list. That is the wrong half of the trade: the heaviest block
+    is heaviest because it states the criteria at length, and its phrasing is
+    what the rest of the pipeline was tuned on. This substitutes that phrasing
+    back into the slot the earlier block claimed, leaving the POSITION -- which
+    is what document order exists to carry -- untouched.
+
+    The duplicate test is the pairwise half of :func:`_merge_parsed_items`
+    (numeric veto first, then ratio), so a slot is only overwritten by an item
+    that the merge itself would have dropped as already represented. Each slot
+    is rewritten at most once and each preferred item is spent at most once, so
+    two similar preferred items cannot collapse onto one slot.
+
+    :param merged: the document-ordered merge.
+    :param preferred: the block whose wording should win ties.
+    :returns: a list of the same length and order, with tied slots rephrased.
+    """
+    out = list(merged)
+    # A slot already holding one of the preferred block's own items is off
+    # limits. Without this, two similar items WITHIN the heaviest block (ratio
+    # >= threshold of each other) let the second overwrite the slot the first
+    # occupies, which deletes a criterion rather than rephrasing one.
+    own = set(preferred)
+    claimed = set()
+    for item in preferred:
+        for idx, existing in enumerate(out):
+            if idx in claimed or existing in own:
+                continue
+            if numerically_distinct(item, existing):
+                continue
+            ratio = SequenceMatcher(None, item.lower(), existing.lower()).ratio()
+            if ratio >= similarity_threshold:
+                out[idx] = item
+                claimed.add(idx)
+                break
+    return out
+
+
 def _best_section_match(text: str, patterns: List[str]) -> List[str]:
     """Union the criteria of every substantive section match, item by item.
 
@@ -174,8 +220,18 @@ def _best_section_match(text: str, patterns: List[str]) -> List[str]:
     cross-block pairs scoring >= 0.7 are the page-footer boilerplate, and real
     criteria overlap zero.
 
-    The heaviest block seeds the result so its wording wins ties; the rest fold
-    in document order. Deduplication is :func:`_merge_parsed_items` -- the same
+    Blocks fold in document order, EARLIEST first, and the heaviest block's
+    wording is restored afterwards wherever a lighter block seeded the slot. The
+    seed used to be the heaviest block, which is a different thing: since
+    :func:`_merge_parsed_items` appends what it cannot match onto the end, seeding
+    with a block from the middle of the document put every earlier block's unique
+    items AFTER it. Measured on the production rendering, that is 3 of CAROLINA's
+    46 items and 6 of DECLARE's 21 sitting before items that precede them in the
+    document -- and since a2fb858 stopped alphabetising the list before the model
+    reads it, position is the only thing still carrying "this header owns the
+    items that follow it".
+
+    Deduplication is :func:`_merge_parsed_items` -- the same
     structural_verdict-then-similarity decision every other merge site uses, so
     there is still one authoritative answer to "is this already represented?".
 
@@ -198,11 +254,11 @@ def _best_section_match(text: str, patterns: List[str]) -> List[str]:
         return []
 
     heaviest = max(blocks, key=lambda b: (b[0], -b[1]))
-    merged = list(heaviest[2])
-    for block in sorted(blocks, key=lambda b: b[1]):
-        if block is heaviest:
-            continue
+    ordered = sorted(blocks, key=lambda b: b[1])
+    merged = list(ordered[0][2])
+    for block in ordered[1:]:
         merged = _merge_parsed_items(merged, block[2])
+    merged = _prefer_wording(merged, heaviest[2])
 
     if len(blocks) > 1:
         logger.info(
@@ -229,6 +285,107 @@ _SECTION_HEADER_RE = re.compile(
     r"eligible\s+(?:patients?|subjects?|if)|(?:in|ex)clusion\s*:",
     re.IGNORECASE,
 )
+
+
+# A superscript digit sits ABOVE its baseline text, and `pdftotext` (which
+# production runs without `-layout`) sorts by vertical position -- so the digit is
+# emitted as its own line BEFORE the line it belongs to. Measured on the
+# production rendering: ARISTOTLE's protocol strands the `3` of `mm3` two lines
+# above `21) Platelet count <= 100,000/ mm`, CARMELINA's supplement strands the
+# `2` of `m2` directly above `4) eGFR <15 ml/min/1.73 m (...)`, and EMPA-REG's
+# appendix strands `2` (carrying its footnote daggers) above
+# `Estimated glomerular filtration rate - mL/min/1.73m`.
+#
+# The cost is a refused criterion, not a cosmetic one: `_resolve_unit` returns
+# None for the truncated spellings `/ mm` and `ml/min/1.73 m` and resolves the
+# repaired `/ mm3` -> 8785 and `mL/min/1.73 m2` -> 720870.
+#
+# A wrong re-attachment corrupts the criterion text itself, so the digit is only
+# moved on POSITIVE evidence that it is an exponent, never on the absence of a
+# reason not to. Three conditions must all hold, and any one failing declines:
+#
+#   1. The stray line is a bare `2` or `3` (optionally trailed by footnote
+#      markers). These are the only exponents clinical units carry -- area and
+#      volume. A page number that is not 2 or 3 is out on this test alone.
+#   2. The line it would join contains EXACTLY ONE length-unit token
+#      (`m` / `mm` / `cm`) standing on its own. Zero sites means there is nothing
+#      an exponent could belong to -- the ordinary case for a page number or a
+#      stranded list index. More than one site means the position is ambiguous,
+#      and guessing is precisely the corruption this guard exists to prevent.
+#   3. At most one blank line separates them. A digit further away than that is
+#      more likely a page artefact than a hoisted superscript.
+#
+# Idempotence falls out of condition 2's right-hand guard: a token already
+# carrying its exponent (`m2`, `mm3`) is not a bare unit token, so it offers zero
+# sites and the line is left alone. That is load-bearing rather than incidental
+# -- CARMELINA's supplement writes `mL/min/1.73 m2` inline at lines 998 and 1000
+# and the stranded form at 1016, so the same document is repaired and untouched
+# in two places.
+#
+# Group 1 is the exponent; group 2 is any footnote markers riding with it. They
+# are separated because only the first belongs to the unit: gluing `2\u2021\u2021` onto
+# `mL/min/1.73m` re-blocks the very resolution this repair exists to restore
+# (measured: `_resolve_unit("mL/min/1.73m2\u2021\u2021")` -> None, against 720870 for the
+# clean spelling). The markers stay on their own line rather than being deleted.
+_STRANDED_SUPERSCRIPT_RE = re.compile(
+    "^[ \t]*([23])([\u2020\u2021*\u00a7\u00b6]{0,4})[ \t]*$"
+)
+
+# A length unit standing alone. The left guard forbids a preceding LETTER but
+# allows a preceding DIGIT, because EMPA-REG writes `1.73m` with no space. The
+# right guard forbids a following letter or DIGIT: the digit half is what makes
+# the repair idempotent on `m2`, and the letter half is what stops `m` matching
+# inside `ml`, `min` or `mg`. Longest alternative first so `mm` is not consumed
+# as `m` plus a stray `m`.
+_BARE_LENGTH_UNIT_RE = re.compile(r"(?<![A-Za-z])(mm|cm|m)(?![A-Za-z0-9])")
+
+#: How many blank lines may sit between a stranded superscript and its text.
+_STRANDED_SUPERSCRIPT_MAX_BLANKS = 1
+
+
+def rejoin_stranded_superscripts(text: str) -> str:
+    """Re-attach superscript digits `pdftotext` hoisted onto their own line.
+
+    See the comment block above for the rule and for why it is stated as three
+    positive conditions rather than as a heuristic: the digit is inserted INTO a
+    criterion's text, so a wrong join does not degrade the criterion, it
+    rewrites it.
+
+    :param text: the `pdftotext` output, or any span of it.
+    :returns: the same text with each confidently-identified stranded
+        superscript moved to the single unit token it belongs to, and every
+        other bare digit line left exactly where it was.
+    """
+    lines = text.split("\n")
+    consumed = set()
+    out_lines = list(lines)
+
+    for i, line in enumerate(lines):
+        m = _STRANDED_SUPERSCRIPT_RE.match(line)
+        if not m:
+            continue
+        # The first non-blank line below, within the blank-line budget.
+        j = i + 1
+        blanks = 0
+        while j < len(lines) and not lines[j].strip():
+            blanks += 1
+            j += 1
+        if blanks > _STRANDED_SUPERSCRIPT_MAX_BLANKS or j >= len(lines):
+            continue
+        target = out_lines[j]
+        sites = list(_BARE_LENGTH_UNIT_RE.finditer(target))
+        if len(sites) != 1:
+            continue
+        end = sites[0].end()
+        out_lines[j] = target[:end] + m.group(1) + target[end:]
+        if m.group(2):
+            out_lines[i] = m.group(2)
+        else:
+            consumed.add(i)
+
+    return "\n".join(
+        line for k, line in enumerate(out_lines) if k not in consumed
+    )
 
 
 def _strip_running_header_lines(text: str) -> str:

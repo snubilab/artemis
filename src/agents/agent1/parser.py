@@ -35,7 +35,7 @@ from src.agents.agent1.pubmed_linker import (
     search_pubmed_for_nct
 )
 from src.agents.agent1.pubmed_fetcher import (
-    fetch_pubmed_abstract, extract_eligibility_from_text
+    fetch_pubmed_abstract, extract_eligibility_from_text, rejoin_stranded_superscripts
 )
 from src.agents.agent1.enricher import enrich_trial_data
 from src.agents.agent1.repair_accounting import RepairLedger, assert_repairs_accounted
@@ -1011,6 +1011,11 @@ class LogicDecomposer:
             full_text = re.sub(r'Downloaded from .*?\n', '', full_text)
             full_text = re.sub(r'Copyright © .*?\n', '', full_text)
             full_text = re.sub(r'\f', '\n', full_text)
+            # Before the section is carved out, so a unit split across two lines is
+            # whole by the time anything reads it as a criterion. See
+            # `rejoin_stranded_superscripts` for why this cannot be a loose
+            # heuristic: it writes into criterion text.
+            full_text = rejoin_stranded_superscripts(full_text)
             
             # Extract ONLY the eligibility criteria section, not the entire PDF.
             # This prevents tables, figures, author lists etc. from being parsed as criteria.
