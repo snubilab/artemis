@@ -146,6 +146,33 @@ free (file reads plus `pdftotext`, ~2 s, no LLM, no DB). **Any prompt edit also
 invalidates the Agent-1 IR cache key**, so the next extraction re-runs all six trials
 (~132 min measured).
 
+## Condition or Measurement is a real fork, and nothing decides it
+
+Measured against the live vocabulary: **518 standard concept names exist in more than
+one of `Condition` / `Measurement` / `Meas Value`.** `Anemia` is both 439777 (Condition,
+SNOMED) and 45878117 (Meas Value, LOINC); `Proteinuria` is both 75650 and 45880869. The
+pipeline is not choosing badly at random — the vocabulary genuinely offers both and
+nothing in the mapping path disambiguates.
+
+**The signal is whether the protocol states a threshold.** A named clinical state with no
+number ("known clinically important thrombocytopenia", "acute decompensation of glycemic
+control") is a Condition. A measured quantity with a bound ("platelet count ≤
+100,000/mm3") is a Measurement **with a value filter**. Sent the wrong way, a Condition
+becomes a Measurement with no value condition — and combined with `ABSENCE` that reads as
+"the patient has never had this test", which empties the cohort.
+
+**The concept usually exists; the exact name does not.** "Thrombocytopenia" has no
+standard concept under that name — only qualified variants (Fetal, Immune, Cyclic,
+Uremic, Primary). The canonical one is **432870 `Thrombocytopenic disorder`**. An exact-
+name lookup misses it and falls through to platelet LOINC codes, which is how ARISTOTLE's
+exclusion came to remove every patient who had ever had a platelet count.
+
+**The bound is often not recoverable, so do not plan to recover it.** Checked in the
+store: `Elevated HbA1c` has protocolLine "Acute decompensation of glycemic control";
+`Thrombocytopenia` has "Known clinically important thrombocytopenia". Neither line carries
+a number, because the protocol leaves the threshold to clinical judgement. The repair is
+the domain, not the missing value.
+
 ## What the delivery gate does and does not check
 
 It checks whether a **missing** criterion is accounted for. It does not check
