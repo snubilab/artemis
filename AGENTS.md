@@ -58,6 +58,29 @@ items as listed, descendants joined through `concept_ancestor` filtered by
 against the rendered SQL by POSTing the expression to
 `WebAPI /cohortdefinition/sql` rather than assuming.
 
+**The pipeline has never emitted an excluded concept.** Measured on the 2026-09-14
+delivery: 0 `isExcluded` members across 514 concept sets in all 12 files, against gold's
+718 across 59 of its 469 sets (EMPA-REG 312, CAROLINA 332, CARMELINA 28, ARISTOTLE 22,
+LEADER 18, PLATO 6). Twenty-two of our sets carry a negation in their own name and every
+one of them is a plain inclusive set.
+
+The consequence is worse than an omission. LEADER's `insulin other than human NPH
+insulin` (codeset 54) holds the identical 26 concept ids as `human NPH insulin`
+(codeset 12) — the phrase resolved to its own complement, so the exclusion removes
+precisely the patients the protocol requires to be on that insulin.
+`insulin other than premixed insulin` (56) is the same 26 ids again.
+`Aspirin and thienopyridine use` holds the single aspirin concept, the thienopyridine
+half silently gone.
+
+This is not only a negation defect. Gold uses `isExcluded` for ordinary precision —
+`[TROY condition] Type 2 diabetes mellitus` excludes 6 of its 9 items, `[CKim] systemic
+glucocorticoid` 136 of 231 — so a set of ours that should read "type 2 diabetes but not
+gestational or type 1" cannot say so and silently includes them.
+
+`src/agents/agent2/complexity_router.py:62-67` already routes `other than` / `except` /
+`excluding` to the slow LLM path, so the phrase is recognised. What is missing is
+downstream of that: nothing ever sets `isExcluded` on a mapped item.
+
 Score **per eligibility criterion, 1:1, macro-averaged**. Never lead with a micro
 average over pooled concept ids. On this corpus the two disagree in DIRECTION, not just
 magnitude:
