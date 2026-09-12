@@ -215,6 +215,23 @@ count. The lints in `src/utils/circe_lint.py` are where soundness checks belong.
   bound, so every bound correction scores exactly 0.0000 — not "no improvement",
   *not measurable*. `bound_agreement` in the same script is the measure for that.
 
+## Never `git stash` in this checkout
+
+The stash is **repository-global**, so `git stash push` with no pathspec sweeps every
+uncommitted file in the tree — including the ones another agent is holding. It happened:
+one run swept a concurrent agent's 147-line `scripts/prompt_ab.py` while trying to
+snapshot its own three files. It was recovered by `git stash pop`, but the two
+measurements taken between the stash and the pop were also wrong, because both arms were
+reading the same reverted tree.
+
+To compare against HEAD, copy your own files aside and `git checkout --` only your own
+paths, or extract HEAD's version with `git show HEAD:<path> > <somewhere-else>`. Never a
+bare `git stash`, and never `git add -A` / `git add .` for the same reason.
+
+Two pre-existing stash entries live here and are paired — `stash@{0}` is labelled
+"PAIR of stash@{1} … restore both together". A stray `git stash pop` in the wrong order
+destroys that pairing.
+
 ## Running work in parallel on this checkout
 
 One agent at a time runs the full test suite. Three concurrent pytest processes
