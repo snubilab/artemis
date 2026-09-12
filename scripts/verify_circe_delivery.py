@@ -155,7 +155,9 @@ Checks per file:
     disjunction over sets that merely differ is invisible to every other check here.
     See ``src.utils.circe_lint.conjoined_disjunction_rules``.
 
-(q) no ``Measurement`` criterion bounds a lab numerically while naming no unit. The
+(q) no criterion bounds a value numerically while naming no unit, on any CDM table
+    that would read one — ``Measurement`` and ``Observation``, derived as the types
+    reading both ``ValueAsNumber`` and ``Unit``. The
     pipeline already REFUSES a criterion whose unit string resolves to no UCUM concept
     (``unstated-unit-bound``), and that refusal's own recorded reason says why: the
     bound "would be emitted as a bare number and compared against whatever scale the
@@ -173,12 +175,19 @@ Checks per file:
     aligned)`` (%) and ``44793001 Hb A1c ... IFCC`` (mmol/mol) — and this same batch
     attaches ``%`` to HbA1c on CARMELINA, CAROLINA and EMPA-REG and
     ``mL/min/1.73m2`` to eGFR on CAROLINA and EMPA-REG, so LEADER's are missing rather
-    than dimensionless. ``RangeHighRatio`` leaves are not flagged: a ratio bound is a
+    than dimensionless. ``Observation`` carries the same defect on four more leaves,
+    on two other trials: CARMELINA codeset 32 ``'Life expectancy'`` ``lt 5.0`` and
+    CAROLINA codeset 22 ``'Systolic blood pressure'`` ``gt 140.0``, both arms each.
+    CAROLINA's own codeset 44 ``'life expectancy less than 5 years for'`` carries
+    ``Unit`` year over the SAME member concept ``4050791 FH: Longevity``, so one file
+    in this delivery states the unit and another omits it for the identical concept —
+    and "life expectancy < 5" read as months rather than years is a twelve-fold error.
+    ``RangeHighRatio`` leaves are not flagged: a ratio bound is a
     multiple of the lab's own ``range_high``, so its units cancel, and all 32 carry no
     ``ValueAsNumber``. Ankle-brachial index is exempt by concept id — it is a quotient
     of two mmHg pressures, so a unit filter on it would be wrong rather than missing.
-    See ``src.utils.circe_lint.unitless_measurement_bound_criteria`` and the allowlist
-    ``DIMENSIONLESS_MEASUREMENT_CONCEPTS`` beside it, whose comment records how it was
+    See ``src.utils.circe_lint.unitless_value_bound_criteria`` and the allowlist
+    ``DIMENSIONLESS_VALUE_CONCEPTS`` beside it, whose comment records how it was
     derived from the corpus and which three ratio-looking candidates were rejected.
 
 And one check across files rather than per file:
@@ -251,7 +260,7 @@ from src.utils.circe_lint import (  # noqa: E402
     rule_names,
     unfiltered_measurement_absence_criteria,
     ungrounded_criteria,
-    unitless_measurement_bound_criteria,
+    unitless_value_bound_criteria,
     unreadable_value_attributes,
 )
 from src.utils.criterion_refusal import (  # noqa: E402
@@ -2121,18 +2130,21 @@ def main(argv: list[str] | None = None) -> int:
                 f"{'; '.join(unfiltered_absences)}"
             )
 
-        # (q) a numeric bound on a lab with no unit. The mirror of the pipeline's own
-        # `unstated-unit-bound` refusal, which drops a criterion whose unit could not
-        # be resolved for precisely this reason -- so a criterion that named no unit at
-        # all was shipping the bare number the refusal exists to prevent. Check (j)
-        # reads a NAME that promised a bound and finds the bound gone; here the bound
-        # is present and it is the SCALE that is missing, which no name in the corpus
-        # asserts. LEADER's HbA1c is the case: 7.0% is 53 mmol/mol, so `>= 7.0` against
-        # an IFCC site passes nearly everyone rather than no one.
-        unitless_bounds = unitless_measurement_bound_criteria(expression)
+        # (q) a numeric bound with no unit, on any table that would read one. The
+        # mirror of the pipeline's own `unstated-unit-bound` refusal, which drops a
+        # criterion whose unit could not be resolved for precisely this reason -- so a
+        # criterion that named no unit at all was shipping the bare number the refusal
+        # exists to prevent. Check (j) reads a NAME that promised a bound and finds the
+        # bound gone; here the bound is present and it is the SCALE that is missing,
+        # which no name in the corpus asserts. LEADER's HbA1c is the case: 7.0% is 53
+        # mmol/mol, so `>= 7.0` against an IFCC site passes nearly everyone rather than
+        # no one. Covers `Observation` as well as `Measurement` -- CARMELINA's
+        # 'Life expectancy' < 5 carries no unit while CAROLINA's same-concept criterion
+        # carries `year`, and months rather than years is a twelve-fold error.
+        unitless_bounds = unitless_value_bound_criteria(expression)
         if unitless_bounds:
             reasons.append(
-                f"unitless measurement bound ({len(unitless_bounds)}): "
+                f"unitless value bound ({len(unitless_bounds)}): "
                 f"{'; '.join(unitless_bounds)}"
             )
 

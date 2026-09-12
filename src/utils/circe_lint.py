@@ -1218,6 +1218,30 @@ def _analyte_summary(concept_set: Mapping[str, Any]) -> str:
     return f"{shown} (+{remainder} more)" if remainder > 0 else shown
 
 
+#: The criteria types on which a numeric bound with no unit is a DEFECT: those that
+#: read both ``ValueAsNumber`` and ``Unit``. Derived from
+#: :data:`CRITERIA_TYPE_VALUE_ATTRIBUTES` rather than hardcoded, so it cannot drift
+#: from the one table that records what each CDM table reads.
+#:
+#: Deriving it rather than listing it is also the correct RULE, not just tidier.
+#: Adding a ``Unit`` is a repair only where the table would read one: on
+#: ``ConditionOccurrence`` -- which reads neither attribute -- a unit would be silently
+#: dropped by Circe, which is the separate defect
+#: :func:`unreadable_value_filter_criteria` already catches. ``Specimen`` and
+#: ``DoseEra`` read ``Unit`` but not ``ValueAsNumber``, so they carry no bare number to
+#: misread.
+#:
+#: Resolves to ``{"Measurement", "Observation"}`` today, and
+#: ``tests/test_unitless_measurement_bound_lint.py`` pins that: a type added to
+#: :data:`CRITERIA_TYPE_VALUE_ATTRIBUTES` that reads both would widen a delivery gate,
+#: and should fail a test first rather than take effect unnoticed.
+UNIT_BEARING_CRITERIA_TYPES: frozenset[str] = frozenset(
+    criteria_type
+    for criteria_type, readable in CRITERIA_TYPE_VALUE_ATTRIBUTES.items()
+    if {"ValueAsNumber", "Unit"} <= readable
+)
+
+
 #: OMOP concept ids whose quantity is dimensionless BY NATURE -- a quotient of two
 #: quantities of the same dimension, or an index computed from one -- so a bare number
 #: means one thing at every site and a unit filter on it would be WRONG rather than
@@ -1258,7 +1282,17 @@ def _analyte_summary(concept_set: Mapping[str, Any]) -> str:
 #: "gold omits a unit here" as "the quantity has none" would allowlist nearly every
 #: analyte in the corpus and delete the check. Gold carries the same defect; per
 #: ``docs/agent-briefing-facts.md`` it is a reference and not an oracle.
-DIMENSIONLESS_MEASUREMENT_CONCEPTS: dict[int, tuple[str, str]] = {
+#:
+#: ``Observation`` was checked the same way when the check widened to it, rather than
+#: assumed to contribute nothing. The corpus's unitless ``Observation`` sets hold four
+#: concepts and NONE qualifies: ``4025025 Age AND/OR growth period`` and
+#: ``4050791 FH: Longevity`` are durations (years or months), ``4021774 Cardiovascular
+#: pressure AND/OR pulse finding`` is a pressure or a rate, and ``3003798 Blood
+#: pressure method`` is not a quantity at all. ``4050791`` is disqualified by the
+#: corpus itself: the identical concept carries ``Unit`` year on CAROLINA codeset 44
+#: in the same delivery. So this table is unchanged by the widening -- a measured
+#: result, not an omission.
+DIMENSIONLESS_VALUE_CONCEPTS: dict[int, tuple[str, str]] = {
     3016205: (
         "Systolic blood pressure Posterior tibial artery/Brachial artery",
         "LOINC states the ankle-brachial index as the quotient of its two measurands; "
@@ -1308,7 +1342,7 @@ def _concept_set_is_dimensionless(concept_set: Mapping[str, Any]) -> bool:
     if not included:
         return False
     return all(
-        (item.get("concept") or {}).get("CONCEPT_ID") in DIMENSIONLESS_MEASUREMENT_CONCEPTS
+        (item.get("concept") or {}).get("CONCEPT_ID") in DIMENSIONLESS_VALUE_CONCEPTS
         for item in included
     )
 
@@ -1323,8 +1357,8 @@ def _render_numeric_bound(value: Mapping[str, Any]) -> str:
     return f"{operator} {low}"
 
 
-def unitless_measurement_bound_criteria(expression: dict[str, Any]) -> list[str]:
-    """Locators for criteria bounding a lab numerically while naming no unit.
+def unitless_value_bound_criteria(expression: dict[str, Any]) -> list[str]:
+    """Locators for criteria bounding a value numerically while naming no unit.
 
     The asymmetry this closes. ``src.services.value_constraint`` REFUSES a criterion
     whose unit string resolves to no UCUM concept
@@ -1361,20 +1395,27 @@ def unitless_measurement_bound_criteria(expression: dict[str, Any]) -> list[str]
 
     Three exact conditions, all structural -- no vocabulary, no database, no English:
 
-    * the criteria type is :data:`_BOUND_BEARING_CRITERIA_TYPE`. ``Observation`` also
-      reads ``ValueAsNumber`` and ``Unit`` per :data:`CRITERIA_TYPE_VALUE_ATTRIBUTES`,
-      and the SAME defect exists there -- this check does not cover it, which is a
-      scope boundary and not a measurement. Counted over the batch: 6 ``Observation``
-      criteria carry ``ValueAsNumber`` and 4 of them carry no ``Unit`` -- CARMELINA
-      codeset 32 ``'Life expectancy'`` ``lt 5.0`` and CAROLINA codeset 22
-      ``'Systolic blood pressure'`` ``gt 140.0``, both arms each. The same asymmetry
-      shows there too: CAROLINA's own codeset 44 ``'life expectancy less than 5
-      years'`` carries ``Unit`` year, and ARISTOTLE's SBP carries ``mm[Hg]``. Widening
-      this check to ``Observation`` would add a failure reason to four more files and
-      is deliberately left as a separate decision rather than taken here.
-      ``tests/test_unitless_measurement_bound_lint.py`` asserts that count on the real
-      batch, so the boundary is recorded mechanically and a later widening starts from
-      a measured number rather than a re-survey.
+    * the criteria type is in :data:`UNIT_BEARING_CRITERIA_TYPES` -- derived as the
+      types reading both ``ValueAsNumber`` and ``Unit``, which resolves to
+      ``Measurement`` and ``Observation``. A type reading neither (say
+      ``ConditionOccurrence``) has no unit to add: one written there is dropped by
+      Circe, which is :func:`unreadable_value_filter_criteria`'s defect, not this one.
+
+      ``Observation`` carries the same defect on four leaves in this batch, which is
+      why the check covers it rather than stopping at ``Measurement``. Of 6
+      ``Observation`` criteria carrying ``ValueAsNumber``, 4 carry no ``Unit``::
+
+          CARMELINA  codeset 32  'Life expectancy'          lt 5.0     NO Unit
+          CAROLINA   codeset 22  'Systolic blood pressure'  gt 140.0   NO Unit
+
+      both arms each. The internal contradiction is sharper here than on HbA1c:
+      CAROLINA's own codeset 44 ``'life expectancy less than 5 years for'`` carries
+      ``Unit`` year over the SAME member concept ``4050791 FH: Longevity``, so one
+      file in this delivery states the unit and another omits it for the identical
+      concept. "Life expectancy < 5" read as months rather than years is a twelve-fold
+      error; an unqualified "Systolic blood pressure > 140" is the mmHg/kPa exposure
+      (140 mmHg is 18.7 kPa) against ARISTOTLE's SBP carrying ``mm[Hg]`` in this same
+      batch.
     * ``ValueAsNumber`` is present. A criterion with no value condition at all is
       :func:`unfiltered_measurement_absence_criteria`'s, with a different repair.
     * ``Unit`` is absent OR EMPTY. Truthiness rather than key presence, because
@@ -1390,15 +1431,24 @@ def unitless_measurement_bound_criteria(expression: dict[str, Any]) -> list[str]
     bound_lint.py`` asserts the disjointness on the real batch rather than assuming it.
 
     Ankle-brachial index is exempted by concept id via
-    :data:`DIMENSIONLESS_MEASUREMENT_CONCEPTS` -- it is a quotient of two mmHg
+    :data:`DIMENSIONLESS_VALUE_CONCEPTS` -- it is a quotient of two mmHg
     pressures, so a unit filter on it would be wrong rather than missing. See that
     table for how the allowlist was derived from the corpus, the three ratio-looking
-    candidates that were rejected, and why gold is not its source.
+    candidates that were rejected, and why gold is not its source. Its ``Observation``
+    concepts were checked the same way and none qualifies, which is recorded there.
+
+    The known limit, carried forward rather than closed: every allowlisted member
+    carries ``includeDescendants``, and :func:`_concept_set_is_dimensionless` reads the
+    SEED concepts written into the file, not the resolved descendant closure. A
+    dimensioned descendant of a dimensionless seed would be exempted. Resolving the
+    closure needs the vocabulary database, and this module's contract is pure functions
+    over a CIRCE expression dict, so the gap stays open and stated.
 
     Silent, like the checks beside it, on what the file cannot settle: a criteria type
-    other than ``Measurement``. A ``CodesetId`` with no matching ``ConceptSets`` entry
-    is still REPORTED -- an unknown set cannot be shown to be dimensionless, and the
-    missing concept set is a different defect that would hide this one.
+    outside :data:`UNIT_BEARING_CRITERIA_TYPES`. A ``CodesetId`` with no matching
+    ``ConceptSets`` entry is still REPORTED -- an unknown set cannot be shown to be
+    dimensionless, and the missing concept set is a different defect that would hide
+    this one.
 
     :param expression: a CIRCE cohort expression.
     :returns: one locator per offending criterion, empty when none.
@@ -1408,7 +1458,7 @@ def unitless_measurement_bound_criteria(expression: dict[str, Any]) -> list[str]
         body = entry.get("Criteria")
         body = body if isinstance(body, dict) else entry
         for criteria_type, payload in body.items():
-            if criteria_type != _BOUND_BEARING_CRITERIA_TYPE or not isinstance(payload, dict):
+            if criteria_type not in UNIT_BEARING_CRITERIA_TYPES or not isinstance(payload, dict):
                 continue
             if "CodesetId" not in payload:
                 continue

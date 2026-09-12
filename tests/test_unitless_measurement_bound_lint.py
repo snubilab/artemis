@@ -11,8 +11,15 @@ recorded reason says exactly what is wrong with it::
 A criterion that never stated a unit at all produces the same bare number and is not
 refused. The safe case -- a unit was written, the pipeline could not read it, and the
 criterion is dropped rather than shipped wrong -- is punished; the dangerous case
-ships. Measured on `output/site_gap/2026-09-14/DELIVERY` (12 files), over every
-`Measurement` leaf::
+ships.
+
+The check covers every criteria type that reads BOTH `ValueAsNumber` and `Unit`, which
+`CRITERIA_TYPE_VALUE_ATTRIBUTES` resolves to `Measurement` and `Observation`. It is
+derived from that table rather than hardcoded, because a unit is a repair only on a
+table that would read one.
+
+Measured on `output/site_gap/2026-09-14/DELIVERY` (12 files), over every `Measurement`
+leaf::
 
     ValueAsNumber   Unit   RangeHighRatio   count
         True        True        False         40
@@ -51,12 +58,24 @@ Why the checks beside this one cannot see it
 Measured: the delivery gate returns FAIL on both LEADER files for six other reasons
 and not one of them mentions codesets 6, 9, 17, 18 or 33.
 
+`Observation` carries the same defect on four more leaves, on two other trials::
+
+    CARMELINA  codeset 32  'Life expectancy'          {"Value":   5.0, "Op": "lt"}
+    CAROLINA   codeset 22  'Systolic blood pressure'  {"Value": 140.0, "Op": "gt"}
+
+both arms each. CAROLINA's own codeset 44 `'life expectancy less than 5 years for'`
+carries `Unit` year over the SAME member concept `4050791 FH: Longevity`, so one file
+in this delivery states the unit and another omits it for the identical concept.
+"Life expectancy < 5" read as months is a twelve-fold error; an unqualified
+"Systolic blood pressure > 140" is the mmHg/kPa exposure (140 mmHg is 18.7 kPa), and
+ARISTOTLE's SBP carries `mm[Hg]` in this same batch.
+
 Ankle-brachial index is the control, not an oversight
 -----------------------------------------------------
 ABI is a quotient of ankle systolic pressure over brachial systolic pressure. Both are
 mmHg, the unit cancels, and `< 0.9` means one thing everywhere. A unit filter on it
 would be wrong, so it is allowlisted by concept id in
-`DIMENSIONLESS_MEASUREMENT_CONCEPTS` -- see that table's own comment for why the
+`DIMENSIONLESS_VALUE_CONCEPTS` -- see that table's own comment for why the
 allowlist is keyed on concept ids rather than on concept-set names, and for the three
 corpus candidates that were examined and rejected.
 """
@@ -70,9 +89,10 @@ from typing import Any
 import pytest
 
 from src.utils.circe_lint import (
-    DIMENSIONLESS_MEASUREMENT_CONCEPTS,
+    DIMENSIONLESS_VALUE_CONCEPTS,
+    UNIT_BEARING_CRITERIA_TYPES,
     _criterion_locations,
-    unitless_measurement_bound_criteria,
+    unitless_value_bound_criteria,
 )
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -192,7 +212,7 @@ class TestLeaderHbA1cReproduced:
     changes exactly one thing, so a passing test says which field is being read."""
 
     def test_should_fire_when_a_measurement_bound_carries_no_unit(self):
-        findings = unitless_measurement_bound_criteria(_leader_hba1c())
+        findings = unitless_value_bound_criteria(_leader_hba1c())
         assert len(findings) == 1
         assert "Hemoglobin A1c" in findings[0]
         assert "codeset 18" in findings[0]
@@ -204,7 +224,7 @@ class TestLeaderHbA1cReproduced:
         expression = _leader_hba1c(
             value={"ValueAsNumber": {"Value": 7.0, "Op": "gte"}, "Unit": PERCENT_UNIT}
         )
-        assert unitless_measurement_bound_criteria(expression) == []
+        assert unitless_value_bound_criteria(expression) == []
 
     def test_should_fire_when_the_unit_filter_is_present_but_empty(self):
         """`Unit: []` renders no unit predicate, so the bare number ships exactly as
@@ -213,18 +233,16 @@ class TestLeaderHbA1cReproduced:
         expression = _leader_hba1c(
             value={"ValueAsNumber": {"Value": 7.0, "Op": "gte"}, "Unit": []}
         )
-        assert len(unitless_measurement_bound_criteria(expression)) == 1
+        assert len(unitless_value_bound_criteria(expression)) == 1
 
     def test_should_stay_silent_when_there_is_no_numeric_bound(self):
         """No `ValueAsNumber`, nothing to misread. The absent-value-condition defect is
         `unfiltered_measurement_absence_criteria`'s, with its own repair."""
-        assert unitless_measurement_bound_criteria(_leader_hba1c(value={})) == []
+        assert unitless_value_bound_criteria(_leader_hba1c(value={})) == []
 
-    def test_should_stay_silent_when_the_criteria_type_is_not_measurement(self):
-        """A scope boundary, NOT a claim that the defect stops at `Measurement`.
-        `Observation` reads `ValueAsNumber` and `Unit` too and carries the same defect
-        in this very batch -- see
-        `TestTheObservationLeavesThisCheckDoesNotCover` below, which counts them."""
+    def test_should_fire_on_an_observation_criterion_too(self):
+        """`Observation` reads `ValueAsNumber` and `Unit` exactly as `Measurement`
+        does, so the same bare number ships. The one shape covers both tables."""
         expression = _expression(
             [
                 _rule(
@@ -236,7 +254,26 @@ class TestLeaderHbA1cReproduced:
             ],
             [_concept_set(18, "Hemoglobin A1c", HBA1C_CONCEPTS)],
         )
-        assert unitless_measurement_bound_criteria(expression) == []
+        findings = unitless_value_bound_criteria(expression)
+        assert len(findings) == 1
+        assert "Observation over codeset 18" in findings[0]
+
+    def test_should_stay_silent_on_a_type_that_cannot_read_a_unit(self):
+        """`ConditionOccurrence` reads neither attribute, so there is no unit to add
+        and adding one would be the defect `unreadable_value_filter_criteria` already
+        catches. Adding a `Unit` is only a repair where the table would read it."""
+        expression = _expression(
+            [
+                _rule(
+                    "Carotid stenosis",
+                    18,
+                    criteria_type="ConditionOccurrence",
+                    value={"ValueAsNumber": {"Value": 70.0, "Op": "gte"}},
+                )
+            ],
+            [_concept_set(18, "Carotid stenosis", HBA1C_CONCEPTS)],
+        )
+        assert unitless_value_bound_criteria(expression) == []
 
 
 class TestTheDimensionlessAllowlist:
@@ -248,7 +285,7 @@ class TestTheDimensionlessAllowlist:
             [_rule("Ankle-brachial index", 6, value={"ValueAsNumber": {"Value": 0.9, "Op": "lt"}})],
             [_concept_set(6, "Ankle-brachial index", ABI_CONCEPTS)],
         )
-        assert unitless_measurement_bound_criteria(expression) == []
+        assert unitless_value_bound_criteria(expression) == []
 
     def test_should_fire_when_one_member_of_the_set_is_not_dimensionless(self):
         """The exemption is ALL-members, not ANY. A set mixing a bare ratio with a
@@ -260,7 +297,7 @@ class TestTheDimensionlessAllowlist:
             [_rule("Ankle-brachial index", 6, value={"ValueAsNumber": {"Value": 0.9, "Op": "lt"}})],
             [_concept_set(6, "Ankle-brachial index", mixed)],
         )
-        assert len(unitless_measurement_bound_criteria(expression)) == 1
+        assert len(unitless_value_bound_criteria(expression)) == 1
 
     def test_should_not_exempt_an_empty_concept_set(self):
         """`all()` over an empty sequence is True, which would silently exempt every
@@ -270,19 +307,19 @@ class TestTheDimensionlessAllowlist:
             [_rule("Ankle-brachial index", 6, value={"ValueAsNumber": {"Value": 0.9, "Op": "lt"}})],
             [_concept_set(6, "Ankle-brachial index", [])],
         )
-        assert len(unitless_measurement_bound_criteria(expression)) == 1
+        assert len(unitless_value_bound_criteria(expression)) == 1
 
     def test_should_key_the_allowlist_on_concept_ids(self):
         """A name-keyed allowlist is defeated by a respelling, and this corpus supplies
         three spellings of one analyte ('Glycated hemoglobin', 'Hemoglobin A1c',
         'Glycosylated haemoglobin') and three of another ('eGFR', 'Estimated
         glomerular filtration rate', 'Glomerular Filtration Rate')."""
-        assert all(isinstance(key, int) for key in DIMENSIONLESS_MEASUREMENT_CONCEPTS)
+        assert all(isinstance(key, int) for key in DIMENSIONLESS_VALUE_CONCEPTS)
 
     def test_should_record_a_written_reason_for_every_allowlist_entry(self):
         """An allowlist entry suppresses a soundness failure. One with no recorded
         reason cannot be audited, and cannot be argued with."""
-        for concept_id, (name, reason) in DIMENSIONLESS_MEASUREMENT_CONCEPTS.items():
+        for concept_id, (name, reason) in DIMENSIONLESS_VALUE_CONCEPTS.items():
             assert name.strip(), concept_id
             assert len(reason.strip()) > 40, concept_id
 
@@ -294,28 +331,47 @@ class TestTheDimensionlessAllowlist:
             (3004410, "HbA1c/Hemoglobin.total -- % or mmol/mol"),
         ],
     )
-    def test_should_not_allowlist_a_rejected_candidate(self, concept_id, label):
+    def test_should_not_allowlist_a_rejected_measurement_candidate(self, concept_id, label):
         """The three corpus candidates whose LOINC names read as ratios and which are
         NOT dimensionless. Each was found by the same scan that found ABI; a check
         derived from that scan alone would have admitted all three."""
-        assert concept_id not in DIMENSIONLESS_MEASUREMENT_CONCEPTS, label
+        assert concept_id not in DIMENSIONLESS_VALUE_CONCEPTS, label
+
+    @pytest.mark.parametrize(
+        "concept_id, label",
+        [
+            (4025025, "Age AND/OR growth period -- an age, so years or months"),
+            (4050791, "FH: Longevity -- carries Unit year on CAROLINA codeset 44"),
+            (3003798, "Blood pressure method -- not a quantity at all"),
+            (4021774, "Cardiovascular pressure AND/OR pulse finding -- mmHg or /min"),
+        ],
+    )
+    def test_should_not_allowlist_a_rejected_observation_candidate(self, concept_id, label):
+        """Every concept in the corpus's unitless `Observation` sets, checked the same
+        way the Measurement candidates were rather than assumed. None qualifies, and
+        `4050791` is disqualified by the corpus itself: the identical concept carries
+        `Unit` year on CAROLINA codeset 44 in this same batch.
+
+        Recorded as a test rather than a sentence so "I checked and found none" is a
+        standing claim the suite re-verifies, not a one-time assertion in a report."""
+        assert concept_id not in DIMENSIONLESS_VALUE_CONCEPTS, label
 
 
 class TestWhatTheFindingHasToSay:
     def test_should_quote_the_bound_that_ships_unitless(self):
-        findings = unitless_measurement_bound_criteria(_leader_hba1c())
+        findings = unitless_value_bound_criteria(_leader_hba1c())
         assert "gte" in findings[0] and "7.0" in findings[0]
 
     def test_should_name_the_member_concepts_so_a_reader_can_judge_the_scale(self):
-        findings = unitless_measurement_bound_criteria(_leader_hba1c())
+        findings = unitless_value_bound_criteria(_leader_hba1c())
         assert "Hemoglobin A1c/Hemoglobin.total in Blood" in findings[0]
 
     def test_should_say_what_the_emitted_rule_actually_compares_against(self):
-        findings = unitless_measurement_bound_criteria(_leader_hba1c())
+        findings = unitless_value_bound_criteria(_leader_hba1c())
         assert "scale" in findings[0]
 
     def test_should_report_one_finding_per_criterion_not_per_concept(self):
-        findings = unitless_measurement_bound_criteria(_leader_hba1c())
+        findings = unitless_value_bound_criteria(_leader_hba1c())
         assert len(findings) == 1
 
     def test_should_survive_a_codeset_with_no_matching_concept_set(self):
@@ -327,7 +383,7 @@ class TestWhatTheFindingHasToSay:
             [_rule("Hemoglobin A1c", 999, value={"ValueAsNumber": {"Value": 7.0, "Op": "gte"}})],
             [],
         )
-        findings = unitless_measurement_bound_criteria(expression)
+        findings = unitless_value_bound_criteria(expression)
         assert len(findings) == 1
         assert "codeset 999" in findings[0]
 
@@ -341,7 +397,7 @@ class TestAgainstTheDeliveredBatch:
     @staticmethod
     def _findings() -> dict[str, list[str]]:
         return {
-            path.name: unitless_measurement_bound_criteria(json.loads(path.read_text()))
+            path.name: unitless_value_bound_criteria(json.loads(path.read_text()))
             for path in sorted(BATCH.glob("*.circe.json"))
         }
 
@@ -385,20 +441,36 @@ class TestAgainstTheDeliveredBatch:
         assert len(findings["leader_treatment.circe.json"]) == 4
         assert len(findings["leader_comparator.circe.json"]) == 4
 
+    def test_should_fire_once_per_arm_on_carmelina_and_carolina(self):
+        """The Observation half: CARMELINA codeset 32 `'Life expectancy'` and CAROLINA
+        codeset 22 `'Systolic blood pressure'`, one each per arm. CAROLINA's codeset 44
+        carries its unit and is not counted."""
+        findings = self._findings()
+        for arm in ("carmelina_treatment.circe.json", "carmelina_comparator.circe.json"):
+            assert len(findings[arm]) == 1, findings[arm]
+            assert "codeset 32 " in findings[arm][0], arm
+        for arm in ("carolina_treatment.circe.json", "carolina_comparator.circe.json"):
+            assert len(findings[arm]) == 1, findings[arm]
+            assert "codeset 22 " in findings[arm][0], arm
+
     def test_should_be_silent_on_every_file_that_carries_its_units(self):
-        """The other ten files hold 40 `ValueAsNumber` + `Unit` leaves between them.
+        """ARISTOTLE, EMPA-REG and PLATO hold unit-carrying bounds and nothing else.
         A check that fired on any of those would be reading something other than the
         Unit field."""
         findings = self._findings()
-        noisy = {name: f for name, f in findings.items() if f and not name.startswith("leader_")}
+        clean = ("aristotle_", "empa-reg_", "plato_")
+        noisy = {name: f for name, f in findings.items() if f and name.startswith(clean)}
         assert noisy == {}
 
-    def test_should_not_fire_on_any_observation_leaf(self):
-        """The scope boundary, asserted from the other side: every finding this check
-        produces names `Measurement`, never `Observation`."""
-        for findings in self._findings().values():
-            for finding in findings:
-                assert "Observation over codeset" not in finding, finding
+    def test_should_cover_exactly_the_types_that_read_both_attributes(self):
+        """The covered set is DERIVED from `CRITERIA_TYPE_VALUE_ATTRIBUTES` -- every
+        type that reads both `ValueAsNumber` and `Unit` -- not a hardcoded pair. That
+        is the right rule: a unit is a repair only where the table would read it.
+
+        Pinned here anyway, so that adding a type to `CRITERIA_TYPE_VALUE_ATTRIBUTES`
+        which reads both does not silently widen a delivery gate. It should fail this
+        assertion first and be considered."""
+        assert UNIT_BEARING_CRITERIA_TYPES == frozenset({"Measurement", "Observation"})
 
     def test_should_not_fire_on_any_range_high_ratio_leaf(self):
         """A `RangeHighRatio` bound is a multiple of the lab's own reference range, so
@@ -417,18 +489,28 @@ class TestAgainstTheDeliveredBatch:
 
 
 @pytest.mark.skipif(not BATCH.is_dir(), reason=f"delivered batch not present: {BATCH}")
-class TestTheObservationLeavesThisCheckDoesNotCover:
-    """The same defect on a different CDM table, counted rather than described.
+class TestTheObservationLeaves:
+    """The same defect on a different CDM table, now covered.
 
     `Observation` reads `ValueAsNumber` and `Unit` exactly as `Measurement` does
     (`CRITERIA_TYPE_VALUE_ATTRIBUTES`), so an unitless numeric bound there ships the
-    same bare number. `unitless_measurement_bound_criteria` is scoped to `Measurement`
-    and does NOT cover these; that is a deliberate scope boundary, not a finding that
-    the defect stops there.
+    same bare number. These two tests previously pinned the count of leaves this check
+    LEFT UNCAUGHT; they now assert the same leaves are caught. The total is still
+    pinned separately, so a future silent drop -- a mapping change that stops emitting
+    these as `Observation`, or a regression that stops walking them -- fails here
+    rather than reading as a clean batch.
 
-    Pinning the count here does two things prose cannot: it fails if the batch is ever
-    regenerated with more of them, and it hands whoever widens the check a measured
-    starting number instead of a re-survey.
+    The pair that settles the dimensionless question, both in this one delivery::
+
+        CARMELINA  codeset 32  'Life expectancy'                        lt 5.0  NO Unit
+        CAROLINA   codeset 44  'life expectancy less than 5 years for'  lt 5.0  Unit a,y
+
+    Same quantity, same batch, and they share the member concept `4050791 FH:
+    Longevity` -- so the identical concept carries `year` on one arm's file and nothing
+    on another's. "Life expectancy < 5" read as months rather than years is a
+    twelve-fold error. CAROLINA codeset 22 `'Systolic blood pressure' gt 140.0` is the
+    mmHg/kPa exposure (140 mmHg is 18.7 kPa), and ARISTOTLE's SBP carries `mm[Hg]` in
+    this same batch.
     """
 
     @staticmethod
@@ -458,9 +540,7 @@ class TestTheObservationLeavesThisCheckDoesNotCover:
     def test_should_find_exactly_four_unitless_observation_bounds(self):
         """CARMELINA 'Life expectancy' lt 5.0 and CAROLINA 'Systolic blood pressure'
         gt 140.0, on both arms each. Both have a unit-carrying counterpart in the same
-        batch -- CAROLINA's own codeset 44 'life expectancy less than 5 years' carries
-        year, and ARISTOTLE's SBP carries mm[Hg] -- so these are missing units, not
-        dimensionless quantities."""
+        batch, so these are missing units, not dimensionless quantities."""
         found = self._unitless_observation_bounds()
         assert len(found) == 4, found
         assert {name for _file, _codeset, name in found} == {
@@ -468,10 +548,34 @@ class TestTheObservationLeavesThisCheckDoesNotCover:
             "Systolic blood pressure",
         }, found
 
-    def test_should_confirm_this_check_leaves_all_four_uncaught(self):
-        """The gap stated as a test rather than a comment: if someone widens the check
-        to Observation, this is the assertion that tells them it worked."""
+    def test_should_pin_the_total_observation_bound_count_at_six(self):
+        """Four unitless plus CAROLINA's two unit-carrying `life expectancy less than
+        5 years for` leaves. Pinned SEPARATELY from the unitless four so a silent drop
+        is visible: if a mapping change stopped emitting these as `Observation`, the
+        unitless count would fall to zero and read as a clean batch, while this
+        assertion fails and names the real cause."""
+        total = 0
+        for path in sorted(BATCH.glob("*.circe.json")):
+            expression = json.loads(path.read_text())
+            for _where, entry in _criterion_locations(expression):
+                body = entry.get("Criteria")
+                body = body if isinstance(body, dict) else entry
+                payload = body.get("Observation")
+                if isinstance(payload, dict) and "ValueAsNumber" in payload:
+                    total += 1
+        assert total == 6, total
+
+    def test_should_now_catch_all_four(self):
+        """The inversion. This assertion previously read `assert not any(...)` and
+        pinned the gap; it is the one that says the widening worked."""
         for file_name, codeset_id, _name in self._unitless_observation_bounds():
             expression = json.loads((BATCH / file_name).read_text())
-            findings = unitless_measurement_bound_criteria(expression)
-            assert not any(f"codeset {codeset_id} " in f for f in findings), file_name
+            findings = unitless_value_bound_criteria(expression)
+            assert any(f"codeset {codeset_id} " in f for f in findings), file_name
+
+    def test_should_stay_silent_on_the_observation_leaf_that_carries_its_unit(self):
+        """CAROLINA codeset 44 carries `Unit` year. Silence there is the check reading
+        the Unit field on `Observation` too, not merely skipping the table."""
+        for arm in ("carolina_treatment.circe.json", "carolina_comparator.circe.json"):
+            findings = unitless_value_bound_criteria(json.loads((BATCH / arm).read_text()))
+            assert not any("codeset 44 " in f for f in findings), arm
