@@ -6,7 +6,7 @@ depending on which enrichment path succeeds.
 """
 from __future__ import annotations
 
-import json
+import importlib
 import sys
 from io import StringIO
 from pathlib import Path
@@ -16,98 +16,41 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
-# Module-level setup: stub heavy dependencies before importing parser
+# Imports
 # ---------------------------------------------------------------------------
+#
+# `parser.py` is imported directly, with no `sys.modules` stubbing.
+#
+# This file used to install MagicMock modules for `langchain_core`,
+# `src.utils.llm`, `src.models.ir`, `src.agents.agent1.prompts` and six
+# `src.agents.agent1.*` submodules before importing the parser, "so parser.py
+# imports without env setup". Measured on this checkout, that is no longer
+# needed: `import src.agents.agent1.parser` succeeds on its own, including under
+# a scrubbed environment.
+#
+# The stubbing was not merely redundant, it was actively harmful, in two ways
+# that no amount of teardown could fix:
+#
+#   1. Attribute assignment onto a REAL module. The installer skipped a module
+#      already present in `sys.modules`, then assigned stubs onto it anyway --
+#      `sys.modules["src.agents.agent1.pubmed_fetcher"].extract_eligibility_from_text
+#      = MagicMock(...)`. Popping a `sys.modules` entry does not undo an attribute
+#      assignment on an object other modules still reference, so the mock outlived
+#      this file for the rest of the session.
+#   2. Teardown that ran too late to matter. pytest imports EVERY test module
+#      during collection, before running any test, so a module collected after
+#      this one bound the MagicMocks at ITS import -- long before
+#      `teardown_module` could remove them.
+#
+# Measured cost: 12 tests failed in a combined run across this file,
+# `test_07_pubmed_linker.py` and `test_08_pubmed_fetcher.py`, while each file
+# passed on its own.
+#
+# Behaviour stubbing now happens per test, in `_stub_enrichment_paths` below,
+# through `monkeypatch`.
 
-
-_INJECTED_STUBS: list[str] = []  # track which modules we injected for cleanup
-
-
-def _install_module_stubs():
-    """Install lightweight stub modules so parser.py imports without env setup."""
-    stubs: dict = {
-        "langchain_core": MagicMock(),
-        "langchain_core.messages": MagicMock(),
-        "langchain_core.output_parsers": MagicMock(),
-        "src.utils.llm": MagicMock(),
-        "src.models.ir": MagicMock(),
-        "src.agents.agent1.prompts": MagicMock(
-            SYSTEM_PROMPT="sys",
-            DECOMPOSITION_PROMPT="{query}",
-            NCT_SYSTEM_PROMPT="nct_sys",
-            NCT_DECOMPOSITION_PROMPT=(
-                "{title}{conditions}{interventions}{outcomes}{inclusion}{exclusion}"
-            ),
-        ),
-        "src.agents.agent1.nct_fetcher": MagicMock(),
-        "src.agents.agent1.pubmed_linker": MagicMock(),
-        "src.agents.agent1.pubmed_fetcher": MagicMock(),
-        "src.agents.agent1.enricher": MagicMock(),
-        "src.agents.agent1.pmc_fetcher": MagicMock(),
-        "src.agents.agent1.pmc_supplement": MagicMock(),
-    }
-    for name, stub in stubs.items():
-        if name not in sys.modules:
-            sys.modules[name] = stub
-            _INJECTED_STUBS.append(name)
-
-    ir_stub = sys.modules["src.models.ir"]
-    for cls_name in [
-        "ARTEMISRequest", "CohortDefinition", "PrimaryCriteria",
-        "Criteria", "CohortOutcome", "TemporalWindow", "ValueConstraint",
-    ]:
-        setattr(ir_stub, cls_name, MagicMock())
-
-    sys.modules["src.utils.llm"].get_llm = MagicMock(return_value=MagicMock())
-
-    nct = sys.modules["src.agents.agent1.nct_fetcher"]
-    nct.fetch_or_load_trial_data = MagicMock()
-    nct.load_trial_data_from_file = MagicMock()
-    nct.fetch_trial_data = MagicMock()
-    nct.TrialData = MagicMock()
-    nct.DEFAULT_CACHE_DIR = Path("/nonexistent_cache_dir_for_tests")
-
-    pl = sys.modules["src.agents.agent1.pubmed_linker"]
-    pl.extract_pmids_from_nct = MagicMock(return_value=[])
-    pl.get_design_paper_pmids = MagicMock(return_value=[])
-    pl.search_pubmed_for_nct = MagicMock(return_value=[])
-
-    pf = sys.modules["src.agents.agent1.pubmed_fetcher"]
-    pf.fetch_pubmed_abstract = MagicMock(return_value=None)
-    pf.extract_eligibility_from_text = MagicMock(return_value={"inclusion": [], "exclusion": []})
-
-    sys.modules["src.agents.agent1.enricher"].enrich_trial_data = MagicMock(
-        side_effect=lambda td, *a, **kw: td
-    )
-
-    pmc = sys.modules["src.agents.agent1.pmc_fetcher"]
-    pmc.get_pmc_eligibility = MagicMock(return_value=None)
-    pmc.pmid_to_pmcid = MagicMock(return_value=None)
-
-    sys.modules["src.agents.agent1.pmc_supplement"].download_pmc_supplements = MagicMock(
-        return_value=[]
-    )
-
-
-_install_module_stubs()
-
-# Safe to import now
-from src.agents.agent1.parser import LogicDecomposer  # noqa: E402
-from src.api.models.tte import PaperStatus  # noqa: E402
-
-
-def teardown_module():
-    """Remove injected stubs and cached parent packages so later tests re-import real modules."""
-    for name in _INJECTED_STUBS:
-        sys.modules.pop(name, None)
-    _INJECTED_STUBS.clear()
-    # Remove parser + parent packages that cached stub references
-    for mod_name in list(sys.modules):
-        if mod_name.startswith("src.agents.agent1."):
-            sys.modules.pop(mod_name, None)
-    sys.modules.pop("src.agents.agent1", None)
-    sys.modules.pop("src.models.ir", None)
-    sys.modules.pop("src.utils.llm", None)
+from src.agents.agent1.parser import LogicDecomposer
+from src.api.models.tte import PaperStatus
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +110,67 @@ def _suppress_cache_write():
 # ---------------------------------------------------------------------------
 # Fixture
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _stub_enrichment_paths(monkeypatch):
+    """Point every enrichment path at a stub, and let `monkeypatch` put it back.
+
+    `monkeypatch.setattr` records the previous value and restores it at the end
+    of each test, so nothing survives into another file. That is the whole
+    difference from the plain module-attribute assignments this replaces -- the
+    module comment at the top of this file records what those cost.
+
+    **Target choice.** `parser.py` binds most of these with
+    `from <module> import <name>` at import time, so it holds its OWN reference
+    and patching the source module would not reach the code under test. Those are
+    patched on the parser module itself, resolved through
+    `LogicDecomposer.__module__` so it is provably the same module object the
+    tests' `LogicDecomposer` came from rather than whatever a fresh import would
+    return. The four names parser imports INSIDE a function
+    (`DEFAULT_CACHE_DIR` at parser.py:1124, `get_pmc_eligibility` /
+    `pmid_to_pmcid` at :1152, `download_pmc_supplements` at :1153) are looked up
+    at call time, so those are patched on their source modules.
+
+    **Ordering.** `monkeypatch` needs none of the dependency ordering a manual
+    restore does. Each `setattr` is independent -- it saves one attribute on one
+    object and puts that one value back -- so there is no import graph to walk
+    and no "restore `nct_fetcher` before `enricher` or it re-binds the mock
+    `TrialData`" hazard. That hazard is real for a reload-based repair, which
+    re-executes a module body and therefore re-resolves its imports; `setattr`
+    never re-executes anything.
+    """
+    parser_mod = sys.modules[LogicDecomposer.__module__]
+
+    # Bound into parser's namespace at import time -> patch parser.
+    for name, stub in {
+        "fetch_or_load_trial_data": MagicMock(),
+        "load_trial_data_from_file": MagicMock(),
+        "fetch_trial_data": MagicMock(),
+        "TrialData": MagicMock(),
+        "extract_pmids_from_nct": MagicMock(return_value=[]),
+        "get_design_paper_pmids": MagicMock(return_value=[]),
+        "search_pubmed_for_nct": MagicMock(return_value=[]),
+        "fetch_pubmed_abstract": MagicMock(return_value=None),
+        "extract_eligibility_from_text": MagicMock(
+            return_value={"inclusion": [], "exclusion": []}
+        ),
+        "enrich_trial_data": MagicMock(side_effect=lambda td, *a, **kw: td),
+    }.items():
+        monkeypatch.setattr(parser_mod, name, stub)
+
+    # Imported inside a function -> resolved at call time, so patch the source.
+    for module_name, name, stub in [
+        ("src.agents.agent1.nct_fetcher", "DEFAULT_CACHE_DIR",
+         Path("/nonexistent_cache_dir_for_tests")),
+        ("src.agents.agent1.pmc_fetcher", "get_pmc_eligibility", MagicMock(return_value=None)),
+        ("src.agents.agent1.pmc_fetcher", "pmid_to_pmcid", MagicMock(return_value=None)),
+        ("src.agents.agent1.pmc_supplement", "download_pmc_supplements",
+         MagicMock(return_value=[])),
+    ]:
+        # No `raising=False`: every one of these attributes exists today, and a
+        # rename should fail here loudly rather than leave the path unstubbed.
+        monkeypatch.setattr(importlib.import_module(module_name), name, stub)
 
 
 @pytest.fixture()

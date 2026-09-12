@@ -153,52 +153,6 @@ def _opens_a_line(text: str, start: int) -> bool:
     return not prefix.strip() or bool(_HEADING_LINE_PREFIX.match(prefix))
 
 
-def _prefer_wording(
-    merged: List[str],
-    preferred: List[str],
-    similarity_threshold: float = 0.7,
-) -> List[str]:
-    """Restore a preferred block's wording in place, without moving anything.
-
-    Folding blocks in document order means the EARLIEST wording of a
-    near-duplicate wins, because :func:`_merge_parsed_items` keeps what is
-    already in the list. That is the wrong half of the trade: the heaviest block
-    is heaviest because it states the criteria at length, and its phrasing is
-    what the rest of the pipeline was tuned on. This substitutes that phrasing
-    back into the slot the earlier block claimed, leaving the POSITION -- which
-    is what document order exists to carry -- untouched.
-
-    The duplicate test is the pairwise half of :func:`_merge_parsed_items`
-    (numeric veto first, then ratio), so a slot is only overwritten by an item
-    that the merge itself would have dropped as already represented. Each slot
-    is rewritten at most once and each preferred item is spent at most once, so
-    two similar preferred items cannot collapse onto one slot.
-
-    :param merged: the document-ordered merge.
-    :param preferred: the block whose wording should win ties.
-    :returns: a list of the same length and order, with tied slots rephrased.
-    """
-    out = list(merged)
-    # A slot already holding one of the preferred block's own items is off
-    # limits. Without this, two similar items WITHIN the heaviest block (ratio
-    # >= threshold of each other) let the second overwrite the slot the first
-    # occupies, which deletes a criterion rather than rephrasing one.
-    own = set(preferred)
-    claimed = set()
-    for item in preferred:
-        for idx, existing in enumerate(out):
-            if idx in claimed or existing in own:
-                continue
-            if numerically_distinct(item, existing):
-                continue
-            ratio = SequenceMatcher(None, item.lower(), existing.lower()).ratio()
-            if ratio >= similarity_threshold:
-                out[idx] = item
-                claimed.add(idx)
-                break
-    return out
-
-
 def _best_section_match(text: str, patterns: List[str]) -> List[str]:
     """Union the criteria of every substantive section match, item by item.
 
@@ -220,16 +174,23 @@ def _best_section_match(text: str, patterns: List[str]) -> List[str]:
     cross-block pairs scoring >= 0.7 are the page-footer boilerplate, and real
     criteria overlap zero.
 
-    Blocks fold in document order, EARLIEST first, and the heaviest block's
-    wording is restored afterwards wherever a lighter block seeded the slot. The
-    seed used to be the heaviest block, which is a different thing: since
-    :func:`_merge_parsed_items` appends what it cannot match onto the end, seeding
-    with a block from the middle of the document put every earlier block's unique
-    items AFTER it. Measured on the production rendering, that is 3 of CAROLINA's
-    46 items and 6 of DECLARE's 21 sitting before items that precede them in the
-    document -- and since a2fb858 stopped alphabetising the list before the model
-    reads it, position is the only thing still carrying "this header owns the
-    items that follow it".
+    Blocks fold in document order, EARLIEST first. The seed used to be the
+    HEAVIEST block, which is a different thing: since :func:`_merge_parsed_items`
+    appends what it cannot match onto the end, seeding with a block from the
+    middle of the document put every earlier block's unique items AFTER it.
+    Measured on the production rendering, that is 3 of CAROLINA's 46 items, 6 of
+    DECLARE's appendix exclusion list and 7 of its main paper's inclusion list
+    sitting before items that precede them in the document -- and since a2fb858
+    stopped alphabetising the list before the model reads it, position is the
+    only thing still carrying "this header owns the items that follow it".
+
+    Nothing re-prefers the heaviest block's wording afterwards, and that is
+    measured rather than assumed: across all four multi-block sections the repair
+    is a pure reordering -- the item SET is identical before and after, the length
+    is unchanged, and every one of the heaviest block's items survives verbatim.
+    A wording-preference pass was written, measured to fire zero times on the
+    corpus, and removed. If a case ever appears, that same before/after set
+    comparison is what surfaces it.
 
     Deduplication is :func:`_merge_parsed_items` -- the same
     structural_verdict-then-similarity decision every other merge site uses, so
@@ -258,7 +219,6 @@ def _best_section_match(text: str, patterns: List[str]) -> List[str]:
     merged = list(ordered[0][2])
     for block in ordered[1:]:
         merged = _merge_parsed_items(merged, block[2])
-    merged = _prefer_wording(merged, heaviest[2])
 
     if len(blocks) > 1:
         logger.info(

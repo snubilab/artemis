@@ -10,68 +10,21 @@ emitted as its own line ABOVE the text it belongs to, truncating the unit.
 Defect B -- `_best_section_match` seeded the union with the HEAVIEST block, so
 every earlier block's unique items landed after it, out of document order.
 """
-import importlib
 import re
 import shutil
 import subprocess
-import sys
-import types
-from unittest.mock import MagicMock
 
 import pytest
 
-# `tests/test_parser_paper_status.py` mutates the REAL modules, not just stubs:
-# `_install_module_stubs()` (lines 75-78, 70-72, 83-89) does
-# `sys.modules["src.agents.agent1.pubmed_fetcher"].extract_eligibility_from_text
-#  = MagicMock(return_value={"inclusion": [], "exclusion": []})`
-# and the same for `pubmed_linker`, `enricher`, `pmc_fetcher`, `pmc_supplement`.
-# When an earlier test file has already imported those modules, the assignment
-# lands on the real module object, and `teardown_module` -- which only pops
-# `sys.modules` entries -- cannot undo it. The mocks then persist for the rest
-# of the session.
-#
-# That is a pre-existing defect in that file, not something this file
-# introduced: on an unmodified checkout it already fails 12 tests across
-# `test_07_pubmed_linker.py`, `test_08_pubmed_fetcher.py` and
-# `test_parser_paper_status.py` itself. Reloading restores the real attributes so
-# this file's result does not depend on which other file ran first; the order
-# matters because `parser` must rebind AFTER its dependencies are real.
-# Dependency order matters: `enricher` binds `TrialData` from `nct_fetcher` at
-# import, so restoring `enricher` first re-binds the MOCK class and
-# `enrich_trial_data` then returns a MagicMock whose `.exclusion_criteria` reads
-# as empty -- the same silent empty-list failure, one level deeper. `parser` is
-# last because it depends on all of them.
-for _polluted in [
-    "src.agents.agent1.nct_fetcher",
-    "src.agents.agent1.pubmed_fetcher",
-    "src.agents.agent1.pubmed_linker",
-    "src.agents.agent1.enricher",
-    "src.agents.agent1.pmc_fetcher",
-    "src.agents.agent1.pmc_supplement",
-    "src.agents.agent1.parser",
-]:
-    _mod = sys.modules.get(_polluted)
-    if _mod is None:
-        continue
-    if not isinstance(_mod, types.ModuleType):
-        # The whole module was replaced by a MagicMock; drop it so the next
-        # import loads the real file.
-        del sys.modules[_polluted]
-    elif any(isinstance(v, MagicMock) for v in vars(_mod).values()):
-        importlib.reload(_mod)
-
-from src.agents.agent1 import pubmed_fetcher as _pf  # noqa: E402
-from src.agents.agent1.eligibility_section import (  # noqa: E402
-    extract_eligibility_section,
-)
-from src.agents.agent1.nct_fetcher import TrialData  # noqa: E402
-from src.agents.agent1.parser import LogicDecomposer  # noqa: E402
-from src.agents.agent1.pubmed_fetcher import (  # noqa: E402
-    _prefer_wording,
+from src.agents.agent1 import pubmed_fetcher as _pf
+from src.agents.agent1.eligibility_section import extract_eligibility_section
+from src.agents.agent1.nct_fetcher import TrialData
+from src.agents.agent1.parser import LogicDecomposer
+from src.agents.agent1.pubmed_fetcher import (
     extract_eligibility_from_text,
     rejoin_stranded_superscripts,
 )
-from src.services.value_constraint import _resolve_unit  # noqa: E402
+from src.services.value_constraint import _resolve_unit
 
 pytestmark = pytest.mark.skipif(
     shutil.which("pdftotext") is None, reason="pdftotext (poppler-utils) not installed"
@@ -82,13 +35,9 @@ pytestmark = pytest.mark.skipif(
 def _no_llm(monkeypatch):
     """The LLM fallback gate opens on some of these blocks; a paid, nondeterministic
     call is the opposite of a regression contract."""
-    # Patched on the MODULE OBJECT, not by dotted string. A string target is
-    # re-resolved through `sys.modules`, and `tests/test_parser_paper_status.py`
-    # pops every `src.agents.agent1.*` entry in its `teardown_module`, so in a
-    # whole-suite run the string form raises
-    # `AttributeError: module 'src.agents.agent1' has no attribute 'pubmed_fetcher'`
-    # and the stub silently targets a different module object than the one this
-    # file imported.
+    # Patched on the MODULE OBJECT this file imported, not by dotted string. A
+    # string target is re-resolved through `sys.modules` at patch time, so it can
+    # land on a different module object than the one the test actually calls.
     monkeypatch.setattr(_pf, "_llm_parse_criteria", lambda *a, **k: [])
     monkeypatch.setattr(
         _pf, "_get_criteria_llm",
@@ -273,30 +222,3 @@ def test_should_keep_the_first_block_first_when_the_heaviest_is_in_the_middle():
     heaviest_block = _index_of(items, "High risk of CV events")
 
     assert first_block < heaviest_block
-
-
-def test_should_keep_the_heaviest_blocks_wording_when_a_lighter_block_seeds_the_slot():
-    """Folding in document order means the EARLIEST wording wins, which is the
-    wrong half of the trade -- the heaviest block states the criteria at length
-    and its phrasing is what the rest of the pipeline was tuned on."""
-    lighter = ["Type 2 diabetes mellitus diagnosed before enrolment"]
-    heaviest = ["Type 2 diabetes mellitus diagnosed prior to enrolment"]
-
-    assert _prefer_wording(lighter, heaviest) == heaviest
-
-
-def test_should_decline_to_rephrase_when_the_two_items_state_different_numbers():
-    merged = [
-        "Age 40 to 85 years at the time of consent",
-        "Age 18 to 85 years at the time of consent",
-    ]
-    assert _prefer_wording(merged, [merged[1]]) == merged
-
-
-def test_should_not_overwrite_a_slot_already_held_by_the_preferred_blocks_own_item():
-    """Two items WITHIN the heaviest block can be similar enough to each other to
-    pass the duplicate threshold. Without the guard the second overwrites the
-    first's slot, which deletes a criterion instead of rephrasing one."""
-    own = ["Documented coronary artery disease", "Documented cerebral artery disease"]
-    assert _prefer_wording(list(own), own) == own
-
