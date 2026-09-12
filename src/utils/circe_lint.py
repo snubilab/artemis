@@ -1218,6 +1218,221 @@ def _analyte_summary(concept_set: Mapping[str, Any]) -> str:
     return f"{shown} (+{remainder} more)" if remainder > 0 else shown
 
 
+#: OMOP concept ids whose quantity is dimensionless BY NATURE -- a quotient of two
+#: quantities of the same dimension, or an index computed from one -- so a bare number
+#: means one thing at every site and a unit filter on it would be WRONG rather than
+#: merely absent. In the same recorded shape :data:`~src.services.value_constraint.
+#: _UNIT_CONCEPTS` uses: ``concept_id -> (concept_name, why it carries no unit)``.
+#:
+#: Keyed on concept id, not on concept-set name. A concept-set name here is free text
+#: the model wrote, and this one corpus supplies three spellings of one analyte
+#: (``'Glycated hemoglobin'``, ``'Hemoglobin A1c'``, ``'Glycosylated haemoglobin'``)
+#: and three of another (``'eGFR'``, ``'Estimated glomerular filtration rate'``,
+#: ``'Glomerular Filtration Rate'``). A name-keyed allowlist needs every spelling, and
+#: a new one defeats it. Concept ids are vocabulary-stable and are what Circe joins on.
+#:
+#: What that choice costs, stated rather than discovered later: a genuinely
+#: dimensionless analyte NOT listed here fails the gate until someone adds it with a
+#: reason. That is the correct direction to fail -- loudly, with a one-line fix -- but
+#: it is a real false-failure cost, and it is paid by whoever adds the next trial.
+#:
+#: Derived from the corpus, not from a list of what seemed complete. Every Measurement
+#: concept set carrying a value filter across the 12 delivered files and the 18 TROY
+#: v1.1 files under ``data/gold/`` was enumerated; five had members whose LOINC names
+#: read as a ratio or an index with no dimensioned LOINC property. Three of those five
+#: were then REJECTED, which is why the scan produced the candidates and not the table:
+#:
+#: * ``3038553`` BMI ``[Ratio]`` -- LOINC calls it a ratio, but BMI is kg/m2, and the
+#:   same set holds ``40762636`` BMI ``[Percentile]``. A bare ``>= 45`` spans a body
+#:   mass and a percentile. This delivery's own CAROLINA arm attaches ``kg/m2`` to it.
+#: * ``3020682`` Albumin/Creatinine ``[Ratio]`` -- reported as mg/g or mg/mmol, about
+#:   8.8x apart, and gold's set mixes ``[Ratio]`` with ``[Mass Ratio]``.
+#: * ``3004410`` HbA1c/Hemoglobin.total -- reported as % (DCCT) or mmol/mol (IFCC).
+#:   It reads as dimensionless only in gold's smaller set; the delivery's set holds
+#:   ``3034639 ... [Mass/volume]`` beside it.
+#:
+#: Gold is NOT the source of this table, and disagrees with it. Across all 18 TROY
+#: v1.1 files exactly ONE Measurement value filter carries a ``Unit`` (CAROLINA's LDL,
+#: 8840 mg/dL); the other 37 carry none, LEADER's own ``'[TROY lab] Glycosylated
+#: hemoglobin'`` ``< 7`` and ``'[TROY lab] calcitonin'`` ``>= 50`` among them. Reading
+#: "gold omits a unit here" as "the quantity has none" would allowlist nearly every
+#: analyte in the corpus and delete the check. Gold carries the same defect; per
+#: ``docs/agent-briefing-facts.md`` it is a reference and not an oracle.
+DIMENSIONLESS_MEASUREMENT_CONCEPTS: dict[int, tuple[str, str]] = {
+    3016205: (
+        "Systolic blood pressure Posterior tibial artery/Brachial artery",
+        "LOINC states the ankle-brachial index as the quotient of its two measurands; "
+        "both sides are a systolic pressure in mmHg, so the unit cancels",
+    ),
+    46237026: (
+        "Ankle-brachial index",
+        "ankle systolic pressure divided by brachial systolic pressure, both mmHg, so "
+        "the quotient is a bare ratio and '< 0.9' means the same thing at every site",
+    ),
+    46237027: (
+        "Cardio-ankle vascular index Calculated",
+        "CAVI is a stiffness index computed from a pressure ratio and a logarithm, so "
+        "it is dimensionless by construction and no UCUM unit applies to it",
+    ),
+}
+
+
+def _concept_set_is_dimensionless(concept_set: Mapping[str, Any]) -> bool:
+    """True when every concept the set SELECTS is in the dimensionless allowlist.
+
+    ALL members, not any. A set mixing a bare ratio with a dimensioned analyte has no
+    single scale, so its bound is ambiguous again -- and a mapper widening a ratio set
+    with a lab test is exactly how that happens.
+
+    An empty set is NOT dimensionless. ``all()`` over an empty sequence is True, which
+    would silently exempt every criterion whose concept set lost its members; that is a
+    different defect and exempting on it would hide this one.
+
+    ``isExcluded`` items are skipped: an exclusion removes concepts rather than adding
+    them, so it cannot make the remainder dimensioned. No value-bearing Measurement set
+    in either corpus uses one -- 0 of 99 -- so this branch is untested by the corpus and
+    is the conservative reading rather than a measured one.
+
+    The known limit, stated rather than papered over: every member here carries
+    ``includeDescendants``, and this reads the SEED concepts written into the file, not
+    the resolved descendant closure. A dimensioned descendant of a dimensionless seed
+    would be exempted. Resolving the closure needs the vocabulary database, and this
+    module's contract is pure functions over a CIRCE expression dict.
+    """
+    items = (concept_set.get("expression") or {}).get("items") or []
+    included = [
+        item
+        for item in items
+        if isinstance(item, dict) and not item.get("isExcluded")
+    ]
+    if not included:
+        return False
+    return all(
+        (item.get("concept") or {}).get("CONCEPT_ID") in DIMENSIONLESS_MEASUREMENT_CONCEPTS
+        for item in included
+    )
+
+
+def _render_numeric_bound(value: Mapping[str, Any]) -> str:
+    """``"gte 7.0"`` / ``"bt 6.5..10.0"`` -- the bound as a reader would say it."""
+    operator = value.get("Op")
+    low = value.get("Value")
+    extent = value.get("Extent")
+    if extent is not None and operator in {"bt", "!bt"}:
+        return f"{operator} {low}..{extent}"
+    return f"{operator} {low}"
+
+
+def unitless_measurement_bound_criteria(expression: dict[str, Any]) -> list[str]:
+    """Locators for criteria bounding a lab numerically while naming no unit.
+
+    The asymmetry this closes. ``src.services.value_constraint`` REFUSES a criterion
+    whose unit string resolves to no UCUM concept
+    (:data:`~src.utils.criterion_refusal.REFUSAL_UNSTATED_UNIT_BOUND`), and its own
+    recorded reason says why: the bound "would be emitted as a bare number and compared
+    against whatever scale the CDM stores". A criterion that stated no unit AT ALL
+    produces that identical bare number and was not refused, so the safe case -- a unit
+    was written, could not be read, and the criterion was dropped rather than shipped
+    wrong -- was punished while the dangerous case shipped.
+
+    In the same locator format :func:`unfiltered_measurement_absence_criteria` uses::
+
+        "<where>: Measurement over codeset <id> <name!r> bounds ValueAsNumber <op>
+         <value> with no Unit, so Circe compares the bare number against whatever
+         scale the CDM stores for <analytes>"
+
+    Measured on ``output/site_gap/2026-09-14/DELIVERY``: of 92 ``Measurement`` leaves,
+    40 carry both ``ValueAsNumber`` and ``Unit``, 32 carry ``RangeHighRatio``, 10 carry
+    no value condition, and 10 carry ``ValueAsNumber`` with no ``Unit``. Those 10 are
+    five concept sets on both LEADER arms: ``'Ankle-brachial index'`` (allowlisted,
+    below), ``'eGFR'``, ``'Glycated hemoglobin'``, ``'Hemoglobin A1c'`` and
+    ``'Calcitonin'``.
+
+    HbA1c is the concrete harm and shows the failure is INVERTED rather than empty:
+    7.0% is 53 mmol/mol, so ``>= 7.0`` against a site storing IFCC units passes
+    essentially every patient. The ambiguity is internal to the delivered file --
+    codesets 17 and 18 each hold ``4197971 HbA1c measurement (DCCT aligned)`` (%) and
+    ``44793001 Hb A1c ... IFCC`` (mmol/mol), so the set names both unit systems and the
+    criterion picks neither. ``'Calcitonin'`` holds both ``[Mass/volume]`` and
+    ``[Moles/volume]`` LOINC concepts for the same reason. The strongest corroboration
+    is the batch's own consistency: the SAME pipeline attaches ``%`` to HbA1c on
+    CARMELINA, CAROLINA and EMPA-REG, and ``mL/min/1.73m2`` to eGFR on CAROLINA and
+    EMPA-REG. LEADER's are missing, not dimensionless.
+
+    Three exact conditions, all structural -- no vocabulary, no database, no English:
+
+    * the criteria type is :data:`_BOUND_BEARING_CRITERIA_TYPE`. ``Observation`` also
+      reads ``ValueAsNumber`` and ``Unit`` per :data:`CRITERIA_TYPE_VALUE_ATTRIBUTES`,
+      and the SAME defect exists there -- this check does not cover it, which is a
+      scope boundary and not a measurement. Counted over the batch: 6 ``Observation``
+      criteria carry ``ValueAsNumber`` and 4 of them carry no ``Unit`` -- CARMELINA
+      codeset 32 ``'Life expectancy'`` ``lt 5.0`` and CAROLINA codeset 22
+      ``'Systolic blood pressure'`` ``gt 140.0``, both arms each. The same asymmetry
+      shows there too: CAROLINA's own codeset 44 ``'life expectancy less than 5
+      years'`` carries ``Unit`` year, and ARISTOTLE's SBP carries ``mm[Hg]``. Widening
+      this check to ``Observation`` would add a failure reason to four more files and
+      is deliberately left as a separate decision rather than taken here.
+      ``tests/test_unitless_measurement_bound_lint.py`` asserts that count on the real
+      batch, so the boundary is recorded mechanically and a later widening starts from
+      a measured number rather than a re-survey.
+    * ``ValueAsNumber`` is present. A criterion with no value condition at all is
+      :func:`unfiltered_measurement_absence_criteria`'s, with a different repair.
+    * ``Unit`` is absent OR EMPTY. Truthiness rather than key presence, because
+      ``Unit: []`` renders no unit predicate and ships the same bare number; keying on
+      presence would make an empty list a silent exemption.
+
+    ``RangeHighRatio`` leaves are never flagged, and structurally rather than by an
+    exemption: a ratio bound is a multiple of the lab's own ``range_high`` so the units
+    cancel, and all 32 such leaves in the batch carry no ``ValueAsNumber``, so the
+    second condition already excludes them. No explicit skip is added, because a leaf
+    carrying BOTH would still need a unit for its absolute half, and an exemption keyed
+    on ``RangeHighRatio`` would wrongly pass it. ``tests/test_unitless_measurement_
+    bound_lint.py`` asserts the disjointness on the real batch rather than assuming it.
+
+    Ankle-brachial index is exempted by concept id via
+    :data:`DIMENSIONLESS_MEASUREMENT_CONCEPTS` -- it is a quotient of two mmHg
+    pressures, so a unit filter on it would be wrong rather than missing. See that
+    table for how the allowlist was derived from the corpus, the three ratio-looking
+    candidates that were rejected, and why gold is not its source.
+
+    Silent, like the checks beside it, on what the file cannot settle: a criteria type
+    other than ``Measurement``. A ``CodesetId`` with no matching ``ConceptSets`` entry
+    is still REPORTED -- an unknown set cannot be shown to be dimensionless, and the
+    missing concept set is a different defect that would hide this one.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per offending criterion, empty when none.
+    """
+    findings: list[str] = []
+    for where, entry in _criterion_locations(expression):
+        body = entry.get("Criteria")
+        body = body if isinstance(body, dict) else entry
+        for criteria_type, payload in body.items():
+            if criteria_type != _BOUND_BEARING_CRITERIA_TYPE or not isinstance(payload, dict):
+                continue
+            if "CodesetId" not in payload:
+                continue
+            value = payload.get("ValueAsNumber")
+            if not isinstance(value, Mapping):
+                continue
+            if payload.get("Unit"):
+                continue
+            codeset_id = payload["CodesetId"]
+            concept_set = _find_concept_set(expression, codeset_id)
+            if concept_set is not None and _concept_set_is_dimensionless(concept_set):
+                continue
+            concept_set = concept_set or {}
+            findings.append(
+                f"{where}: {criteria_type} over codeset {codeset_id} "
+                f"{concept_set.get('name') or ''!r} bounds ValueAsNumber "
+                f"{_render_numeric_bound(value)} with no Unit, so Circe compares the "
+                f"bare number against whatever scale the CDM stores for "
+                f"{_analyte_summary(concept_set)} -- a site recording another unit for "
+                f"the same analyte matches the wrong patients rather than none"
+            )
+    return findings
+
+
 def _entry_is_unreadable(entry: dict[str, Any]) -> bool:
     body = entry.get("Criteria")
     body = body if isinstance(body, dict) else entry

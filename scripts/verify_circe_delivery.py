@@ -155,6 +155,32 @@ Checks per file:
     disjunction over sets that merely differ is invisible to every other check here.
     See ``src.utils.circe_lint.conjoined_disjunction_rules``.
 
+(q) no ``Measurement`` criterion bounds a lab numerically while naming no unit. The
+    pipeline already REFUSES a criterion whose unit string resolves to no UCUM concept
+    (``unstated-unit-bound``), and that refusal's own recorded reason says why: the
+    bound "would be emitted as a bare number and compared against whatever scale the
+    CDM stores". A criterion that stated no unit at all produces the identical bare
+    number and was not refused — so the safe case was punished and the dangerous one
+    shipped. Measured over the 92 ``Measurement`` leaves in this batch: 40 carry
+    ``ValueAsNumber`` + ``Unit``, 32 carry ``RangeHighRatio``, 10 carry no value
+    condition, and 10 carry ``ValueAsNumber`` with no ``Unit``. Those 10 are five
+    concept sets on both LEADER arms — codesets 9 ``'eGFR'``, 17
+    ``'Glycated hemoglobin'``, 18 ``'Hemoglobin A1c'``, 33 ``'Calcitonin'``, and 6
+    ``'Ankle-brachial index'``, which is allowlisted. HbA1c is the harm and it is
+    INVERTED rather than empty: 7.0% is 53 mmol/mol, so a bare ``>= 7.0`` against a
+    site storing IFCC units passes essentially every patient. The ambiguity is internal
+    to the file — codesets 17 and 18 each hold both ``4197971 HbA1c measurement (DCCT
+    aligned)`` (%) and ``44793001 Hb A1c ... IFCC`` (mmol/mol) — and this same batch
+    attaches ``%`` to HbA1c on CARMELINA, CAROLINA and EMPA-REG and
+    ``mL/min/1.73m2`` to eGFR on CAROLINA and EMPA-REG, so LEADER's are missing rather
+    than dimensionless. ``RangeHighRatio`` leaves are not flagged: a ratio bound is a
+    multiple of the lab's own ``range_high``, so its units cancel, and all 32 carry no
+    ``ValueAsNumber``. Ankle-brachial index is exempt by concept id — it is a quotient
+    of two mmHg pressures, so a unit filter on it would be wrong rather than missing.
+    See ``src.utils.circe_lint.unitless_measurement_bound_criteria`` and the allowlist
+    ``DIMENSIONLESS_MEASUREMENT_CONCEPTS`` beside it, whose comment records how it was
+    derived from the corpus and which three ratio-looking candidates were rejected.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -225,6 +251,7 @@ from src.utils.circe_lint import (  # noqa: E402
     rule_names,
     unfiltered_measurement_absence_criteria,
     ungrounded_criteria,
+    unitless_measurement_bound_criteria,
     unreadable_value_attributes,
 )
 from src.utils.criterion_refusal import (  # noqa: E402
@@ -2092,6 +2119,21 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"unfiltered measurement absence ({len(unfiltered_absences)}): "
                 f"{'; '.join(unfiltered_absences)}"
+            )
+
+        # (q) a numeric bound on a lab with no unit. The mirror of the pipeline's own
+        # `unstated-unit-bound` refusal, which drops a criterion whose unit could not
+        # be resolved for precisely this reason -- so a criterion that named no unit at
+        # all was shipping the bare number the refusal exists to prevent. Check (j)
+        # reads a NAME that promised a bound and finds the bound gone; here the bound
+        # is present and it is the SCALE that is missing, which no name in the corpus
+        # asserts. LEADER's HbA1c is the case: 7.0% is 53 mmol/mol, so `>= 7.0` against
+        # an IFCC site passes nearly everyone rather than no one.
+        unitless_bounds = unitless_measurement_bound_criteria(expression)
+        if unitless_bounds:
+            reasons.append(
+                f"unitless measurement bound ({len(unitless_bounds)}): "
+                f"{'; '.join(unitless_bounds)}"
             )
 
         # (m) two concept sets holding identical members under different names. Every
