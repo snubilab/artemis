@@ -35,7 +35,11 @@ FIELDS = ("domain", "valueConstraint", "conceptSetName", "logicType",
 #: Deliberately NOT compared: re-assigned on every ingest, or the match key itself.
 #: Listed rather than merely omitted so the guard below can tell "ignored on
 #: purpose" apart from "nobody has looked at this field".
-IDENTITY_ONLY = ("id", "conceptSetId", "groupId", "description")
+#: ``parentGroupId`` sits here with ``groupId`` for the same reason: it holds a uuid
+#: minted fresh on every ingest, so comparing it would report movement on every run.
+#: What it means -- whether a group is nested -- is observable through the compared
+#: ``groupType`` and ``isGroupLabel`` of the rows around it.
+IDENTITY_ONLY = ("id", "conceptSetId", "groupId", "parentGroupId", "description")
 
 
 def load(path):

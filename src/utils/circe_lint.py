@@ -1814,13 +1814,66 @@ _DISJUNCTIVE_CONNECTIVE = re.compile(r"\bor\b|\beither\b", re.IGNORECASE)
 #: is not hypothetical: the first draft of this pattern did exactly that and the check
 #: reported nothing on the whole corpus.
 _LIST_CARDINALITY = re.compile(
-    r"at\s+least\s+(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+of\b"
-    r"|[\u2265>]=?\s*\d+\s+of\b"
+    r"at\s+least\s+(?P<atleast>one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+of\b"
+    r"|(?P<word>one|two|three|four|five|six|seven|eight|nine|ten)\s+or\s+more\s+of\b"
+    r"|[\u2265>]=?\s*(?P<digits>\d+)\s+of\b"
     r"|\b(any\s+)?one\s+(\(or\s+more\)\s+)?of\s+the\s+following\b"
     r"|\bone\s+or\s+more\s+of\b"
     r"|\bany\s+one\s+of\b",
     re.IGNORECASE,
 )
+
+#: Spelled-out counts the branches above accept. Ten is the ceiling because no gold or
+#: delivered line states more, and a list of eleven alternatives is not a shape any
+#: protocol in this corpus writes.
+_CARDINALITY_WORDS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+
+
+def list_cardinality(protocol_line: str | None) -> int | None:
+    """How many members of a list the line requires, or None when it states no list.
+
+    The reading behind CIRCE's ``Type: "AT_LEAST"`` / ``Count: N`` group, and the same
+    reading :func:`states_flat_disjunction` uses to decline a line -- one pattern, one
+    home. A line saying "two or more of the following risk factors" returns 2; a line
+    saying "documented hypertension or documented diabetes" returns None, because it
+    states a disjunction and no count at all.
+
+    **None is never a licence to default.** A group whose line returns None keeps the
+    type it already had. Inventing ``Count: 1`` for an unnumbered line would fabricate a
+    cardinality the protocol never stated, which is the same class of defect as dropping
+    a criterion: both make the emitted cohort disagree with the document, and neither is
+    visible in the JSON afterwards.
+
+    The ``of`` is load-bearing in every branch, for the reason
+    :data:`_LIST_CARDINALITY` records: "treated with one or more oral anti-diabetic
+    drugs" counts DRUGS rather than group members, and that phrase sits in the middle of
+    LEADER's own line.
+
+    :param protocol_line: the protocol's own line, or None.
+    :returns: the stated count (>= 1), or None when the line states no list cardinality.
+    """
+    text = (protocol_line or "").strip()
+    if not text:
+        return None
+    match = _LIST_CARDINALITY.search(text)
+    if match is None:
+        return None
+    token = match.group("atleast") or match.group("word") or match.group("digits")
+    if token is None:
+        # "one of the following" / "one or more of" / "any one of" -- the branches that
+        # spell the count into the phrase itself rather than into a capture.
+        return 1
+    token = token.lower()
+    if token in _CARDINALITY_WORDS:
+        return _CARDINALITY_WORDS[token]
+    try:
+        value = int(token)
+    except ValueError:  # pragma: no cover -- the pattern admits only digits here
+        return None
+    return value if value >= 1 else None
 
 
 def states_flat_disjunction(protocol_line: str | None) -> bool:

@@ -42,6 +42,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.api.models.tte import (
+    CRITERION_PARENT_GROUP_KEY,
     CRITERION_PROTOCOL_LINE_KEY,
     CRITERION_PROTOCOL_SPAN_KEY,
     Criterion,
@@ -240,6 +241,12 @@ class TestAdditive:
             # side of the subtraction. Its own additive guard lives in
             # tests/test_planner_source_span_grounding.py.
             CRITERION_PROTOCOL_SPAN_KEY,
+            # Landed after this test for the same reason and on the same terms: the
+            # `groupId` of the group this row's group sits inside, None for a flat
+            # group. Its own additive guard lives in
+            # tests/test_nested_criterion_groups_reach_circe.py
+            # (`test_should_leave_a_flat_group_untouched`).
+            CRITERION_PARENT_GROUP_KEY,
         } == {CRITERION_PROTOCOL_LINE_KEY}
 
     def test_mappable_is_unaffected(self):

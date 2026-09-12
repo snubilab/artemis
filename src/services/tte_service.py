@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 import logging
 import os
@@ -25,6 +26,7 @@ from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field, field_validator
 
 from src.api.models.tte import (
+    CRITERION_PARENT_GROUP_KEY,
     CRITERION_PROTOCOL_LINE_KEY,
     CRITERION_PROTOCOL_SPAN_KEY,
     DEMOGRAPHIC_DOMAINS,
@@ -108,6 +110,7 @@ from src.utils.circe_lint import (
     entry_concept_ids,
     entry_concept_set,
     group_protocol_line,
+    list_cardinality,
     partially_readable_criteria,
     refuse_domain_contradiction,
     refuse_unreadable_value_filter,
@@ -335,21 +338,119 @@ def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]
         members carry no single protocol line states nothing -- an unestablished
         group keeps the behavior it already had.
     """
+    return _effective_group_expression_type(group_type, member_criteria)[0]
+
+
+def _effective_group_expression_type(
+    group_type: str, member_criteria: list[dict[str, Any]]
+) -> tuple[str, int | None]:
+    """`(Type, Count)` for a criterion group's CIRCE expression.
+
+    The third correction, after the two :func:`_effective_group_type` documents:
+    **ALL -> AT_LEAST/N**, where the protocol line states a cardinality over a list
+    ("two or more of the following risk factors", ">=2 of the following"). CIRCE has
+    carried `Type: "AT_LEAST"` with a `Count` all along and Atlas's own `CriteriaGroup`
+    reads both, but nothing under `src/` had ever emitted one -- `rg -c AT_LEAST src/`
+    exited 1 -- so the number in the line had nowhere to go and the group was emitted
+    as a conjunction over every alternative. `states_flat_disjunction` declines such a
+    line on purpose and says why: "CIRCE can express it, as a nested Group carrying a
+    Count, and until something builds that nesting the honest answer is to decline the
+    line rather than half-fix it."
+
+    **It corrects a declared `ANY` as well as a declared `ALL`, and on this corpus that
+    is the whole of it.** Every one of the 22 cardinality groups the six trials' cached
+    IR carries with N >= 2 is declared `ANY` -- CAROLINA's "At least two of the
+    following CV risk factors", PLATO's ">=2 of the following" -- and `ANY` means *at
+    least one*. That is strictly looser than the protocol: a patient meeting a single
+    risk factor is admitted by a rule demanding two. Restricted to the `ALL` side this
+    correction would fire zero times here, which is how it was measured before being
+    widened. The all-ABSENCE branch still returns first, so no group De Morgan owns is
+    reached by this.
+
+    Gold agrees on the shape as well as the direction: `AT_LEAST` is the second most
+    common group type across the TROY files (ALL 153, AT_LEAST 27, ANY 18), and gold's
+    CAROLINA `InclusionRules[1].Groups[3]` is AT_LEAST/2 under that same risk-factor
+    line.
+
+    Three guards, each of which fires on this corpus rather than defending a
+    hypothetical:
+
+    * **N is read from the line, never defaulted.** `circe_lint.list_cardinality` owns
+      the reading, and it is the same pattern `states_flat_disjunction` declines on, so
+      the two cannot drift apart. A line stating no number returns None and the group
+      keeps the type it had.
+    * **N >= 2 only.** `AT_LEAST` with `Count: 1` is `ANY` spelled differently, and
+      rewriting a group that is already correct costs a diff on every delivered study
+      and buys nothing. 61 of the 83 cardinality groups in the six trials' cached IR
+      state 1 and are left exactly as they are.
+    * **N must not exceed the members that survived mapping.** `member_criteria` holds
+      what actually became `Groups[]` entries, so a group that lost members to mapping
+      failures can be asked for more than it has -- and `AT_LEAST 3` over two members
+      is unsatisfiable, which empties a cohort exactly as quietly as a dropped
+      criterion does. The group keeps its declared type instead, which is the
+      strictest satisfiable reading and the behaviour it already had.
+
+    Args:
+        group_type: The group type agent1 declared, "ALL" or "ANY".
+        member_criteria: The criteria that actually contribute to the group expression.
+
+    Returns:
+        `(type, count)`. `count` is None for every type except "AT_LEAST".
+    """
     if not member_criteria:
-        return group_type
+        return group_type, None
     declared = (group_type or "").strip().upper()
     all_absence = all(
         (crit.get("logicType") or "").strip().upper() == "ABSENCE"
         for crit in member_criteria
     )
+    line = group_protocol_line(member_criteria, CRITERION_PROTOCOL_LINE_KEY)
+    count = list_cardinality(line)
+    cardinality_applies = (
+        not all_absence
+        and len(member_criteria) >= 2
+        and count is not None
+        and 2 <= count <= len(member_criteria)
+    )
     if declared == "ANY":
-        return "ALL" if all_absence else group_type
+        if all_absence:
+            return "ALL", None
+        if cardinality_applies:
+            return "AT_LEAST", count
+        return group_type, None
     if declared == "ALL" and not all_absence and len(member_criteria) >= 2:
-        if states_flat_disjunction(
-            group_protocol_line(member_criteria, CRITERION_PROTOCOL_LINE_KEY)
-        ):
-            return "ANY"
-    return group_type
+        if cardinality_applies:
+            return "AT_LEAST", count
+        if states_flat_disjunction(line):
+            return "ANY", None
+    return group_type, None
+
+
+def _group_ancestry_is_cyclic(
+    group_id: str, parent_group_of: dict[str, str | None]
+) -> bool:
+    """Whether following ``parentGroupId`` from this group returns to a group twice.
+
+    ``_criteria_from_ir`` mints a fresh uuid per group and can only point a child at an
+    enclosing group, so a cycle is unreachable from this codebase. It is checked anyway
+    because the store is an edited document -- a person can retype a ``parentGroupId``
+    in Atlas, and the fold below mutates parent expressions in place, so a two-group
+    cycle would drop BOTH groups out of ``InclusionRules`` and silently widen the
+    cohort. A group whose ancestry does not terminate is left at the top level, which
+    is the wrong geometry but keeps every criterion.
+
+    :param group_id: the group to walk up from.
+    :param parent_group_of: ``groupId`` -> enclosing ``groupId`` or None.
+    :returns: True when the walk revisits a group.
+    """
+    seen = {group_id}
+    current = parent_group_of.get(group_id)
+    while current:
+        if current in seen:
+            return True
+        seen.add(current)
+        current = parent_group_of.get(current)
+    return False
 
 
 def _stranded_group_constraint_labels(
@@ -5131,15 +5232,20 @@ class TTEService:
         member_criteria = [crit for crit, _result in non_demo_members]
         member_criteria += [crit for crit, _demo_rule, _role in demo_members]
 
-        return {
-            "name": rule_name,
-            "expression": {
-                "Type": _effective_group_type(group_type, member_criteria),
-                "CriteriaList": [],
-                "DemographicCriteriaList": [],
-                "Groups": groups,
-            },
+        effective_type, count = _effective_group_expression_type(group_type, member_criteria)
+        expression: dict[str, Any] = {
+            "Type": effective_type,
+            "CriteriaList": [],
+            "DemographicCriteriaList": [],
+            "Groups": groups,
         }
+        # Written only for the AT_ types, which is the shape Atlas itself round-trips:
+        # `CriteriaGroup.toJSON` deletes `Count` unless `Type` starts with "AT_". A
+        # `Count` on an ALL/ANY group is dead weight that a reader can mistake for a
+        # cardinality the protocol never stated.
+        if count is not None:
+            expression["Count"] = count
+        return {"name": rule_name, "expression": expression}
 
     def _build_seeded_target_circe(
         self,
@@ -5645,6 +5751,16 @@ class TTEService:
             gid = criterion.get("groupId")
             grouped.setdefault(gid, []).append((criterion, result, role))
 
+        # A group's rule, keyed by its `groupId`, collected rather than appended so a
+        # nested group can be folded into its parent's `Groups[]` once both exist. The
+        # order of this mapping is the order the rules were built in, and the fold
+        # preserves it for everything that stays at the top level.
+        group_rules: OrderedDict[str, dict[str, Any]] = OrderedDict()
+        group_rule_keys: dict[str, list[str]] = {}
+        # `groupId` -> the `groupId` it sits inside, read off any row of the group. All
+        # rows of one group carry the same value, so no row is privileged.
+        parent_group_of: dict[str, str | None] = {}
+
         for gid, members in grouped.items():
             successful = [(c, r, role) for c, r, role in members if r is not None]
             if gid is None:
@@ -5677,8 +5793,12 @@ class TTEService:
             group_label = all_descriptions[0] if len(all_descriptions) == 1 else " + ".join(all_descriptions)
             successful_pairs = [(c, r) for c, r, _role in successful]
 
-            inclusion_rules.append(
-                self._build_grouped_inclusion_rule(group_type, group_label, successful_pairs, demo_members)
+            group_rules[str(gid)] = self._build_grouped_inclusion_rule(
+                group_type, group_label, successful_pairs, demo_members
+            )
+            parent_group_of[str(gid)] = (
+                members[0][0].get(CRITERION_PARENT_GROUP_KEY)
+                or (demo_members[0][0].get(CRITERION_PARENT_GROUP_KEY) if demo_members else None)
             )
             group_crit_keys = [
                 self._criterion_mapping_key(role, c.get("id"))
@@ -5688,7 +5808,7 @@ class TTEService:
                 self._criterion_mapping_key(role, c.get("id"))
                 for c, _r, role in demo_members
             ]
-            rule_criterion_keys.append(group_crit_keys)
+            group_rule_keys[str(gid)] = group_crit_keys
 
         # Handle demographic-only groups (groupIds that had no non-demo siblings)
         for gid, demo_members in grouped_demo_by_gid.items():
@@ -5698,13 +5818,49 @@ class TTEService:
             descriptions = [c.get("description", "") for c, _r, _role in demo_members if c.get("description")]
             group_label = descriptions[0] if len(descriptions) == 1 else " + ".join(descriptions)
 
-            inclusion_rules.append(
-                self._build_grouped_inclusion_rule(group_type, group_label, [], demo_members)
+            group_rules[str(gid)] = self._build_grouped_inclusion_rule(
+                group_type, group_label, [], demo_members
             )
-            rule_criterion_keys.append([
+            parent_group_of[str(gid)] = demo_members[0][0].get(CRITERION_PARENT_GROUP_KEY)
+            group_rule_keys[str(gid)] = [
                 self._criterion_mapping_key(role, c.get("id"))
                 for c, _r, role in demo_members
-            ])
+            ]
+
+        # Fold every nested group into the `Groups[]` of the group it sits inside, and
+        # append the rest as top-level InclusionRules in the order they were built.
+        #
+        # A nested group MUST NOT reach the top level: CIRCE AND-combines
+        # `InclusionRules`, so a three-alternative group emitted alongside its parent
+        # would demand all three of TIA *and* carotid stenosis *and* cerebral
+        # revascularization, which is the same defect that top-level alternatives
+        # produce and the reason the grandchildren are worth carrying at all.
+        #
+        # The parent's expression dict is mutated in place, so a chain of any depth
+        # resolves in one pass regardless of the order the groups were built in -- a
+        # child folded into a parent that is itself folded later rides along inside it.
+        for gid, rule in group_rules.items():
+            parent_gid = parent_group_of.get(gid)
+            if not parent_gid or parent_gid not in group_rules:
+                # No parent, or a parent that emitted no rule at all (every one of its
+                # members failed to map). Staying top-level is the wrong geometry in
+                # the second case and the only one left: dropping the group instead
+                # would delete criteria that mapped perfectly well.
+                continue
+            if _group_ancestry_is_cyclic(gid, parent_group_of):
+                continue
+            group_rules[parent_gid]["expression"]["Groups"].append(rule["expression"])
+            group_rule_keys[parent_gid] = (
+                group_rule_keys.get(parent_gid, []) + group_rule_keys.get(gid, [])
+            )
+            group_rule_keys.pop(gid, None)
+            rule["_nested"] = True
+
+        for gid, rule in group_rules.items():
+            if rule.pop("_nested", False):
+                continue
+            inclusion_rules.append(rule)
+            rule_criterion_keys.append(group_rule_keys.get(gid, []))
 
         # Build rule-index-keyed metadata for frontend consumption
         rule_index_meta: dict[str, Any] = {}
@@ -11392,13 +11548,38 @@ class TTEService:
         return result
 
     def _criteria_from_ir(self, criteria: list[Any]) -> list[dict[str, Any]]:
-        flattened: list[dict[str, Any]] = []
-        next_id = 1
+        """Flatten the IR criteria tree into store rows, at every depth.
 
-        for item in criteria:
+        The IR nests: PLATO's "One of the following ACS/CAD features" (ANY, 9 members)
+        holds "TIA, carotid stenosis (>=50%), or cerebral revascularization" (ANY, 3
+        members) as its ninth member. Until 2026-09-12 the member loop read `sub.name`
+        and never `sub.sub_criteria`, so a grandchild reached no store row, no concept
+        set and no CIRCE rule -- 58 nodes across the six evaluated trials' cached IR,
+        54 at depth 3 and 4 at depth 4, concentrated on exactly the criteria the
+        conversion audit flags as cohort-blocking.
+
+        A nested group becomes its OWN group (fresh `groupId`, its own `groupType`),
+        and every one of its rows carries `parentGroupId` pointing at the enclosing
+        group. That is an addition rather than a reshape: a one-level group -- the
+        overwhelming majority of the corpus -- emits byte-identical rows plus a
+        `parentGroupId: null`, and a reader that has never heard of the key sees what
+        it saw before. `_build_seeded_target_circe` is what turns the key into CIRCE
+        nesting; `atlas-dev`'s eligibility adapter ignores it and renders the nested
+        group as its own composite rule, which is strictly more than the nothing it
+        rendered before.
+
+        The nested node itself is written as a group LABEL, not as a leaf. It names
+        three conditions rather than one queryable entity, and `isGroupLabel` is what
+        keeps that whole string from being handed to the concept mapper as if it were
+        one.
+        """
+        flattened: list[dict[str, Any]] = []
+        counter = itertools.count(1)
+
+        def emit(item: Any, parent_group_id: str | None) -> None:
             # Skip conditional criteria (subgroup-gated, e.g., "females must have pregnancy test")
             if getattr(item, "conditional", False):
-                continue
+                return
             sub_items = getattr(item, "sub_criteria", []) or []
             name = (getattr(item, "name", None) or "").strip()
             entity_text = (getattr(item, "entity_text", None) or "").strip()
@@ -11413,13 +11594,13 @@ class TTEService:
                 # If the parent has a meaningful name, emit it as the group label row
                 if description:
                     parent_dict = self._criterion_dict_from_ir_item(
-                        item, next_id, description,
+                        item, next(counter), description,
                         group_id=group_id, group_type=group_type,
                         logic_type=parent_logic_type,
+                        parent_group_id=parent_group_id,
                     )
                     parent_dict["isGroupLabel"] = True
                     flattened.append(parent_dict)
-                    next_id += 1
 
                 for sub in sub_items:
                     sub_name = (getattr(sub, "name", None) or "").strip()
@@ -11427,20 +11608,38 @@ class TTEService:
                     sub_desc = sub_name or sub_entity
                     if not sub_desc:
                         continue
+                    # `conditional` is checked here rather than inside `emit`, so a
+                    # conditional member keeps exactly the row it had before: `emit`
+                    # would drop it, and this function is not the place to change
+                    # which criteria a subgroup gate removes.
+                    if getattr(sub, "sub_criteria", None) and not getattr(sub, "conditional", False):
+                        # A group inside a group. Its rows belong to a group of their
+                        # own; the link back is `parentGroupId`, carried on every one
+                        # of them so a reader holding any member row can find the
+                        # enclosing group without holding the label.
+                        emit(sub, group_id)
+                        continue
                     flattened.append(
                         self._criterion_dict_from_ir_item(
-                            sub, next_id, sub_desc,
+                            sub, next(counter), sub_desc,
                             group_id=group_id, group_type=group_type,
                             logic_type=parent_logic_type,
                             parent_value_constraint=getattr(item, "value_constraint", None),
+                            parent_group_id=parent_group_id,
                         )
                     )
-                    next_id += 1
             else:
                 # Standalone criterion (no sub_criteria)
                 if description:
-                    flattened.append(self._criterion_dict_from_ir_item(item, next_id, description))
-                    next_id += 1
+                    flattened.append(
+                        self._criterion_dict_from_ir_item(
+                            item, next(counter), description,
+                            parent_group_id=parent_group_id,
+                        )
+                    )
+
+        for item in criteria:
+            emit(item, None)
 
         return flattened
 
@@ -11453,6 +11652,7 @@ class TTEService:
         group_type: str = "ALL",
         logic_type: str = "PRESENCE",
         parent_value_constraint: Any = None,
+        parent_group_id: str | None = None,
     ) -> dict[str, Any]:
         domain = (getattr(item, "domain", None) or "").strip()
         name = (getattr(item, "name", None) or "").strip()
@@ -11549,6 +11749,19 @@ class TTEService:
             "conceptSetName": "",
             "groupId": group_id,
             "groupType": group_type,
+            # The group this row's GROUP sits inside, or None when it sits at the top.
+            # An addition rather than a reshape: `groupId`/`groupType` keep their exact
+            # meanings, and every reader that has never heard of this key reads the row
+            # as it read it before. That matters because the readers are not all here
+            # -- `atlas-dev`'s eligibility adapter groups by `groupId` alone and would
+            # have to be changed in lockstep with a renamed or restructured pair.
+            #
+            # Written unconditionally, None for the flat case, for the reason
+            # `valueHigh` above is: a row whose shape depends on its nesting forces a
+            # reader to ask whether the key exists before asking what it holds, and
+            # `.get(...)` returning None then means both "top level" and "written by an
+            # older build" with nothing to tell them apart.
+            CRITERION_PARENT_GROUP_KEY: parent_group_id,
         }
 
     def _heuristic_draft(self, description: str) -> dict[str, Any]:

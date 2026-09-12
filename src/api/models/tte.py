@@ -140,6 +140,10 @@ CRITERION_PROTOCOL_LINE_KEY = "protocolLine"
 #: Spelled once here for the same reason as :data:`CRITERION_PROTOCOL_LINE_KEY` above.
 CRITERION_PROTOCOL_SPAN_KEY = "protocolSpan"
 
+#: The key under which a criterion records the group its own group sits inside.
+#: Spelled once here for the same reason as the two above.
+CRITERION_PARENT_GROUP_KEY = "parentGroupId"
+
 
 class CriterionValueConstraint(TTEModel):
     op: str = ""
@@ -208,6 +212,22 @@ class Criterion(TTEModel):
     logicType: str = "PRESENCE"  # "PRESENCE" or "ABSENCE"
     groupId: str | None = None
     groupType: str = "ALL"
+    #: The ``groupId`` of the group this row's group sits INSIDE, or None when it sits
+    #: at the top level. ``groupId``/``groupType`` are unchanged in meaning: this is the
+    #: one extra edge that lets a group nest, which the pair alone could never express.
+    #:
+    #: A criterion with ``sub_criteria`` whose members themselves have ``sub_criteria``
+    #: is real and common enough to matter -- 25 such nodes across the six evaluated
+    #: trials' cached IR, holding 58 criteria below them -- and until this key existed
+    #: ``_criteria_from_ir`` flattened exactly one level and dropped everything under
+    #: it. PLATO's "TIA, carotid stenosis (>=50%), or cerebral revascularization" is
+    #: one of them, along with the three conditions it names.
+    #:
+    #: None on every row of a flat group and on every row written before this key
+    #: existed, which is deliberate: a reader that does not know the key sees the rows
+    #: it always saw, so nothing that consumes ``groupId`` has to change in lockstep.
+    #: The key is :data:`CRITERION_PARENT_GROUP_KEY`.
+    parentGroupId: str | None = None
     isGroupLabel: bool = False
 
     @computed_field
