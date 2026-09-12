@@ -59,35 +59,35 @@ DECOMPOSITION_PROMPT = """Analyze this clinical criterion and determine if it ne
 **Ground each sub-term in the line.** Source Text is what the protocol actually wrote;
 `entity_text` is a normalized label and may have lost detail the line still carries.
 Decompose as far as you must to make every sub-term individually codeable. That goal is
-unchanged: a sub-term that is still an umbrella is not finished, and "impaired hepatic
-function" names no analyte, so stopping there leaves a criterion nothing can query.
+unchanged: a sub-term that is still an umbrella is not finished, and "impaired adrenal
+reserve" names no analyte, so stopping there leaves a criterion nothing can query.
 What is new is that every sub-term must say where it came from. Apply this to EVERY
 sub-term, not just the first:
 
 - **The line names it** → copy the fragment of Source Text that names it, verbatim,
-  into `source_span`. "ALT or AST > 2X ULN or GGT >= 2.5X ULN" names three
-  analytes, so all three carry spans.
+  into `source_span`. The illustrative line "Ferritin or ceruloplasmin > 4X ULN or a
+  serum haptoglobin >= 6.5X ULN" names three analytes, so all three carry spans.
 - **The line does not name it** → `source_span` is `null`. That is not a failure. It is
   the record that YOU supplied this sub-term and the protocol did not, and that record
   is what makes the elaboration legible instead of indistinguishable from something the
   protocol wrote down.
 
 Both kinds belong in the same list, and a sub-term the line named may itself need
-breaking down further. Decomposing "impaired hepatic function" into ALT, AST and
-alkaline phosphatase is exactly what this step is FOR — the point is only that those
-three come back with `source_span: null`, while the three from ARISTOTLE's line above
+breaking down further. Decomposing "impaired adrenal reserve" into cortisol, ACTH and
+aldosterone is exactly what this step is FOR — the point is only that those
+three come back with `source_span: null`, while the three from the illustrative line above
 come back with spans.
 
 **`source_span` labels the decomposition; it never limits it.** Do not prefer a
 sub-term because it can carry a span. A single sub-term that restates the line is not a
-decomposition at all: "moderate or severe liver disease" must come back as cirrhosis,
-severe hepatitis and advanced fibrosis — each with `source_span: null`, which is the
-correct and expected answer — and NOT as one "liver disease" entry quoting the line
+decomposition at all: "moderate or severe psoriasis" must come back as plaque psoriasis,
+erythrodermic psoriasis and pustular psoriasis — each with `source_span: null`, which is the
+correct and expected answer — and NOT as one "psoriasis" entry quoting the line
 back. If your list has one entry and that entry echoes Source Text, you have not
 decomposed anything; break it down and mark the pieces `null`.
 
 **Never pad an exhaustive list.** When the line enumerates members that are ALREADY
-individually codeable ("ALT or AST or alkaline phosphatase"), that enumeration IS the
+individually codeable ("ferritin or ceruloplasmin or haptoglobin"), that enumeration IS the
 sub-term list — do not add a fourth analyte the line does not mention. This does not
 conflict with the rule above: that one says keep going while a member is still an
 umbrella, this one says stop once the members are codeable. When the line marks its
@@ -107,8 +107,8 @@ term back to us unchanged.
 
 For EACH sub-term you produce, also determine whether the Source Text above states a
 numeric threshold that belongs to THAT specific sub-term (not the umbrella as a whole).
-If it does, copy the threshold phrase verbatim into `value_constraint_text` (e.g. "> 3 x
-ULN", "< 30 mL/min", ">= 7%") — copy only text that is actually present in Source Text,
+If it does, copy the threshold phrase verbatim into `value_constraint_text` (e.g. "> 4 x
+ULN", "< 90 ng/mL", ">= 12 mg/dL") — copy only text that is actually present in Source Text,
 never invent or estimate a number. If Source Text is blank, or does not state a threshold
 for that sub-term, set `value_constraint_text` to `null`. Do not use one sub-term's
 threshold for a different sub-term.

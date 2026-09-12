@@ -233,7 +233,7 @@ Answer:
 ```
 
 ## Example 3: Broad category (prefer ancestor concept)
-Query: "History of malignant neoplasm"
+Query: "Prior diagnosis of any invasive cancer"
 Candidates:
 - ID: 443392 | Name: Malignant neoplastic disease | Domain: Condition | Relationship: seed
 - ID: 4112853 | Name: Malignant tumor of lung | Domain: Condition | Relationship: child

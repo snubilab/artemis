@@ -47,15 +47,15 @@ For each criterion, identify:
   silently and the criterion reaches the cohort with no value filter at all.
   If one protocol line becomes several rules, every one of them repeats that whole line.
 - **value_constraint**: OPTIONAL, and never invented. Emit it when the protocol states a
-  threshold outright (e.g. "HbA1c >= 7%", "eGFR >= 30"); leave it out when you are not
+  threshold outright (e.g. "ferritin >= 30 ng/mL", "ceruloplasmin >= 20"); leave it out when you are not
   copying a number the text actually gives. `source_text` is the record of what the
   protocol said, so nothing is lost by omitting it.
   When the threshold is a multiple of a reference range rather than the measured value
-  ("ALT > 3x ULN", "bilirubin above 2 times the upper limit of normal"), put the
-  reference marker in `unit_text` verbatim — `"x ULN"` or `"x LLN"` — and never replace
-  it with the lab's real unit. "3x ULN" sent as {op: "gt", value: 3.0, unit_text: "U/L"}
-  reads as "ALT above 3 U/L"; real ALT runs 10-40 U/L, so as an exclusion it removes
-  every patient who ever had a liver panel.
+  ("ferritin > 4x ULN", "ceruloplasmin above 6 times the upper limit of normal"), put
+  the reference marker in `unit_text` verbatim — `"x ULN"` or `"x LLN"` — and never replace
+  it with the lab's real unit. "4x ULN" sent as {op: "gt", value: 4.0, unit_text: "ng/mL"}
+  reads as "ferritin above 4 ng/mL"; real ferritin runs 30-300 ng/mL, so as an exclusion it
+  removes every patient who ever had an iron panel.
 
 ## OMOP Domain Reference
 - **Condition**: condition_occurrence → diagnoses
@@ -71,10 +71,10 @@ For each criterion, identify:
 - DrugEra-based cohorts are matched at the RxNorm ingredient level, so ingredient names are required.
 
 ## Clinical Criteria Patterns
-Pattern A — Lab test range (e.g., "HbA1c 7% to 10%"):
+Pattern A — Lab test range (e.g., "ferritin 30 ng/mL to 300 ng/mL"):
   Split into TWO rules: PRESENCE >= lower bound + ABSENCE >= upper bound.
   Both rules carry the same verbatim `source_text`.
-Pattern B — Simple threshold (e.g., "eGFR >= 30"):
+Pattern B — Simple threshold (e.g., "ceruloplasmin >= 20"):
   Single PRESENCE rule with value_constraint
 Pattern C — "No prior X" / "Without X":
   → logic_type: "ABSENCE"
@@ -128,51 +128,53 @@ DECOMPOSITION_PROMPT = """Parse the following clinical question into the ARTEMIS
 }}
 ```
 
-**One-shot Example** — protocol line "HbA1c 7% to 10% at screening":
+**One-shot Example** (illustrative line, not from any real protocol) — "Serum ferritin
+30 ng/mL to 300 ng/mL at screening":
 ```json
 [
   {{
-    "name": "HbA1c lower bound (>=7%)",
+    "name": "Ferritin lower bound (>=30 ng/mL)",
     "domain": "Measurement",
-    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
-    "source_text": "HbA1c 7% to 10% at screening",
+    "entity_text": "Ferritin [Mass/volume] in Serum or Plasma",
+    "source_text": "Serum ferritin 30 ng/mL to 300 ng/mL at screening",
     "logic_type": "PRESENCE",
-    "value_constraint": {{"op": "gte", "value": 7.0, "unit_text": "%"}},
+    "value_constraint": {{"op": "gte", "value": 30.0, "unit_text": "ng/mL"}},
     "window": {{"start": -180, "end": 0}}
   }},
   {{
-    "name": "HbA1c upper bound (no >=10%)",
+    "name": "Ferritin upper bound (no >=300 ng/mL)",
     "domain": "Measurement",
-    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
-    "source_text": "HbA1c 7% to 10% at screening",
+    "entity_text": "Ferritin [Mass/volume] in Serum or Plasma",
+    "source_text": "Serum ferritin 30 ng/mL to 300 ng/mL at screening",
     "logic_type": "ABSENCE",
-    "value_constraint": {{"op": "gte", "value": 10.0, "unit_text": "%"}},
+    "value_constraint": {{"op": "gte", "value": 300.0, "unit_text": "ng/mL"}},
     "window": {{"start": -180, "end": 0}}
   }}
 ]
 ```
 
-**One-shot Example** — protocol line "ALT or AST > 3x upper limit of normal".
-The 3 is a multiple of the lab's reference range, not a value in the lab's own unit,
+**One-shot Example** (illustrative line, not from any real protocol) — "Serum ferritin or
+ceruloplasmin > 4x upper limit of normal".
+The 4 is a multiple of the lab's reference range, not a value in the lab's own unit,
 so the marker stays in `unit_text` and both rules repeat the whole line verbatim:
 ```json
 [
   {{
-    "name": "ALT above 3x ULN",
+    "name": "Ferritin above 4x ULN",
     "domain": "Measurement",
-    "entity_text": "Alanine aminotransferase",
-    "source_text": "ALT or AST > 3x upper limit of normal",
+    "entity_text": "Ferritin",
+    "source_text": "Serum ferritin or ceruloplasmin > 4x upper limit of normal",
     "logic_type": "ABSENCE",
-    "value_constraint": {{"op": "gt", "value": 3.0, "unit_text": "x ULN"}},
+    "value_constraint": {{"op": "gt", "value": 4.0, "unit_text": "x ULN"}},
     "window": {{"start": -180, "end": 0}}
   }},
   {{
-    "name": "AST above 3x ULN",
+    "name": "Ceruloplasmin above 4x ULN",
     "domain": "Measurement",
-    "entity_text": "Aspartate aminotransferase",
-    "source_text": "ALT or AST > 3x upper limit of normal",
+    "entity_text": "Ceruloplasmin",
+    "source_text": "Serum ferritin or ceruloplasmin > 4x upper limit of normal",
     "logic_type": "ABSENCE",
-    "value_constraint": {{"op": "gt", "value": 3.0, "unit_text": "x ULN"}},
+    "value_constraint": {{"op": "gt", "value": 4.0, "unit_text": "x ULN"}},
     "window": {{"start": -180, "end": 0}}
   }}
 ]
@@ -188,7 +190,7 @@ Important Rules:
 3. Use negative days for "prior to" time windows (e.g., -365 for 1 year before)
 4. Always include the outcome's time_at_risk window
 5. `value_constraint` is OPTIONAL — copy a threshold the protocol states, never invent one.
-   For a multiple of a reference range ("3x ULN", "below the lower limit of normal"),
+   For a multiple of a reference range ("4x ULN", "below the lower limit of normal"),
    keep the marker in `unit_text` as `"x ULN"` / `"x LLN"`; substituting the lab's real
    unit turns the multiplier into an absolute value and the rule stops meaning anything.
    If the criterion specifies a range (e.g., "7-10%"), split into two rules:
@@ -240,22 +242,22 @@ For each criterion, identify:
   every criterion that has no `sub_criteria`; null ONLY on a parent row that has them.
   It is the ONLY text the concept mapper is ever given, so a leaf that omits it is mapped
   on its `name` instead -- and a `name` is a phrase written for a human ("Anti-diabetic
-  drug naive", "At least one specified risk factor", "Stable Background Medication"),
+  therapy naive", "At least one specified risk factor", "Stable Background Medication"),
   which resolves to whatever domain's concepts happen to share its words. Measured on the
   2026-09-10 six-trial store: 44 of the 369 leaf criteria carried no `entity_text` at all.
 - **logic_type**: PRESENCE (patient has/uses) or ABSENCE (patient does NOT have/use)
 - **window**: Time window relative to index date (in days). MANDATORY for every criterion.
-  If the protocol states an explicit temporal constraint (e.g., "within 3 months prior to screening"), convert it to days (e.g., {start: -90, end: 0}).
+  If the protocol states an explicit temporal constraint (e.g., "within 8 weeks prior to enrolment"), convert it to days (e.g., {start: -90, end: 0}).
   Otherwise apply domain defaults: """ + _DEFAULT_WINDOWS_BY_DOMAIN + """.
 - **source_text**: The numbered criterion line below, copied verbatim (MANDATORY).
   Keep every threshold, unit, and comparator exactly as written — do not paraphrase,
   expand abbreviations, or convert units, and drop the "  1. " numbering only. A later
   stage locates the threshold by substring match against this string, so a tidied-up
   copy loses the threshold silently and the criterion reaches the cohort with no value
-  filter at all. If one criterion line becomes several rules (a range, or "ALT, AST, or
-  ALP"), every one of them repeats that whole line.
+  filter at all. If one criterion line becomes several rules (a range, or a line naming
+  three analytes at once), every one of them repeats that whole line.
 - **value_constraint**: OPTIONAL, and never invented. Emit it when the protocol states a
-  threshold outright (e.g. "HbA1c >= 7%", "creatinine > 354 mmol/l"); leave it out when
+  threshold outright (e.g. "ferritin >= 30 ng/mL", "ceruloplasmin > 60 mg/l"); leave it out when
   you are not copying a number the text actually gives. `source_text` is the record of
   what the protocol said, so nothing is lost by omitting it.
   CRITICAL — a `value_constraint` bounds a MEASURED VALUE: the number a lab or a clinical
@@ -264,39 +266,39 @@ For each criterion, identify:
   column at all. "The protocol states a threshold outright" is therefore NOT the test —
   protocols state many numbers that are not measured values, and each kind below is a
   threshold you must NOT write as a `value_constraint`:
-    · a DRUG DOSE — "aspirin > 165 mg/day", "insulin > 1 U/kg". `drug_exposure` has no
+    · a DRUG DOSE — "colchicine > 1.2 mg/day", "bupivacaine > 2 mg/kg". `drug_exposure` has no
       dose-strength column Circe can filter; the one value it reads is Quantity, which is
       units DISPENSED, not strength, so a mg/day bound has no correct home there at all.
       Emit the drug, drop the number.
-    · a DISEASE DURATION — "type 2 diabetes duration > 10 years", "hypertension >= 5
+    · a DISEASE DURATION — "psoriasis duration > 14 years", "eczema >= 7
       years". `condition_occurrence` has no value column whatsoever. A duration is a
       temporal fact about when the diagnosis started; `window` and `source_text` carry it.
     · an ANATOMIC or IMAGING PERCENTAGE on a Procedure or Condition criterion —
-      "revascularization ... >50% stenosis". That number describes the lesion, not a
+      "arthroplasty ... >60% cartilage loss". That number describes the joint, not a
       recorded measurement, and `procedure_occurrence` reads no value either.
     · a COUNT — "at least two CV risk factors", "> 1 prior episode". That is an occurrence
       count and belongs to the criterion's structure, never to `value_constraint`.
     · an AGE — "age >= 18 years". Demographics carries age from `year_of_birth`; a
       Demographics criterion never takes a `value_constraint`.
-  The unit is the tell: mg/day, U/kg, years-of-disease, % stenosis and "risk factors" are
+  The unit is the tell: mg/day, mg/kg, years-of-disease, % stenosis and "risk factors" are
   not units any lab reports a result in. If you cannot name the lab or observation that
   would produce this number for one patient on one day, it is not a `value_constraint`.
   Getting this wrong is silent and total. Circe DROPS a value condition written on a table
   that cannot read it — no error, no warning — and the rule then matches EVERY occurrence
   of its concept set while reading in the JSON as though it were filtered. Measured on
-  these exact criteria: "Required treatment with aspirin > 165 mg/day" became "any aspirin
-  exposure at all", "Type 2 diabetes mellitus duration > 10 years" became "any type 2
-  diabetes diagnosis", and "revascularization >50% stenosis" became "any arterial
-  revascularization" — three criteria that read stricter than the protocol and were in
+  criteria of exactly these three shapes: a "required treatment with <drug> > <dose>/day"
+  line became "any exposure to that drug at all", a "<disease> duration > 14 years" line
+  became "any diagnosis of that disease", and a "<procedure> for >60% cartilage loss" line became
+  "any such procedure" — three criteria that read stricter than the protocol and were in
   fact vacuous. Downstream now REFUSES a criterion carrying a bound its own table cannot
   read, so the whole criterion is dropped rather than shipped vacuous: writing the number
   where it does not belong costs the criterion, while omitting it keeps the criterion.
   When the threshold is a multiple of a reference range rather than the measured value
-  ("ALT > 3x ULN", "bilirubin above 2 times the upper limit of normal"), put the
-  reference marker in `unit_text` verbatim — `"x ULN"` or `"x LLN"` — and never replace
-  it with the lab's real unit. "3x ULN" sent as {op: "gt", value: 3.0, unit_text: "U/L"}
-  reads as "ALT above 3 U/L"; real ALT runs 10-40 U/L, so as an exclusion it removes
-  every patient who ever had a liver panel.
+  ("ferritin > 4x ULN", "ceruloplasmin above 6 times the upper limit of normal"), put
+  the reference marker in `unit_text` verbatim — `"x ULN"` or `"x LLN"` — and never replace
+  it with the lab's real unit. "4x ULN" sent as {op: "gt", value: 4.0, unit_text: "ng/mL"}
+  reads as "ferritin above 4 ng/mL"; real ferritin runs 30-300 ng/mL, so as an exclusion it
+  removes every patient who ever had an iron panel.
 
 ## OMOP Domain Reference (Criteria2Query-informed)
 When choosing a domain and structuring rules, consider the OMOP CDM tables:
@@ -316,19 +318,19 @@ lifted out of it. Then make `entity_text` name something that really lives in th
 a rule whose concept set holds none of its own domain's concepts matches nothing, and is
 now refused downstream, so the criterion is lost rather than merely weakened.
 Two criteria that got this backwards, and what each cost:
-  · "Known hypersensitivity or allergy to the investigational product or its excipients,
-    or glimepiride" was emitted as domain=Condition with entity_text "Glimepiride".
-    Glimepiride is a DRUG, so the concept set resolved to drug concepts while the rule
-    asked `condition_occurrence` for them — zero overlap, zero matches, and the trial's
-    exclusion on its own comparator drug never applied to a single patient. The entity the
-    sentence asserts is HYPERSENSITIVITY, a Condition; glimepiride is the allergen that
+  · "Documented allergy to bupivacaine or to any component of the study formulation"
+    (illustrative line) emitted as domain=Condition with entity_text "Bupivacaine".
+    Bupivacaine is a DRUG, so the concept set resolved to drug concepts while the rule
+    asked `condition_occurrence` for them — zero overlap, zero matches, and a trial's
+    exclusion on its own study drug never applied to a single patient. The entity the
+    sentence asserts is HYPERSENSITIVITY, a Condition; bupivacaine is the allergen that
     qualifies it, not the thing to look up. Emit domain=Condition with entity_text
-    "Hypersensitivity to glimepiride" — the domain and the entity must agree.
-  · "Change in dose of thyroid hormones within 6 weeks prior informed consent" was emitted
-    as domain=Measurement with entity_text "Thyroid hormones". "dose change" is a statement
-    about a DRUG the patient takes, not about a lab result. As a Measurement it became "no
-    thyroid lab drawn in the last 420 days", which is not the protocol's criterion at all
-    and selects a different population entirely.
+    "Hypersensitivity to bupivacaine" — the domain and the entity must agree.
+  · "Adjustment of colchicine dosage in the 8 weeks before enrolment" (illustrative line)
+    emitted as domain=Measurement with entity_text "Colchicine level". "dose change" is a
+    statement about a DRUG the patient takes, not about a lab result. As a Measurement it
+    became "no colchicine assay drawn in the last 420 days", which is not the criterion at
+    all and selects a different population entirely.
 The deciding words sit in the description, not in the entity: "dose", "treatment with",
 "use of", "therapy" ⇒ Drug. "hypersensitivity", "allergy", "history of", "diagnosis of" ⇒
 Condition. "level", "count", "concentration", or a unit of measure ⇒ Measurement.
@@ -340,18 +342,18 @@ Condition. "level", "count", "concentration", or a unit of measure ⇒ Measureme
 - DrugEra-based cohorts are matched at the RxNorm ingredient level, so ingredient names are required.
 
 ## Clinical Criteria Patterns
-Pattern A — Lab test range (e.g., "HbA1c 7% to 10%"):
+Pattern A — Lab test range (e.g., "ferritin 30 ng/mL to 300 ng/mL"):
   Split into TWO rules, both carrying the same verbatim `source_text`:
   Rule 1: PRESENCE of Measurement >= lower bound (inclusion: patient has the value)
   Rule 2: ABSENCE of Measurement >= upper bound (exclusion: no dangerously high values)
 
-Pattern B — Simple threshold (e.g., "eGFR >= 30"):
-  Single rule: PRESENCE of Measurement with value_constraint {{op: "gte", value: 30}}
+Pattern B — Simple threshold (e.g., "ceruloplasmin >= 20"):
+  Single rule: PRESENCE of Measurement with value_constraint {{op: "gte", value: 20}}
 
 Pattern C — "No prior X" / "Without X" / "X-naive":
   → logic_type: "ABSENCE", appropriate time window
   The negation is often ONE WORD fused to the drug rather than a leading "no":
-  "treatment-naive", "drug-naive", "anti-diabetic drug naive", "insulin-naïve", "no prior
+  "treatment-naive", "drug-naive", "biologic-naive", "insulin-naïve", "no prior
   use of", "not currently treated with", "washout of". Every one of them says the patient
   has NOT had the drug, and every one takes logic_type "ABSENCE".
   CRITICAL — the negation belongs to `logic_type`, never to `entity_text`. `entity_text` is
@@ -373,37 +375,40 @@ Pattern E — Composite OR condition ("≥1 of A, B, C ...", "at least one of", 
   "including ... or", or lists disease sub-types where any one qualifies the patient,
   you MUST emit a SINGLE rule with `sub_criteria` array and `group_type: "ANY"`.
   DO NOT emit them as separate inclusion_rules (that creates AND logic = impossible to satisfy).
-  Example: "Age ≥ 50 with ≥1 of: MI, stroke, CHF, CKD" →
-  One inclusion_rule with sub_criteria containing MI, stroke, CHF, CKD, group_type="ANY"
-  Example: "ACS with or without ST-segment elevation" →
-  One inclusion_rule with sub_criteria containing STEMI, NSTEMI, UA, group_type="ANY"
-  Example: "STEMI patients requiring PCI OR NSTE-ACS patients" →
-  One inclusion_rule with sub_criteria containing STEMI and NSTE-ACS, group_type="ANY"
+  Every example below is an illustrative line, not a line from any real protocol.
+  Example: "Age ≥ 50 with ≥1 of: psoriasis, vitiligo, chronic urticaria, alopecia areata" →
+  One inclusion_rule with sub_criteria containing those four, group_type="ANY"
+  Example: "Aortic valve disease with or without regurgitation" →
+  One inclusion_rule with sub_criteria containing aortic stenosis, aortic regurgitation and
+  mixed aortic valve disease, group_type="ANY"
+  Example: "Aortic stenosis patients requiring valve replacement OR aortic regurgitation patients" →
+  One inclusion_rule with sub_criteria containing those two, group_type="ANY"
   This applies to Measurement lists too, which is where it has been missed. A lab criterion
   naming several analytes is one ANY group with one sub_criterion PER ANALYTE, each carrying
   its own value_constraint — a threshold shared by two analytes is written on both.
-  Example: "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" →
-  One exclusion_rule, group_type="ANY", sub_criteria = ALT (> 2X ULN), AST (> 2X ULN),
-  Total Bilirubin (>= 1.5X ULN). Three sub_criteria from two thresholds.
-  Example: "Troponin I or T or CK-MB greater than the upper limit of normal" →
-  One inclusion_rule, group_type="ANY", sub_criteria = Troponin I, Troponin T, CK-MB,
+  Example: "Ferritin or ceruloplasmin > 4X ULN or a serum haptoglobin >= 6.5X ULN" →
+  One exclusion_rule, group_type="ANY", sub_criteria = Ferritin (> 4X ULN), Ceruloplasmin
+  (> 4X ULN), Haptoglobin (>= 6.5X ULN). Three sub_criteria from two thresholds.
+  Example: "Prolactin, cortisol, or growth hormone above 1X ULN" →
+  One inclusion_rule, group_type="ANY", sub_criteria = Prolactin, Cortisol, Growth hormone,
   each with the same "> 1X ULN" constraint. Three sub_criteria from one threshold.
   CRITICAL — the GROUP LABEL never carries the `value_constraint`. When a criterion has
   `sub_criteria`, the parent row is a heading: it maps to no concept set of its own and
   emits no rule, so a threshold written there goes NOWHERE. Write the bound out once per
   member it can honestly measure, even when that repeats the same number three times.
-  Measured on "Uncontrolled hyperglycaemia with a glucose level >240 mg/dl": it was emitted
-  as one group labelled "Glucose" carrying {op: gt, value: 240, unit_text: "mg/dl"} over
-  three members — Hemoglobin A1c, Fasting Plasma Glucose, Random Plasma Glucose — each
-  carrying no constraint at all. The label emitted nothing, so the bound was simply lost,
-  and the three members each emitted "any glucose measurement on record" inside an ABSENCE
-  rule, which excluded every patient the inclusion rules had just required.
-  The grouping was also wrong before the bound went missing. 240 mg/dL is a plasma-glucose
-  number; HbA1c is reported in %, so no mg/dL bound can ever apply to it. A member measured
+  Measured on a line of this shape — "Uncontrolled hypercalcaemia with a serum calcium
+  level > 13 mg/dl" (illustrative) — it was emitted as one group labelled "Calcium" carrying
+  {op: gt, value: 13, unit_text: "mg/dl"} over three members — Parathyroid hormone, Ionised
+  calcium, Total calcium — each carrying no constraint at all. The label emitted nothing, so
+  the bound was simply lost, and the three members each emitted "any calcium measurement on
+  record" inside an ABSENCE rule, which excluded every patient the inclusion rules had just
+  required.
+  The grouping was also wrong before the bound went missing. 13 mg/dL is a serum-calcium
+  number; parathyroid hormone is reported in pg/mL, so no mg/dL bound can ever apply to it. A member measured
   in a DIFFERENT UNIT from the threshold does not belong in that group — give it its own
   criterion with its own bound in its own unit, or leave it out. (Here the protocol names
   exactly one analyte, so Pattern H applies and the right answer is ONE flat Measurement
-  criterion: entity_text "Glucose", value_constraint {op: "gt", value: 240,
+  criterion: entity_text "Calcium", value_constraint {op: "gt", value: 13,
   unit_text: "mg/dl"} — no group at all.)
   The mechanical check before you emit a group: every sub_criterion either carries its own
   `value_constraint` in a unit that criterion is actually reported in, or the group carries
@@ -413,16 +418,16 @@ Pattern F — Conditional criterion ("If [subgroup] → [requirement]"):
   CRITICAL: When a criterion only applies to a specific patient subgroup
   (e.g., "females of childbearing potential must have negative pregnancy test",
   "women must use effective contraception", "if on anticoagulants must discontinue",
-  "diabetic patients must have HbA1c < X%"), set `conditional: true` on that criterion.
+  "patients on methotrexate must have a documented liver-function panel"), set `conditional: true` on that criterion.
   DO NOT emit conditional criteria as universal inclusion rules — they cause all patients
   without the measurement/condition to be incorrectly excluded.
   Conditional triggers: "females must", "women of childbearing", "patients with X must also",
   "if the patient has", "for patients who", "in case of", "must use contraception".
 
 Pattern G — Region/subgroup-conditional VALUE (the requirement applies to everyone, but the
-  NUMBER differs by an explicit subgroup): "Age >= 18 years. For Japan only: Age >= 20 years",
-  "eGFR >= 60 mL/min (>= 45 mL/min for patients over 75)", "HbA1c <= 9% (<= 10% in Asia
-  Pacific)". Unlike Pattern F (a requirement that only some patients face at all), here EVERY
+  NUMBER differs by an explicit subgroup): "Age >= 18 years. For Iceland only: Age >= 21 years",
+  "ferritin >= 60 ng/mL (>= 45 ng/mL for patients over 75)", "ceruloplasmin <= 9 mg/dL
+  (<= 10 mg/dL in Iceland)". Unlike Pattern F (a requirement that only some patients face at all), here EVERY
   patient faces the requirement — only the threshold value changes for the named subgroup.
   CRITICAL: emit ONE group with `group_type: "ANY"` — NOT "ALL". "The requirement is
   universal" describes who faces it, not how the variants combine: the variants are
@@ -437,9 +442,9 @@ Pattern G — Region/subgroup-conditional VALUE (the requirement applies to ever
   would. Dropping the subgroup-specific value because there is no single canonical number
   is the same silent-loss failure as dropping a shared threshold in Pattern E — the general
   case is not "close enough" to stand in for the subgroup case.
-  Example: "Age >= 18 years. For Japan only: Age >= 20 years" →
+  Example: "Age >= 18 years. For Iceland only: Age >= 21 years" →
   One Demographics rule, group_type "ANY", with sub_criteria = Age (general, >= 18), Age
-  (Japan, >= 20) — two sub_criteria from two subgroup values, both carrying the full
+  (Iceland, >= 21) — two sub_criteria from two subgroup values, both carrying the full
   original sentence as source_text (they share one line, same as Pattern E's
   shared-threshold rule 6).
 
@@ -451,26 +456,26 @@ Pattern H — One sentence restating ONE entity (the parenthetical scopes, it do
   describing one cluster yields one rule, whatever a second rule would be called. A
   variant-looking suffix, a role tag, a reworded name that foregrounds a facet the first
   name left out, and a byte-identical repeat are all the same violation.
-  Example: "Pre-menopausal women (last menstruation <= 1 year prior to informed consent) who
-  are nursing or pregnant or of child-bearing potential and not using an acceptable method of
-  birth control" → ONE Demographics ABSENCE rule. Nursing, pregnant, and unreliable
-  contraception are one pregnancy-risk cluster resolving to one concept set.
+  Example (illustrative line): "Patients with symptomatic orthostatic hypotension, postural
+  dizziness, or a documented syncopal episode (on standing, within 3 minutes of upright
+  posture)" → ONE Condition ABSENCE rule. Orthostatic hypotension, postural dizziness and
+  syncope on standing are one orthostatic-intolerance cluster resolving to one concept set.
   CRITICAL — this is NOT Pattern G. Pattern G needs a differing NUMBER for a named subgroup
-  ("Age >= 18 years. For Japan only: Age >= 20 years" — 18 against 20). The parenthetical
+  ("Age >= 18 years. For Iceland only: Age >= 21 years" — 18 against 21). The parenthetical
   above states no second threshold; it DEFINES the population the whole criterion applies to.
-  A scoping parenthetical read as a subgroup variant produces copies suffixed "(<= 1 year)"
-  and "(General)" from a sentence that named one thing. Each copy is then mapped on its own
+  A scoping parenthetical read as a subgroup variant produces copies suffixed "(within 3
+  minutes)" and "(General)" from a sentence that named one thing. Each copy is then mapped on its own
   paraphrased name and the cohort is filtered on the UNION of the divergent sets — measured
-  on this exact sentence: three copies, 4 to 7 concepts each, pairwise overlap as low as
-  zero, union 11, and not one member of that union was the plain Pregnancy or Breast feeding
-  concept. The criterion got looser and less accurate at the same time.
+  on a sentence of exactly this shape: three copies, 4 to 7 concepts each, pairwise overlap
+  as low as zero, union 11, and not one member of that union was the plain concept the
+  sentence names. The criterion got looser and less accurate at the same time.
   CRITICAL — this is NOT Pattern E either. Pattern E needs DISTINCT entities, each of which
   earns its own concept set. The mechanical test between them: sub-conditions that each carry
   their OWN value_constraint bound to a different named thing are distinct and keep one
   concept set each; alternatives that carry NO value_constraint at all and describe the same
   population are one cluster and collapse to a single flat criterion.
-  Example of the distinct case, unchanged: "ALT (SGPT), AST (SGOT), or alkaline phosphatase
-  >= 3 x upper limit of normal" names three analytes, each carrying its own value_constraint.
+  Example of the distinct case, unchanged: "Ferritin (FERR), ceruloplasmin (CP), or
+  haptoglobin (HP) >= 6 x upper limit of normal" names three analytes, each carrying its own value_constraint.
   Pattern E governs it and Pattern H does not touch it — three entities, three concept sets.
   Collapsing those three is the opposite failure and is just as wrong.
 
@@ -550,64 +555,66 @@ NCT_DECOMPOSITION_PROMPT = """Convert this clinical trial protocol into the ARTE
 }}
 ```
 
-**One-shot Example** — protocol line "HbA1c 7% to 10% at screening":
+**One-shot Example** (illustrative line, not from any real protocol) — "Serum ferritin
+30 ng/mL to 300 ng/mL at screening":
 ```json
 [
   {{
-    "name": "HbA1c lower bound (>=7%)",
+    "name": "Ferritin lower bound (>=30 ng/mL)",
     "domain": "Measurement",
-    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
-    "source_text": "HbA1c 7% to 10% at screening",
+    "entity_text": "Ferritin [Mass/volume] in Serum or Plasma",
+    "source_text": "Serum ferritin 30 ng/mL to 300 ng/mL at screening",
     "logic_type": "PRESENCE",
-    "value_constraint": {{"op": "gte", "value": 7.0, "unit_text": "%"}},
+    "value_constraint": {{"op": "gte", "value": 30.0, "unit_text": "ng/mL"}},
     "window": {{"start": -180, "end": 0}}
   }},
   {{
-    "name": "HbA1c upper bound (no >=10%)",
+    "name": "Ferritin upper bound (no >=300 ng/mL)",
     "domain": "Measurement",
-    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
-    "source_text": "HbA1c 7% to 10% at screening",
+    "entity_text": "Ferritin [Mass/volume] in Serum or Plasma",
+    "source_text": "Serum ferritin 30 ng/mL to 300 ng/mL at screening",
     "logic_type": "ABSENCE",
-    "value_constraint": {{"op": "gte", "value": 10.0, "unit_text": "%"}},
+    "value_constraint": {{"op": "gte", "value": 300.0, "unit_text": "ng/mL"}},
     "window": {{"start": -180, "end": 0}}
   }}
 ]
 ```
 
-**One-shot Example** — protocol line "ALT or AST > 3x upper limit of normal".
-The 3 is a multiple of the lab's reference range, not a value in the lab's own unit,
+**One-shot Example** (illustrative line, not from any real protocol) — "Serum ferritin or
+ceruloplasmin > 4x upper limit of normal".
+The 4 is a multiple of the lab's reference range, not a value in the lab's own unit,
 so the marker stays in `unit_text` and both rules repeat the whole line verbatim:
 ```json
 [
   {{
-    "name": "ALT above 3x ULN",
+    "name": "Ferritin above 4x ULN",
     "domain": "Measurement",
-    "entity_text": "Alanine aminotransferase",
-    "source_text": "ALT or AST > 3x upper limit of normal",
+    "entity_text": "Ferritin",
+    "source_text": "Serum ferritin or ceruloplasmin > 4x upper limit of normal",
     "logic_type": "ABSENCE",
-    "value_constraint": {{"op": "gt", "value": 3.0, "unit_text": "x ULN"}},
+    "value_constraint": {{"op": "gt", "value": 4.0, "unit_text": "x ULN"}},
     "window": {{"start": -180, "end": 0}}
   }},
   {{
-    "name": "AST above 3x ULN",
+    "name": "Ceruloplasmin above 4x ULN",
     "domain": "Measurement",
-    "entity_text": "Aspartate aminotransferase",
-    "source_text": "ALT or AST > 3x upper limit of normal",
+    "entity_text": "Ceruloplasmin",
+    "source_text": "Serum ferritin or ceruloplasmin > 4x upper limit of normal",
     "logic_type": "ABSENCE",
-    "value_constraint": {{"op": "gt", "value": 3.0, "unit_text": "x ULN"}},
+    "value_constraint": {{"op": "gt", "value": 4.0, "unit_text": "x ULN"}},
     "window": {{"start": -180, "end": 0}}
   }}
 ]
 ```
 
 **WRONG vs RIGHT for shared source_text** — the most common failure against this exact
-prompt. For "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN", a short per-analyte
-label as source_text looks tidier but is WRONG:
+prompt. For the illustrative line "Ferritin or ceruloplasmin > 4X ULN or a serum
+haptoglobin >= 6.5X ULN", a short per-analyte label as source_text looks tidier but is WRONG:
 ```json
 // WRONG — source_text became the analyte's own name, not the protocol's sentence
-{{"name": "ALT elevation", "source_text": "Alanine aminotransferase", "value_constraint": {{"op": "gt", "value": 2.0, "unit_text": "x ULN"}}}}
+{{"name": "Ferritin elevation", "source_text": "Ferritin", "value_constraint": {{"op": "gt", "value": 4.0, "unit_text": "x ULN"}}}}
 // RIGHT — source_text is the full sentence, BYTE-IDENTICAL across all three sub_criteria
-{{"name": "ALT elevation", "source_text": "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN", "value_constraint": {{"op": "gt", "value": 2.0, "unit_text": "x ULN"}}}}
+{{"name": "Ferritin elevation", "source_text": "Ferritin or ceruloplasmin > 4X ULN or a serum haptoglobin >= 6.5X ULN", "value_constraint": {{"op": "gt", "value": 4.0, "unit_text": "x ULN"}}}}
 ```
 Do not paraphrase, shorten, or replace it with the clinical term even when the term reads
 as more natural — a later deterministic stage finds each threshold by searching for it as a
@@ -621,10 +628,11 @@ Important Rules:
    The annotations give you the THRESHOLDS. The criterion text gives you the ANALYTES.
    One rule per ANALYTE, not per annotation — a threshold shared by two analytes is written
    on both. Count the analytes from the text; the annotation count is not the answer.
-   "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" carries two annotations and names
-   THREE analytes, so it is one Pattern E group with three sub_criteria:
-   ALT (> 2X ULN), AST (> 2X ULN), Total Bilirubin (>= 1.5X ULN).
-   Emitting two rules and dropping AST is the specific failure this wording exists to stop,
+   The illustrative line "Ferritin or ceruloplasmin > 4X ULN or a serum haptoglobin
+   >= 6.5X ULN" carries two annotations and names THREE analytes, so it is one Pattern E
+   group with three sub_criteria: Ferritin (> 4X ULN), Ceruloplasmin (> 4X ULN),
+   Haptoglobin (>= 6.5X ULN).
+   Emitting two rules and dropping ceruloplasmin is the specific failure this wording exists to stop,
    as is collapsing the whole criterion into one label with no constraint at all.
 1. Map each inclusion criterion to an inclusion_rule on the TARGET cohort.
 2. Map each exclusion criterion to an exclusion_rule on the TARGET cohort.
@@ -634,8 +642,8 @@ Important Rules:
    Do NOT omit or summarize any criteria. Each distinct medical concept must be represented.
    EXCEPTION — Pattern H override: "each distinct medical concept must be represented" counts
    CONCEPTS, not the words a line spends on one. When a single criterion line names several
-   near-synonyms or facets of ONE clinical cluster (pregnant, nursing, of child-bearing
-   potential, not using birth control — one pregnancy-risk cluster), representing it means ONE
+   near-synonyms or facets of ONE clinical cluster (orthostatic hypotension, postural
+   dizziness, syncope on standing — one orthostatic-intolerance cluster), representing it means ONE
    rule naming that cluster. It does NOT mean one rule per phrase in the line, and it does NOT
    license a second rule to pick up a facet the first rule's name happened to leave out. The
    whole line rides on that one rule's `source_text`, so nothing is dropped by not restating
@@ -643,7 +651,7 @@ Important Rules:
    EXCEPTION — Pattern E override: When multiple criteria represent alternative qualification paths
    (any one of them qualifies the patient, e.g., "MI OR stroke OR revascularization OR CHF"),
    they MUST be grouped into a SINGLE rule with sub_criteria and group_type="ANY" (see Rule 12).
-   Only truly independent AND requirements (e.g., "must have T2DM" AND "must have HbA1c>=7%")
+   Only truly independent AND requirements (e.g., "must have psoriasis" AND "must have ferritin>=30 ng/mL")
    should be separate top-level rules. If in doubt whether criteria are OR or AND, look for:
    - Bullet lists under a single heading → OR (sub_criteria)
    - Separate numbered criteria → AND (separate rules)
@@ -658,13 +666,13 @@ Important Rules:
 7. Use negative days for "prior to" time windows (e.g., -365 for 1 year before)
 8. If a criterion is purely administrative (e.g., "informed consent"), skip it
 9. `value_constraint` is OPTIONAL — copy a threshold the protocol states, never invent one.
-   For a multiple of a reference range ("3x ULN", "below the lower limit of normal"),
+   For a multiple of a reference range ("4x ULN", "below the lower limit of normal"),
    keep the marker in `unit_text` as `"x ULN"` / `"x LLN"`; substituting the lab's real
    unit turns the multiplier into an absolute value and the rule stops meaning anything.
    If the criterion specifies a range (e.g., "7-10%"), split into two rules:
    lower bound with PRESENCE + upper bound with ABSENCE.
 10. `window` is MANDATORY on every rule. Never omit it.
-    If the protocol specifies an explicit time frame (e.g., "within 3 months prior to screening"), convert to days ({{start: -90, end: 0}}).
+    If the protocol specifies an explicit time frame (e.g., "within 8 weeks prior to enrolment"), convert to days ({{start: -90, end: 0}}).
     If no time frame is stated, use domain defaults: """ + _DEFAULT_WINDOWS_BY_DOMAIN_FORMAT_SAFE + """.
 11. Drug rules must preserve the specific drug identity, but normalize it to the ingredient/generic name.
     If a criterion lists specific drugs (e.g., "ticagrelor", "clopidogrel"), keep those exact drugs,
@@ -674,7 +682,7 @@ Important Rules:
 12. COMPOSITE OR GROUPING (Pattern E): When a protocol criterion lists multiple sub-conditions
     joined by OR — including "≥1 of: ...", "at least one of", "with or without X",
     "either X or Y", "including X, Y, or Z", or conditional sub-type paths
-    (e.g., "STEMI patients requiring PCI OR NSTE-ACS patients") —
+    (e.g., "Aortic stenosis patients requiring valve replacement OR aortic regurgitation patients") —
     you MUST emit a SINGLE rule with `group_type: "ANY"` and `sub_criteria` array.
     Each sub-condition becomes a separate entry in `sub_criteria`.
     The parent rule's `entity_text` should be null (the sub_criteria have their own entity_text).
@@ -690,8 +698,8 @@ Important Rules:
     What grouping does NOT do is merge concept sets — N sub_criteria still map to N concept
     sets — so grouping is never the remedy for one sentence emitted more than once. That is
     rule 15.
-    Example: "ACS with or without ST-segment elevation" → single rule, sub_criteria=[STEMI, NSTEMI, UA], group_type="ANY"
-    Example: "STEMI patients OR NSTE-ACS patients" → single rule, sub_criteria=[STEMI, NSTE-ACS], group_type="ANY"
+    Example (illustrative): "Aortic valve disease with or without regurgitation" → single rule, sub_criteria=[aortic stenosis, aortic regurgitation, mixed aortic valve disease], group_type="ANY"
+    Example (illustrative): "Aortic stenosis patients OR aortic regurgitation patients" → single rule, sub_criteria=[aortic stenosis, aortic regurgitation], group_type="ANY"
 13. CONDITIONAL CRITERIA (Pattern F): When a criterion says "[subgroup] must [requirement]"
     or "if [condition] then [requirement]", set `conditional: true`. Examples:
     "females of childbearing potential must have negative pregnancy test" → conditional: true
@@ -701,13 +709,13 @@ Important Rules:
     the measurement to be incorrectly excluded).
 14. REGION/SUBGROUP-CONDITIONAL VALUE (Pattern G): When a criterion states a DIFFERENT number
     for a named subgroup while the requirement itself applies to every patient — "Age >= 18
-    years. For Japan only: Age >= 20 years", "eGFR >= 60 (>= 45 for age > 75)" — this is NOT
+    years. For Iceland only: Age >= 21 years", "ferritin >= 60 (>= 45 for age > 75)" — this is NOT
     Pattern F (nobody is exempt) and it is NOT a single number to pick. Emit ONE group with
     `group_type: "ANY"` (the variants are alternatives a patient satisfies one of, not
     requirements that all apply together — `group_type: "ALL"` would force every patient to
     satisfy the strictest variant, which no protocol states) and a sub_criterion PER VARIANT,
     each carrying its own value_constraint and a name noting which subgroup it is for (e.g.
-    "Age (general)", "Age (Japan)"). This MUST be a single JSON rule object with a
+    "Age (general)", "Age (Iceland)"). This MUST be a single JSON rule object with a
     `sub_criteria` array — do not emit the variants as separate top-level
     inclusion_rules/exclusion_rules entries; those are AND-combined downstream and silently
     force the strictest variant onto every patient, the same wrong result a mistaken
@@ -716,17 +724,17 @@ Important Rules:
     threshold — do not let "there's already a number for this entity" stand in for "every
     number this line states is captured".
     WRONG — two separate top-level rules (AND-combined downstream, forces Age >= 20 onto
-    every patient including non-Japan):
+    every patient including non-Iceland):
     {{"inclusion_rules": [
       {{"name": "Age (general)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 18.0, "unit_text": "years"}}}},
-      {{"name": "Age (Japan)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 20.0, "unit_text": "years"}}}}
+      {{"name": "Age (Iceland)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 21.0, "unit_text": "years"}}}}
     ]}}
     RIGHT — one rule, group_type "ANY", two sub_criteria (OR-combined, so a general patient
     matching >= 18 is sufficient without also having to satisfy >= 20):
     {{"inclusion_rules": [
       {{"name": "Age (region-conditional)", "domain": "Demographics", "entity_text": null, "group_type": "ANY", "sub_criteria": [
         {{"name": "Age (general)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 18.0, "unit_text": "years"}}}},
-        {{"name": "Age (Japan)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 20.0, "unit_text": "years"}}}}
+        {{"name": "Age (Iceland)", "domain": "Demographics", "value_constraint": {{"op": "gte", "value": 21.0, "unit_text": "years"}}}}
       ]}}
     ]}}
 15. RESTATED SINGLE ENTITY (Pattern H): When one criterion sentence restates ONE clinical
@@ -742,15 +750,15 @@ Important Rules:
       - a suffix that reads like a subgroup variant — "(<= 1 year)", "(General)";
       - a suffix that tags the section, role, or domain — "(Exclusion)", "(Demographics)";
       - no suffix at all, but a reworded name foregrounding a facet the first name omitted —
-        "Pregnancy/Nursing/Uncontrolled Contraception" followed by "Pre-menopausal
-        women/Nursing/Pregnant/Uncontrolled Contraception";
+        "Orthostatic Hypotension/Postural Dizziness/Syncope" followed by "Postural
+        Dizziness/Syncope on Standing/Orthostatic Intolerance";
       - a byte-identical repeat of the rule you already emitted.
     A renamed duplicate is not a second criterion; it is a duplicate with a different name.
     It is mapped on its own paraphrased name to its own divergent concept set, and the cohort
     is filtered on the union, exactly as if you had suffixed it.
     A parenthetical that scopes or defines the population is NOT a Pattern G subgroup variant.
-    Pattern G requires a DIFFERING NUMBER for a named subgroup ("Age >= 18 years. For Japan
-    only: Age >= 20 years"); "(last menstruation <= 1 year prior to informed consent)" states
+    Pattern G requires a DIFFERING NUMBER for a named subgroup ("Age >= 18 years. For Iceland
+    only: Age >= 21 years"); "(on standing, within 3 minutes of upright posture)" states
     no second threshold, so there is no variant to emit.
     The mechanical test against Pattern E: sub-conditions that each carry their OWN
     `value_constraint` bound to a different named entity are DISTINCT and keep one concept set
@@ -760,27 +768,27 @@ Important Rules:
     variant. Each copy is mapped on its own paraphrased name, and the cohort is then filtered
     on the union of three divergent concept sets:
     {{"exclusion_rules": [
-      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception", "domain": "Demographics", "logic_type": "ABSENCE"}},
-      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception (<= 1 year)", "domain": "Demographics", "logic_type": "ABSENCE"}},
-      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception (General)", "domain": "Demographics", "logic_type": "ABSENCE"}}
+      {{"name": "Orthostatic Hypotension/Postural Dizziness/Syncope", "domain": "Condition", "logic_type": "ABSENCE"}},
+      {{"name": "Orthostatic Hypotension/Postural Dizziness/Syncope (within 3 minutes)", "domain": "Condition", "logic_type": "ABSENCE"}},
+      {{"name": "Orthostatic Hypotension/Postural Dizziness/Syncope (General)", "domain": "Condition", "logic_type": "ABSENCE"}}
     ]}}
     WRONG — the same violation with the suffixes removed. One line, emitted twice: once under
     the cluster name, then again under a rewording that foregrounds the population facet the
     first name left out. No suffix makes this different from the block above; it is two rules
     from one line, mapped to two divergent concept sets, unioned:
     {{"exclusion_rules": [
-      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception", "domain": "Demographics", "logic_type": "ABSENCE"}},
-      {{"name": "Pre-menopausal women/Nursing/Pregnant/Uncontrolled Contraception", "domain": "Demographics", "logic_type": "ABSENCE"}}
+      {{"name": "Orthostatic Hypotension/Postural Dizziness/Syncope", "domain": "Condition", "logic_type": "ABSENCE"}},
+      {{"name": "Postural Dizziness/Syncope on Standing/Orthostatic Intolerance", "domain": "Condition", "logic_type": "ABSENCE"}}
     ]}}
     RIGHT — one flat criterion, no sub_criteria, no parenthetical suffix, the whole sentence
     carried verbatim as source_text:
     {{"exclusion_rules": [
-      {{"name": "Pregnancy/Nursing/Uncontrolled Contraception", "domain": "Demographics",
-        "source_text": "Pre-menopausal women (last menstruation <= 1 year prior to informed consent) who are nursing or pregnant or of child-bearing potential and not using an acceptable method of birth control",
+      {{"name": "Orthostatic Hypotension/Postural Dizziness/Syncope", "domain": "Condition",
+        "source_text": "Patients with symptomatic orthostatic hypotension, postural dizziness, or a documented syncopal episode (on standing, within 3 minutes of upright posture)",
         "logic_type": "ABSENCE", "window": {{"start": -9999, "end": 0}}}}
     ]}}
-    RIGHT (the contrast that must NOT change) — "ALT (SGPT), AST (SGOT), or alkaline
-    phosphatase >= 3 x upper limit of normal" names three DISTINCT analytes, each carrying its
+    RIGHT (the contrast that must NOT change) — "Ferritin (FERR), ceruloplasmin (CP), or
+    haptoglobin (HP) >= 6 x upper limit of normal" names three DISTINCT analytes, each carrying its
     own value_constraint. Rule 12 governs it and this rule does not reach it: three entities,
     three concept sets. Collapsing them is the opposite failure and is just as wrong.
 
@@ -825,10 +833,10 @@ only job is to match them back up — do NOT change, invent, round, or re-derive
 {rules_block}
 
 For each rule, decide which threshold index it should carry. A threshold may be shared by more
-than one rule when the original text groups them with "or" under one comparator — "ALT or AST >
-2X ULN" means BOTH ALT and AST get that same threshold index. A rule gets its OWN threshold only
-when the text states a separate comparator for it — "... or a Total Bilirubin >= 1.5X ULN" is
-Bilirubin's own, different index.
+than one rule when the original text groups them with "or" under one comparator — "ferritin or
+ceruloplasmin > 4X ULN" means BOTH analytes get that same threshold index. A rule gets its OWN
+threshold only when the text states a separate comparator for it — "... or a serum haptoglobin
+>= 6.5X ULN" is haptoglobin's own, different index.
 
 If a rule's analyte does not appear in the original text at all, or you cannot determine its
 threshold with confidence, leave it out of the mapping rather than guessing.
