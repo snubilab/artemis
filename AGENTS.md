@@ -194,8 +194,8 @@ isolated-count method above rather than the combined run.
 
 ## WHERE A DELIVERY LIVES
 
-**`output/circe_be/` is the delivery archive, and it already was one.** Every send since
-2026-08-03 is a dated folder plus a zip beside it:
+**`output/circe_be/` is where a PREPARED export goes.** Every export built for delivery
+since 2026-08-03 is a dated folder plus a zip beside it:
 
 ```
 output/circe_be/
@@ -226,9 +226,16 @@ The two roles stay separate:
 | Path | Role |
 | --- | --- |
 | `output/site_gap/<date>/` | one per run, the audit trail. Never edited after the run. |
-| `output/circe_be/<date>/` | one per SEND. |
+| `output/circe_be/<date>/` | one per export PREPARED for delivery. |
 
-A run directory is not a delivery. Copy into `circe_be/` only what actually goes out.
+A run directory is not a delivery. Copy into `circe_be/` only what is built to go out.
+
+**Being filed here is not evidence that anything was sent.** The 2026-08-31 export sat
+here complete, with its zip, and was never sent — while the delivery ledger
+(`docs/wiki/content/records/note-018.md`, Broadsea repo) had recorded it as "Sent to the
+hospital" on inference. That row was corrected on 2026-09-12 when the user said
+otherwise. **A delivery counts as sent only when the user says it was sent**, and the
+ledger's verdict column is filled from the hospital's own run, never computed here.
 
 `output/` is gitignored and only the **first** delivery (`2026-08-03/`, plus the 08-04
 tarball) was force-added; 08-27, 08-31 and 09-12 are not tracked. So the location
