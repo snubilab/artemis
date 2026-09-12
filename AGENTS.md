@@ -192,6 +192,37 @@ A prompt experiment needs a trial outside `EVALUATED_TRIALS` — `data/papers/NC
 computed against protocol text and the arms themselves. Verify any such pick with the
 isolated-count method above rather than the combined run.
 
+## WHERE A DELIVERY LIVES
+
+**`output/delivery/` is the one place.** It holds exactly what would be sent right now,
+and it is overwritten in place. Do not create a dated delivery folder, a `_v2`, or a
+`_final`.
+
+That rule exists because the convention had already drifted to **21 directories across
+five spellings** — `deliver/`, `DELIVERY/`, `deliver_v2/`, `deliver_final/`,
+`deliver_grounded/`, `deliver_20260906/`, `tmp/tte_six_deliver/` — with nothing marking
+which one was current. Choosing between them took a conversation every time.
+
+The two roles are separate and must stay separate:
+
+| Path | Role |
+| --- | --- |
+| `output/site_gap/<date>/` | one per run, the audit trail. Never edited after the run. |
+| `output/delivery/` | always one, the current send candidate. Overwritten wholesale. |
+
+Refreshing it is a copy and three edited lines:
+
+```bash
+cp output/site_gap/<date>/DELIVERY/*.circe.json output/delivery/
+$EDITOR output/delivery/.source     # source_run, artemis_head, gate
+```
+
+`output/delivery/.source` records which run produced the files and is **not** part of
+the payload. Anything that would go to a recipient goes in the folder itself.
+
+Export with `scripts/export_seeded_cohorts.py`, not `export_circe_from_store.py` — the
+latter writes `*_circe.json`, which `scripts/verify_circe_delivery.py` does not read.
+
 ## NAME RESOLUTION OWNERSHIP
 
 Name resolution is owned by `TTEService._recommend_seeded_concept_set`, which funnels
