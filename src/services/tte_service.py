@@ -7758,6 +7758,7 @@ class TTEService:
         pre_fetched_candidates: list | None = None,
         workflow: Any | None = None,
         alias_candidates: list[str] | None = None,
+        resolving_entity_exception: bool = False,
     ) -> dict[str, Any]:
         normalized_seed = " ".join(seed_text.split()).strip()
         if not normalized_seed:
@@ -7765,6 +7766,53 @@ class TTEService:
                 "Missing seed text for cohort definition mapping",
                 code=REFUSAL_EMPTY_SEED,
             )
+
+        # An entity exclusion the criterion states in its own words -- "insulin
+        # other than human NPH insulin", "cancer other than non-melanoma skin
+        # cancer" -- is mapped as TWO phrases, not one. One call on the whole
+        # string returns the excepted entity, because the tail dominates the
+        # embedding: the 2026-09-14 delivery shipped codeset 54 'insulin other
+        # than human NPH insulin' holding codeset 12 'human NPH insulin's 26 ids
+        # byte for byte, so the exclusion removes exactly the patients the
+        # protocol requires to be on that insulin.
+        #
+        # Ahead of the cache on purpose. A cached entry for the whole phrase IS
+        # the mapping being repaired; the two sub-calls each hit the cache on
+        # their own phrase, so nothing is lost.
+        #
+        # Every failure falls back to the single call below rather than
+        # half-applying -- see resolve_entity_exception.
+        if not resolving_entity_exception:
+            from src.services.entity_exception import detect_entity_exception
+            from src.services.entity_subtraction import resolve_entity_exception
+
+            _exception = detect_entity_exception(normalized_seed)
+            if _exception is not None:
+                _resolution = resolve_entity_exception(
+                    _exception,
+                    lambda phrase: self._recommend_seeded_concept_set(
+                        phrase,
+                        expected_domain=expected_domain,
+                        workflow=workflow,
+                        resolving_entity_exception=True,
+                    ),
+                )
+                if _resolution.mapping is not None:
+                    logging.info(
+                        "[TTE] entity exception on '%s': base=%r excepted=%s -> "
+                        "%d excluded in place, %d appended",
+                        normalized_seed, _exception.base, _exception.excepted,
+                        len(_resolution.subtraction.excluded_in_place),
+                        len(_resolution.subtraction.appended),
+                    )
+                    return _resolution.mapping
+                # Said out loud. A silent fallback here is indistinguishable from
+                # the defect it was written to repair.
+                logging.warning(
+                    "[TTE] entity exception on '%s' NOT applied, mapping the whole "
+                    "phrase as before: %s",
+                    normalized_seed, _resolution.fallback_reason,
+                )
 
         # Defect B fix: for drug seeds, an EXACT standard RxNorm Ingredient name
         # match wins over embedding search (fixes linagliptin->sitagliptin,
