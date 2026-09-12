@@ -64,13 +64,46 @@ def _ir_cache_enabled() -> bool:
 
 def _normalize_trial_data_for_stable_hash(trial_data: "TrialData") -> "TrialData":
     """
-    Return a copy of trial_data with criteria normalized for stable hashing.
+    Return a copy of trial_data with criteria normalized, **in document order**.
 
-    Normalization steps:
+    This return value serves two consumers at once, and that is the whole reason
+    this docstring is long. :meth:`LogicDecomposer.parse_nct` rebinds ``trial_data``
+    to it, then builds the model prompt from the result AND derives the Agent 1 IR
+    cache key from that prompt string. So every step here has to be right for the
+    key AND right for the model:
+
     - Strip leading/trailing whitespace from each criterion string
     - Collapse multiple internal spaces into one
     - Remove Unicode non-breaking spaces (U+00A0)
-    - Deduplicate criteria while preserving stable (sorted) order
+    - Deduplicate exact repeats, each survivor keeping its own position
+
+    Every one of those is a per-item rewrite or a set-membership test. None of
+    them needs, or is helped by, a sort.
+
+    **The list is NOT sorted, and a sort here is a defect rather than a tidy-up.**
+    One stood in this function under the name "stable order" and reached the model.
+    Measured on LEADER (NCT01179048): twenty top-level inclusion rules came back in
+    alphabetical ``source_text`` order, eleven of them members of an "≥1 of the
+    following criteria:" list and two the orphaned list headers themselves. Circe
+    AND-combines top-level ``InclusionRules``, so the delivered cohort demanded
+    ankle-brachial index *and* asymptomatic ischemia *and* heart failure *and*
+    eight more simultaneously, and was empty. A list header names its cardinality
+    and ends in a colon; its members are the items that followed it in the
+    document. That relationship exists ONLY in the order -- and
+    :meth:`LogicDecomposer._format_criteria` numbers the lines, which presents
+    whatever order arrives here to the model as authoritative.
+
+    Dropping the sort does not weaken the key. Whitespace, non-breaking spaces and
+    duplicate entries -- the three variations the key has to absorb -- are still
+    absorbed, because the cleaning and the dedup still run before the prompt is
+    built. What is deliberately given up is order-INSENSITIVITY, which was never a
+    stability property worth having: two different document orders are two
+    different inputs and must get two different keys, or a re-parse that
+    legitimately reorders criteria silently replays the previous run's cached IR
+    and reports it as the new answer.
+
+    The key therefore changes for every trial, costing one full six-study
+    re-extraction (~132 min measured). No variant of this fix avoids that.
 
     This is a pure function — the original trial_data is not mutated.
     """
@@ -84,7 +117,7 @@ def _normalize_trial_data_for_stable_hash(trial_data: "TrialData") -> "TrialData
     def _normalize_list(criteria: list) -> list:
         seen: set = set()
         result = []
-        for item in sorted(_clean(c) for c in criteria):
+        for item in (_clean(c) for c in criteria):
             if item not in seen:
                 seen.add(item)
                 result.append(item)
