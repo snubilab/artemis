@@ -81,6 +81,41 @@ Baseline arms are the single largest repeated cost. Use
   with both operators across runs. `source_text` is copied verbatim from the
   document and is.
 
+## Document order is destroyed before extraction
+
+`src/agents/agent1/parser.py:80` sorts the criteria list alphabetically, inside a
+function named `_normalize_trial_data_for_stable_hash`. Line 289 **rebinds**
+`trial_data` to that sorted copy, and lines 302-307 build the model prompt from it —
+so the alphabetised list is what the model actually sees, not just what gets hashed.
+Deduplication is done by the `seen` set and does not need the sort.
+
+Upstream, `pubmed_fetcher.py:202` sorts blocks by character offset, so the enriched
+list reaches line 80 **in document order**. The sort is where that order is lost.
+
+The cost, measured on LEADER's IR cache (`NCT01179048_..._53197d558aff3e94.json`):
+20 top-level inclusion rules in alphabetical `source_text` order, of which eleven are
+members of an "≥1 of the following" list and two are the orphaned list headers whose
+`source_text` still ends in `of the following criteria:`. Circe AND-combines top-level
+InclusionRules, so the delivered cohort demands ankle-brachial index **and**
+asymptomatic ischemia **and** heart failure **and** renal failure **and** eight more,
+simultaneously. It is empty.
+
+This one line accounts for four of the twelve cohort-blocking findings in
+`output/site_gap/2026-09-14/conversion_audit.json`.
+
+Two things follow for anyone working here:
+
+- **A criterion's position is evidence and the pipeline throws it away.** A list header
+  ends in a colon and names its cardinality ("≥1 of the following", "at least two of").
+  Its members are the items that followed it in the document — a relationship that exists
+  only in the order.
+- **Removing the sort changes the prompt, so it changes the Agent-1 IR cache key.** Budget
+  the full six-study re-extraction (~132 min). Any fix here pays that once; there is no
+  variant that avoids it.
+
+Not verified: whether `_merge_parsed_items` preserves order when it folds a lighter block
+into the heaviest one. Only the heaviest block's own order was confirmed.
+
 ## Reading the gold standard
 
 `data/gold/<TRIAL>/` (TROY v1.1) is the reference, **not an oracle**. Measured
