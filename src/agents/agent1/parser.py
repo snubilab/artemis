@@ -39,6 +39,13 @@ from src.agents.agent1.pubmed_fetcher import (
 )
 from src.agents.agent1.enricher import enrich_trial_data
 from src.agents.agent1.repair_accounting import RepairLedger, assert_repairs_accounted
+from src.agents.agent1.temporal_grounding import (
+    stated_interval,
+    temporal_intervals,
+    temporal_numerals,
+    window_agrees,
+    window_for,
+)
 from src.api.models.tte import PaperStatus, PaperDownloadInfo, DownloadUrl, DownloadResult
 from src.agents.agent1.paper_url_mapper import (
     extract_doi_from_pubmed,
@@ -132,6 +139,32 @@ def inclusive_upper_bounds(source_text: Optional[str]) -> set[float]:
     for match in _RANGE.finditer(source_text):
         bounds.add(float(match.group(2)))
     return bounds
+
+
+def trial_temporal_numerals(*rule_lists) -> frozenset[float]:
+    """Every numeral any criterion of this trial states inside a lookback phrase.
+
+    Collected across BOTH sides and into groups, because the defect it exists to
+    recognise crosses both: PLATO's `Index event is an acute complication of PCI`
+    is an exclusion carrying no digit, and the `24` it was emitted with is the
+    numeral of `within the previous 24 h` and `onset during the previous 24 hours`
+    -- one exclusion and one inclusion, neither related to it.
+
+    The set is of the NUMERALS as written, not of the day counts they convert to.
+    That is the point: the model copied the digit `24`, not the one-day window
+    `24 hours` actually means, which is why the borrowed window is 24 days.
+    """
+    numerals: set[float] = set()
+
+    def walk(rules) -> None:
+        for rule in rules or []:
+            numerals.update(temporal_numerals(getattr(rule, "source_text", None)))
+            numerals.update(temporal_numerals(getattr(rule, "name", None)))
+            walk(getattr(rule, "sub_criteria", None))
+
+    for rules in rule_lists:
+        walk(rules)
+    return frozenset(numerals)
 
 
 class LogicDecomposer:
@@ -1422,6 +1455,35 @@ class LogicDecomposer:
             "pattern-e", lambda rules: self._repair_pattern_e(rules, ledger)
         )
 
+        # Time windows arrive from the model's JSON with nothing between them and the
+        # IR: `_build_criteria` does `TemporalWindow(**data["window"])`, no conversion,
+        # no comparison against the line. So a misread unit, a slipped digit or an
+        # inverted direction reaches a delivery exactly as written. Runs LAST because
+        # it reads `source_text` and `name`, which no step above touches -- its
+        # position is free, and last is where its rewrite records cannot stand in for
+        # a departure an earlier step made.
+        #
+        # Exclusions are repaired too, which the band steps above deliberately do not
+        # do. Their restriction is about what `logic_type` can encode: `_build_criteria`
+        # forces ABSENCE on every exclusion, so the PRESENCE lower half a band pair
+        # needs cannot exist on that side. A window has no operator and no logic_type
+        # of its own, so that reason does not reach it -- and five of the seven
+        # time-window defects in the 2026-09-14 conversion audit are on the exclusion
+        # side, so inheriting the gate would skip most of this repair's own subject.
+        borrowed = trial_temporal_numerals(inclusion_rules, exclusion_rules)
+        inclusion_rules = _gated(
+            "protocol-window",
+            lambda rules: self._repair_protocol_windows(rules, ledger, borrowed=borrowed),
+        )
+        before_exclusion_windows = list(exclusion_rules)
+        exclusion_rules = self._repair_protocol_windows(
+            exclusion_rules, ledger, borrowed=borrowed
+        )
+        assert_repairs_accounted(
+            before_exclusion_windows, exclusion_rules, ledger,
+            role="exclusion/protocol-window",
+        )
+
         # C2Q-inspired post-parse validation
         self._validate_measurement_rules(inclusion_rules, "inclusion")
         self._validate_measurement_rules(exclusion_rules, "exclusion")
@@ -1519,7 +1581,128 @@ class LogicDecomposer:
             return corrected
 
         return [_repair(rule) for rule in rules]
-    
+
+    def _repair_protocol_windows(self, rules: list, ledger: "RepairLedger" = None, *,
+                                 borrowed: frozenset = frozenset()) -> list:
+        """Hold each criterion's time window to the interval its own protocol line states.
+
+        Two grounded actions, and nothing else:
+
+        **Reground.** The line states an interval that is attached to this criterion --
+        restated in its own name, or sitting immediately after its entity's mention --
+        and the emitted window is not a defensible reading of it. The window is
+        rewritten to what the line says. This covers all three shapes the 2026-09-14
+        conversion audit found: a unit never converted (`24 hours` as -24 days, `3
+        years` as -3), a magnitude slipped by a digit (`6 weeks` as -420, where the
+        same model writes the correct -42 on the same line on 76 other cached windows),
+        and a direction inverted (`> 6 weeks prior to informed consent` emitted as a
+        recency window, which selects exactly the patients that clause excludes).
+
+        **Drop a borrowed window.** The criterion's line carries no digit at all, its
+        name states no interval either, the window is not the documented default for
+        its domain, and its magnitude is a numeral some OTHER criterion of the same
+        trial states in a lookback phrase. Nothing grounds that number, so the window
+        is removed and `_criterion_to_circe` supplies and RECORDS the domain default
+        instead. Measured over all 122 IR caches this fires on 4 windows, all of them
+        PLATO's `Index event is an acute complication of PCI` carrying a 24-day window
+        copied from the trial's two unrelated `24 h` phrases.
+
+        Both sides, inclusion and exclusion -- see the note at the call site for why
+        the band repairs' inclusion-only restriction does not carry over.
+
+        Deliberately silent where the line does not decide. Measured over all 122 IR
+        caches, 5,092 windows: 557 are decidable, 288 of those already agree with the
+        line and are left untouched, 269 are rewritten, 4 are dropped, and the
+        remaining 4,535 are declined. A window this cannot ground is left exactly as
+        the model wrote it; guessing at one would be the defect this repair exists to
+        remove, wearing a different hat.
+
+        Recurses into `sub_criteria`, rewiring members in place rather than rebuilding
+        the parent, for the reason `_repair_inclusive_upper_bounds` gives: the
+        accounting gate matches by object identity, and a rebuilt parent reads as the
+        parent itself vanishing.
+
+        :returns: the same list, with each corrected criterion replaced by a copy.
+        """
+        ledger = ledger if ledger is not None else RepairLedger()
+
+        def _domain_default_start(criterion: "Criteria") -> int:
+            from src.utils.circe_lint import default_criterion_window
+            return default_criterion_window(getattr(criterion, "domain", None))[0]["start"]
+
+        def _repair(criterion: "Criteria") -> "Criteria":
+            if criterion.sub_criteria:
+                criterion.sub_criteria = [_repair(child) for child in criterion.sub_criteria]
+            window = criterion.window
+            if window is None:
+                return criterion
+            line = criterion.source_text or ""
+
+            interval, how = stated_interval(line, criterion.name)
+            if interval is not None:
+                if window_agrees(interval, window.start, window.end):
+                    return criterion
+                start, end = window_for(interval, window.end)
+                corrected = criterion.model_copy(update={
+                    "window": TemporalWindow(start=start, end=end),
+                })
+                # The ORIGINAL, not the copy: the gate matches by object identity and
+                # it is the original that leaves the tree here.
+                ledger.rewritten(
+                    criterion,
+                    action="protocol-window-regrounded",
+                    reason=(
+                        f"the protocol line states {interval.text!r}, which is "
+                        f"{interval.days} days "
+                        + ("BEFORE which the event must fall (an open-ended lower "
+                           "bound on elapsed time)" if interval.older_than
+                           else "within which the event must fall")
+                        + f"; the emitted window said {window.start}..{window.end} "
+                        f"(grounding: {how})"
+                    ),
+                    before={"start": window.start, "end": window.end},
+                    after={"start": start, "end": end},
+                )
+                logger.info(
+                    "[Agent 1] Protocol-window repair: '%s' %s..%s -> %s..%s "
+                    "(line states %r, grounding %s)",
+                    criterion.name, window.start, window.end, start, end,
+                    interval.text, how,
+                )
+                return corrected
+
+            ungrounded = (
+                not re.search(r"[0-9]", line)
+                and not temporal_intervals(criterion.name)
+                and window.start != _domain_default_start(criterion)
+                and float(abs(window.start)) in borrowed
+            )
+            if not ungrounded:
+                return criterion
+            corrected = criterion.model_copy(update={"window": None})
+            ledger.rewritten(
+                criterion,
+                action="protocol-window-ungrounded-dropped",
+                reason=(
+                    f"neither the protocol line nor the criterion name states any "
+                    f"interval, yet the window ran {window.start}..{window.end}; "
+                    f"{abs(window.start)} is a numeral another criterion of this trial "
+                    f"states in a lookback phrase, so the window is dropped and the "
+                    f"documented domain default applies and is recorded at emit"
+                ),
+                before={"start": window.start, "end": window.end},
+                after=None,
+            )
+            logger.info(
+                "[Agent 1] Protocol-window repair: '%s' dropped ungrounded window "
+                "%s..%s (line %r carries no number; %s borrowed from elsewhere in "
+                "the trial)",
+                criterion.name, window.start, window.end, line[:120], abs(window.start),
+            )
+            return corrected
+
+        return [_repair(rule) for rule in rules]
+
     # A band's upper half is written with De Morgan, never with lt/lte: measured over
     # the 65 current-model IR caches, every one of the 58 upper bounds is an ABSENCE
     # rule carrying gt or gte, and not one uses lt or lte. So the pairing reads the
