@@ -203,8 +203,9 @@ PYTHONPATH="$PWD" .venv/bin/python scripts/export_seeded_cohorts.py \
 - **위임 브리핑은 `docs/agent-briefing-facts.md`** 를 가리킬 것. 단, 이 세션에서 추가된 납품 규약
   네 개 절(세 스터디가 기본 / circe_be가 이미 납품 보관소 / circe_be에 있다≠보냈다 / 납품 위치 통일,
   커밋 `e130541`·`6928199`·`bc8c52e`·`29d498d`)은 실제로 `AGENTS.md`에 들어갔다 —
-  `docs/agent-briefing-facts.md`는 이번 세션에 손대지 않았다. 다음 위임 브리핑 전에 두 파일 중
-  하나로 합칠 것.
+  `docs/agent-briefing-facts.md`는 이번 세션에 손대지 않았다 — **합침:** 조건부 요약 절을
+  `docs/agent-briefing-facts.md`에 추가하고 `AGENTS.md` § WHERE A DELIVERY LIVES 를 전체
+  내용의 근거로 남겼다 (기존 파일의 "요약 + AGENTS.md 교차참조" 관행을 그대로 따름).
 - **이 호스트의 모든 CDM은 합성이다.** 환자 수는 픽스처에 대한 사실이지 파이프라인에 대한 증거가 아니다.
 - 이번 세션에서 **제 측정이 네 번 틀렸다** (깊이 histogram, CAROLINA 순서 이탈 수, codeset 번호,
   LEADER 누락 건수). 전부 에이전트가 "보고한 대로 안 맞추고 측정한 걸 보고"해서 잡혔다.

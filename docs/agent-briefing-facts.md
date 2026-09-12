@@ -204,6 +204,21 @@ whether a **surviving** criterion is clinically sound. ARISTOTLE passed at 2/12
 while carrying an exclusion that removed every patient who had ever had a platelet
 count. The lints in `src/utils/circe_lint.py` are where soundness checks belong.
 
+## Where a delivery lives
+
+**`output/circe_be/<date>/` is the only delivery location — never invent a
+second one.** A run in `output/site_gap/<date>/` is the audit trail and is
+never edited after the run; a prepared export in `output/circe_be/<date>/` is
+what goes out. **The default delivery is three studies (CARMELINA, CAROLINA,
+EMPA-REG), not six** — build the six-study zip only when asked. **Being filed
+in `circe_be/` is not evidence anything was sent**: the 2026-08-31 export sat
+there complete, with its zip, and was never sent, while the delivery ledger
+had recorded it as sent on inference alone until the user corrected it on
+2026-09-12. A delivery counts as sent only when the user says so. Full
+convention (including the 21-directory/five-spelling anti-pattern this
+replaced) and the export command in `AGENTS.md` § WHERE A DELIVERY LIVES; do
+not restate it elsewhere.
+
 ## Measures
 
 - Concept-set quality is scored **per eligibility criterion, 1:1,
