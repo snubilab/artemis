@@ -103,6 +103,42 @@ moved five pairs, but three were orphan duplicates of the other two — the hone
 is two, one per affected trial. Report distinct corrections, not pair counts, and say
 which pairs are duplicates when quoting a delta.
 
+**Every score recorded before 623e663 was measured through contaminated prompts.** The
+few-shot examples in `src/agents/agent1/prompts.py`, `src/agents/planner/prompts.py` and
+`src/agents/agent2/critic.py` quoted the eligibility text of the six trials those prompts
+are evaluated on — 26 distinct shared spans, up to 98 characters, including gold criterion
+names in full (`Required treatment with aspirin > 165 mg/day`). A model shown the answer
+is not being measured on it.
+
+Spans per trial, counted **one trial at a time**: CAROLINA 10, ARISTOTLE 9, CARMELINA 8,
+EMPA-REG 6, PLATO 4, LEADER 2. No evaluated trial is clean. Counting them together hides
+trials: the matcher keeps only the longest shared span per prompt position and awards it
+to one document, so a trial that words a criterion briefly vanishes behind one that words
+it at length. EMPA-REG read as clean that way and is not — an experiment was picked on
+that false premise before the isolated count corrected it.
+
+Criteria whose recorded scores are not measurements: ARISTOTLE's liver-enzyme/bilirubin
+and aspirin-dose exclusions; PLATO's biomarker inclusion, its ST-segment inclusion and its
+liver-disease exclusion; CAROLINA's hypersensitivity, thyroid-dose, hyperglycaemia,
+diabetes-duration and liver-panel criteria; CARMELINA's pregnancy exclusion, Japan age
+criterion, eGFR bound and liver panel; LEADER's `Anti-diabetic drug naive` inclusion and
+revascularization criterion; EMPA-REG's hyperglycaemia and thyroid-dose exclusions.
+Anything `agent2/critic.py` produced for a CAROLINA malignancy criterion is likewise not
+independent.
+
+`tests/test_prompt_corpus_contamination.py` keeps this out: it fails when a prompt string
+that reaches an LLM shares a threshold-bearing span (Gate A) or a 30+ character
+connective-bearing span (Gate B) with any trial in `EVALUATED_TRIALS`. Adding a trial
+there re-arms the gate against that trial's text. **Substituting one analyte for another
+moves the defect rather than removing it** — 4aa1f08 rewrote a bilirubin example to GGT,
+and both ARISTOTLE's clause opening and GGT itself were still in the corpus. Synthesise
+the line instead; an invented protocol sentence cannot be in the corpus by construction.
+
+A prompt experiment needs a trial outside `EVALUATED_TRIALS` — `data/papers/NCT01730534`
+(DECLARE-TIMI 58) has protocol text and no gold, which costs nothing when the measures are
+computed against protocol text and the arms themselves. Verify any such pick with the
+isolated-count method above rather than the combined run.
+
 ## NAME RESOLUTION OWNERSHIP
 
 Name resolution is owned by `TTEService._recommend_seeded_concept_set`, which funnels

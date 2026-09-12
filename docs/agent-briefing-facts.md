@@ -89,6 +89,28 @@ sets referenced with no bound at all; EMPA-REG's HbA1c carrying an `Extent` that
 `gte` ignores; four Measurement-absence criteria with no value filter. Where you
 and gold disagree, **the protocol line decides**.
 
+## The prompts quoted the corpus they are evaluated on
+
+Fixed in 623e663; **every score recorded before it is suspect.** All six evaluated
+trials had text of their own in the few-shot examples — CAROLINA 10 spans, ARISTOTLE 9,
+CARMELINA 8, EMPA-REG 6, PLATO 4, LEADER 2. Full list of affected criteria and the
+reasoning in `AGENTS.md` § EVALUATION; do not restate it elsewhere.
+
+Two working rules follow:
+
+- **Count contamination one trial at a time.** A combined run keeps only the longest
+  shared span per prompt position and awards it to one document, so a trial that words a
+  criterion briefly disappears behind one that words it at length. EMPA-REG read as clean
+  that way and is not.
+- **A prompt experiment must use a trial outside `EVALUATED_TRIALS`** —
+  `data/papers/NCT01730534` (DECLARE-TIMI 58) has protocol text and no gold, which costs
+  nothing when the measures are computed against protocol text and the arms themselves.
+
+`tests/test_prompt_corpus_contamination.py` is the gate. Any prompt edit re-runs it for
+free (file reads plus `pdftotext`, ~2 s, no LLM, no DB). **Any prompt edit also
+invalidates the Agent-1 IR cache key**, so the next extraction re-runs all six trials
+(~132 min measured).
+
 ## What the delivery gate does and does not check
 
 It checks whether a **missing** criterion is accounted for. It does not check
