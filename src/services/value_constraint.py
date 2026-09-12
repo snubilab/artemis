@@ -52,16 +52,21 @@ _UNIT_CONCEPTS: dict[int, tuple[str, str]] = {
     8587: ("mL", "milliliter"),
     8636: ("g/L", "gram per liter"),
     8645: ("[U]/L", "unit per liter"),
+    8647: ("/uL", "per microliter"),
     8713: ("g/dL", "gram per deciliter"),
+    8723: ("mg/g", "milligram per gram"),
     8725: ("ng/L", "nanogram per liter"),
     8749: ("umol/L", "micromole per liter"),
     8753: ("mmol/L", "millimole per liter"),
     8785: ("/mm3", "per cubic millimeter"),
     8795: ("mL/min", "milliliter per minute"),
+    8838: ("ug/mg", "microgram per milligram"),
     8840: ("mg/dL", "milligram per deciliter"),
     8842: ("ng/mL", "nanogram per milliliter"),
     8845: ("pg/mL", "picogram per milliliter"),
+    8848: ("10*3/uL", "thousand per microliter"),
     8876: ("mm[Hg]", "millimeter mercury column"),
+    8961: ("10*3/mm3", "thousand per cubic millimeter"),
     8985: ("[iU]/mL", "international unit per milliliter"),
     9444: ("10*9/L", "billion per liter"),
     9448: ("a", "year"),
@@ -72,6 +77,13 @@ _UNIT_CONCEPTS: dict[int, tuple[str, str]] = {
     720843: ("mV", "millivolt"),
     720870: ("mL/min/(173.10*-2.m2)", "milliliter per minute per 1.73 square meter"),
 }
+
+
+def _unit_label(concept_id: int) -> str:
+    """``"mg/g (milligram per gram)"`` -- one home for how a unit is named to a human."""
+    code, name = _UNIT_CONCEPTS[concept_id]
+    return f"{code} ({name})"
+
 
 # Standard unit concept -> the DEPRECATED UCUM spellings of the SAME unit.
 #
@@ -107,13 +119,117 @@ _UNIT_CONCEPTS: dict[int, tuple[str, str]] = {
 # all three sites because their rows carry 0. That is a site ETL gap with no vocabulary
 # answer, and stretching this table to cover it would mean guessing. It is reported
 # instead -- see `scripts/audit_declared_units.py`.
+#
+# The 8848/8961 rows came in with those concepts and are the same derivation re-run on
+# 2026-09-12 against `synthea23m`. Their concept_names read wrong and are copied
+# verbatim anyway: the vocabulary parsed the lab spelling "K/uL" as Kelvin per
+# microlitre and still maps it onto "thousand per microlitre", which is what a CDM
+# writing K/uL actually means. Correcting the name here would put this table's copy out
+# of step with `verify_unit_table_against_database`, which compares it to the row.
 _UNIT_DEPRECATED_FORMS: dict[int, tuple[tuple[int, str, str], ...]] = {
+    8848: ((8792, "K/uL", "Kelvin per microliter"),),
+    8961: (
+        (8903, "K/mm3", "Kelvin per cubic millimeter"),
+        (8978, "10*3/mm4", "Thousand per cubic millimeter4"),
+    ),
     9448: ((8528, "y", "year"),),
     720870: (
         (9117, "mL/min/1.73.m2", "milliliter per minute per 1.73 square meter"),
         (9062, "mL/min/{1.73}m", "Milliliter per minute per 1.73 meter"),
     ),
 }
+
+# Standard unit concepts that are the SAME quantity at the SAME scale, so one filter
+# must accept every member. A DIFFERENT axis from _UNIT_DEPRECATED_FORMS above, which is
+# why it is a sibling table rather than more rows in that one: there every added
+# spelling is a UCUM concept the vocabulary marks INVALID (its derivation query filters
+# `invalid_reason IS NOT NULL`, and `test_should_only_ever_add_deprecated_ucum_units_of
+# _the_same_concept` asserts no member is live). Here every member is a LIVE standard
+# concept. Folding the two would break both the query and the guard.
+#
+# The same AND-with-no-fallback that motivated the deprecated-forms table motivates this
+# one: a criterion declaring 8838 `ug/mg` matches 0 rows in a CDM whose ETL wrote 8723
+# `mg/g`, and the two are the same number -- 1 mg/g == 1 ug/mg. CAROLINA inclusion 26
+# ("Urinary albumin creatinine ratio >= 30 ug/mg") is the corpus case.
+#
+# Equal scale is the WHOLE admission test. A pair one thousand apart is the ARISTOTLE
+# platelet error: gold writes `100` thousands/uL, the protocol PDF writes `100,000/mm3`,
+# and a filter accepting both takes the cohort to 0. `_UNIT_NEVER_SAME_SCALE` below
+# names those pairs and `_build_same_scale_index` refuses a table that merges one --
+# including through a third unit, which is how such a merge actually arrives.
+#
+# No conversion lives here and none may: these rows restate one quantity in two
+# spellings, they never rescale a value. A bound that needs rescaling stays refused.
+_UNIT_SAME_SCALE: tuple[frozenset[int], ...] = (
+    frozenset({8838, 8723}),  # ug/mg == mg/g          (1e-3 g/g both)
+    frozenset({8848, 8961}),  # 10*3/uL == 10*3/mm3    (1 uL == 1 mm3)
+    frozenset({8785, 8647}),  # /mm3 == /uL            (1 uL == 1 mm3)
+)
+
+# Pairs that are the same DIMENSION and a factor of 1000 apart. Listing them is the
+# point: "these two are obviously the same thing" is exactly the reasoning that produced
+# the ARISTOTLE platelet error, and prose asking a future reader not to do it is not a
+# gate. `_build_same_scale_index` raises on any of these appearing in one class.
+_UNIT_NEVER_SAME_SCALE: tuple[frozenset[int], ...] = (
+    frozenset({8785, 8848}),  # /mm3      vs 10*3/uL
+    frozenset({8785, 8961}),  # /mm3      vs 10*3/mm3
+    frozenset({8647, 8848}),  # /uL       vs 10*3/uL
+    frozenset({8647, 8961}),  # /uL       vs 10*3/mm3
+)
+
+
+def _build_same_scale_index(
+    classes: tuple[frozenset[int], ...] = _UNIT_SAME_SCALE,
+    forbidden: tuple[frozenset[int], ...] = _UNIT_NEVER_SAME_SCALE,
+) -> dict[int, tuple[int, ...]]:
+    """concept_id -> the OTHER live units one filter must accept alongside it.
+
+    Merges overlapping classes first, so the check below runs against what a filter
+    would really emit rather than against the rows as written. Two edges that each look
+    safe can compose into one that is not: ``/mm3 == /uL`` and ``/uL == 10*3/uL`` are a
+    single addition apart and together put 8785 in the same class as 8848.
+
+    :param classes: the same-scale equivalence classes to index.
+    :param forbidden: pairs that must never share a class.
+    :raises ValueError: when a merged class holds a forbidden pair, or a member is not
+        in :data:`_UNIT_CONCEPTS`.
+    """
+    merged: list[set[int]] = []
+    for members in classes:
+        for concept_id in members:
+            if concept_id not in _UNIT_CONCEPTS:
+                raise ValueError(
+                    f"same-scale class {sorted(members)} names {concept_id}, which is "
+                    f"not in _UNIT_CONCEPTS; record the concept there first"
+                )
+        overlapping = [group for group in merged if group & members]
+        combined = set(members).union(*overlapping)
+        merged = [group for group in merged if group not in overlapping] + [combined]
+
+    for group in merged:
+        for pair in forbidden:
+            if pair <= group:
+                low, high = sorted(pair)
+                raise ValueError(
+                    f"same-scale class {sorted(group)} merges {_unit_label(low)} and "
+                    f"{_unit_label(high)}, which are the same dimension a factor of "
+                    f"1000 apart. Circe ANDs `unit_concept_id IN (...)`, so accepting "
+                    f"both makes a threshold mean two things at once -- the ARISTOTLE "
+                    f"platelet error, where gold's `100` thousands/uL and the "
+                    f"protocol's `100,000/mm3` are the same bound at two scales. "
+                    f"Rescaling the VALUE is the only correct fix and this module does "
+                    f"not do it; leave the criterion refused instead"
+                )
+
+    index: dict[int, tuple[int, ...]] = {}
+    for group in merged:
+        for concept_id in group:
+            index[concept_id] = tuple(sorted(group - {concept_id}))
+    return index
+
+
+#: Built at import so a forbidden merge fails here, not in a delivered file.
+_UNIT_SAME_SCALE_INDEX = _build_same_scale_index()
 
 # Protocol spelling (already run through _clean) -> UCUM concept_id.
 # Case matters here: "G/l" is giga-per-litre (10^9/L) while "g/l" is gram-per-litre.
@@ -144,7 +260,15 @@ _UNIT_ALIASES: dict[str, int] = {
     "mmol/L": 8753,
     "/mm3": 8785,
     "cells/mm3": 8785,
+    "/uL": 8647,
+    "/μL": 8647,  # NFKC folds the U+00B5 micro sign onto this U+03BC mu
+    "cells/uL": 8647,
+    "cells/μL": 8647,
     "mL/min": 8795,
+    "mg/g": 8723,
+    "ug/mg": 8838,
+    "μg/mg": 8838,
+    "mcg/mg": 8838,
     "mg/dL": 8840,
     "ng/mL": 8842,
     "pg/mL": 8845,
@@ -152,6 +276,17 @@ _UNIT_ALIASES: dict[str, int] = {
     "mm[Hg]": 8876,
     "IU/mL": 8985,
     "[iU]/mL": 8985,
+    # The 10*3 family, spelled the four ways the 10*9 family below already is, plus the
+    # mu rendering of microlitre. `synthea_cdm` writes 8848 on all 41,114 of its platelet
+    # rows, so this is the spelling a CDM is most likely to carry for a count.
+    "10*3/uL": 8848,
+    "10^3/uL": 8848,
+    "x10^3/uL": 8848,
+    "x10*3/uL": 8848,
+    "10*3/μL": 8848,
+    "10^3/μL": 8848,
+    "10*3/mm3": 8961,
+    "10^3/mm3": 8961,
     "10*9/L": 9444,
     "10^9/L": 9444,
     "x10^9/L": 9444,
@@ -236,9 +371,8 @@ def normalize_unit(unit_text: str | None) -> int | None:
     return None
 
 
-def unit_concept(concept_id: int) -> dict[str, Any]:
-    """Full concept object for a Circe ``Unit`` array element, matching gold shape."""
-    concept_code, concept_name = _UNIT_CONCEPTS[concept_id]
+def _unit_item(concept_id: int, concept_code: str, concept_name: str) -> dict[str, Any]:
+    """One Circe ``Unit`` array element, in the shape gold writes."""
     return {
         "CONCEPT_CODE": concept_code,
         "CONCEPT_ID": concept_id,
@@ -250,30 +384,40 @@ def unit_concept(concept_id: int) -> dict[str, Any]:
     }
 
 
+def unit_concept(concept_id: int) -> dict[str, Any]:
+    """Full concept object for a Circe ``Unit`` array element, matching gold shape."""
+    return _unit_item(concept_id, *_UNIT_CONCEPTS[concept_id])
+
+
 def unit_concepts(concept_id: int) -> list[dict[str, Any]]:
     """Every UCUM concept a ``Unit`` filter must accept for ``concept_id``.
 
     The standard concept FIRST -- callers and tests read ``Unit[0]`` as "the unit this
     bound is written in", and :func:`absolute_unit_concept_id` must keep agreeing with
-    it -- followed by the deprecated UCUM spellings of the same unit from
-    :data:`_UNIT_DEPRECATED_FORMS`.
+    it. After it, two kinds of restatement of the SAME quantity, and nothing else:
 
-    Restating one unit, never widening to a second. Circe ANDs the filter, so a CDM
-    whose ETL predates a UCUM retirement matched nothing at all: 720870 replaced 9117 in
-    2022 and all 13,845 eGFR rows across the three delivery sites still carry 9117.
+    * the deprecated UCUM spellings of that unit (:data:`_UNIT_DEPRECATED_FORMS`);
+    * the live units at the SAME SCALE (:data:`_UNIT_SAME_SCALE`), each with its own
+      deprecated spellings, so an equivalence never silently loses one.
+
+    Restating one quantity, never widening to a second. Circe ANDs the filter, so a CDM
+    that wrote any other spelling of the same quantity matched nothing at all: 720870
+    replaced 9117 in 2022 and all 13,845 eGFR rows across the three delivery sites still
+    carry 9117, and a criterion declaring 8838 ``ug/mg`` matches no row in a CDM whose
+    ETL wrote the equally-correct 8723 ``mg/g``.
+
+    What is NOT here is a scale change. Every id this returns denotes the same number as
+    ``concept_id``; a bound needing a value rescaled stays refused -- see
+    :data:`_UNIT_NEVER_SAME_SCALE`.
     """
-    return [unit_concept(concept_id)] + [
-        {
-            "CONCEPT_CODE": code,
-            "CONCEPT_ID": deprecated_id,
-            "CONCEPT_NAME": name,
-            "DOMAIN_ID": "Unit",
-            "INVALID_REASON_CAPTION": "Unknown",
-            "STANDARD_CONCEPT_CAPTION": "Unknown",
-            "VOCABULARY_ID": "UCUM",
-        }
-        for deprecated_id, code, name in _UNIT_DEPRECATED_FORMS.get(concept_id, ())
-    ]
+    items: list[dict[str, Any]] = []
+    for cid in (concept_id, *_UNIT_SAME_SCALE_INDEX.get(concept_id, ())):
+        items.append(_unit_item(cid, *_UNIT_CONCEPTS[cid]))
+        items.extend(
+            _unit_item(deprecated_id, code, name)
+            for deprecated_id, code, name in _UNIT_DEPRECATED_FORMS.get(cid, ())
+        )
+    return items
 
 
 def split_reference_bound(unit_text: str | None) -> tuple[ReferenceBound, str | None]:
@@ -635,11 +779,6 @@ class AnalyteUnitCheck(NamedTuple):
 
     compatible: bool
     explanation: str
-
-
-def _unit_label(concept_id: int) -> str:
-    code, name = _UNIT_CONCEPTS[concept_id]
-    return f"{code} ({name})"
 
 
 def _unit_labels(concept_ids: frozenset[int]) -> str:

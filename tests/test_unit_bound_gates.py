@@ -231,3 +231,116 @@ class TestDeprecatedUnitForms:
                     f"{concept_id} is a live unit in _UNIT_CONCEPTS; a deprecated form "
                     f"must never be one"
                 )
+
+
+# ---------------------------------------------------------------------------
+# Defect C -- a REAL UCUM unit the table simply did not carry
+# ---------------------------------------------------------------------------
+
+# Verbatim from `output/site_gap/2026-09-14/store/studies.json`, study 10
+# (CAROLINA) inclusion 26. The mu is U+03BC, which is what NFKC folds U+00B5 onto.
+CAROLINA_UACR_VC: dict[str, Any] = {
+    "op": "gte",
+    "value": 30.0,
+    "valueHigh": None,
+    "unitText": "μg/mg",
+    "referenceBound": "absolute",
+    "unitConceptId": None,
+}
+
+
+class TestUnitTheTableDidNotCarry:
+    """Defect A's refusal is right for prose in the unit field and wrong for a real
+    unit we happened not to list. ``μg/mg`` is UCUM 8838, a valid standard concept
+    in the live vocabulary, and CAROLINA's whole albuminuria inclusion was thrown away
+    for it -- on both arms, in every delivery through 2026-09-14."""
+
+    def test_should_emit_the_carolina_uacr_bound_instead_of_refusing_it(self):
+        emitted = _build(CAROLINA_UACR_VC, "Urinary albumin creatinine ratio")
+        assert emitted["ValueAsNumber"] == {"Value": 30.0, "Op": "gte"}
+        assert emitted["Unit"][0]["CONCEPT_ID"] == 8838
+
+    def test_should_accept_the_same_quantity_written_at_the_same_scale(self):
+        """Circe emits ``AND unit_concept_id IN (...)`` with no fallback, so a CDM that
+        wrote 8723 ``mg/g`` matches nothing against a filter naming only 8838
+        ``ug/mg``. 1 mg/g == 1 μg/mg, so both spellings belong in the one filter."""
+        emitted = _build(CAROLINA_UACR_VC, "Urinary albumin creatinine ratio")
+        assert 8723 in [u["CONCEPT_ID"] for u in emitted["Unit"]]
+
+    def test_should_resolve_both_code_points_of_micro_to_one_concept(self):
+        from src.services.value_constraint import normalize_unit
+
+        assert normalize_unit("μg/mg") == normalize_unit("µg/mg") == 8838
+        assert normalize_unit("ug/mg") == 8838
+
+
+class TestSameScaleEquivalenceNeverCrossesAScale:
+    """The ARISTOTLE platelet error, stated as a table invariant. Gold writes ``100``
+    thousands/uL and the protocol PDF writes ``100,000/mm3``; the two are the same
+    DIMENSION a factor of 1000 apart, and merging them takes the cohort to 0."""
+
+    def test_should_not_accept_a_thousandfold_neighbour_in_one_unit_filter(self):
+        emitted = _build(
+            {"op": "lte", "value": 100.0, "unitText": "/mm3"}, "Platelet count"
+        )
+        ids = [u["CONCEPT_ID"] for u in emitted["Unit"]]
+        assert ids[0] == 8785
+        assert 8647 in ids, "/uL is the same scale as /mm3 and must be accepted"
+        assert 8848 not in ids, "10*3/uL is 1000x /mm3 -- the ARISTOTLE error"
+        assert 8961 not in ids, "10*3/mm3 is 1000x /mm3 -- the ARISTOTLE error"
+
+    def test_should_refuse_a_table_that_declares_a_thousandfold_pair_equivalent(self):
+        """The gate a future reader hits when 'helpfully' merging them. Shown firing,
+        because a guard that only ever passes is indistinguishable from one that does
+        nothing."""
+        from src.services.value_constraint import (
+            _UNIT_NEVER_SAME_SCALE,
+            _build_same_scale_index,
+        )
+
+        with pytest.raises(ValueError, match="1000"):
+            _build_same_scale_index(
+                (frozenset({8785, 8848}),), _UNIT_NEVER_SAME_SCALE
+            )
+
+    def test_should_refuse_a_pair_merged_only_through_a_third_unit(self):
+        """The merge that does not look like one: ``/mm3 == /uL`` and
+        ``/uL == 10*3/uL`` are each a single edge, and together they put 8785 and 8848
+        in one class. The check is over the transitive closure for that reason."""
+        from src.services.value_constraint import (
+            _UNIT_NEVER_SAME_SCALE,
+            _build_same_scale_index,
+        )
+
+        with pytest.raises(ValueError, match="1000"):
+            _build_same_scale_index(
+                (frozenset({8785, 8647}), frozenset({8647, 8848})),
+                _UNIT_NEVER_SAME_SCALE,
+            )
+
+
+class TestProseInTheUnitFieldStillRefuses:
+    """Narrowing the refusal, never removing it. Each spelling below is verbatim from
+    the 2026-09-14 delivery's ``_unmappedCriteria``."""
+
+    @pytest.mark.parametrize(
+        "unit_text, source_text",
+        [
+            ("at Visit 1", "Body Mass Index"),
+            ("mm (not known", "ST-segment elevation"),
+            (
+                "transient elevation >= 1 mm contiguous leads or new in two or more "
+                "2 contiguous leads",
+                "ST-segment depression",
+            ),
+            # A pdftotext superscript artifact, not a unit. The repair belongs in the
+            # PDF-reading path; guessing `/mm3` here would be a guess, and `/mm` is
+            # ambiguous between per-millimetre and per-cubic-millimetre.
+            ("/ mm", "Platelet count"),
+            ("ml/min/1.73 m", "eGFR"),
+        ],
+    )
+    def test_should_keep_refusing(self, unit_text: str, source_text: str):
+        with pytest.raises(CriterionRefused) as excinfo:
+            _build({"op": "lte", "value": 1.0, "unitText": unit_text}, source_text)
+        assert excinfo.value.code == "unstated-unit-bound"
