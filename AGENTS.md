@@ -194,31 +194,48 @@ isolated-count method above rather than the combined run.
 
 ## WHERE A DELIVERY LIVES
 
-**`output/delivery/` is the one place.** It holds exactly what would be sent right now,
-and it is overwritten in place. Do not create a dated delivery folder, a `_v2`, or a
-`_final`.
+**`output/circe_be/` is the delivery archive, and it already was one.** Every send since
+2026-08-03 is a dated folder plus a zip beside it:
 
-That rule exists because the convention had already drifted to **21 directories across
-five spellings** — `deliver/`, `DELIVERY/`, `deliver_v2/`, `deliver_final/`,
-`deliver_grounded/`, `deliver_20260906/`, `tmp/tte_six_deliver/` — with nothing marking
-which one was current. Choosing between them took a conversation every time.
+```
+output/circe_be/
+    2026-08-03/  2026-08-27/  2026-08-31/  2026-09-12/     per-arm CIRCE, 12 files each
+    tte_circe_6studies_20260804.tar.gz
+    tte_circe_6studies_20260827.zip
+    tte_circe_6studies_arms_20260831.zip
+    tte_circe_6studies_arms_20260912.zip
+```
 
-The two roles are separate and must stay separate:
+Adding one:
+
+```bash
+D=output/circe_be/$(date +%Y-%m-%d)
+mkdir -p "$D" && cp <run>/DELIVERY/*.circe.json "$D"/
+(cd "$D" && zip -qX ../tte_circe_6studies_arms_$(date +%Y%m%d).zip *.circe.json)
+```
+
+**Do not invent a second location.** This session created an `output/delivery/` before
+noticing `circe_be/` existed, which made the problem it was meant to solve worse — the
+convention had already drifted to 21 directories across five spellings (`deliver/`,
+`DELIVERY/`, `deliver_v2/`, `deliver_final/`, `deliver_grounded/`,
+`deliver_20260906/`, `tmp/tte_six_deliver/`), and a 22nd is not a fix. `output/delivery/`
+was withdrawn.
+
+The two roles stay separate:
 
 | Path | Role |
 | --- | --- |
 | `output/site_gap/<date>/` | one per run, the audit trail. Never edited after the run. |
-| `output/delivery/` | always one, the current send candidate. Overwritten wholesale. |
+| `output/circe_be/<date>/` | one per SEND. |
 
-Refreshing it is a copy and three edited lines:
+A run directory is not a delivery. Copy into `circe_be/` only what actually goes out.
 
-```bash
-cp output/site_gap/<date>/DELIVERY/*.circe.json output/delivery/
-$EDITOR output/delivery/.source     # source_run, artemis_head, gate
-```
-
-`output/delivery/.source` records which run produced the files and is **not** part of
-the payload. Anything that would go to a recipient goes in the folder itself.
+`output/` is gitignored and only the **first** delivery (`2026-08-03/`, plus the 08-04
+tarball) was force-added; 08-27, 08-31 and 09-12 are not tracked. So the location
+convention held across all four sends and the tracking did not. Do not read "git tracks
+it" as the marker of a delivery here — the dated folder under `circe_be/` is the marker.
+Decide deliberately whether a given send should be force-added; 3 MB of JSON per send is
+the cost.
 
 Export with `scripts/export_seeded_cohorts.py`, not `export_circe_from_store.py` — the
 latter writes `*_circe.json`, which `scripts/verify_circe_delivery.py` does not read.
