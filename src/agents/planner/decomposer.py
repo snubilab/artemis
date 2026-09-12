@@ -9,6 +9,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from src.utils.llm import get_llm
 from src.models.ir import ARTEMISRequest, CohortDefinition, Criteria
 from src.agents.planner.prompts import PLANNER_SYSTEM_PROMPT, DECOMPOSITION_PROMPT
+from src.services.entity_exception import detect_entity_exception
 from src.services.value_constraint import parse_value_constraint
 from src.agents.agent1.threshold_classifier import deescape
 from src.utils.naming_words import naming_words
@@ -93,6 +94,90 @@ def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Opt
     if not span_words or not (span_words & _naming_words(sub_term_text)):
         return None
     return span
+
+
+def _exception_kept_whole(
+    name: str, entity_text: str, source_text: str, members: list[dict]
+) -> Optional[str]:
+    """The seed text to keep when this split would turn an exception into a sibling.
+
+    A protocol line that names a set and then carves part of it out -- "cancer
+    (except for basal cell carcinoma)", "insulin other than human NPH insulin" --
+    states ONE criterion. Decomposing it produces the base and the carve-out as
+    two members, and Circe then AND-combines them: EMPA-REG's delivered rule 17 is
+    "zero cancers AND zero basal cell carcinomas", which removes exactly the
+    patient whose only malignancy is the excepted one. The exception is not an
+    additional exclusion; it is a subtraction from the first one, and
+    :func:`~src.services.entity_subtraction.resolve_entity_exception` is what
+    performs it -- but only if the criterion reaches the mapper whole.
+
+    Three gates, and the split is declined only when all three hold. Each one
+    keeps a real corpus case on the unchanged path; measured over the 118
+    decomposition groups of ``output/site_gap/2026-09-14/store/studies.json``,
+    together they fire on exactly one, EMPA-REG's.
+
+    1. **A text here parses.** :func:`detect_entity_exception` is the arbiter and
+       is not re-implemented: it declines 19 of the corpus's 32 exception-shaped
+       strings under named rules (a hyphenated ``non-X`` is part of a term, an
+       anaphoric "allowed short-term insulin" points at text this cannot see, a
+       `` + ``-joined group label names no entity), and every decline falls
+       through to the split exactly as before.
+    2. **The excepted entity is really in the protocol line.** The parse may come
+       off a member name the model wrote, so the excepted phrase is checked
+       against the line the protocol actually stated -- the same demand
+       :func:`_grounded_span` makes of a span, for the same reason. Subtracting
+       on an invention creates a new wrong exclusion, which is the failure this
+       exists to prevent.
+    3. **Another member IS that entity.** Without this, LEADER's insulin line
+       collapses: its three members each state their own exception
+       ("insulin other than human NPH insulin", ...) and none of them is a
+       sibling naming a carved-out entity, so that split is a reading and must
+       survive. The member that produced the parse is excluded from the test --
+       it names its own excepted phrase as a substring, and a check that let that
+       count would collapse every legitimate multi-clause decomposition while
+       looking like it worked.
+
+    The returned text is rebuilt rather than copied: the base is the criterion's
+    OWN ``entity_text`` where it has one, so what the mapper resolves is Agent 1's
+    extracted entity and not a phrase the planner's model invented. It is parsed
+    back before being returned -- a long excepted list rebuilds into a string the
+    parser's own word cap declines, and returning that would lose the exception in
+    a new place instead of the old one.
+
+    :param name: the criterion's name.
+    :param entity_text: the criterion's entity text, which becomes the mapper seed.
+    :param source_text: the verbatim protocol line.
+    :param members: the ``sub_criteria`` payload the model returned.
+    :returns: the replacement ``entity_text``, or None to leave the split alone.
+    """
+    candidates: list[tuple[Optional[int], str]] = [(None, name), (None, entity_text)]
+    for index, member in enumerate(members):
+        candidates.append((index, str(member.get("name") or "")))
+        candidates.append((index, str(member.get("entity_text") or "")))
+
+    line = _comparison_form(source_text)
+    for owner, text in candidates:
+        exception = detect_entity_exception(text)
+        if exception is None:
+            continue
+        if not line or not all(_comparison_form(p) in line for p in exception.excepted):
+            continue
+        siblings = [m for i, m in enumerate(members) if i != owner]
+        if not any(
+            _comparison_form(str(m.get(field) or "")) == _comparison_form(phrase)
+            for m in siblings
+            for field in ("name", "entity_text")
+            for phrase in exception.excepted
+        ):
+            continue
+        kept = f"{entity_text.strip() or exception.base} other than {', '.join(exception.excepted)}"
+        rebuilt = detect_entity_exception(kept)
+        if rebuilt is None or (
+            [p.lower() for p in rebuilt.excepted] != [p.lower() for p in exception.excepted]
+        ):
+            continue
+        return kept
+    return None
 
 
 class CriteriaPlanner:
@@ -188,6 +273,24 @@ class CriteriaPlanner:
             result = self._extract_json(response.content)
             
             if result.get("decompose", False) and result.get("sub_criteria"):
+                # An exception is a subtraction from one set, never a second
+                # exclusion alongside it. Consulted before the members are built,
+                # so a declined split leaves `sub_criteria` empty and this
+                # criterion exactly as Agent 1 extracted it, apart from the seed.
+                kept = _exception_kept_whole(
+                    criterion.name or "",
+                    criterion.entity_text or "",
+                    criterion.source_text or "",
+                    result["sub_criteria"],
+                )
+                if kept is not None:
+                    print(f"  ⊘ '{criterion.entity_text}' → split declined: the line states "
+                          f"an entity exception, so it maps whole as {kept!r} "
+                          f"(would have been {len(result['sub_criteria'])} sub-criteria: "
+                          f"{[sc.get('entity_text') for sc in result['sub_criteria'][:5]]})")
+                    criterion.entity_text = kept
+                    return criterion
+
                 # Build sub-criteria list
                 sub_criteria = []
                 for sc_data in result["sub_criteria"]:
