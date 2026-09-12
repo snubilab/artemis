@@ -77,6 +77,27 @@ This is not only a negation defect. Gold uses `isExcluded` for ordinary precisio
 glucocorticoid` 136 of 231 — so a set of ours that should read "type 2 diabetes but not
 gestational or type 1" cannot say so and silently includes them.
 
+CAROLINA's codeset 45 is the clearest case in the corpus. It is named
+`cancer other than non-melanoma skin cancer` and **nineteen of its twenty members are
+non-melanoma skin cancers** — squamous cell carcinoma of skin of ear, of trunk, of neck,
+of lower extremity, carcinoma of skin of head/neck, of trunk, of anus, keratoacanthoma,
+apocrine adenocarcinoma of skin, Merkel cell carcinoma, and one member whose own name is
+`Exacerbation of non-melanoma skin malignancy`. Only `Melanoma in situ of non-skin site`
+is arguably in scope. The set is its own complement, so the exclusion removes exactly the
+patients the protocol keeps.
+
+**The route half of this already exists and does not reach a delivered file.**
+`src/services/route_subtraction.py` turns a route qualifier into `isExcluded` items and
+its docstring records the measurement — 139 subtractions against gold's 136 on CAROLINA's
+corticosteroid criterion. But it is called from `_recommend_seeded_concept_set`
+(`tte_service.py:7753`), on the fresh-recommendation path, and studies 1/8/9/10 carry a
+prebuilt `structuredExpression` that the arm builders deepcopy, so that path never runs on
+delivery (`tte_service.py:4718` records this for a different repair). CAROLINA's delivery
+has no corticosteroid concept set at all, while gold's `[CKim] systemic glucocorticoid`
+holds 231 items with 136 excluded. A module measured against gold in isolation is
+producing nothing in the shipped artifact — check where a fix lands on the delivery path
+before believing it ships.
+
 `src/agents/agent2/complexity_router.py:62-67` already routes `other than` / `except` /
 `excluding` to the slow LLM path, so the phrase is recognised. What is missing is
 downstream of that: nothing ever sets `isExcluded` on a mapped item.
