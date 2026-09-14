@@ -245,12 +245,44 @@ hospital" on inference. That row was corrected on 2026-09-12 when the user said
 otherwise. **A delivery counts as sent only when the user says it was sent**, and the
 ledger's verdict column is filled from the hospital's own run, never computed here.
 
-`output/` is gitignored and only the **first** delivery (`2026-08-03/`, plus the 08-04
-tarball) was force-added; 08-27, 08-31 and 09-12 are not tracked. So the location
-convention held across all four sends and the tracking did not. Do not read "git tracks
-it" as the marker of a delivery here — the dated folder under `circe_be/` is the marker.
-Decide deliberately whether a given send should be force-added; 3 MB of JSON per send is
-the cost.
+### A send gets a recovery point (standing instruction, user, 2026-09-14)
+
+`output/` is gitignored, so nothing under `circe_be/` is recoverable from git — the
+location convention held across every send and the tracking did not. That is now
+settled: **a delivery the user says was sent gets copied into a tracked archive and
+tagged.** `circe_be/` stays the prepared-export shelf; `deliveries/` is the recovery
+point.
+
+When the user says a delivery was sent, in this order:
+
+1. Copy the payload **from the sent zip**, not from `output/`, into
+   `deliveries/<YYYY-MM-DD>/` — one flat directory, the zip is what went out.
+2. Add the row to `deliveries/INDEX.json`: date, tag, studies, source zip,
+   `head_at_send`, `content_code_version`, and per file the md5 and byte count.
+3. Commit the archive and the ledger together.
+4. `git tag -a delivery/<YYYY-MM-DD>` — annotated, carrying the studies, both version
+   fields, and the known state of that payload. A tag, not a branch: it does not move.
+5. Run the gate and see it pass: `python3 scripts/verify_delivery_provenance.py`.
+
+**The code version is recorded against the send date, never a run directory's label** —
+those labels drift by up to three days here, and `output/site_gap/2026-09-15/` is the run
+that was sent on 09-12. Two fields, because they differ when the export came from a stale
+store: `head_at_send` (artemis HEAD when it went out) and `content_code_version` (the code
+that produced the content). Either may be null — 06-24 predates the repository, 08-31 was
+exported from an 08-13 store — but **never null without a `version_note` stating why**.
+A guessed commit is worse than a recorded gap, because a later reader cannot tell them
+apart. `tests/test_delivery_provenance.py` fails on a null with no note.
+
+Recovering one:
+
+```bash
+git tag -l 'delivery/*' -n30                                        # what, when, which code
+git archive delivery/2026-08-31 deliveries/2026-08-31 | tar -x      # the bytes back
+```
+
+Three sends are recorded: `delivery/2026-06-24` (6 files), `delivery/2026-08-31`
+(12 files), `delivery/2026-09-12` (6 files). The per-send blockers, extraction numbers and
+hospital results are in `docs/delivery_index.md`.
 
 Export with `scripts/export_seeded_cohorts.py`, not `export_circe_from_store.py` — the
 latter writes `*_circe.json`, which `scripts/verify_circe_delivery.py` does not read.
