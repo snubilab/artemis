@@ -157,3 +157,71 @@ regimen"이 entry event 94,164건 중 0건 충족` (note-010). 같은 것을 아
 git -C artemis tag -l "delivery/*" -n30              # 무엇을 언제 어느 코드로 보냈나
 git -C artemis archive delivery/2026-08-31 deliveries/2026-08-31 | tar -x
 ```
+
+## 표 5 — 발송 3건의 성능 (gold 대비 per-criterion, closure 모드, 2026-09-14 측정)
+
+`data/gold/<TRIAL>/`(TROY v1.1) 대비, 기준당 1:1 macro. **treatment arm만** 채점했다
+(gold는 시험당 정의 하나이고 treatment arm이 그 counterpart). 증거:
+`output/conceptset_overlap/deliveries_20260914/`.
+
+| 시험 | 2026-06-24 | 2026-08-31 | 2026-09-12 |
+| --- | --- | --- | --- |
+| | pairs · rec · prec · exact | pairs · rec · prec · exact | pairs · rec · prec · exact |
+| CARMELINA | 26 · 0.474 · 0.492 · 0 | 27 · 0.503 · 0.483 · 2 | 20 · 0.614 · 0.626 · 4 |
+| CAROLINA | 27 · 0.484 · 0.680 · 2 | 27 · 0.595 · 0.792 · 4 | 39 · 0.597 · 0.571 · 5 |
+| EMPA-REG | 19 · 0.503 · 0.550 · 0 | 19 · 0.418 · 0.519 · 1 | 22 · 0.562 · 0.502 · 2 |
+| **3시험 합(pair 가중)** | **72 · 0.485 · 0.578 · 2** | **73 · 0.515 · 0.607 · 7** | **81 · 0.592 · 0.566 · 11** |
+
+델타 판정은 스크립트 자신의 `delta_verdict()`(floor 0.02, n_draws=1)로 매겼다.
+
+| 구간 | recall | precision |
+| --- | --- | --- |
+| 06-24 → 08-31 | +0.030 **improved** | +0.029 **improved** |
+| 08-31 → 09-12 | +0.077 **improved** | −0.041 **regressed** |
+
+시험별 08-31 → 09-12:
+
+| 시험 | recall | precision |
+| --- | --- | --- |
+| CARMELINA | +0.111 improved | +0.143 improved |
+| CAROLINA | +0.003 **unresolved** (floor 미달) | **−0.221 regressed** |
+| EMPA-REG | +0.144 improved | −0.017 unresolved (floor 미달) |
+
+**CAROLINA의 precision이 −0.221로 무너졌다.** 아주대에서 31/46 → 0이 된 그 시험이다.
+두 신호가 독립적으로 같은 시험을 가리킨다. 원인 방향은 over-expansion으로 보인다 —
+09-12 CAROLINA는 gold 55세트 대비 85세트를 만들었고(08-31은 72), ratio 3.0 이상
+과확장 쌍이 9건이다(`Smoking` 1→18 rec 0.00, `PCI` 37→280 prec 0.07). 다만 이 문서는
+과확장이 precision 하락의 원인이라고 측정하지 않았다.
+
+## 표 6 — 발송 3건의 게이트 (오늘 스크립트로 동일 검사)
+
+`scripts/verify_circe_delivery.py`. 파일 단위 FAIL 수와, 사유별 파일 수.
+
+| 사유 | 2026-06-24 | 2026-08-31 | 2026-09-12 |
+| --- | --- | --- | --- |
+| **unitless value bound** | **4** | **6** | **0** |
+| aliased concept sets | 4 | 6 | 4 |
+| asserted bound missing | 2 | 2 | 2 |
+| unmapped criteria | 0 | 0 | 6 |
+| skips recorded under an allowed reason that does not hold | 0 | 0 | 6 |
+| criteria skipped for a reason not on the allowlist | 0 | 0 | 4 |
+| unfiltered measurement absence | 0 | 0 | 2 |
+| domain mismatch | 0 | 2 | 0 |
+| rule name | 2 | 2 | 2 |
+| **FAIL / 전체 파일** | 6 / 6 | 12 / 12 | 6 / 6 |
+
+**06-24 열은 store 참조 검사에 대해 무의미하다.** 06-24 발송의 store는 보존돼 있지
+않아 08-13 store로 돌렸다. 파일 자체만 보는 lint(`unitless value bound`,
+`aliased concept sets`, `asserted bound missing`)만 읽을 수 있고, `rule name`·
+`domain mismatch`·`entry concept`는 읽으면 안 된다.
+
+## 표 5·6이 같은 방향을 가리킨다
+
+`unitless value bound`가 **6 → 0**이다. 단위 요구를 넣은 변경이 겨냥한 바로 그 항목이
+완전히 사라졌다. 같은 구간에 아주대 CAROLINA는 31/46 → 0이 됐고, gold 대비 CAROLINA
+precision은 −0.221이 됐다.
+
+즉 게이트가 측정한 것은 **의도한 결함이 사라졌다**는 사실이고, 그것이 곧 품질 향상은
+아니었다. 게이트는 "단위 없는 bound"를 세지만 "사이트가 쓰지 않는 단위를 요구하는
+bound"는 세지 않고, gold 채점은 recall이 올랐다고 말하면서 precision이 내려간 것을
+같은 줄에 적지 않으면 향상으로 읽힌다. 두 지표를 한 표에 놓아야 방향이 보인다.
