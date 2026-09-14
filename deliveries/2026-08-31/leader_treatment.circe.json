@@ -1,0 +1,119 @@
+{
+  "ConceptSets": [
+    {
+      "id": 1,
+      "name": "Disease anchor: Type 2 diabetes mellitus",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201826,
+              "CONCEPT_NAME": "Type 2 diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null,
+              "STANDARD_CONCEPT_CAPTION": "Standard"
+            },
+            "includeDescendants": true,
+            "isExcluded": false,
+            "includeMapped": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "liraglutide",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 40170911,
+              "CONCEPT_NAME": "liraglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    }
+  ],
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "ConditionOccurrence": {
+          "CodesetId": 1,
+          "First": true
+        }
+      }
+    ],
+    "ObservationWindow": {
+      "PriorDays": 365,
+      "PostDays": 0
+    },
+    "PrimaryCriteriaLimit": {
+      "Type": "First"
+    }
+  },
+  "InclusionRules": [
+    {
+      "name": "liraglutide",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "DrugExposure": {
+                "CodesetId": 2
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 365,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    }
+  ],
+  "QualifiedLimit": {
+    "Type": "First"
+  },
+  "ExpressionLimit": {
+    "Type": "First"
+  },
+  "EndStrategy": null,
+  "CensoringCriteria": [],
+  "CollapseSettings": {
+    "CollapseType": "ERA",
+    "EraPad": 0
+  },
+  "CdmVersionRange": ""
+}

@@ -1,0 +1,5034 @@
+{
+  "ConceptSets": [
+    {
+      "id": 2,
+      "name": "Type 2 Diabetes Mellitus",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201826,
+              "CONCEPT_NAME": "Type 2 diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "Body Mass Index",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3038553,
+              "CONCEPT_NAME": "Body mass index (BMI) [Ratio]",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4245997,
+              "CONCEPT_NAME": "Body mass index",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36304833,
+              "CONCEPT_NAME": "Body mass index (BMI) [Ratio] Estimated",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3003309,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by Electrophoresis",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3004410,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3007263,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3003309,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by Electrophoresis",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3004410,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3007263,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3003309,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by Electrophoresis",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3004410,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3007263,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3003309,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by Electrophoresis",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3004410,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3007263,
+              "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "name": "Cardiovascular Disease",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4025194,
+              "CONCEPT_NAME": "Disease affecting entire cardiovascular system",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4028367,
+              "CONCEPT_NAME": "Acute disease of cardiovascular system",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4179992,
+              "CONCEPT_NAME": "Cardiovascular system hereditary disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "name": "Diabetes End-Organ Damage",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 442793,
+              "CONCEPT_NAME": "Complication due to diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44793113,
+              "CONCEPT_NAME": "Diabetes mellitus with multiple complications",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "Cardiovascular Risk Factors",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4152156,
+              "CONCEPT_NAME": "Cardiovascular injury",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "name": "Metformin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1503297,
+              "CONCEPT_NAME": "metformin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "name": "Glipizide",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1560171,
+              "CONCEPT_NAME": "glipizide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "name": "Pioglitazone",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1525215,
+              "CONCEPT_NAME": "pioglitazone",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "name": "Sitagliptin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1580747,
+              "CONCEPT_NAME": "sitagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "name": "Liraglutide",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 40170911,
+              "CONCEPT_NAME": "liraglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "name": "Empagliflozin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 45774751,
+              "CONCEPT_NAME": "empagliflozin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "name": "Insulin glargine",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1502905,
+              "CONCEPT_NAME": "insulin glargine",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "name": "Chronic Kidney Disease",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 46271022,
+              "CONCEPT_NAME": "Chronic kidney disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "name": "Acute Kidney Injury",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 197320,
+              "CONCEPT_NAME": "Acute kidney injury",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36716946,
+              "CONCEPT_NAME": "Acute renal insufficiency",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45757442,
+              "CONCEPT_NAME": "Acute nontraumatic kidney injury",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "name": "Nephropathy",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 760978,
+              "CONCEPT_NAME": "Nephropathy due to secondary diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42537547,
+              "CONCEPT_NAME": "Nephropathy following pre-eclampsia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44784588,
+              "CONCEPT_NAME": "Nephropathy due to acquired urinary tract obstruction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45772914,
+              "CONCEPT_NAME": "Glomerulosclerosis of kidney due to diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "name": "rosiglitazone",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1547504,
+              "CONCEPT_NAME": "rosiglitazone",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "name": "pioglitazone",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1525215,
+              "CONCEPT_NAME": "pioglitazone",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "name": "GLP-1 analogue/agonists",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 793143,
+              "CONCEPT_NAME": "semaglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1583722,
+              "CONCEPT_NAME": "exenatide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40170911,
+              "CONCEPT_NAME": "liraglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "name": "DPP-IV inhibitors",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1580747,
+              "CONCEPT_NAME": "sitagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "name": "Insulin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1586369,
+              "CONCEPT_NAME": "ultralente insulin, human",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1588986,
+              "CONCEPT_NAME": "insulin human, rDNA origin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "name": "Type 1 Diabetes Mellitus",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201254,
+              "CONCEPT_NAME": "Type 1 diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "name": "Myocardial Infarction",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4329847,
+              "CONCEPT_NAME": "Myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "name": "Unstable Angina",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 608952,
+              "CONCEPT_NAME": "Unstable angina due to arteriosclerosis of coronary artery bypass graft of transplanted heart",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 608953,
+              "CONCEPT_NAME": "Unstable angina due to arteriosclerosis of autologous arterial coronary artery bypass graft",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36712982,
+              "CONCEPT_NAME": "Unstable angina co-occurrent and due to coronary arteriosclerosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37209632,
+              "CONCEPT_NAME": "Stable angina due to coronary arteriosclerosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "name": "Acute Hepatitis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4243475,
+              "CONCEPT_NAME": "Acute hepatitis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 30,
+      "name": "Acute Liver Failure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201065,
+              "CONCEPT_NAME": "Acute and subacute liver necrosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4026032,
+              "CONCEPT_NAME": "Acute hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340389,
+              "CONCEPT_NAME": "Fulminant hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "name": "Drug-Induced Liver Injury",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4144765,
+              "CONCEPT_NAME": "Drug-induced disorder of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "name": "Acute Cholestasis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4049211,
+              "CONCEPT_NAME": "Extrahepatic cholestasis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4049298,
+              "CONCEPT_NAME": "Acute cholestatic jaundice syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4143915,
+              "CONCEPT_NAME": "Cholestasis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4267297,
+              "CONCEPT_NAME": "Acute cholangitis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "name": "Metabolic Acidosis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4030361,
+              "CONCEPT_NAME": "Respiratory acidosis and metabolic acidosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4245042,
+              "CONCEPT_NAME": "Metabolic acidosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 34,
+      "name": "Alcohol abuse",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1448827,
+              "CONCEPT_NAME": "Alcohol use disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35610532,
+              "CONCEPT_NAME": "Harmful use of alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "name": "Opioid abuse",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1448830,
+              "CONCEPT_NAME": "Opioid use disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 36,
+      "name": "Cannabis abuse",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1448832,
+              "CONCEPT_NAME": "Cannabis use disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4323639,
+              "CONCEPT_NAME": "Cannabis misuse",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35610534,
+              "CONCEPT_NAME": "Harmful use of cannabis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 37,
+      "name": "Cocaine abuse",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1448837,
+              "CONCEPT_NAME": "Cocaine use disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4327117,
+              "CONCEPT_NAME": "Cocaine misuse",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35610536,
+              "CONCEPT_NAME": "Harmful use of cocaine",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "name": "Amphetamine abuse",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 600703,
+              "CONCEPT_NAME": "Amphetamine and/or amphetamine derivative intoxication",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 762382,
+              "CONCEPT_NAME": "Nondependent amphetamine abuse",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37164322,
+              "CONCEPT_NAME": "Amfetamine and/or amfetamine derivative abuse, continuous",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "name": "Hallucinogen abuse",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1448841,
+              "CONCEPT_NAME": "Hallucinogen use disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35610537,
+              "CONCEPT_NAME": "Harmful use of hallucinogen",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 40,
+      "name": "Sedative abuse",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1448834,
+              "CONCEPT_NAME": "Sedative use disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35610541,
+              "CONCEPT_NAME": "Harmful use of sedative",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 41,
+      "name": "Levothyroxine",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1501700,
+              "CONCEPT_NAME": "levothyroxine",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "name": "Liothyronine",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1505346,
+              "CONCEPT_NAME": "liothyronine",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 43,
+      "name": "Liotrix",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 705103,
+              "CONCEPT_NAME": "lamotrigine",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 44,
+      "name": "Thyroid Desiccated",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1501309,
+              "CONCEPT_NAME": "thyroid (USP)",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 45,
+      "name": "Congestive Heart Failure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 319835,
+              "CONCEPT_NAME": "Congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 46,
+      "name": "Systemic Corticoids",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1506270,
+              "CONCEPT_NAME": "methylprednisolone",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1551099,
+              "CONCEPT_NAME": "prednisone",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 47,
+      "name": "Galactosemia",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1076121,
+              "CONCEPT_NAME": "Early neonatal jaundice due to galactosemia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4029732,
+              "CONCEPT_NAME": "Disorder of galactose metabolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4050030,
+              "CONCEPT_NAME": "Deficiency of galactose dehydrogenase",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 48,
+      "name": "Galactokinase deficiency",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4050299,
+              "CONCEPT_NAME": "Deficiency of galactokinase",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 49,
+      "name": "Galactose epimerase deficiency",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4229134,
+              "CONCEPT_NAME": "Galactose epimerase deficiency",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 50,
+      "name": "Allergic rhinitis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4320791,
+              "CONCEPT_NAME": "Rhinitis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 51,
+      "name": "Asthma",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 317009,
+              "CONCEPT_NAME": "Asthma",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 52,
+      "name": "Anaphylaxis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 441202,
+              "CONCEPT_NAME": "Anaphylaxis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 53,
+      "name": "Urticaria",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 139900,
+              "CONCEPT_NAME": "Urticaria",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4270863,
+              "CONCEPT_NAME": "Allergic urticaria and/or angioedema",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 54,
+      "name": "Contact dermatitis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4009502,
+              "CONCEPT_NAME": "Acute contact dermatitis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4031019,
+              "CONCEPT_NAME": "Allergic contact dermatitis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 55,
+      "name": "Clinical Trial Participation",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 42873080,
+              "CONCEPT_NAME": "Assessment of eligibility for clinical trial",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 56,
+      "name": "Coronary artery bypass grafting",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4231998,
+              "CONCEPT_NAME": "Cardiac revascularization with bypass anastomosis",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4336464,
+              "CONCEPT_NAME": "Coronary artery bypass graft",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 57,
+      "name": "Percutaneous coronary intervention",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4216130,
+              "CONCEPT_NAME": "Percutaneous coronary intervention",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 58,
+      "name": "Gastric Bypass",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 40483096,
+              "CONCEPT_NAME": "Bypass of stomach",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 59,
+      "name": "Sleeve Gastrectomy",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4227605,
+              "CONCEPT_NAME": "Sleeve resection of stomach",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 60,
+      "name": "Adjustable Gastric Banding",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4144458,
+              "CONCEPT_NAME": "Partitioning of stomach using band",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4190525,
+              "CONCEPT_NAME": "Laparoscopic adjustable gastric banding",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 61,
+      "name": "Biliopancreatic Diversion with Duodenal Switch",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4070482,
+              "CONCEPT_NAME": "Bypass of duodenum by anastomosis of duodenum to duodenum",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4095787,
+              "CONCEPT_NAME": "Biliopancreatic bypass to ileum with partial gastrectomy",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4145504,
+              "CONCEPT_NAME": "Duodenal switch",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 62,
+      "name": "Stroke",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 381316,
+              "CONCEPT_NAME": "Cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 63,
+      "name": "Transient ischemic attack",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4043734,
+              "CONCEPT_NAME": "Carotid territory transient ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40485430,
+              "CONCEPT_NAME": "Recurrent transient cerebral ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46272244,
+              "CONCEPT_NAME": "Transient ischemic attack due to embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 64,
+      "name": "Orlistat",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 741530,
+              "CONCEPT_NAME": "orlistat",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 65,
+      "name": "Phentermine",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 735340,
+              "CONCEPT_NAME": "phentermine",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 66,
+      "name": "Liraglutide",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 40170911,
+              "CONCEPT_NAME": "liraglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 67,
+      "name": "Naltrexone/Bupropion",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 750982,
+              "CONCEPT_NAME": "bupropion",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 68,
+      "name": "Phentermine/Topiramate",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 735340,
+              "CONCEPT_NAME": "phentermine",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 69,
+      "name": "Semaglutide",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 793143,
+              "CONCEPT_NAME": "semaglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 70,
+      "name": "Diabetes Mellitus with Hyperglycemia",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 37311673,
+              "CONCEPT_NAME": "Hyperglycemia due to diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 71,
+      "name": "Hyperglycemia due to Steroid Use",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 40480068,
+              "CONCEPT_NAME": "Drug-induced hyperglycemia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 72,
+      "name": "Stress-Induced Hyperglycemia",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4029421,
+              "CONCEPT_NAME": "Metabolic stress hyperglycemia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 73,
+      "name": "linagliptin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 40239216,
+              "CONCEPT_NAME": "linagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    }
+  ],
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "DrugEra": {
+          "CodesetId": 73
+        }
+      }
+    ],
+    "ObservationWindow": {
+      "PriorDays": 365,
+      "PostDays": 0
+    },
+    "PrimaryCriteriaLimit": {
+      "Type": "First"
+    }
+  },
+  "InclusionRules": [
+    {
+      "name": "Age between 40 and 85 years",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [
+          {
+            "Age": {
+              "Value": 40.0,
+              "Op": "gte"
+            }
+          }
+        ],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Type 2 Diabetes Mellitus",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 2
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Body Mass Index",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 3,
+                "ValueAsNumber": {
+                  "Value": 45.0,
+                  "Op": "lte"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 4,
+                "ValueAsNumber": {
+                  "Value": 6.5,
+                  "Op": "gte"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 5,
+                "ValueAsNumber": {
+                  "Value": 8.5,
+                  "Op": "gt"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 6,
+                "ValueAsNumber": {
+                  "Value": 6.5,
+                  "Op": "gte"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 2,
+              "Count": 1
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Hemoglobin A1c/Hemoglobin.total in Blood",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 7,
+                "ValueAsNumber": {
+                  "Value": 7.5,
+                  "Op": "gt"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Type 1 Diabetes Mellitus",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 26
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Metabolic Acidosis",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 33
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Congestive Heart Failure",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 45
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Systemic Corticoids",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "DrugExposure": {
+                "CodesetId": 46
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Clinical Trial Participation",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ProcedureOccurrence": {
+                "CodesetId": 55
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 60,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Pre-existing cardiovascular disease + Specified diabetes end-organ damage + Two or more specified cardiovascular risk factors + Age >= 70 years",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 8
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 9
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 10
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [],
+            "DemographicCriteriaList": [
+              {
+                "Age": {
+                  "Value": 70.0,
+                  "Op": "gte"
+                }
+              }
+            ],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Biguanides + Sulfonylureas + Thiazolidinediones + DPP-4 inhibitors + GLP-1 receptor agonists + SGLT2 inhibitors + Insulin",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 11
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 56,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 12
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 56,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 13
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 56,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 14
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 56,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 15
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 56,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 16
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 56,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 17
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 56,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Chronic Kidney Disease + Acute Kidney Injury + Nephropathy",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 18
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 19
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 20
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "rosiglitazone + pioglitazone + GLP-1 analogue/agonists + DPP-IV inhibitors + any insulin",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 21
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 22
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 23
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 24
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 25
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Myocardial Infarction + Unstable Angina",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 27
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 42,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 28
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 42,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Acute Hepatitis + Acute Liver Failure + Drug-Induced Liver Injury + Acute Cholestasis",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 29
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 30
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 31
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 32
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Alcohol Abuse + Opioid Abuse + Cannabis Abuse + Cocaine Abuse + Amphetamine Abuse + Hallucinogen Abuse + Sedative Abuse",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 34
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 35
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 36
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 37
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 38
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 39
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 40
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Levothyroxine + Liothyronine + Liotrix + Thyroid Desiccated",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 41
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 42
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 43
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 44
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Galactosemia + Galactokinase deficiency + Galactose epimerase deficiency",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 47
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 48
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 49
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Allergic Rhinitis + Asthma + Anaphylaxis + Urticaria + Contact Dermatitis",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 50
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 51
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 52
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 53
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 54
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Coronary Artery Bypass Grafting + Percutaneous Coronary Intervention",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 56
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 180,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 57
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 180,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Gastric Bypass Surgery + Sleeve Gastrectomy + Adjustable Gastric Banding + Biliopancreatic Diversion with Duodenal Switch",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 58
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 59
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 60
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ProcedureOccurrence": {
+                    "CodesetId": 61
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Stroke + Transient Ischemic Attack",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 62
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 63
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Treatment with Orlistat + Treatment with Phentermine + Treatment with Liraglutide + Treatment with Naltrexone/Bupropion + Treatment with Phentermine/Topiramate + Treatment with Semaglutide",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 64
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 65
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 66
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 67
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 68
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 69
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 90,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Diabetes Mellitus with Hyperglycemia + Hyperglycemia due to Steroid Use + Stress-Induced Hyperglycemia",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 70
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 71
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 72
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    }
+  ]
+}

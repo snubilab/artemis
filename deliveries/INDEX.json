@@ -1,0 +1,203 @@
+{
+  "_rule": "A delivery is recorded here only when the user said it was sent. Being present in output/circe_be/ is not evidence of a send. Gate: scripts/verify_delivery_provenance.py",
+  "sends": [
+    {
+      "date": "2026-06-24",
+      "tag": "delivery/2026-06-24",
+      "sent_confirmed_by_user": true,
+      "studies": [
+        "CARMELINA",
+        "CAROLINA",
+        "EMPA-REG"
+      ],
+      "sent_zip": "output/circe_be/test_study_circe_json_20260624.zip",
+      "head_at_send": null,
+      "content_code_version": null,
+      "version_note": "artemis had no repository on this date (first commit 6ffd07c, 2026-07-22). File mtimes place the content at 2026-06-22 18:54 and the packaging at 2026-06-24 17:12.",
+      "file_count": 6,
+      "files": [
+        {
+          "name": "carmelina_comparator.circe.json",
+          "path_in_zip": "test_study_circe_json/carmelina/carmelina_comparator.circe.json",
+          "md5": "72ab0628ac02273282b371397666c7fa",
+          "bytes": 137996
+        },
+        {
+          "name": "carmelina_treatment.circe.json",
+          "path_in_zip": "test_study_circe_json/carmelina/carmelina_treatment.circe.json",
+          "md5": "dd54208c84e5b3b171cf56948e562be9",
+          "bytes": 137993
+        },
+        {
+          "name": "carolina_comparator.circe.json",
+          "path_in_zip": "test_study_circe_json/carolina/carolina_comparator.circe.json",
+          "md5": "73e40035ead3a4fddf54f679439f14d4",
+          "bytes": 152465
+        },
+        {
+          "name": "carolina_treatment.circe.json",
+          "path_in_zip": "test_study_circe_json/carolina/carolina_treatment.circe.json",
+          "md5": "724cbef1e4c71d9b065d2981918178ab",
+          "bytes": 152462
+        },
+        {
+          "name": "empa_reg_comparator.circe.json",
+          "path_in_zip": "test_study_circe_json/empa_reg/empa_reg_comparator.circe.json",
+          "md5": "d40ba09366650bda41b10ace8c921bdc",
+          "bytes": 123882
+        },
+        {
+          "name": "empa_reg_treatment.circe.json",
+          "path_in_zip": "test_study_circe_json/empa_reg/empa_reg_treatment.circe.json",
+          "md5": "72949912443484cb97e6476e030a8c0c",
+          "bytes": 123879
+        }
+      ]
+    },
+    {
+      "date": "2026-08-31",
+      "tag": "delivery/2026-08-31",
+      "sent_confirmed_by_user": true,
+      "studies": [
+        "ARISTOTLE",
+        "PLATO",
+        "EMPA-REG",
+        "CARMELINA",
+        "CAROLINA",
+        "LEADER"
+      ],
+      "sent_zip": "output/circe_be/tte_circe_6studies_arms_20260831.zip",
+      "head_at_send": "745ea83",
+      "content_code_version": null,
+      "version_note": "HEAD at send was 745ea83 (08-27 01:33), but the export came from the container live store last written 08-13, so the content reflects code from before 08-13 and NOT 745ea83. See docs/delivery_index.md and note-018 Row 1.",
+      "file_count": 12,
+      "files": [
+        {
+          "name": "aristotle_comparator.circe.json",
+          "path_in_zip": "aristotle_comparator.circe.json",
+          "md5": "6531df60000bf116fd0a89463a2d93c8",
+          "bytes": 181240
+        },
+        {
+          "name": "aristotle_treatment.circe.json",
+          "path_in_zip": "aristotle_treatment.circe.json",
+          "md5": "ddb4abf2fc2c34b51e6d0b9b95df8700",
+          "bytes": 181241
+        },
+        {
+          "name": "carmelina_comparator.circe.json",
+          "path_in_zip": "carmelina_comparator.circe.json",
+          "md5": "d19dce6bdc0677cfad737a6e075ccffd",
+          "bytes": 255317
+        },
+        {
+          "name": "carmelina_treatment.circe.json",
+          "path_in_zip": "carmelina_treatment.circe.json",
+          "md5": "6752139f2d38bc3ec71b10d1a9017f81",
+          "bytes": 255314
+        },
+        {
+          "name": "carolina_comparator.circe.json",
+          "path_in_zip": "carolina_comparator.circe.json",
+          "md5": "ca22d4254a497dd81b34dd6a64f6a29a",
+          "bytes": 146413
+        },
+        {
+          "name": "carolina_treatment.circe.json",
+          "path_in_zip": "carolina_treatment.circe.json",
+          "md5": "938476e90fcc10d2fa25ce85ac9106c6",
+          "bytes": 146414
+        },
+        {
+          "name": "empa-reg_comparator.circe.json",
+          "path_in_zip": "empa-reg_comparator.circe.json",
+          "md5": "68027f2b485d56853822bfb336e8dda4",
+          "bytes": 244853
+        },
+        {
+          "name": "empa-reg_treatment.circe.json",
+          "path_in_zip": "empa-reg_treatment.circe.json",
+          "md5": "e3b36017ad577d20c961baf53cf04774",
+          "bytes": 242173
+        },
+        {
+          "name": "leader_comparator.circe.json",
+          "path_in_zip": "leader_comparator.circe.json",
+          "md5": "6c221fdaf047037a54148219b468cfc4",
+          "bytes": 2806
+        },
+        {
+          "name": "leader_treatment.circe.json",
+          "path_in_zip": "leader_treatment.circe.json",
+          "md5": "0b491e5edc2d55a21bcc5670fbfffcc5",
+          "bytes": 2803
+        },
+        {
+          "name": "plato_comparator.circe.json",
+          "path_in_zip": "plato_comparator.circe.json",
+          "md5": "f2b360372e957137af7afc188a219e9d",
+          "bytes": 170390
+        },
+        {
+          "name": "plato_treatment.circe.json",
+          "path_in_zip": "plato_treatment.circe.json",
+          "md5": "e526f69ef3858fcf286a1cd14d816859",
+          "bytes": 170389
+        }
+      ]
+    },
+    {
+      "date": "2026-09-12",
+      "tag": "delivery/2026-09-12",
+      "sent_confirmed_by_user": true,
+      "studies": [
+        "CARMELINA",
+        "CAROLINA",
+        "EMPA-REG"
+      ],
+      "sent_zip": "output/circe_be/tte_circe_3studies_arms_20260912.zip",
+      "head_at_send": "c6adb4a",
+      "content_code_version": "d50bf8c",
+      "version_note": "The only send whose content code version is confirmed. PROVENANCE.md names the eight carried commits: 623e663 a2ecba6 141ecb7 a2fb858 c75085c d0ee924 c0df6db e8daa37.",
+      "file_count": 6,
+      "files": [
+        {
+          "name": "carmelina_comparator.circe.json",
+          "path_in_zip": "carmelina_comparator.circe.json",
+          "md5": "e641692493e6c696b1957deaf5d0a73e",
+          "bytes": 212830
+        },
+        {
+          "name": "carmelina_treatment.circe.json",
+          "path_in_zip": "carmelina_treatment.circe.json",
+          "md5": "7c9a3932410e0661a947b3c95c268793",
+          "bytes": 212043
+        },
+        {
+          "name": "carolina_comparator.circe.json",
+          "path_in_zip": "carolina_comparator.circe.json",
+          "md5": "5e5fbe1df0376d76a6f5c188c9140295",
+          "bytes": 397526
+        },
+        {
+          "name": "carolina_treatment.circe.json",
+          "path_in_zip": "carolina_treatment.circe.json",
+          "md5": "fecf2ce92c304169edad81878a90b0bd",
+          "bytes": 397525
+        },
+        {
+          "name": "empa-reg_comparator.circe.json",
+          "path_in_zip": "empa-reg_comparator.circe.json",
+          "md5": "b3c2d92ac326a4e06732354e8464cb61",
+          "bytes": 227230
+        },
+        {
+          "name": "empa-reg_treatment.circe.json",
+          "path_in_zip": "empa-reg_treatment.circe.json",
+          "md5": "f5dfc734db1f79aab676f3ce74281ab0",
+          "bytes": 226443
+        }
+      ]
+    }
+  ]
+}

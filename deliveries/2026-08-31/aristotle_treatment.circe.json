@@ -1,0 +1,5334 @@
+{
+  "ConceptSets": [
+    {
+      "id": 2,
+      "name": "Atrial fibrillation",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 313217,
+              "CONCEPT_NAME": "Atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1340258,
+              "CONCEPT_NAME": "Exacerbation of atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "OMOP Extension",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4119601,
+              "CONCEPT_NAME": "Lone atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4119602,
+              "CONCEPT_NAME": "Non-rheumatic atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4141360,
+              "CONCEPT_NAME": "Chronic atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4154290,
+              "CONCEPT_NAME": "Paroxysmal atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4199501,
+              "CONCEPT_NAME": "Rapid atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4232691,
+              "CONCEPT_NAME": "Permanent atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4232697,
+              "CONCEPT_NAME": "Persistent atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37171038,
+              "CONCEPT_NAME": "Atrial fibrillation due to heart valve disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37395821,
+              "CONCEPT_NAME": "Familial atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42539346,
+              "CONCEPT_NAME": "Preexcited atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42689664,
+              "CONCEPT_NAME": "Atrial fibrillation detected",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44782442,
+              "CONCEPT_NAME": "Atrial fibrillation with rapid ventricular response",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "Atrial flutter",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 314665,
+              "CONCEPT_NAME": "Atrial flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4111700,
+              "CONCEPT_NAME": "Ventricular fibrillation and flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4137382,
+              "CONCEPT_NAME": "Chronic atrial flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4146580,
+              "CONCEPT_NAME": "Paroxysmal atrial flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36712986,
+              "CONCEPT_NAME": "Atypical atrial flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36714994,
+              "CONCEPT_NAME": "Typical atrial flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37395937,
+              "CONCEPT_NAME": "Idiopathic neonatal atrial flutter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42539346,
+              "CONCEPT_NAME": "Preexcited atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "Stroke",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 381316,
+              "CONCEPT_NAME": "Cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 603206,
+              "CONCEPT_NAME": "Cerebrovascular accident due to occlusion of left posterior communicating artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 618640,
+              "CONCEPT_NAME": "Cerebrovascular accident of brainstem",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 763009,
+              "CONCEPT_NAME": "Multiple and bilateral precerebral arterial occlusion with infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 764707,
+              "CONCEPT_NAME": "Ruptured aneurysm of intracranial artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 764721,
+              "CONCEPT_NAME": "Cerebrovascular accident with intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 765568,
+              "CONCEPT_NAME": "Chronic cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1340274,
+              "CONCEPT_NAME": "Exacerbation of cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "OMOP Extension",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4023571,
+              "CONCEPT_NAME": "Paralytic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4045734,
+              "CONCEPT_NAME": "CVA - cerebrovascular accident due to cerebral artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4090122,
+              "CONCEPT_NAME": "Extension of cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4099974,
+              "CONCEPT_NAME": "Completed stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4110194,
+              "CONCEPT_NAME": "Middle cerebral artery syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4110195,
+              "CONCEPT_NAME": "Posterior cerebral artery syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4110196,
+              "CONCEPT_NAME": "Right sided cerebral hemisphere cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4112022,
+              "CONCEPT_NAME": "Left sided cerebral hemisphere cerebrovascular accident",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4310996,
+              "CONCEPT_NAME": "Ischemic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35609033,
+              "CONCEPT_NAME": "Haemorrhagic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37110241,
+              "CONCEPT_NAME": "Stroke co-occurrent with migraine",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163753,
+              "CONCEPT_NAME": "Cerebrovascular accident following heart procedure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37167974,
+              "CONCEPT_NAME": "Cerebrovascular accident due to occlusion of anterior choroidal artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37395574,
+              "CONCEPT_NAME": "Cerebrovascular accident due to right carotid artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37395575,
+              "CONCEPT_NAME": "Cerebrovascular accident due to right carotid artery stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42535147,
+              "CONCEPT_NAME": "Cerebrovascular accident due to occlusion of right pontine artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42535149,
+              "CONCEPT_NAME": "Cerebrovascular accident due to occlusion of right cerebellar artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42535458,
+              "CONCEPT_NAME": "Cerebrovascular accident due to stenosis of right vertebral artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531605,
+              "CONCEPT_NAME": "Occlusion of cerebral artery with stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "Diabetes Mellitus",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201820,
+              "CONCEPT_NAME": "Diabetes mellitus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "name": "Hypertension",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 316866,
+              "CONCEPT_NAME": "Hypertensive disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "name": "Congestive heart failure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 314378,
+              "CONCEPT_NAME": "Hypertensive heart disease with congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 319835,
+              "CONCEPT_NAME": "Congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 439696,
+              "CONCEPT_NAME": "Hypertensive heart and renal disease with (congestive) heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 439698,
+              "CONCEPT_NAME": "Benign hypertensive heart disease with congestive cardiac failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 762002,
+              "CONCEPT_NAME": "Congestive heart failure as post-operative complication of cardiac surgery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 762003,
+              "CONCEPT_NAME": "Congestive heart failure as post-operative complication of non-cardiac surgery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1340289,
+              "CONCEPT_NAME": "Exacerbation of congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "OMOP Extension",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4023479,
+              "CONCEPT_NAME": "Acute congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4139864,
+              "CONCEPT_NAME": "Congestive heart failure due to left ventricular systolic dysfunction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4142561,
+              "CONCEPT_NAME": "Congestive heart failure due to valvular disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4229440,
+              "CONCEPT_NAME": "Chronic congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4242669,
+              "CONCEPT_NAME": "Biventricular congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36713488,
+              "CONCEPT_NAME": "Congestive heart failure stage B",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43021825,
+              "CONCEPT_NAME": "Congestive heart failure stage D",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43021826,
+              "CONCEPT_NAME": "Congestive heart failure stage C",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43022068,
+              "CONCEPT_NAME": "Exacerbation of congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44782428,
+              "CONCEPT_NAME": "Congestive heart failure due to cardiomyopathy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44782713,
+              "CONCEPT_NAME": "Congestive heart failure with right heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44784345,
+              "CONCEPT_NAME": "Congestive heart failure as early postoperative complication",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44784442,
+              "CONCEPT_NAME": "Symptomatic congestive heart failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "name": "Left ventricular ejection fraction",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3027172,
+              "CONCEPT_NAME": "Left ventricular Ejection fraction",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4108146,
+              "CONCEPT_NAME": "Left ventricular function",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4108582,
+              "CONCEPT_NAME": "Left ventricular ejection fraction",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4323433,
+              "CONCEPT_NAME": "Cardiac ejection fraction",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40758535,
+              "CONCEPT_NAME": "Left ventricular Cardiac ejection fraction method",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Clinical Observation",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "name": "Transient ischemic attack",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 373503,
+              "CONCEPT_NAME": "Transient cerebral ischemia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4043734,
+              "CONCEPT_NAME": "Carotid territory transient ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4048785,
+              "CONCEPT_NAME": "Vertebrobasilar territory transient ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4139517,
+              "CONCEPT_NAME": "Transient cerebral ischemia due to atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163288,
+              "CONCEPT_NAME": "Transient ischemic attack co-occurrent with subarachnoid hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40485430,
+              "CONCEPT_NAME": "Recurrent transient cerebral ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46272244,
+              "CONCEPT_NAME": "Transient ischemic attack due to embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "Systemic embolism",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 192657,
+              "CONCEPT_NAME": "Embolism of iliac artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 312337,
+              "CONCEPT_NAME": "Arterial embolus and thrombosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 312339,
+              "CONCEPT_NAME": "Arterial embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 440417,
+              "CONCEPT_NAME": "Pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 761750,
+              "CONCEPT_NAME": "Embolism of splenic artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 764887,
+              "CONCEPT_NAME": "Embolism of abdominal aorta",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4107246,
+              "CONCEPT_NAME": "Coronary artery embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4117679,
+              "CONCEPT_NAME": "Peripheral arterial embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4170620,
+              "CONCEPT_NAME": "Aortic thromboembolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4173167,
+              "CONCEPT_NAME": "Mesenteric embolus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4174012,
+              "CONCEPT_NAME": "Subclavian artery embolus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4178398,
+              "CONCEPT_NAME": "Suprarenal artery embolus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4179906,
+              "CONCEPT_NAME": "Celiac artery embolus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4185607,
+              "CONCEPT_NAME": "Embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4197396,
+              "CONCEPT_NAME": "Hepatic artery embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4207618,
+              "CONCEPT_NAME": "Head and neck arterial embolus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4318843,
+              "CONCEPT_NAME": "Renal artery embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37118985,
+              "CONCEPT_NAME": "Arterial obstruction due to nonthrombotic embolism from heart",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163060,
+              "CONCEPT_NAME": "Acute occlusion of visceral artery due to thromboembolus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "name": "Prosthetic Heart Valve",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 142026,
+              "CONCEPT_NAME": "Disorder of cardiovascular prostheses and implants",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "name": "Hyperthyroidism",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 138387,
+              "CONCEPT_NAME": "Thyrotoxicosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1244153,
+              "CONCEPT_NAME": "Postpartum hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1340365,
+              "CONCEPT_NAME": "Exacerbation of hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "OMOP Extension",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4030051,
+              "CONCEPT_NAME": "Familial dysalbuminemic hyperthyroxinemia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4094160,
+              "CONCEPT_NAME": "Hyperthyroidism due to struma ovarii",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4100629,
+              "CONCEPT_NAME": "Hyperthyroidism with Hashimoto disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4113641,
+              "CONCEPT_NAME": "Thyrotoxicosis with or without goiter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4129357,
+              "CONCEPT_NAME": "Iodine-induced hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4142479,
+              "CONCEPT_NAME": "Hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4176932,
+              "CONCEPT_NAME": "Subclinical hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4210297,
+              "CONCEPT_NAME": "Neonatal transient hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4259138,
+              "CONCEPT_NAME": "Hyperthyroidism due to molar thyrotropin",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4265061,
+              "CONCEPT_NAME": "Hyperthyroidism secondary to amiodarone",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4337834,
+              "CONCEPT_NAME": "Hyperthyroidism due to ectopic thyroid nodule",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36716766,
+              "CONCEPT_NAME": "Secondary hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36716767,
+              "CONCEPT_NAME": "Familial hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37396803,
+              "CONCEPT_NAME": "Familial non-autoimmune autosomal dominant hyperthyroidism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45757130,
+              "CONCEPT_NAME": "Hyperthyroidism in childbirth",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "name": "Alcohol use disorder",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201612,
+              "CONCEPT_NAME": "Alcoholic liver damage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 433753,
+              "CONCEPT_NAME": "Harmful pattern of use of alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 435243,
+              "CONCEPT_NAME": "Alcohol dependence",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 436585,
+              "CONCEPT_NAME": "Toxic effect of ethyl alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1448810,
+              "CONCEPT_NAME": "Episode of harmful use of alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1448827,
+              "CONCEPT_NAME": "Alcohol use disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4030070,
+              "CONCEPT_NAME": "Alcohol-induced hypoglycemia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4050977,
+              "CONCEPT_NAME": "Wernicke's disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4078688,
+              "CONCEPT_NAME": "Alcohol myopathy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4176652,
+              "CONCEPT_NAME": "Alcohol-induced epilepsy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4204015,
+              "CONCEPT_NAME": "Alcohol-induced flushing",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35610532,
+              "CONCEPT_NAME": "Harmful use of alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36713086,
+              "CONCEPT_NAME": "Alcohol induced disorder co-occurrent and due to alcohol dependence",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36716878,
+              "CONCEPT_NAME": "Gastric ulcer caused by alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37016167,
+              "CONCEPT_NAME": "Degenerative brain disorder caused by alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37016175,
+              "CONCEPT_NAME": "Circadian rhythm sleep disorder caused by alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37162881,
+              "CONCEPT_NAME": "Duodenal ulcer caused by alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40483827,
+              "CONCEPT_NAME": "Inflammation of pancreas caused by alcohol",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "name": "Postoperative atrial fibrillation",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 313217,
+              "CONCEPT_NAME": "Atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4120084,
+              "CONCEPT_NAME": "Sinoatrial node tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4124696,
+              "CONCEPT_NAME": "Re-entrant atrial tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4154290,
+              "CONCEPT_NAME": "Paroxysmal atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4171269,
+              "CONCEPT_NAME": "Atrial tachycardia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4264636,
+              "CONCEPT_NAME": "Cardiac insufficiency following cardiac surgery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37151415,
+              "CONCEPT_NAME": "Postoperative cardiac arrhythmia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42536647,
+              "CONCEPT_NAME": "Atrial erosion caused by implanted device following atrial operation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44784345,
+              "CONCEPT_NAME": "Congestive heart failure as early postoperative complication",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "name": "Sepsis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 132797,
+              "CONCEPT_NAME": "Sepsis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 607325,
+              "CONCEPT_NAME": "Sepsis caused by Proteus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1075272,
+              "CONCEPT_NAME": "Sepsis due to infection caused by Citrobacter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1244226,
+              "CONCEPT_NAME": "Sepsis due to and following procedure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4009954,
+              "CONCEPT_NAME": "Sepsis during labor",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4029281,
+              "CONCEPT_NAME": "Sepsis syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4071063,
+              "CONCEPT_NAME": "Sepsis of the newborn",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37168933,
+              "CONCEPT_NAME": "Sepsis caused by monkeypox virus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37312594,
+              "CONCEPT_NAME": "Sepsis without septic shock",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37394658,
+              "CONCEPT_NAME": "Severe sepsis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37395591,
+              "CONCEPT_NAME": "Line sepsis associated with dialysis catheter",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44782630,
+              "CONCEPT_NAME": "Sepsis in asplenic subject",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44782822,
+              "CONCEPT_NAME": "Postoperative sepsis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44784138,
+              "CONCEPT_NAME": "Sepsis caused by fungus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46269944,
+              "CONCEPT_NAME": "Sepsis caused by Chromobacterium",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46270043,
+              "CONCEPT_NAME": "Septic shock co-occurrent with acute organ dysfunction caused by Haemophilus influenzae",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46270052,
+              "CONCEPT_NAME": "Sepsis caused by methicillin susceptible Staphylococcus aureus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46284901,
+              "CONCEPT_NAME": "Uncomplicated sepsis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46284902,
+              "CONCEPT_NAME": "Red flag sepsis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "name": "Pulmonary embolism",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 435026,
+              "CONCEPT_NAME": "Obstetric pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 440417,
+              "CONCEPT_NAME": "Pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1244882,
+              "CONCEPT_NAME": "Pulmonary artery embolism due to foreign body",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3655209,
+              "CONCEPT_NAME": "Pulmonary embolism due to and following ectopic pregnancy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3655210,
+              "CONCEPT_NAME": "Pulmonary embolism due to and following molar pregnancy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4091708,
+              "CONCEPT_NAME": "Pulmonary air embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4108681,
+              "CONCEPT_NAME": "Postoperative pulmonary embolus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4119607,
+              "CONCEPT_NAME": "Subacute massive pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4119608,
+              "CONCEPT_NAME": "Pulmonary fat embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4121618,
+              "CONCEPT_NAME": "Pulmonary thromboembolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4236271,
+              "CONCEPT_NAME": "Recurrent pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4253796,
+              "CONCEPT_NAME": "Pulmonary microemboli",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36713113,
+              "CONCEPT_NAME": "Saddle embolus of pulmonary artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37016922,
+              "CONCEPT_NAME": "Pulmonary embolism on long-term anticoagulation therapy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37109911,
+              "CONCEPT_NAME": "Pulmonary embolism due to and following acute myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40479606,
+              "CONCEPT_NAME": "Septic pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43530605,
+              "CONCEPT_NAME": "Pulmonary embolism with pulmonary infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43530934,
+              "CONCEPT_NAME": "Induced termination of pregnancy complicated by pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44782732,
+              "CONCEPT_NAME": "Chronic pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45768439,
+              "CONCEPT_NAME": "Acute pulmonary embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "name": "Myocardial Infarction",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4329847,
+              "CONCEPT_NAME": "Myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "name": "Mitral stenosis",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 313006,
+              "CONCEPT_NAME": "Congenital stenosis of mitral valve",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 315273,
+              "CONCEPT_NAME": "Mitral valve stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 317890,
+              "CONCEPT_NAME": "Mitral and aortic stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 321041,
+              "CONCEPT_NAME": "Mitral stenosis and aortic insufficiency",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3654723,
+              "CONCEPT_NAME": "Mild mitral valve stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3654724,
+              "CONCEPT_NAME": "Moderate mitral valve stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3654725,
+              "CONCEPT_NAME": "Severe mitral valve stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4110937,
+              "CONCEPT_NAME": "Non-rheumatic mitral valve stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4313828,
+              "CONCEPT_NAME": "Rheumatic mitral stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43020956,
+              "CONCEPT_NAME": "Stenosis of fetal mitral valve",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45766127,
+              "CONCEPT_NAME": "Postprocedural mitral valve stenosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "name": "Aspirin > 165 mg/day",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1113117,
+              "CONCEPT_NAME": "aspirin 600 MG Oral Tablet",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Clinical Drug",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1113373,
+              "CONCEPT_NAME": "aspirin 520 MG",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Clinical Drug Comp",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1113408,
+              "CONCEPT_NAME": "aspirin 648 MG",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Clinical Drug Comp",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1134862,
+              "CONCEPT_NAME": "aspirin 81 MG / caffeine 8.1 MG Oral Capsule",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Clinical Drug",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "name": "Aspirin and Clopidogrel",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 2013349,
+              "CONCEPT_NAME": "aspirin 100 MG / clopidogrel 75 MG [CLOPIO-A]",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Branded Drug Comp",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 2013350,
+              "CONCEPT_NAME": "aspirin 100 MG / clopidogrel 75 MG [CLPIDO-A]",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Branded Drug Comp",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 2013351,
+              "CONCEPT_NAME": "aspirin 100 MG / clopidogrel 75 MG [K-CLO]",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Branded Drug Comp",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "name": "Serum creatinine",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3016723,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3020564,
+              "CONCEPT_NAME": "Creatinine [Moles/volume] in Serum or Plasma",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3040374,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Serum or Plasma --2.5 hours post XXX challenge",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3040706,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Serum or Plasma --3 hours post XXX challenge",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3041471,
+              "CONCEPT_NAME": "Creatinine [Moles/volume] in Serum or Plasma --45 minutes pre XXX challenge",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3043664,
+              "CONCEPT_NAME": "Creatinine [Moles/volume] in Serum or Plasma --18 hours post XXX challenge",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3043675,
+              "CONCEPT_NAME": "Creatinine [Mass/volume] in Serum or Plasma --8 hours post XXX challenge",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4013964,
+              "CONCEPT_NAME": "Creatinine measurement, serum",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4276437,
+              "CONCEPT_NAME": "Serum creatinine level - finding",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40484175,
+              "CONCEPT_NAME": "Quantitative measurement of creatinine in postdialysis serum or plasma specimen",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "name": "Creatinine clearance",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4042762,
+              "CONCEPT_NAME": "Measurement of renal clearance of creatinine",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37393359,
+              "CONCEPT_NAME": "Renal function tests",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40282772,
+              "CONCEPT_NAME": "Renal function",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "name": "Ischemic Stroke",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 603206,
+              "CONCEPT_NAME": "Cerebrovascular accident due to occlusion of left posterior communicating artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 762933,
+              "CONCEPT_NAME": "Cerebral infarction due to cerebral artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 763009,
+              "CONCEPT_NAME": "Multiple and bilateral precerebral arterial occlusion with infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4045734,
+              "CONCEPT_NAME": "CVA - cerebrovascular accident due to cerebral artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4046361,
+              "CONCEPT_NAME": "Pure sensorimotor lacunar infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4099974,
+              "CONCEPT_NAME": "Completed stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4110194,
+              "CONCEPT_NAME": "Middle cerebral artery syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4110195,
+              "CONCEPT_NAME": "Posterior cerebral artery syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4153352,
+              "CONCEPT_NAME": "Embolic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4310996,
+              "CONCEPT_NAME": "Ischemic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37167974,
+              "CONCEPT_NAME": "Cerebrovascular accident due to occlusion of anterior choroidal artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37395574,
+              "CONCEPT_NAME": "Cerebrovascular accident due to right carotid artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42535149,
+              "CONCEPT_NAME": "Cerebrovascular accident due to occlusion of right cerebellar artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42535458,
+              "CONCEPT_NAME": "Cerebrovascular accident due to stenosis of right vertebral artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531605,
+              "CONCEPT_NAME": "Occlusion of cerebral artery with stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "name": "Hemorrhagic Stroke",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 376713,
+              "CONCEPT_NAME": "Cerebral hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 764707,
+              "CONCEPT_NAME": "Ruptured aneurysm of intracranial artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 764721,
+              "CONCEPT_NAME": "Cerebrovascular accident with intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35609033,
+              "CONCEPT_NAME": "Haemorrhagic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "name": "Transient ischemic attack",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 373503,
+              "CONCEPT_NAME": "Transient cerebral ischemia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4043734,
+              "CONCEPT_NAME": "Carotid territory transient ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4048785,
+              "CONCEPT_NAME": "Vertebrobasilar territory transient ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4139517,
+              "CONCEPT_NAME": "Transient cerebral ischemia due to atrial fibrillation",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163288,
+              "CONCEPT_NAME": "Transient ischemic attack co-occurrent with subarachnoid hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40485430,
+              "CONCEPT_NAME": "Recurrent transient cerebral ischemic attack",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46272244,
+              "CONCEPT_NAME": "Transient ischemic attack due to embolism",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "name": "Cryptogenic Stroke",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 603326,
+              "CONCEPT_NAME": "Cryptogenic stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4045734,
+              "CONCEPT_NAME": "CVA - cerebrovascular accident due to cerebral artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4046363,
+              "CONCEPT_NAME": "Stroke of uncertain pathology",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4099974,
+              "CONCEPT_NAME": "Completed stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531605,
+              "CONCEPT_NAME": "Occlusion of cerebral artery with stroke",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "name": "apixaban",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 43013024,
+              "CONCEPT_NAME": "apixaban",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    }
+  ],
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "DrugEra": {
+          "CodesetId": 27
+        }
+      }
+    ],
+    "ObservationWindow": {
+      "PriorDays": 365,
+      "PostDays": 0
+    },
+    "PrimaryCriteriaLimit": {
+      "Type": "First"
+    }
+  },
+  "InclusionRules": [
+    {
+      "name": "Atrial fibrillation + Atrial flutter",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 2
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 3
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Previous stroke + Diabetes mellitus + Hypertension requiring pharmacological treatment + Symptomatic congestive heart failure + Left ventricular dysfunction (LVEF \u2264 40%) + Transient ischemic attack (TIA) + Systemic embolism + Age \u2265 75",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 4
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 5
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 6
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 7
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "Measurement": {
+                    "CodesetId": 8,
+                    "ValueAsNumber": {
+                      "Value": 40.0,
+                      "Op": "lte"
+                    }
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 180,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 9
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 10
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [],
+            "DemographicCriteriaList": [
+              {
+                "Age": {
+                  "Value": 75.0,
+                  "Op": "gte"
+                }
+              }
+            ],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Prosthetic heart valve",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 11
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Mitral stenosis",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ConditionOccurrence": {
+                "CodesetId": 18
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Serum creatinine",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 21,
+                "ValueAsNumber": {
+                  "Value": 2.5,
+                  "Op": "gt"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Creatinine clearance",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "Measurement": {
+                "CodesetId": 22,
+                "ValueAsNumber": {
+                  "Value": 25.0,
+                  "Op": "lt"
+                }
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 180,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Hyperthyroidism causing AF + Alcohol-induced AF + Post-surgical AF + AF due to acute infection + AF due to pulmonary embolism + AF due to myocardial infarction",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 12
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 13
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 14
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 15
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 16
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 17
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "High-dose aspirin requirement + Concurrent use of aspirin and clopidogrel",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 19
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 20
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ischemic Stroke + Hemorrhagic Stroke + Transient Ischemic Attack (TIA) + Cryptogenic Stroke",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 23
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 7,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 24
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 7,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 25
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 7,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 26
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 7,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    }
+  ]
+}

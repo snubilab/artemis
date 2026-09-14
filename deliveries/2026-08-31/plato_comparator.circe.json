@@ -1,0 +1,5075 @@
+{
+  "ConceptSets": [
+    {
+      "id": 2,
+      "name": "STEMI",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 312327,
+              "CONCEPT_NAME": "Acute myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 604429,
+              "CONCEPT_NAME": "Acute ST segment elevation myocardial infarction of apex of heart",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4296653,
+              "CONCEPT_NAME": "Acute ST segment elevation myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45766076,
+              "CONCEPT_NAME": "Acute ST segment elevation myocardial infarction of anterior wall involving right ventricle",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46270159,
+              "CONCEPT_NAME": "Acute ST segment elevation myocardial infarction of anterolateral wall",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46270160,
+              "CONCEPT_NAME": "Acute ST segment elevation myocardial infarction of anteroseptal wall",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46270164,
+              "CONCEPT_NAME": "Acute ST segment elevation myocardial infarction of septum",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "NSTEMI",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4145721,
+              "CONCEPT_NAME": "Acute non-Q wave infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4270024,
+              "CONCEPT_NAME": "Acute non-ST segment elevation myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35610091,
+              "CONCEPT_NAME": "Acute nontransmural myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163020,
+              "CONCEPT_NAME": "Acute inferior non-ST segment elevation myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163023,
+              "CONCEPT_NAME": "Acute anterior non-ST segment elevation myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163084,
+              "CONCEPT_NAME": "Acute non-ST segment elevation myocardial infarction of right ventricle",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163289,
+              "CONCEPT_NAME": "Subsequent anterior non-ST segment elevation myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45766241,
+              "CONCEPT_NAME": "Subsequent non-ST segment elevation myocardial infarction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46270162,
+              "CONCEPT_NAME": "Acute ST segment elevation myocardial infarction due to left coronary artery occlusion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "Unstable Angina",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 608952,
+              "CONCEPT_NAME": "Unstable angina due to arteriosclerosis of coronary artery bypass graft of transplanted heart",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 608953,
+              "CONCEPT_NAME": "Unstable angina due to arteriosclerosis of autologous arterial coronary artery bypass graft",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1340441,
+              "CONCEPT_NAME": "Exacerbation of preinfarction syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "OMOP Extension",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4108670,
+              "CONCEPT_NAME": "Acute coronary insufficiency",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35615053,
+              "CONCEPT_NAME": "Unstable angina co-occurrent and due to arteriosclerosis of coronary artery bypass graft",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36712982,
+              "CONCEPT_NAME": "Unstable angina co-occurrent and due to coronary arteriosclerosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37169384,
+              "CONCEPT_NAME": "Preinfarction syndrome due to arteriosclerosis of nonautologous biological coronary artery bypass graft",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37209632,
+              "CONCEPT_NAME": "Stable angina due to coronary arteriosclerosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37309713,
+              "CONCEPT_NAME": "Unstable angina due to arteriosclerosis of autologous vein coronary artery bypass graft",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "ST-segment elevation",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 4064881,
+              "CONCEPT_NAME": "ECG ST interval",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4064882,
+              "CONCEPT_NAME": "ST elevation",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4089480,
+              "CONCEPT_NAME": "Segment deviation (ECG)",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4116636,
+              "CONCEPT_NAME": "ST segment duration",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4146761,
+              "CONCEPT_NAME": "ST segment",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4180593,
+              "CONCEPT_NAME": "ST Depression",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Observable Entity",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "name": "Left bundle-branch block",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 313209,
+              "CONCEPT_NAME": "Left bundle branch hemiblock",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 316432,
+              "CONCEPT_NAME": "Right bundle branch block AND left anterior fascicular block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 316998,
+              "CONCEPT_NAME": "Left bundle branch block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 321315,
+              "CONCEPT_NAME": "Trifascicular block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 321587,
+              "CONCEPT_NAME": "Bilateral bundle branch block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 321590,
+              "CONCEPT_NAME": "Right bundle branch block AND left posterior fascicular block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4088336,
+              "CONCEPT_NAME": "Incomplete left bundle branch block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4111543,
+              "CONCEPT_NAME": "Left main stem bundle branch block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4138973,
+              "CONCEPT_NAME": "Right bundle branch block with left bundle branch block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4267892,
+              "CONCEPT_NAME": "Complete left bundle branch block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4268046,
+              "CONCEPT_NAME": "Left posterior fascicular block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4295336,
+              "CONCEPT_NAME": "Left anterior fascicular block",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "name": "Alteplase",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1347450,
+              "CONCEPT_NAME": "alteplase",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "name": "Reteplase",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 19024191,
+              "CONCEPT_NAME": "reteplase",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "name": "Tenecteplase",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 19098548,
+              "CONCEPT_NAME": "tenecteplase",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "Streptokinase",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 19136187,
+              "CONCEPT_NAME": "streptokinase",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "name": "Urokinase",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1307515,
+              "CONCEPT_NAME": "urokinase",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "name": "Factor VIII",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1352213,
+              "CONCEPT_NAME": "factor VIII",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "name": "Factor IX",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1351935,
+              "CONCEPT_NAME": "factor IX",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "name": "Fibrinogen",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 19054702,
+              "CONCEPT_NAME": "fibrinogen",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "name": "Prothrombin Complex Concentrate",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 854369,
+              "CONCEPT_NAME": "factor IX 500 UNT / factor VII 417 UNT / factor X 500 UNT / protein C 333 UNT / prothrombin 542 UNT Injectable Solution",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Clinical Drug",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 854372,
+              "CONCEPT_NAME": "factor IX / factor VII / factor X / protein C / prothrombin Injectable Solution",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Clinical Drug Form",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1254255,
+              "CONCEPT_NAME": "Prothrombin complex concentrate",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1351935,
+              "CONCEPT_NAME": "factor IX",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42801108,
+              "CONCEPT_NAME": "protein C",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44785020,
+              "CONCEPT_NAME": "factor VII",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44785022,
+              "CONCEPT_NAME": "factor X",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "name": "Recombinant Factor VIIa",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1352141,
+              "CONCEPT_NAME": "factor VIIa",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1735577,
+              "CONCEPT_NAME": "coagulation factor VIIa (recombinant)-jncw 2 MG",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Clinical Drug Comp",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "name": "angioplasty",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1447348,
+              "CONCEPT_NAME": "Fluoroscopy guided percutaneous transluminal angioplasty of abdominal vascular structure with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1447393,
+              "CONCEPT_NAME": "Fluoroscopy guided percutaneous transluminal angioplasty of blood vessel using paclitaxel coated balloon catheter using fluoroscopic guidance with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4019655,
+              "CONCEPT_NAME": "Intraoperative transluminal angioplasty",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4050128,
+              "CONCEPT_NAME": "Fluoroscopy guided angioplasty of artery with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4051176,
+              "CONCEPT_NAME": "Fluoroscopy guided percutaneous transluminal angioplasty of arteriovenous fistula using fluoroscopic guidance with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4130393,
+              "CONCEPT_NAME": "Fluoroscopy guided percutaneous transluminal angioplasty of systemic to pulmonary arterial shunt using with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4207625,
+              "CONCEPT_NAME": "Percutaneous transluminal angioplasty of vascular graft",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4230233,
+              "CONCEPT_NAME": "Fluoroscopy guided percutaneous transluminal angioplasty of vein with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4286646,
+              "CONCEPT_NAME": "Percutaneous transluminal balloon angioplasty using imaging guidance with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4302652,
+              "CONCEPT_NAME": "Angioplasty of blood vessel",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40489873,
+              "CONCEPT_NAME": "Transluminal angioplasty",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531452,
+              "CONCEPT_NAME": "Fluoroscopy guided percutaneous transluminal angioplasty of blood vessel of lower limb with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44807975,
+              "CONCEPT_NAME": "Fluoroscopy guided percutaneous transluminal balloon angioplasty",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45769219,
+              "CONCEPT_NAME": "Fluoroscopy guided percutaneous transluminal balloon angioplasty for major systemic to pulmonary collateral artery with contrast",
+              "DOMAIN_ID": "Procedure",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Procedure",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "name": "Cirrhosis of liver",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 192675,
+              "CONCEPT_NAME": "Biliary cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 194692,
+              "CONCEPT_NAME": "Cirrhosis - non-alcoholic",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 605193,
+              "CONCEPT_NAME": "Liver cirrhosis due to classical cystic fibrosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4046016,
+              "CONCEPT_NAME": "Toxic cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4048057,
+              "CONCEPT_NAME": "Nutritional cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4048083,
+              "CONCEPT_NAME": "Advanced cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4049282,
+              "CONCEPT_NAME": "Cholangiolitic cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4055210,
+              "CONCEPT_NAME": "Diffuse nodular cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4064161,
+              "CONCEPT_NAME": "Cirrhosis of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4071022,
+              "CONCEPT_NAME": "Micronodular cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4143008,
+              "CONCEPT_NAME": "Drug-induced cirrhosis of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4153294,
+              "CONCEPT_NAME": "Cirrhosis secondary to cholestasis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4159158,
+              "CONCEPT_NAME": "Early cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4163687,
+              "CONCEPT_NAME": "Cruveilhier-Baumgarten syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4203601,
+              "CONCEPT_NAME": "Glissonian cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4232955,
+              "CONCEPT_NAME": "Cryptogenic cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4268006,
+              "CONCEPT_NAME": "Indian childhood cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4294539,
+              "CONCEPT_NAME": "Florid cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4300060,
+              "CONCEPT_NAME": "Pigment cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4304584,
+              "CONCEPT_NAME": "Portal cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4313567,
+              "CONCEPT_NAME": "Postnecrotic cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340393,
+              "CONCEPT_NAME": "Infectious cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340946,
+              "CONCEPT_NAME": "Hypoxia-associated cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42539566,
+              "CONCEPT_NAME": "Cirrhosis of liver with primary sclerosing cholangitis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531723,
+              "CONCEPT_NAME": "Cirrhosis of liver due to chronic hepatitis C",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44783142,
+              "CONCEPT_NAME": "North American Indian childhood cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44805713,
+              "CONCEPT_NAME": "Cirrhosis associated with cystic fibrosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45772057,
+              "CONCEPT_NAME": "Cirrhosis of liver due to hepatitis B",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "name": "Hepatic encephalopathy",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 377604,
+              "CONCEPT_NAME": "Hepatic coma",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4029488,
+              "CONCEPT_NAME": "Hepatic encephalopathy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35622780,
+              "CONCEPT_NAME": "Hepatoencephalopathy due to combined oxidative phosphorylation defect type 1",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42710029,
+              "CONCEPT_NAME": "Hepatic encephalopathy in fulminant hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42710030,
+              "CONCEPT_NAME": "Portal systemic encephalopathy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "name": "Acute liver failure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 201065,
+              "CONCEPT_NAME": "Acute and subacute liver necrosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1450217,
+              "CONCEPT_NAME": "Acute on chronic liver failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4026032,
+              "CONCEPT_NAME": "Acute hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4058676,
+              "CONCEPT_NAME": "Acute necrosis of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4184847,
+              "CONCEPT_NAME": "Acute hepatic failure due to drugs",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4250743,
+              "CONCEPT_NAME": "Acute red atrophy of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340386,
+              "CONCEPT_NAME": "Alcoholic hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340389,
+              "CONCEPT_NAME": "Fulminant hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4342773,
+              "CONCEPT_NAME": "Subfulminant hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36676901,
+              "CONCEPT_NAME": "Acute infantile liver failure with multisystemic involvement syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36715006,
+              "CONCEPT_NAME": "Acute infantile liver failure due to synthesis defect of mitochondrial deoxyribonucleic acid encoded protein",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36716708,
+              "CONCEPT_NAME": "Acute hepatic failure caused by hepatitis virus",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37162423,
+              "CONCEPT_NAME": "Acute infantile liver failure, cerebellar ataxia, peripheral sensory motor neuropathy syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37163225,
+              "CONCEPT_NAME": "Fever-associated acute infantile liver failure syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37167450,
+              "CONCEPT_NAME": "Acute necrosis of liver following ectopic pregnancy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37168714,
+              "CONCEPT_NAME": "Hepatorenal syndrome with acute kidney injury",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45768686,
+              "CONCEPT_NAME": "Acute multi-acinar necrosis of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "name": "Chronic liver failure",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 192675,
+              "CONCEPT_NAME": "Biliary cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 200451,
+              "CONCEPT_NAME": "Chronic passive congestion of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 200763,
+              "CONCEPT_NAME": "Chronic hepatitis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 201613,
+              "CONCEPT_NAME": "Chronic nonalcoholic liver disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 763021,
+              "CONCEPT_NAME": "Chronic viral hepatitis C with hepatic coma",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1450217,
+              "CONCEPT_NAME": "Acute on chronic liver failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3655440,
+              "CONCEPT_NAME": "Chronic necrosis of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4064161,
+              "CONCEPT_NAME": "Cirrhosis of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4143008,
+              "CONCEPT_NAME": "Drug-induced cirrhosis of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4198610,
+              "CONCEPT_NAME": "Chronic rejection of liver transplant",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4232955,
+              "CONCEPT_NAME": "Cryptogenic cirrhosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4245975,
+              "CONCEPT_NAME": "Hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4253211,
+              "CONCEPT_NAME": "Progressive intrahepatic cholestasis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340390,
+              "CONCEPT_NAME": "Chronic hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37017009,
+              "CONCEPT_NAME": "Chronic alcoholic liver disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37162893,
+              "CONCEPT_NAME": "Chronic hepatic failure due to portosystemic shunt",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37396401,
+              "CONCEPT_NAME": "Decompensated cirrhosis of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43531723,
+              "CONCEPT_NAME": "Cirrhosis of liver due to chronic hepatitis C",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45769564,
+              "CONCEPT_NAME": "End stage liver disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45772057,
+              "CONCEPT_NAME": "Cirrhosis of liver due to hepatitis B",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "name": "Portal hypertension",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 192680,
+              "CONCEPT_NAME": "Portal hypertension",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 199837,
+              "CONCEPT_NAME": "Portal vein thrombosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4133977,
+              "CONCEPT_NAME": "Congenital absence of portal vein",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4145868,
+              "CONCEPT_NAME": "Disorder of hepatic portal vein",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4157027,
+              "CONCEPT_NAME": "Hepatoportal microvascular dysplasia",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4163687,
+              "CONCEPT_NAME": "Cruveilhier-Baumgarten syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4310665,
+              "CONCEPT_NAME": "Phlebitis of portal vein",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340947,
+              "CONCEPT_NAME": "Portal and splenic vein sclerosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36716711,
+              "CONCEPT_NAME": "Idiopathic portal hypertension",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37017293,
+              "CONCEPT_NAME": "Portal hypertension caused by antiretroviral drug",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37162826,
+              "CONCEPT_NAME": "Secondary portal hypertension",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45771017,
+              "CONCEPT_NAME": "Portal hypertension due to cystic fibrosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "name": "Hepatorenal syndrome",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 196455,
+              "CONCEPT_NAME": "Hepatorenal syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4308408,
+              "CONCEPT_NAME": "Hepatorenal syndrome as a complication of care",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37168714,
+              "CONCEPT_NAME": "Hepatorenal syndrome with acute kidney injury",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "name": "Allergy to clopidogrel",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1077464,
+              "CONCEPT_NAME": "Adverse reaction caused by drug after provocation test",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3661866,
+              "CONCEPT_NAME": "Allergic reaction after allergen immunotherapy",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4048971,
+              "CONCEPT_NAME": "Type 1 hypersensitivity response",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4084167,
+              "CONCEPT_NAME": "Acute allergic reaction",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4084168,
+              "CONCEPT_NAME": "Drug-induced anaphylaxis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4103376,
+              "CONCEPT_NAME": "Eruption caused by drug",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4140472,
+              "CONCEPT_NAME": "Drug-induced pneumonitis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4166257,
+              "CONCEPT_NAME": "Allergic reaction to drug",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4250128,
+              "CONCEPT_NAME": "Aspirin-induced asthma",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4292677,
+              "CONCEPT_NAME": "Sweet's disease caused by drug",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37169338,
+              "CONCEPT_NAME": "Allergic reaction caused by analgesic",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45765791,
+              "CONCEPT_NAME": "Drug reaction with eosinophilia and systemic symptoms",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "name": "Active bleeding",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 437312,
+              "CONCEPT_NAME": "Bleeding",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 766256,
+              "CONCEPT_NAME": "Exacerbation of bleeding",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "OMOP Extension",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4021667,
+              "CONCEPT_NAME": "Wound finding",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4086850,
+              "CONCEPT_NAME": "Bleeds profusely",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Clinical Finding",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "name": "History of intracranial hemorrhage",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 376713,
+              "CONCEPT_NAME": "Cerebral hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 439040,
+              "CONCEPT_NAME": "Subdural hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 439847,
+              "CONCEPT_NAME": "Intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 606686,
+              "CONCEPT_NAME": "Postoperative intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 764721,
+              "CONCEPT_NAME": "Cerebrovascular accident with intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3654899,
+              "CONCEPT_NAME": "Dissection of intracranial artery",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 3656236,
+              "CONCEPT_NAME": "Intracranial hemorrhage due to leptospirosis",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4111721,
+              "CONCEPT_NAME": "Sequelae of intracerebral hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4174299,
+              "CONCEPT_NAME": "Perinatal intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4306943,
+              "CONCEPT_NAME": "Epidural intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36716908,
+              "CONCEPT_NAME": "Intracranial hemorrhage co-occurrent and due to complex wound of head",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37109909,
+              "CONCEPT_NAME": "Silent micro-hemorrhage of brain",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37165986,
+              "CONCEPT_NAME": "Intracranial hemorrhage following administration of thrombolytic agent",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37167209,
+              "CONCEPT_NAME": "Fetal nontraumatic intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42538062,
+              "CONCEPT_NAME": "Spontaneous intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42872434,
+              "CONCEPT_NAME": "Intracranial hematoma",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42873042,
+              "CONCEPT_NAME": "Subpial intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42873123,
+              "CONCEPT_NAME": "Hemorrhage of intracranial meningeal space",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 42873157,
+              "CONCEPT_NAME": "Intracranial hemorrhage following injury",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43530606,
+              "CONCEPT_NAME": "Sequela of traumatic intracranial hemorrhage",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "name": "Severe hepatic impairment",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 194990,
+              "CONCEPT_NAME": "Inflammatory disease of liver",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4026032,
+              "CONCEPT_NAME": "Acute hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4055224,
+              "CONCEPT_NAME": "Toxic liver disease",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4245975,
+              "CONCEPT_NAME": "Hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4296301,
+              "CONCEPT_NAME": "Hepatic congestion",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4309163,
+              "CONCEPT_NAME": "Hepatic failure as a complication of care",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340389,
+              "CONCEPT_NAME": "Fulminant hepatic failure",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4340951,
+              "CONCEPT_NAME": "Liver transplant disorder",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4341650,
+              "CONCEPT_NAME": "Liver disorder due to infection",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4342883,
+              "CONCEPT_NAME": "Hepatic ascites",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "name": "Thrombotic thrombocytopenic purpura",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 197253,
+              "CONCEPT_NAME": "Hemolytic uremic syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4159967,
+              "CONCEPT_NAME": "Diarrhea-negative hemolytic uremic syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4204900,
+              "CONCEPT_NAME": "Acquired thrombotic thrombocytopenic purpura",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4230266,
+              "CONCEPT_NAME": "Autoimmune thrombotic thrombocytopenic purpura",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4258261,
+              "CONCEPT_NAME": "Drug induced thrombotic thrombocytopenic purpura",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4299560,
+              "CONCEPT_NAME": "Thrombocytopenic purpura due to defective platelet production",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 4301602,
+              "CONCEPT_NAME": "Thrombotic thrombocytopenic purpura",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36717581,
+              "CONCEPT_NAME": "Familial hemolytic uremic syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37167956,
+              "CONCEPT_NAME": "Hemolytic uremic syndrome with DGKE deficiency",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37167983,
+              "CONCEPT_NAME": "Infection-related hemolytic uremic syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 37312165,
+              "CONCEPT_NAME": "Atypical hemolytic uremic syndrome",
+              "DOMAIN_ID": "Condition",
+              "VOCABULARY_ID": "SNOMED",
+              "CONCEPT_CLASS_ID": "Disorder",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "name": "clopidogrel",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1322184,
+              "CONCEPT_NAME": "clopidogrel",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    }
+  ],
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "DrugEra": {
+          "CodesetId": 29
+        }
+      }
+    ],
+    "ObservationWindow": {
+      "PriorDays": 365,
+      "PostDays": 0
+    },
+    "PrimaryCriteriaLimit": {
+      "Type": "First"
+    }
+  },
+  "InclusionRules": [
+    {
+      "name": "Age 18 years or older",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [
+          {
+            "Age": {
+              "Value": 18,
+              "Op": "gte"
+            }
+          }
+        ],
+        "Groups": []
+      }
+    },
+    {
+      "name": "ST-Elevation Myocardial Infarction (STEMI) + Non-ST-Elevation Myocardial Infarction (NSTEMI) + Unstable Angina",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 2
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 3
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 4
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "ST-segment elevation of at least 0.1 mV in two contiguous leads + New left bundle-branch block",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "Measurement": {
+                    "CodesetId": 5,
+                    "ValueAsNumber": {
+                      "Value": 0.1,
+                      "Op": "gte"
+                    }
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 6
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 2,
+                  "Count": 1
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Alteplase administration + Reteplase administration + Tenecteplase administration + Streptokinase administration + Urokinase administration",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 7
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 1,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 8
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 1,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 9
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 1,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 10
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 1,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 11
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 1,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Treatment with Factor VIII + Treatment with Factor IX + Treatment with Fibrinogen + Treatment with Prothrombin Complex Concentrate + Treatment with Recombinant Factor VIIa",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 12
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 13
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 14
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 15
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 16
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "angioplasty",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "ProcedureOccurrence": {
+                "CodesetId": 17
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 9999,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 0,
+                "Coeff": 1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    },
+    {
+      "name": "Cirrhosis of the liver + Hepatic encephalopathy + Acute liver failure + Chronic liver failure + Portal hypertension + Hepatorenal syndrome",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 18
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 19
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 20
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 21
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 22
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 23
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "Allergy to clopidogrel + Active bleeding + History of intracranial hemorrhage + Severe hepatic impairment + Thrombotic thrombocytopenic purpura",
+      "expression": {
+        "Type": "ANY",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 24
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 25
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 26
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 27
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "ConditionOccurrence": {
+                    "CodesetId": 28
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 9999,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    }
+  ],
+  "TteSummary": {
+    "targetCohortId": 1459,
+    "targetCohortName": "ticagrelor",
+    "inclusionCriteria": [
+      {
+        "id": 1,
+        "description": "Age 18 years or older",
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Demographics",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 18,
+          "unitText": "years"
+        },
+        "sourceText": "Age",
+        "groupType": "ALL"
+      },
+      {
+        "id": 2,
+        "description": "ST-Elevation Myocardial Infarction (STEMI) + Non-ST-Elevation Myocardial Infarction (NSTEMI) + Unstable Angina",
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Condition",
+        "sourceText": "Acute Coronary Syndrome",
+        "groupId": "6b976b0d-76db-4a14-a6f6-1348d234632b",
+        "groupType": "ANY"
+      },
+      {
+        "id": 3,
+        "description": "ST-segment elevation of at least 0.1 mV in two contiguous leads + New left bundle-branch block",
+        "conceptSetId": 2,
+        "conceptSetName": "STEMI",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Condition",
+        "sourceText": "STEMI",
+        "groupId": "6b976b0d-76db-4a14-a6f6-1348d234632b",
+        "groupType": "ANY"
+      },
+      {
+        "id": 4,
+        "description": "Alteplase administration + Reteplase administration + Tenecteplase administration + Streptokinase administration + Urokinase administration",
+        "conceptSetId": 3,
+        "conceptSetName": "NSTEMI",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Condition",
+        "sourceText": "NSTEMI",
+        "groupId": "6b976b0d-76db-4a14-a6f6-1348d234632b",
+        "groupType": "ANY"
+      },
+      {
+        "id": 5,
+        "description": "Treatment with Factor VIII + Treatment with Factor IX + Treatment with Fibrinogen + Treatment with Prothrombin Complex Concentrate + Treatment with Recombinant Factor VIIa",
+        "conceptSetId": 4,
+        "conceptSetName": "Unstable Angina",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Condition",
+        "sourceText": "Unstable Angina",
+        "groupId": "6b976b0d-76db-4a14-a6f6-1348d234632b",
+        "groupType": "ANY"
+      },
+      {
+        "id": 6,
+        "description": "Cirrhosis of the liver + Hepatic encephalopathy + Acute liver failure + Chronic liver failure + Portal hypertension + Hepatorenal syndrome",
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "domain": "Condition",
+        "groupId": "173b1840-0256-4a64-85d9-0fc6fb95756d",
+        "groupType": "ANY"
+      },
+      {
+        "id": 7,
+        "description": "Allergy to clopidogrel + Active bleeding + History of intracranial hemorrhage + Severe hepatic impairment + Thrombotic thrombocytopenic purpura",
+        "conceptSetId": 5,
+        "conceptSetName": "ST-segment elevation",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 0.1,
+          "unitText": "mV"
+        },
+        "sourceText": "ST-segment elevation",
+        "groupId": "173b1840-0256-4a64-85d9-0fc6fb95756d",
+        "groupType": "ANY"
+      }
+    ],
+    "exclusionCriteria": [
+      {
+        "id": 1,
+        "description": "angioplasty",
+        "conceptSetId": 17,
+        "conceptSetName": "",
+        "window": {
+          "start": -1,
+          "end": 0
+        },
+        "domain": "Drug",
+        "sourceText": "fibrinolytic therapy",
+        "groupId": "98a9b95d-89e7-4365-b3d0-1debeead92b9",
+        "groupType": "ANY"
+      }
+    ]
+  },
+  "TteCriteriaShell": {
+    "generatedFrom": "structured-expression",
+    "inclusionCriteria": [
+      {
+        "id": 1,
+        "description": "Age 18 years or older",
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Demographics",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 18,
+          "unitText": "years"
+        },
+        "sourceText": "Age",
+        "groupType": "ALL"
+      },
+      {
+        "id": 2,
+        "description": "ST-Elevation Myocardial Infarction (STEMI) + Non-ST-Elevation Myocardial Infarction (NSTEMI) + Unstable Angina",
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Condition",
+        "sourceText": "Acute Coronary Syndrome",
+        "groupId": "6b976b0d-76db-4a14-a6f6-1348d234632b",
+        "groupType": "ANY"
+      },
+      {
+        "id": 3,
+        "description": "ST-segment elevation of at least 0.1 mV in two contiguous leads + New left bundle-branch block",
+        "conceptSetId": 2,
+        "conceptSetName": "STEMI",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Condition",
+        "sourceText": "STEMI",
+        "groupId": "6b976b0d-76db-4a14-a6f6-1348d234632b",
+        "groupType": "ANY"
+      },
+      {
+        "id": 4,
+        "description": "Alteplase administration + Reteplase administration + Tenecteplase administration + Streptokinase administration + Urokinase administration",
+        "conceptSetId": 3,
+        "conceptSetName": "NSTEMI",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Condition",
+        "sourceText": "NSTEMI",
+        "groupId": "6b976b0d-76db-4a14-a6f6-1348d234632b",
+        "groupType": "ANY"
+      },
+      {
+        "id": 5,
+        "description": "Treatment with Factor VIII + Treatment with Factor IX + Treatment with Fibrinogen + Treatment with Prothrombin Complex Concentrate + Treatment with Recombinant Factor VIIa",
+        "conceptSetId": 4,
+        "conceptSetName": "Unstable Angina",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Condition",
+        "sourceText": "Unstable Angina",
+        "groupId": "6b976b0d-76db-4a14-a6f6-1348d234632b",
+        "groupType": "ANY"
+      },
+      {
+        "id": 6,
+        "description": "Cirrhosis of the liver + Hepatic encephalopathy + Acute liver failure + Chronic liver failure + Portal hypertension + Hepatorenal syndrome",
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "domain": "Condition",
+        "groupId": "173b1840-0256-4a64-85d9-0fc6fb95756d",
+        "groupType": "ANY"
+      },
+      {
+        "id": 7,
+        "description": "Allergy to clopidogrel + Active bleeding + History of intracranial hemorrhage + Severe hepatic impairment + Thrombotic thrombocytopenic purpura",
+        "conceptSetId": 5,
+        "conceptSetName": "ST-segment elevation",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 0.1,
+          "unitText": "mV"
+        },
+        "sourceText": "ST-segment elevation",
+        "groupId": "173b1840-0256-4a64-85d9-0fc6fb95756d",
+        "groupType": "ANY"
+      }
+    ],
+    "exclusionCriteria": [
+      {
+        "id": 1,
+        "description": "angioplasty",
+        "conceptSetId": 17,
+        "conceptSetName": "",
+        "window": {
+          "start": -1,
+          "end": 0
+        },
+        "domain": "Drug",
+        "sourceText": "fibrinolytic therapy",
+        "groupId": "98a9b95d-89e7-4365-b3d0-1debeead92b9",
+        "groupType": "ANY"
+      }
+    ]
+  }
+}
