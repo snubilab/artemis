@@ -146,3 +146,14 @@ regimen"이 entry event 94,164건 중 0건 충족` (note-010). 같은 것을 아
   CHF-6366)은 정의에서 읽은 사실이지만, 그것이 그 발송의 0을 만들었다는 것은
   측정되지 않았다.
 - 아주대는 규칙별 attrition을 제공한 적이 한 번도 없다.
+
+## 복구
+
+발송 3건은 각각 annotated tag에서 바이트 단위로 복구된다. 규칙과 게이트는
+`.claude/rules/broadsea/delivery-provenance.md`, `scripts/verify_delivery_provenance.py`,
+`tests/test_delivery_provenance.py`.
+
+```
+git -C artemis tag -l "delivery/*" -n30              # 무엇을 언제 어느 코드로 보냈나
+git -C artemis archive delivery/2026-08-31 deliveries/2026-08-31 | tar -x
+```
