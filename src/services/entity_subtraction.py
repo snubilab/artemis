@@ -50,10 +50,20 @@ class ExceptedConcept:
 
     :param concept_id: the OMOP concept id.
     :param concept_name: the concept's name, for the appended item and for logging.
+    :param concept: the mapper's whole concept dict, carried through verbatim so
+        an appended member is shaped exactly like a member the mapper produced.
+        Atlas renders a concept set as a DataTable whose second column reads
+        ``concept.DOMAIN_ID``; a member missing that key aborts the table, and
+        the cohort cannot be generated at all -- which is what the 2026-09-12
+        CAROLINA delivery did at Dong-A. Every field is already in the mapper's
+        output, so nothing is looked up to carry them. Empty when the caller
+        supplied only the two scalars; the appended member then carries just
+        those, as before. Kept out of comparison so the class stays hashable.
     """
 
     concept_id: int
     concept_name: str = ""
+    concept: dict = field(default_factory=dict, compare=False)
 
 
 @dataclass(frozen=True)
@@ -128,7 +138,7 @@ def apply_entity_subtraction(
         carried.add(concept.concept_id)
         appended.append(concept.concept_id)
         repaired.append({
-            "concept": {
+            "concept": dict(concept.concept) or {
                 "CONCEPT_ID": concept.concept_id,
                 "CONCEPT_NAME": concept.concept_name,
             },
@@ -169,7 +179,7 @@ def _included_concepts(mapping: dict) -> list[ExceptedConcept]:
         concept = item.get("concept") or {}
         cid = concept.get("CONCEPT_ID")
         if cid is not None:
-            out.append(ExceptedConcept(cid, concept.get("CONCEPT_NAME") or ""))
+            out.append(ExceptedConcept(cid, concept.get("CONCEPT_NAME") or "", dict(concept)))
     return out
 
 

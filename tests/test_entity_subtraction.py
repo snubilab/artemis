@@ -13,7 +13,12 @@ non-melanoma skin cancers was decided by `concept_ancestor` in
 by reading the names. The LEADER ids are codeset 12's 26 members.
 """
 
-from src.services.entity_subtraction import ExceptedConcept, apply_entity_subtraction
+from src.services.entity_exception import detect_entity_exception
+from src.services.entity_subtraction import (
+    ExceptedConcept,
+    apply_entity_subtraction,
+    resolve_entity_exception,
+)
 
 # codeset 45, verbatim from output/site_gap/2026-09-14/DELIVERY/carolina_treatment.circe.json
 CAROLINA_45 = [
@@ -181,3 +186,140 @@ class TestNoOps:
         result = apply_entity_subtraction(items, [ExceptedConcept(606563, "")])
         assert result.excluded_in_place == []
         assert result.appended == []
+
+
+# The 2026-09-12 delivery, CAROLINA codeset 80 'cancer other than non-melanoma
+# skin cancer'. Three of its thirteen mapper-produced members, verbatim from
+# deliveries/2026-09-12/carolina_treatment.circe.json rows 0, 8 and 12.
+CAROLINA_80_MAPPED = [
+    {"CONCEPT_ID": 4123026, "CONCEPT_NAME": "Tumor of advanced extent",
+     "DOMAIN_ID": "Condition", "VOCABULARY_ID": "SNOMED",
+     "CONCEPT_CLASS_ID": "Clinical Finding", "STANDARD_CONCEPT": "S",
+     "STANDARD_CONCEPT_CAPTION": "Standard", "CONCEPT_CODE": "",
+     "INVALID_REASON": None, "INVALID_REASON_CAPTION": None},
+    {"CONCEPT_ID": 4194405, "CONCEPT_NAME": "Cancer confirmed",
+     "DOMAIN_ID": "Condition", "VOCABULARY_ID": "SNOMED",
+     "CONCEPT_CLASS_ID": "Context-dependent", "STANDARD_CONCEPT": "S",
+     "STANDARD_CONCEPT_CAPTION": "Standard", "CONCEPT_CODE": "",
+     "INVALID_REASON": None, "INVALID_REASON_CAPTION": None},
+    {"CONCEPT_ID": 4300140, "CONCEPT_NAME": "Tumor stage finding",
+     "DOMAIN_ID": "Condition", "VOCABULARY_ID": "SNOMED",
+     "CONCEPT_CLASS_ID": "Clinical Finding", "STANDARD_CONCEPT": "S",
+     "STANDARD_CONCEPT_CAPTION": "Standard", "CONCEPT_CODE": "",
+     "INVALID_REASON": None, "INVALID_REASON_CAPTION": None},
+]
+
+# Two of the five members this module APPENDED to that same codeset -- rows 13
+# and 14 -- as the mapper returns them. The delivered rows carry CONCEPT_ID and
+# CONCEPT_NAME only; these ten-field forms are verbatim from the same two
+# concepts where they appear as mapper-produced members elsewhere:
+# output/site_gap/2026-09-05/reexport_complete/empa-reg_comparator.circe.json
+# codeset 49 (766258) and output/site_gap/2026-09-11/DELIVERY/
+# carolina_comparator.circe.json codeset 56 (4031105).
+CAROLINA_80_EXCEPTED = [
+    {"CONCEPT_ID": 766258, "CONCEPT_NAME": "Exacerbation of non-melanoma skin malignancy",
+     "DOMAIN_ID": "Condition", "VOCABULARY_ID": "OMOP Extension",
+     "CONCEPT_CLASS_ID": "Disorder", "STANDARD_CONCEPT": "S",
+     "STANDARD_CONCEPT_CAPTION": "Standard", "CONCEPT_CODE": "",
+     "INVALID_REASON": None, "INVALID_REASON_CAPTION": None},
+    {"CONCEPT_ID": 4031105, "CONCEPT_NAME": "Melanoma in situ of non-skin site",
+     "DOMAIN_ID": "Condition", "VOCABULARY_ID": "SNOMED",
+     "CONCEPT_CLASS_ID": "Disorder", "STANDARD_CONCEPT": "S",
+     "STANDARD_CONCEPT_CAPTION": "Standard", "CONCEPT_CODE": "",
+     "INVALID_REASON": None, "INVALID_REASON_CAPTION": None},
+]
+
+# The ten keys Atlas's concept-set DataTable reads a member by. Its second
+# column is `concept.DOMAIN_ID`.
+ATLAS_MEMBER_FIELDS = {
+    "CONCEPT_ID", "CONCEPT_NAME", "DOMAIN_ID", "VOCABULARY_ID", "CONCEPT_CLASS_ID",
+    "STANDARD_CONCEPT", "STANDARD_CONCEPT_CAPTION", "CONCEPT_CODE",
+    "INVALID_REASON", "INVALID_REASON_CAPTION",
+}
+
+
+def _mapper_items(concepts):
+    return [{"concept": dict(c), "isExcluded": False,
+             "includeDescendants": True, "includeMapped": False} for c in concepts]
+
+
+class TestAnAppendedMemberIsShapedLikeAMapperMember:
+    """The defect the 2026-09-12 delivery shipped to two hospitals.
+
+    CAROLINA codeset 80 'cancer other than non-melanoma skin cancer': rows 0-12
+    came from the mapper and carry ten fields, rows 13-17 were appended here and
+    carry two. Atlas renders a concept set as a DataTable whose second column
+    reads `concept.DOMAIN_ID`, so row 13 aborts the whole table:
+
+        DataTables warning: table id=... - Requested unknown parameter
+        'concept.DOMAIN_ID' for row 13, column 2
+
+    Dong-A could not generate the CAROLINA cohort at all. An appended member has
+    to be shaped exactly like one the mapper produced -- and every field is
+    already in the mapper's output, so nothing needs looking up to do it.
+    """
+
+    def test_should_carry_every_mapper_field_when_an_excepted_concept_is_appended(self):
+        result = apply_entity_subtraction(
+            _mapper_items(CAROLINA_80_MAPPED),
+            [ExceptedConcept(c["CONCEPT_ID"], c["CONCEPT_NAME"], c)
+             for c in CAROLINA_80_EXCEPTED],
+        )
+        assert result.refused == ""
+        assert result.appended == [766258, 4031105]
+        for expected in CAROLINA_80_EXCEPTED:
+            member = next(i for i in result.items
+                          if i["concept"]["CONCEPT_ID"] == expected["CONCEPT_ID"])
+            assert member["concept"] == expected
+            assert member["isExcluded"] is True
+            assert member["includeDescendants"] is True
+
+    def test_should_carry_domain_id_when_the_exception_is_resolved_end_to_end(self):
+        """Through `resolve_entity_exception`, which is the path that shipped:
+        `_included_concepts` read the mapper's excepted mapping and kept two of
+        its ten fields."""
+        exception = detect_entity_exception("cancer other than non-melanoma skin cancer")
+        table = {
+            "cancer": CAROLINA_80_MAPPED,
+            "non-melanoma skin cancer": CAROLINA_80_EXCEPTED,
+        }
+
+        def map_phrase(phrase):
+            return {"name": phrase, "domain": "Condition",
+                    "expression": {"items": _mapper_items(table[phrase])}}
+
+        result = resolve_entity_exception(exception, map_phrase)
+        assert result.fallback_reason == ""
+        items = result.mapping["expression"]["items"]
+        appended = [i for i in items if i["concept"]["CONCEPT_ID"] in (766258, 4031105)]
+        assert len(appended) == 2
+        for member in appended:
+            assert set(member["concept"]) == ATLAS_MEMBER_FIELDS
+            assert member["concept"]["DOMAIN_ID"] == "Condition"
+
+    def test_should_match_a_base_member_s_fields_on_every_member_of_the_set(self):
+        """Not just the appended ones: after the repair the whole expression is
+        uniform, which is what the DataTable needs."""
+        exception = detect_entity_exception("cancer other than non-melanoma skin cancer")
+        table = {
+            "cancer": CAROLINA_80_MAPPED,
+            "non-melanoma skin cancer": CAROLINA_80_EXCEPTED,
+        }
+        result = resolve_entity_exception(
+            exception,
+            lambda phrase: {"name": phrase, "domain": "Condition",
+                            "expression": {"items": _mapper_items(table[phrase])}},
+        )
+        for member in result.mapping["expression"]["items"]:
+            assert set(member["concept"]) == ATLAS_MEMBER_FIELDS
+
+    def test_should_still_append_two_fields_when_the_caller_supplies_only_two(self):
+        """The existing two-argument construction keeps working; it just cannot
+        carry what it was never given."""
+        result = apply_entity_subtraction(
+            _items([(4155297, "Malignant neoplasm of skin")]),
+            [ExceptedConcept(141232, "Malignant melanoma of skin")],
+        )
+        appended = next(i for i in result.items if i["concept"]["CONCEPT_ID"] == 141232)
+        assert appended["concept"] == {"CONCEPT_ID": 141232,
+                                       "CONCEPT_NAME": "Malignant melanoma of skin"}
