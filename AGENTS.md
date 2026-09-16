@@ -264,6 +264,24 @@ When the user says a delivery was sent, in this order:
    fields, and the known state of that payload. A tag, not a branch: it does not move.
 5. Run the gate and see it pass: `python3 scripts/verify_delivery_provenance.py`.
 
+**보내기 전에 Atlas에서 열리는지부터 확인한다.** WebAPI가 통과시켜도 Atlas가 못 그리는
+결함이 있고, 그 경우 사이트 담당자는 코호트를 아예 생성하지 못한다:
+
+```bash
+python3 scripts/verify_atlas_renderable.py <보낼 디렉터리>
+```
+
+Atlas는 concept set을 DataTable로 그리면서 `concept.DOMAIN_ID`, `concept.VOCABULARY_ID`
+등을 역참조한다. 한 멤버라도 그 키가 없으면 표 전체가 중단되고, 화면에는
+`Requested unknown parameter 'concept.DOMAIN_ID' for row N`만 뜬다. 2026-09-12 발송분의
+CAROLINA 두 파일이 이 상태로 나갔고, 동아대는 그 코호트를 생성하지 못해 결과표의 칸이
+0이 아니라 비어 있었다.
+
+**WebAPI 검사로는 잡히지 않는다.** CIRCE는 concept set을 `CONCEPT_ID` 하나로 컴파일하므로,
+나머지 필드가 전부 없어도 SQL은 정상으로 나온다 — 실제로 그 발송분 6개 파일 모두
+`POST /WebAPI/cohortdefinition/sql`이 HTTP 200이었고 배제도 anti-join으로 정확히 실렸다.
+이 결함은 오직 Atlas 앞에 앉은 사람에게만 보인다.
+
 **The code version is recorded against the send date, never a run directory's label** —
 those labels drift by up to three days here, and `output/site_gap/2026-09-15/` is the run
 that was sent on 09-12. Two fields, because they differ when the export came from a stale
