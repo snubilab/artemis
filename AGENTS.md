@@ -271,6 +271,23 @@ When the user says a delivery was sent, in this order:
 python3 scripts/verify_atlas_renderable.py <보낼 디렉터리>
 ```
 
+**entry event와 배제 규칙이 같은 concept을 가리키는지도 확인한다.**
+
+```bash
+.venv/bin/python scripts/verify_entry_exclusion_conflict.py <보낼 디렉터리>
+```
+
+배제 집합이 entry closure를 **전부** 덮고, 그 window가 index일을 포함하고, 규칙까지의
+모든 그룹이 `ALL`이면 그 규칙은 어떤 CDM에서도 만족될 수 없다 — FAIL. 일부만 덮으면
+비율과 함께 WARN이며, 이는 조용한 인구 절단이지 반드시 결함은 아니다. 종료 코드는
+0 정상 / 1 결함 / 2 실행 불가(어휘 DB 부재 — 조용히 넘어가지 않는다).
+
+2026-09-12 발송분의 EMPA-REG comparator가 이 검사에 FAIL한다: `codeset 29`가
+`201820 Diabetes mellitus`를 descendants 포함으로 담는데 entry가 그 하위인 `201826`이라,
+entry closure 16개를 100% 덮는다. 같은 파일의 treatment arm은 entry가 `DrugEra`라 PASS이며,
+이는 두 병원의 실측(아주대 874명, 동아대 786명)과 일치한다. **08-31 발송분은 PASS** —
+이 충돌은 09-12 재추출이 새로 만든 것이다.
+
 Atlas는 concept set을 DataTable로 그리면서 `concept.DOMAIN_ID`, `concept.VOCABULARY_ID`
 등을 역참조한다. 한 멤버라도 그 키가 없으면 표 전체가 중단되고, 화면에는
 `Requested unknown parameter 'concept.DOMAIN_ID' for row N`만 뜬다. 2026-09-12 발송분의
