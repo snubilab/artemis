@@ -54,7 +54,6 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -65,6 +64,17 @@ from src.services.conceptset_closure import (  # noqa: E402
     VocabularyLookup,
     items_of_cohort,
     resolve_concept_set,
+)
+
+# The traversal below is shared verbatim with the export-time repair
+# (`src.services.entry_exclusion_repair`), which keys on exactly the conditions
+# this gate computes. Kept in one module so the gate and the repair cannot drift
+# into disagreeing about what an unsatisfiable rule is.
+from src.services.entry_exclusion_repair import (  # noqa: E402
+    domain_of,
+    entry_codeset_ids,
+    iter_absence_criteria,
+    window_covers_index,
 )
 
 #: Same home as `scripts/conceptset_overlap_eval.py` and
@@ -101,85 +111,6 @@ class Finding:
 
 
 # --------------------------------------------------------------------------
-# traversal
-# --------------------------------------------------------------------------
-
-#: Keys of a Circe criterion object that are not a domain criterion.
-_NON_DOMAIN_KEYS = {"CorrelatedCriteria", "Occurrence", "StartWindow", "EndWindow",
-                    "RestrictVisit", "IgnoreObservationPeriod", "Criteria"}
-
-
-def _domain_of(criteria: dict) -> tuple[str, dict] | None:
-    """The single ``{Domain: {...}}`` pair inside a Circe ``Criteria`` object."""
-    for key, value in criteria.items():
-        if key not in _NON_DOMAIN_KEYS and isinstance(value, dict):
-            return key, value
-    return None
-
-
-def entry_codeset_ids(cohort: dict) -> list[tuple[str, int]]:
-    """``(domain, CodesetId)`` for every PrimaryCriteria entry event.
-
-    Circe unions the entry criteria, so a patient enters on ANY of them.
-    """
-    out: list[tuple[str, int]] = []
-    for criteria in (cohort.get("PrimaryCriteria") or {}).get("CriteriaList") or []:
-        found = _domain_of(criteria)
-        if not found:
-            continue
-        domain, body = found
-        codeset = body.get("CodesetId")
-        if codeset is not None:
-            out.append((domain, int(codeset)))
-    return out
-
-
-def _window_bound(side: dict | None, unbounded: float) -> float:
-    """A Circe window endpoint in days relative to index.
-
-    A missing side, or a side without ``Days``, is Circe's "all days" -- the
-    caller supplies which infinity that means.
-    """
-    if not side or side.get("Days") is None:
-        return unbounded
-    return float(side.get("Coeff", 1)) * float(side["Days"])
-
-
-def window_covers_index(criterion: dict) -> tuple[bool, str]:
-    """Does the criterion's StartWindow contain index day 0?
-
-    Load-bearing: the entry event sits at day 0. A window that stops before it
-    (``End`` at -1d) can be satisfied by a patient whose first qualifying event
-    IS the index event, so full concept coverage is not by itself fatal.
-    """
-    win = criterion.get("StartWindow") or {}
-    start = _window_bound(win.get("Start"), float("-inf"))
-    end = _window_bound(win.get("End"), float("inf"))
-    label = f"[{start:g}d, {end:g}d]"
-    return (start <= 0 <= end), label
-
-
-def iter_absence_criteria(
-    expression: dict, conjunctive: bool = True
-) -> Iterator[tuple[dict, bool]]:
-    """Every ABSENCE criterion under a rule expression, with its conjunctivity.
-
-    ``conjunctive`` is False as soon as any enclosing group is not Type ALL --
-    under an ANY group a sibling branch can satisfy the rule, so an unsatisfiable
-    absence there is not by itself fatal.
-    """
-    if not isinstance(expression, dict):
-        return
-    here = conjunctive and str(expression.get("Type", "ALL")).upper() == "ALL"
-    for entry in expression.get("CriteriaList") or []:
-        occurrence = entry.get("Occurrence") or {}
-        if occurrence.get("Type") == 0 and occurrence.get("Count") == 0:
-            yield entry, here
-    for group in expression.get("Groups") or []:
-        yield from iter_absence_criteria(group, here)
-
-
-# --------------------------------------------------------------------------
 # the check
 # --------------------------------------------------------------------------
 
@@ -213,7 +144,7 @@ def check_cohort(cohort: dict, lookup: VocabularyLookup) -> tuple[list[Finding],
         expression = rule.get("expression") or {}
         for criterion, conjunctive in iter_absence_criteria(expression):
             inner = criterion.get("Criteria") or {}
-            found = _domain_of(inner)
+            found = domain_of(inner)
             if not found:
                 continue
             domain, body = found

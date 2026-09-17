@@ -127,6 +127,59 @@ class TestTheCheckDoesNotFireOnSoundDefinitions:
         }
         assert contradictory_absence_rules(circe) == []
 
+    def test_should_not_flag_an_absence_set_that_subtracts_the_entry_concept(self):
+        """An ``isExcluded`` item is SUBTRACTED from the set, so it can never be the
+        reason an absence rule collides with the entry -- it is the repair for that
+        collision. This shape is what the export-time repair writes (see
+        ``src.services.entry_exclusion_repair``): the absence set keeps its own
+        members and carries the entry concepts as exclusions. Reading the literal id
+        list without honouring ``isExcluded`` flagged the repaired file and would have
+        rejected the export for the defect it had just fixed."""
+        circe = {
+            "ConceptSets": [
+                {
+                    "id": 1,
+                    "name": "Type 2 Diabetes Mellitus",
+                    "expression": {"items": [
+                        {"concept": {"CONCEPT_ID": 201826}, "includeDescendants": True},
+                    ]},
+                },
+                {
+                    "id": 2,
+                    "name": "Endocrine disorder",
+                    "expression": {"items": [
+                        {"concept": {"CONCEPT_ID": 201820}, "includeDescendants": True},
+                        {"concept": {"CONCEPT_ID": 201826}, "includeDescendants": True,
+                         "isExcluded": True},
+                    ]},
+                },
+            ],
+            "PrimaryCriteria": {"CriteriaList": [{"ConditionOccurrence": {"CodesetId": 1}}]},
+            "InclusionRules": [
+                {
+                    "name": "Endocrine disorder (excluding T2DM)",
+                    "expression": {
+                        "Type": "ALL",
+                        "CriteriaList": [
+                            {
+                                "Criteria": {"ConditionOccurrence": {"CodesetId": 2}},
+                                "StartWindow": {"Start": {"Days": 9999, "Coeff": -1},
+                                                "End": {"Days": 0, "Coeff": 1}},
+                                "Occurrence": {"Type": 0, "Count": 0},
+                            }
+                        ],
+                        "Groups": [],
+                    },
+                }
+            ],
+        }
+        assert contradictory_absence_rules(circe) == []
+
+        # The same shape WITHOUT the exclusion is still flagged -- the guard is
+        # narrowed to what `isExcluded` means, not switched off.
+        circe["ConceptSets"][1]["expression"]["items"][1]["isExcluded"] = False
+        assert contradictory_absence_rules(circe) == ["Endocrine disorder (excluding T2DM)"]
+
     def test_should_not_flag_an_absence_leaf_under_an_any_group(self):
         """`ANY` means at least one alternative holds, so one unsatisfiable alternative
         does not empty the rule. Flagging it would be a false positive on a delivery

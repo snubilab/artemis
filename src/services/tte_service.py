@@ -75,6 +75,10 @@ from src.api.models.tte import (
 )
 from src.models.ir import ProvisionalSectionSource, ProvisionalStudyIR
 from src.pipeline.webapi_client import CohortTableReference, WebAPIClient, WebAPIError
+from src.services.entry_exclusion_repair import (
+    iter_repair_candidates,
+    repair_entry_exclusion_conflicts,
+)
 from src.services.restated_clusters import detect_all_restated_clusters
 from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
@@ -4662,36 +4666,43 @@ class TTEService:
             ) -> dict[str, Any]:
                 # Active comparator (ADR-019): new-user cohort on the real comparator drug
                 if _is_active_comp:
-                    return self._build_drug_anchored_comparator_circe(
+                    built = self._build_drug_anchored_comparator_circe(
                         _elig,
                         _arm_name,
                         time_params=study.get("timeParams") or {},
                         study=study,
                     )
                 # Placebo arm (ADR-028): recommend + mock-approve a CV-neutral comparator
-                if _is_placebo_comp:
-                    return self._build_recommended_placebo_comparator_circe(
+                elif _is_placebo_comp:
+                    built = self._build_recommended_placebo_comparator_circe(
                         _elig,
                         _treatment_name,
                         study=study,
                         time_params=study.get("timeParams") or {},
                     )
                 # Derived comparator: disease-based primary + drug ABSENCE (legacy / placebo)
-                if _is_derived_comp:
-                    return self._build_disease_based_comparator_circe(
+                elif _is_derived_comp:
+                    built = self._build_disease_based_comparator_circe(
                         _elig,
                         _treatment_name,
                         time_params=study.get("timeParams") or {},
                         study=study,
                     )
-                # Treatment arm: use disease-based primary + drug PRESENCE
-                # for all studies (replaces legacy drug-primary paths)
-                return self._build_disease_based_treatment_circe(
-                    _elig,
-                    _arm_name,
-                    time_params=study.get("timeParams") or {},
-                    study=study,
-                )
+                else:
+                    # Treatment arm: use disease-based primary + drug PRESENCE
+                    # for all studies (replaces legacy drug-primary paths)
+                    built = self._build_disease_based_treatment_circe(
+                        _elig,
+                        _arm_name,
+                        time_params=study.get("timeParams") or {},
+                        study=study,
+                    )
+                # One chokepoint for all four arm shapes: the entry event is settled
+                # by the branch above, and the repair needs to read it. Placed here
+                # rather than inside each builder so a fifth arm shape cannot be added
+                # without it -- see `_repair_entry_excluded_by_own_rule`.
+                self._repair_entry_excluded_by_own_rule(built)
+                return built
 
             # Label: active comparator uses its own drug; derived uses "No <treatment>"
             comparator_label = (
@@ -7621,6 +7632,52 @@ class TTEService:
             expr = self._ingredient_rollup_expression(cid, cs.get("name", ""))
             if expr and expr.get("items"):
                 cs["expression"] = expr
+
+    def _repair_entry_excluded_by_own_rule(self, base: dict[str, Any]) -> None:
+        """Implement the entity exception an inclusion rule's own name already states,
+        when that rule's absence criterion would otherwise remove every patient the
+        entry event admits. Mutates ``base`` in place.
+
+        The sibling of :meth:`_repair_stale_drug_concept_sets`, and the export-time
+        counterpart of ``scripts/verify_entry_exclusion_conflict.py`` -- the gate that
+        refuses a delivery for this shape. Measured on
+        ``deliveries/2026-09-12/empa-reg_comparator.circe.json``: the entry is
+        ConditionOccurrence codeset 2 'Type 2 Diabetes Mellitus', and rule #14
+        'Endocrine disorder (excluding T2DM)' requires the ABSENCE of codeset 29
+        'Endocrine disorder', which lists 201820 'Diabetes mellitus' with
+        ``includeDescendants`` and carries ZERO ``isExcluded`` items. 201826 is a
+        descendant of 201820, so the rule returned 0 people (0.00%) at BOTH Ajou and
+        Dong-A while the treatment arm of the same trial -- same rule, but entering on
+        a DrugEra -- returned 874 and 786.
+
+        The conditions, the mirror, and why overlap alone is never enough live in
+        :mod:`src.services.entry_exclusion_repair`; this method is the wiring that
+        supplies it a vocabulary. Two properties of that wiring are deliberate:
+
+        - the DB-free pre-gate runs first. Conditions 1 and 3 need no vocabulary, so a
+          payload with no rule stating an exception costs nothing -- which is every
+          file in the 2026-06-24 and 2026-08-31 deliveries and five of the six in
+          2026-09-12;
+        - a vocabulary failure is NOT swallowed. It propagates exactly as
+          :meth:`_repair_stale_drug_concept_sets`'s lookups do. An export that silently
+          skipped the repair would ship the unsatisfiable rule, and the only thing
+          standing between that and a hospital is the delivery gate -- which needs the
+          same vocabulary and would fail for the same reason.
+        """
+        if not next(iter_repair_candidates(base), None):
+            return
+
+        from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
+
+        items = items_of_cohort(base)
+        if not items:
+            return
+
+        from src.settings import settings
+
+        with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
+            lookup = vocab.prefetch(items)
+        repair_entry_exclusion_conflicts(base, lookup)
 
     def _unique_ingredient_ids_by_name(self, names: set[str]) -> dict[str, int]:
         """Lower-cased concept name -> the ONE standard RxNorm Ingredient it names.

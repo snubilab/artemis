@@ -364,6 +364,14 @@ def _colliding_absence_entries(
 
     Overlap is tested on the literal concept ids of both sets: a descendant-level test
     would need the vocabulary, and this module is deliberately I/O-free.
+
+    An ``isExcluded`` item is NOT part of that id list. Circe subtracts the excluded
+    side from the included one, so an entry concept carried as an exclusion is absent
+    from the set's closure and cannot be the reason the rule collides -- it is the
+    repair FOR that collision (`src.services.entry_exclusion_repair`). Counting it as
+    overlap flagged the repaired file and would have rejected the export for the defect
+    it had just fixed. This narrows the check to what `isExcluded` means; an entry
+    concept listed as an ordinary member is still flagged.
     """
     colliding: list[dict[str, Any]] = []
     for leaf_entry in _absence_entries_under_conjunction(rule.get("expression") or {}):
@@ -378,6 +386,7 @@ def _colliding_absence_entries(
             for item in (concept_set.get("expression") or {}).get("items") or []
             if isinstance(item.get("concept"), dict)
             and isinstance(item["concept"].get("CONCEPT_ID"), int)
+            and not item.get("isExcluded")
         }
         if excluded & entry_ids:
             colliding.append(leaf_entry)
