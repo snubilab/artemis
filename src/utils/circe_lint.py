@@ -34,6 +34,15 @@ from src.utils.criterion_refusal import (
 # the other caller, precisely so this module does not pull the model stack in.
 from src.utils.naming_words import naming_words
 
+# Same purity contract: the presence-unit allowlist is stdlib-only, and the export repair
+# (`src.services.presence_unit_repair`) reads the identical table, so the gate and the
+# repair cannot disagree about which unitless bound is a decision rather than a defect.
+from src.utils.presence_unit_allowlist import (
+    iter_presence_criteria,
+    seed_concept_ids,
+    unit_drop_verdict,
+)
+
 _ABSENT_OCCURRENCE = (0, 0)
 
 
@@ -1463,6 +1472,7 @@ def unitless_value_bound_criteria(expression: dict[str, Any]) -> list[str]:
     :returns: one locator per offending criterion, empty when none.
     """
     findings: list[str] = []
+    presence_entries = {id(entry) for _index, entry in iter_presence_criteria(expression)}
     for where, entry in _criterion_locations(expression):
         body = entry.get("Criteria")
         body = body if isinstance(body, dict) else entry
@@ -1479,6 +1489,17 @@ def unitless_value_bound_criteria(expression: dict[str, Any]) -> list[str]:
             codeset_id = payload["CodesetId"]
             concept_set = _find_concept_set(expression, codeset_id)
             if concept_set is not None and _concept_set_is_dimensionless(concept_set):
+                continue
+            # The user's decision, applied by `src.services.presence_unit_repair`: a
+            # presence Measurement over an allowlisted analyte whose bound no
+            # alternative unit can pass wrongly ships without its Unit on purpose.
+            # Seed concepts, not the closure -- see `presence_unit_allowlist`.
+            if (
+                criteria_type == "Measurement"
+                and concept_set is not None
+                and id(entry) in presence_entries
+                and unit_drop_verdict(seed_concept_ids(concept_set), value).allowed
+            ):
                 continue
             concept_set = concept_set or {}
             findings.append(

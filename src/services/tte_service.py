@@ -79,6 +79,10 @@ from src.services.entry_exclusion_repair import (
     iter_repair_candidates,
     repair_entry_exclusion_conflicts,
 )
+from src.services.presence_unit_repair import (
+    iter_unit_candidates,
+    repair_presence_unit_filters,
+)
 from src.services.restated_clusters import detect_all_restated_clusters
 from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
@@ -4702,6 +4706,7 @@ class TTEService:
                 # rather than inside each builder so a fifth arm shape cannot be added
                 # without it -- see `_repair_entry_excluded_by_own_rule`.
                 self._repair_entry_excluded_by_own_rule(built)
+                self._repair_presence_unit_filters(built)
                 return built
 
             # Label: active comparator uses its own drug; derived uses "No <treatment>"
@@ -7678,6 +7683,37 @@ class TTEService:
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
         repair_entry_exclusion_conflicts(base, lookup)
+
+    def _repair_presence_unit_filters(self, base: dict[str, Any]) -> None:
+        """Drop the ``Unit`` filter from allowlisted presence Measurement criteria whose
+        bound no alternative unit can pass wrongly. Mutates ``base`` in place.
+
+        Measured on the 2026-09-12 delivery: every unit-bearing inclusion rule returned 0
+        people at Ajou (6 of 6) while Dong-A passed them, and a NULL ``unit_concept_id``
+        matches no ``IN`` list. The user decided to remove the filter on presence
+        criteria for a named set of analytes; exclusions keep theirs. The table, the
+        risk rule and the classification live in :mod:`src.utils.presence_unit_allowlist`
+        (which the ``unitless value bound`` lint reads too) and the repair in
+        :mod:`src.services.presence_unit_repair`; this is the wiring.
+
+        Same two properties as :meth:`_repair_entry_excluded_by_own_rule`: a DB-free
+        pre-gate, and a vocabulary failure that propagates rather than silently shipping
+        the unit filter that zeroes the cohort.
+        """
+        if not next(iter_unit_candidates(base), None):
+            return
+
+        from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
+
+        items = items_of_cohort(base)
+        if not items:
+            return
+
+        from src.settings import settings
+
+        with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
+            lookup = vocab.prefetch(items)
+        repair_presence_unit_filters(base, lookup)
 
     def _unique_ingredient_ids_by_name(self, names: set[str]) -> dict[str, int]:
         """Lower-cased concept name -> the ONE standard RxNorm Ingredient it names.
