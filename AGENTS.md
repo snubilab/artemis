@@ -288,6 +288,39 @@ entry closure 16개를 100% 덮는다. 같은 파일의 treatment arm은 entry�
 이는 두 병원의 실측(아주대 874명, 동아대 786명)과 일치한다. **08-31 발송분은 PASS** —
 이 충돌은 09-12 재추출이 새로 만든 것이다.
 
+### 수정이 실제로 반영됐는지 확인한다 (재추출 포함)
+
+수정 커밋만으로는 산출물이 바뀌었다는 증거가 되지 않는다. 특히 생성 경로 수정(예: concept
+필드 결손)은 재추출해야 반영되고, export 시점 repair는 export를 다시 해야 반영된다.
+
+```bash
+# 전체: 환경 게이트 -> LLM 확인 -> store seed -> cold 재추출 -> export -> 판정
+./scripts/run_fix_verification.sh output/site_gap/<날짜>_verify
+
+# export 시점 수정만 바뀐 경우 (재추출 생략, 기존 store 재사용)
+START_AT=export ./scripts/run_fix_verification.sh output/site_gap/<날짜>_verify
+```
+
+판정은 `scripts/verify_fix_reflection.py`가 하며, 결함마다 **네 가지** 중 하나를 낸다.
+
+| 판정 | 뜻 |
+| --- | --- |
+| PASS | 대조군에서 잡히고, 해당 경로가 실제로 실행됐고, 후보에 결함이 없다 |
+| FAIL | 후보에 결함이 남아 있다 |
+| UNVERIFIABLE | 후보가 그 경로를 실행하지 않았다 — 결함이 없는 것이 아니라 확인할 수 없다 |
+| CONTROL-BROKEN | 대조군(수정 전 발송본)에서도 검사가 통과한다 — 검사가 결함을 못 본다 |
+
+**"결함이 사라졌다"만으로 PASS를 주지 않는 이유**: 재추출은 기준의 상당수를 다시 뽑는다.
+결함 B 자체가 09-12 재추출이 새로 만든 것이었다. 그래서 규칙이 생성됐고 repair가 발동했다는
+증거(export 로그의 발동 횟수)가 없으면 UNVERIFIABLE로 적는다.
+
+2026-09-18 실행 결과: C PASS(6/6 렌더 가능, isExcluded 12개 생성), A PASS(단위 12개 제거,
+12개 거절, 잔여 0), B FAIL — repair는 `Endocrine disorder (excluding T2DM)`를 고쳤으나,
+CARMELINA comparator에 같은 계열의 **새 인스턴스**가 나왔다: `codeset 14`가 이름은
+`'Type 1 diabetes mellitus'`인데 `4130526 Disorder of glucose metabolism` 하나를 하위 포함으로
+담아 T2DM entry를 100% 덮는다. 규칙 이름에 예외 문구가 없으므로 repair는 정당하게 거절하고,
+게이트가 잡는다. 이것은 concept set 매핑 결함이며 별도 수정 대상이다.
+
 Atlas는 concept set을 DataTable로 그리면서 `concept.DOMAIN_ID`, `concept.VOCABULARY_ID`
 등을 역참조한다. 한 멤버라도 그 키가 없으면 표 전체가 중단되고, 화면에는
 `Requested unknown parameter 'concept.DOMAIN_ID' for row N`만 뜬다. 2026-09-12 발송분의
