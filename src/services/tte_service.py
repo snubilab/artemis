@@ -83,6 +83,10 @@ from src.services.presence_unit_repair import (
     iter_unit_candidates,
     repair_presence_unit_filters,
 )
+from src.services.range_disjunction_repair import (
+    iter_range_disjunctions,
+    repair_range_disjunctions,
+)
 from src.services.restated_clusters import detect_all_restated_clusters
 from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
@@ -4706,6 +4710,10 @@ class TTEService:
                 # rather than inside each builder so a fifth arm shape cannot be added
                 # without it -- see `_repair_entry_excluded_by_own_rule`.
                 self._repair_entry_excluded_by_own_rule(built)
+                # Order is load-bearing: collapsing a two-sided bound into one `bt` is
+                # what makes that criterion's unit filter droppable -- the unit repair
+                # declines a one-sided bound because an alternative unit can pass it.
+                self._repair_range_disjunctions(built)
                 self._repair_presence_unit_filters(built)
                 return built
 
@@ -7683,6 +7691,41 @@ class TTEService:
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
         repair_entry_exclusion_conflicts(base, lookup)
+
+    def _repair_range_disjunctions(self, base: dict[str, Any]) -> None:
+        """Collapse an inclusion rule that offers a range's two bounds as alternatives
+        back into the single ``bt`` criterion the protocol states. Mutates ``base``.
+
+        Measured on the 2026-09-12 delivery and reproduced in the 2026-09-18 cold
+        re-extraction: CARMELINA rule #12 ``'HbA1c at least 6.5% + HbA1c at most 10.0%'``
+        is ``Type: ANY`` over ``gte 6.5`` and ``lte 10.0``, so it reads as "at least 6.5 OR
+        at most 10.0" -- satisfied by nearly everyone with an HbA1c -- where the protocol
+        asks for ``6.5 <= HbA1c <= 10.0``.
+
+        Runs BEFORE :meth:`_repair_presence_unit_filters` on purpose. A one-sided bound is
+        exactly what that repair declines (every IFCC value passes a bare ``>= 6.5``),
+        while a single ``bt 6.5..10.0`` can be reached by no alternative unit, so the
+        collapse is what makes the criterion eligible for unit removal.
+
+        The five conditions and why an ``ANY`` of two bounds is also a legitimate shape
+        live in :mod:`src.services.range_disjunction_repair`; this is the wiring. Same two
+        properties as its two siblings: a DB-free pre-gate, and a vocabulary failure that
+        propagates rather than silently shipping the disjunction.
+        """
+        if not next(iter_range_disjunctions(base), None):
+            return
+
+        from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
+
+        items = items_of_cohort(base)
+        if not items:
+            return
+
+        from src.settings import settings
+
+        with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
+            lookup = vocab.prefetch(items)
+        repair_range_disjunctions(base, lookup)
 
     def _repair_presence_unit_filters(self, base: dict[str, Any]) -> None:
         """Drop the ``Unit`` filter from allowlisted presence Measurement criteria whose
