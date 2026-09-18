@@ -4724,6 +4724,13 @@ class TTEService:
                 # what makes that criterion's unit filter droppable -- the unit repair
                 # declines a one-sided bound because an alternative unit can pass it.
                 self._repair_range_disjunctions(built)
+                # Same kind of load-bearing edge as the pair above, one step earlier in
+                # the chain: dropping the confusable member is what makes the set
+                # classify as a SINGLE analyte, and a single analyte is what lets the
+                # unit repair act at all -- it declines an "unlisted" set. EMPA-REG
+                # codeset 3 is the measured instance. See
+                # `_repair_confusable_concept_set_members`.
+                self._repair_confusable_concept_set_members(built)
                 self._repair_presence_unit_filters(built)
                 return built
 
@@ -7788,6 +7795,30 @@ class TTEService:
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
         repair_range_disjunctions(base, lookup)
+
+    def _repair_confusable_concept_set_members(self, base: dict[str, Any]) -> None:
+        """Remove a member that is not the analyte its concept set names, where every
+        criterion reading that set is a presence criterion. Mutates ``base`` in place.
+
+        Measured on the 2026-09-18 re-extraction: EMPA-REG codeset 3 ``'Glycosylated
+        haemoglobin (HbA1c)'`` holds ``3005446 'Hemoglobin A1/Hemoglobin.total in
+        Blood'``, which makes the unit allowlist classify the set as ``unlisted``, so
+        :meth:`_repair_presence_unit_filters` keeps the ``Unit [8554]`` filter on rule
+        #4 -- the rule the hospital's Atlas inclusion report measured at 0 people.
+
+        Runs BEFORE :meth:`_repair_presence_unit_filters` on purpose, and that order is
+        the whole point: the unit repair declines an ambiguous set, so the member has to
+        be gone before it looks.
+
+        The five conditions, the safety one among them, and why the recorded decision
+        against removing a member was reversed live in
+        :mod:`src.services.confusable_member_repair`; this is the wiring. Unlike its
+        three siblings it needs NO vocabulary -- every condition is readable from the
+        expression -- so there is no database round trip and no pre-gate to skip it.
+        """
+        from src.services.confusable_member_repair import repair_confusable_members
+
+        repair_confusable_members(base)
 
     def _repair_presence_unit_filters(self, base: dict[str, Any]) -> None:
         """Drop the ``Unit`` filter from allowlisted presence Measurement criteria whose

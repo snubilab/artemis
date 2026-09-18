@@ -9,12 +9,14 @@ hold a member that is
   the set classifies as "unlisted" and the unit-drop repair declines; or
 * a CONFUSABLE: HDL in an LDL set, HbA1 total in an HbA1c set, a systolic+diastolic
   panel in a systolic set. Wrong regardless of units -- the bound written for one
-  analyte is applied to another -- and NOT repairable at export time, because removing
-  the member changes which patients the cohort selects.
+  analyte is applied to another -- and removable at export time only where every
+  criterion reading the set is a presence criterion, which is what keeps the direction
+  to "can only miss patients".
 
 The first is fixed by listing the concepts (part 1). The second is made VISIBLE by
-:func:`~src.utils.circe_lint.confusable_concept_sets` and left for a mapping
-correction; nothing removes it automatically.
+:func:`~src.utils.circe_lint.confusable_concept_sets` and removed, under that one
+condition, by :mod:`src.services.confusable_member_repair`. THIS repair never removes
+it -- a unit filter is all it touches -- which is what part 3 pins.
 
 DB-free on the ``PrefetchedVocabulary`` seam, so the real closure resolver runs. Every
 concept id, name and bound below is copied from ``deliveries/2026-09-12/`` or
@@ -248,7 +250,12 @@ def test_should_decline_the_unit_drop_when_the_set_holds_a_confusable():
 
 
 def test_should_not_remove_a_confusable_member_from_a_concept_set():
-    """Part 3: removing HDL changes which patients the cohort selects, so nothing does."""
+    """Part 3: the unit repair declines the set rather than editing its members.
+
+    Removing the member is another repair's job (:mod:`src.services.
+    confusable_member_repair`, and only where every reader is a presence criterion).
+    This pins that the unit repair stays in its lane and leaves the set as it found it.
+    """
     expression = cohort(30, "LDL cholesterol", LDL_0912 + [HDL],
                         value={"Op": "gte", "Value": 135.0}, unit=MG_DL)
     repair_presence_unit_filters(expression, vocabulary(40239216, HDL, *LDL_0912))

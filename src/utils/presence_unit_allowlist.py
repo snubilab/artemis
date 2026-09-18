@@ -429,6 +429,131 @@ def iter_presence_criteria(expression: Mapping[str, Any]) -> Iterator[tuple[int,
 
 
 @dataclass(frozen=True)
+class CodesetReader:
+    """One place in the expression that reads a concept set, and whether it is monotone.
+
+    ``is_presence`` is true only when the read was reached through the presence path:
+    a criterion entry whose ``Occurrence`` is ``at least N >= 1`` under monotone groups
+    all the way down. Anything else -- an absence criterion, an ``AT_MOST`` group, an
+    entry event, a censoring criterion, a shape this module does not model -- is false,
+    with ``why_not`` saying which.
+    """
+
+    codeset_id: int
+    locator: str
+    is_presence: bool
+    why_not: str
+
+
+def _iter_presence_codeset_nodes(
+    expression: Mapping[str, Any],
+) -> Iterator[tuple[str, Mapping[str, Any]]]:
+    """``(locator, domain payload)`` for every codeset read on the presence path."""
+
+    def from_group(group: Any, locator: str) -> Iterator[tuple[str, Mapping[str, Any]]]:
+        if not isinstance(group, Mapping):
+            return
+        if str(group.get("Type", "ALL")).upper() not in _MONOTONE_GROUP_TYPES:
+            return
+        for i, entry in enumerate(group.get("CriteriaList") or []):
+            if not isinstance(entry, Mapping):
+                continue
+            if not is_presence_occurrence(entry.get("Occurrence")):
+                continue
+            yield from from_entry(entry, f"{locator}/CriteriaList[{i}]")
+        for i, sub in enumerate(group.get("Groups") or []):
+            yield from from_group(sub, f"{locator}/Groups[{i}]")
+
+    def from_entry(entry: Mapping[str, Any], locator: str):
+        criteria = entry.get("Criteria")
+        if isinstance(criteria, Mapping):
+            for key, payload in criteria.items():
+                if not isinstance(payload, Mapping):
+                    continue
+                if payload.get("CodesetId") is not None:
+                    yield f"{locator}/{key}", payload
+                # Circe hangs a correlated CriteriaGroup off the domain payload; a
+                # presence correlated criterion under a presence criterion is still
+                # monotone, so the walk continues rather than stopping here.
+                yield from from_group(
+                    payload.get("CorrelatedCriteria"), f"{locator}/{key}/CorrelatedCriteria"
+                )
+        yield from from_group(
+            entry.get("CorrelatedCriteria"), f"{locator}/CorrelatedCriteria"
+        )
+
+    yield from from_group(expression.get("AdditionalCriteria"), "AdditionalCriteria")
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        if not isinstance(rule, Mapping):
+            continue
+        yield from from_group(
+            rule.get("expression"), f"rule #{index + 1} {str(rule.get('name'))!r}"
+        )
+
+
+def _iter_all_codeset_nodes(
+    node: Any, locator: str
+) -> Iterator[tuple[str, Mapping[str, Any]]]:
+    """Every mapping anywhere under ``node`` carrying a ``CodesetId``.
+
+    Deliberately generic. The presence walk above models the shapes this corpus
+    contains; this one finds the rest, so a read from a shape nobody modelled comes out
+    as a NON-presence reader rather than as no reader at all.
+    """
+    if isinstance(node, Mapping):
+        if node.get("CodesetId") is not None:
+            yield locator, node
+        for key, value in node.items():
+            yield from _iter_all_codeset_nodes(value, f"{locator}/{key}")
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            yield from _iter_all_codeset_nodes(value, f"{locator}[{i}]")
+
+
+def iter_codeset_readers(expression: Mapping[str, Any]) -> Iterator[CodesetReader]:
+    """Every read of every concept set in the WHOLE expression, classified.
+
+    :func:`iter_presence_criteria` walks ``InclusionRules`` only, which is enough to
+    decide what to do to a criterion it yielded. Deciding what to do to a CONCEPT SET
+    needs the opposite guarantee -- that nothing ELSE reads it -- so this enumerates
+    primary criteria, additional criteria, censoring criteria, nested correlated
+    criteria and anything else in the tree, and reports the ones it cannot prove
+    monotone instead of skipping them.
+    """
+    presence: dict[int, str] = {
+        id(payload): locator
+        for locator, payload in _iter_presence_codeset_nodes(expression)
+    }
+
+    def everything() -> Iterator[tuple[str, Mapping[str, Any]]]:
+        # Sectioned rather than one walk from the root, so a read inside an inclusion
+        # rule carries that rule's NAME -- which is what a decline message has to say.
+        for key, value in expression.items():
+            if key == "InclusionRules":
+                for index, rule in enumerate(value or []):
+                    yield from _iter_all_codeset_nodes(
+                        rule, f"rule #{index + 1} {str((rule or {}).get('name'))!r}"
+                    )
+            else:
+                yield from _iter_all_codeset_nodes(value, key)
+
+    for locator, payload in everything():
+        try:
+            codeset_id = int(payload["CodesetId"])
+        except (TypeError, ValueError):
+            continue
+        presence_locator = presence.get(id(payload))
+        if presence_locator is not None:
+            yield CodesetReader(codeset_id, presence_locator, True, "")
+        else:
+            yield CodesetReader(
+                codeset_id, locator.lstrip("/"), False,
+                "it is not an `at least N >= 1` occurrence reached only through "
+                "ALL/ANY/AT_LEAST groups",
+            )
+
+
+@dataclass(frozen=True)
 class UnitDropVerdict:
     allowed: bool
     analyte: PresenceUnitAnalyte | None

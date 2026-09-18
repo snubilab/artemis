@@ -16,7 +16,7 @@ satisfies it, so the rule silently does nothing.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -1697,12 +1697,34 @@ class ConfusableAnalyte:
 #: exact string, and ``also_states_other`` is what keeps a name claiming both analytes
 #: from firing.
 #:
-#: WHY NOTHING REMOVES THE MEMBER. Every export-time repair beside this
+#: WHY THE MEMBER IS NOW REMOVED, reversing what this comment said until 2026-09-18.
+#: The old argument was that every export-time repair beside this
 #: (``presence_unit_repair``, ``entry_exclusion_repair``, ``range_disjunction_repair``)
-#: changes how a criterion is COMPARED. Dropping HDL from an LDL set changes which
-#: patients the cohort SELECTS, which is a mapping correction; making it at export time
-#: would silently decide a clinical question on the way out of the door. So this reports
-#: and the delivery gate refuses, and the fix is upstream.
+#: changes how a criterion is COMPARED, while dropping HDL from an LDL set changes which
+#: patients the cohort SELECTS -- a mapping correction that would silently decide a
+#: clinical question on the way out of the door. What that argument missed is that
+#: leaving the member in ALSO decides one, and measurably worse: EMPA-REG rule #4 reads
+#: codeset 3 'Glycosylated haemoglobin (HbA1c)', which holds 3005446; that one member
+#: makes :mod:`src.utils.presence_unit_allowlist` classify the set as "unlisted", so the
+#: unit repair keeps the ``Unit [8554]`` filter, and the hospital's Atlas inclusion
+#: report measured that rule at 0 people. A confusable member held a whole cohort at
+#: zero while the gate reported it and waited for an upstream fix that re-rolls a third
+#: of the criteria to change one set.
+#:
+#: The user reversed the decision under ONE safety condition, and it is that condition
+#: that makes the direction defensible rather than the measurement above. Removing a
+#: member SHRINKS the set, so where every criterion reading it is a PRESENCE criterion
+#: the cohort can only select FEWER patients -- the same "can only miss patients"
+#: direction the unit allowlist requires. Where an ABSENCE criterion reads it, a smaller
+#: set makes the absence EASIER to satisfy and the direction flips to "can wrongly
+#: include patients", which is not a trade anyone authorised. So
+#: :mod:`src.services.confusable_member_repair` enumerates every reader across the whole
+#: expression and declines unless all of them are provably presence criteria under
+#: monotone groups; it also declines a set carrying an ``isExcluded`` item, and one that
+#: would be left with no included member. This table stays the single source of WHICH
+#: member is confusable -- the repair and this lint read it through
+#: :func:`iter_confusable_members`, so the gate and the repair cannot drift apart -- and
+#: the gate still refuses anything the repair declined.
 #:
 #: MEASURED, not enumerated from what seemed complete. Every concept set in the six
 #: ``deliveries/2026-09-12/`` files and the six ``output/site_gap/2026-09-18_verify/
@@ -1767,11 +1789,23 @@ CONFUSABLE_ANALYTES: tuple[ConfusableAnalyte, ...] = (
 )
 
 
-def confusable_concept_sets(expression: dict[str, Any]) -> list[str]:
-    """Locators for concept sets holding a concept that is not the analyte they name.
+def iter_confusable_members(
+    expression: Mapping[str, Any],
+) -> Iterator[tuple[Mapping[str, Any], ConfusableAnalyte, tuple[int, ...]]]:
+    """``(concept set, the analyte its NAME states, the confusables it holds)``.
 
-    See :data:`CONFUSABLE_ANALYTES` for the table, why this one check reads the name, and
-    why the member is never removed automatically.
+    THE single predicate for "this set holds a member that is not what it says it is".
+    :func:`confusable_concept_sets` reports it and
+    :mod:`src.services.confusable_member_repair` removes it, and both read it from here
+    so the gate and the repair cannot disagree about which member is confusable -- the
+    same arrangement ``entry_exclusion_repair`` and ``scripts/verify_entry_exclusion_
+    conflict.py`` already share their traversal through.
+
+    Conditions 1 and 2 of the repair live here: the name states the analyte and not the
+    other thing (``states`` matches, ``also_states_other`` does not), and the held
+    concept is in that entry's ``confusables`` mapping. Everything the repair adds on top
+    -- the readers, the ``isExcluded`` item, the surviving member -- is about whether
+    removal is SAFE, not about whether the member is wrong.
 
     ``isExcluded`` members are skipped -- via :func:`~src.utils.presence_unit_allowlist.
     seed_concept_ids`, the same helper the unit checks use. An exclusion REMOVES the
@@ -1782,11 +1816,7 @@ def confusable_concept_sets(expression: dict[str, Any]) -> list[str]:
     pure functions over a CIRCE expression dict. The consequence is one-directional and
     worth stating: a confusable reached only as a DESCENDANT of a listed seed is missed.
     All three pairs in both corpora are seeds, so the gap costs nothing measured today.
-
-    :param expression: a CIRCE cohort expression.
-    :returns: one locator per offending concept set, empty when none.
     """
-    findings: list[str] = []
     for concept_set in expression.get("ConceptSets") or []:
         if not isinstance(concept_set, Mapping):
             continue
@@ -1795,20 +1825,35 @@ def confusable_concept_sets(expression: dict[str, Any]) -> list[str]:
         for entry in CONFUSABLE_ANALYTES:
             if not entry.states.search(name) or entry.also_states_other.search(name):
                 continue
-            held = sorted(members & set(entry.confusables))
-            if not held:
-                continue
-            detail = "; ".join(
-                f"{cid} {entry.confusables[cid][0]!r} -- {entry.confusables[cid][1]}"
-                for cid in held
-            )
-            findings.append(
-                f"codeset {concept_set.get('id')} {name!r} names {entry.analyte} but "
-                f"holds {len(held)} concept(s) that measure something else: {detail}. "
-                f"The bound is applied to the wrong quantity, so no unit filter can make "
-                f"it right; removing the member changes which patients the cohort "
-                f"selects, which is a mapping correction and not an export-time repair"
-            )
+            held = tuple(sorted(members & set(entry.confusables)))
+            if held:
+                yield concept_set, entry, held
+
+
+def confusable_concept_sets(expression: dict[str, Any]) -> list[str]:
+    """Locators for concept sets holding a concept that is not the analyte they name.
+
+    See :data:`CONFUSABLE_ANALYTES` for the table, why this one check reads the name, and
+    why the member is now removed at export time where it is provably safe. This still
+    fires on everything :mod:`src.services.confusable_member_repair` DECLINED, which is
+    what keeps the delivery gate refusing the cases removal would not be safe for.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per offending concept set, empty when none.
+    """
+    findings: list[str] = []
+    for concept_set, entry, held in iter_confusable_members(expression):
+        detail = "; ".join(
+            f"{cid} {entry.confusables[cid][0]!r} -- {entry.confusables[cid][1]}"
+            for cid in held
+        )
+        findings.append(
+            f"codeset {concept_set.get('id')} {str(concept_set.get('name') or '')!r} "
+            f"names {entry.analyte} but holds {len(held)} concept(s) that measure "
+            f"something else: {detail}. The bound is applied to the wrong quantity, so "
+            f"no unit filter can make it right; the export-time repair declined to "
+            f"remove it, so the removal is not provably safe here and the fix is upstream"
+        )
     return findings
 
 
