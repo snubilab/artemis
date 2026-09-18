@@ -8261,6 +8261,7 @@ class TTEService:
                     builder = get_expression_builder()
                     recommendation = builder.build_expression(
                         candidates, roll_up=True, criterion_name=normalized_seed,
+                        seed_concept_ids=mapping_result.seed_concept_ids or None,
                     )
                     expression = recommendation.expression.to_atlas_json()
                     items = list(expression.get("items") or [])

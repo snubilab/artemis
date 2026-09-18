@@ -512,6 +512,11 @@ class Agent2Workflow:
             )
         else:
             # ── KG-RAG Post-processing (both fast & slow) ──
+            # The reranker's own picks, captured before KG expansion mixes
+            # ancestors and siblings into the list. Downstream, the expression
+            # builder needs to tell a seed from an expansion: a KG-added ancestor
+            # that is not a seed must not roll the seed up into itself.
+            seed_concept_ids = list(concept_ids)
             concept_ids, overbroad_ids, critic_skipped = self._kg_expand_and_critique(
                 concept_ids, query_text, context, domain_hint
             )
@@ -559,6 +564,7 @@ class Agent2Workflow:
                 logger.debug(f"[Agent 2] KG cache save skipped: {e}")
             result.concept_ids = concept_ids
             result.overbroad_concept_ids = overbroad_ids
+            result.seed_concept_ids = seed_concept_ids
             result.gap_report.mapped_count = 1
         
         result.processing_time_ms = (time.time() - start_time) * 1000

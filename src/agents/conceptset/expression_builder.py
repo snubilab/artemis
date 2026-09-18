@@ -132,15 +132,23 @@ class ExpressionBuilder:
         roll_up: bool = True,
         default_logic: Literal["INCLUDE", "EXCLUDE"] = "INCLUDE",
         criterion_name: Optional[str] = None,
+        seed_concept_ids: Optional[List[int]] = None,
     ) -> RecommendationItem:
         """
         ConceptCandidate 리스트를 Expression으로 변환.
-        
+
         Args:
             candidates: Stage 2 결과
             roll_up: Roll-up 최적화 적용 여부
             default_logic: INCLUDE 또는 EXCLUDE
-            
+            seed_concept_ids: The concepts the reranker actually selected, before
+                KG expansion added anything. When supplied, a candidate that was
+                NOT a seed may not displace one that was: a non-seed proper
+                ancestor of a seed is dropped before roll-up. ``None`` (the
+                default) means "provenance unknown" and preserves the legacy
+                behaviour exactly — callers with no seed concept, such as the
+                RAG-only fallback, pass nothing.
+
         Returns:
             RecommendationItem with Expression
         """
@@ -164,7 +172,7 @@ class ExpressionBuilder:
         
         # Step 2: Roll-up 최적화 (선택적)
         if roll_up:
-            optimized = self._roll_up(validated)
+            optimized = self._roll_up(validated, seed_concept_ids=seed_concept_ids)
         else:
             optimized = validated
         
@@ -285,19 +293,92 @@ class ExpressionBuilder:
             logger.warning("[Expression Builder] Overbroad filter error: %s", e)
             return candidates
 
+    def _drop_non_seed_ancestors(
+        self,
+        candidates: List[ConceptCandidate],
+        seed_concept_ids: Optional[List[int]],
+    ) -> List[ConceptCandidate]:
+        """Drop candidates that are proper ancestors of a seed but were not seeds.
+
+        A candidate that was not a seed may not displace a seed. KG expansion
+        climbs ancestors (``KGExpander.get_ancestors(..., max_sep=2)``), so a
+        parent of the reranker's pick routinely joins the candidate list; if its
+        descendant count is under ``AGENT2_ROLLUP_MAX_DESCENDANTS`` it survives
+        ``_filter_overbroad`` and then deletes the seed in ``_roll_up``. That is
+        how a set named 'Type 1 diabetes mellitus' (201254) shipped holding only
+        'Disorder of glucose metabolism' (4130526), whose 180 descendants
+        include type 2 diabetes.
+
+        Keeping both is not a fix — the ancestor still pulls the same
+        descendants in — so the non-seed ancestor is removed outright.
+
+        ``seed_concept_ids=None`` means the caller did not record provenance;
+        the candidate list is returned untouched.
+        """
+        if not seed_concept_ids or len(candidates) <= 1:
+            return candidates
+
+        seed_set = set(seed_concept_ids)
+        candidate_ids = {c.concept_id for c in candidates}
+        seed_candidates = candidate_ids & seed_set
+        non_seed_candidates = candidate_ids - seed_set
+
+        if not seed_candidates or not non_seed_candidates:
+            return candidates
+
+        query = f"""
+            SELECT DISTINCT ancestor_concept_id
+            FROM {self.schema}.concept_ancestor
+            WHERE ancestor_concept_id = ANY(:ancestor_ids)
+              AND descendant_concept_id = ANY(:descendant_ids)
+              AND ancestor_concept_id != descendant_concept_id
+              AND min_levels_of_separation > 0
+        """
+
+        try:
+            with get_db_session() as db:
+                result = db.execute(
+                    text(query),
+                    {
+                        "ancestor_ids": sorted(non_seed_candidates),
+                        "descendant_ids": sorted(seed_candidates),
+                    },
+                )
+                displacing_ids = {row.ancestor_concept_id for row in result.fetchall()}
+
+            if not displacing_ids:
+                return candidates
+
+            candidate_map = {c.concept_id: c for c in candidates}
+            for cid in sorted(displacing_ids):
+                logger.info(
+                    "[Expression Builder] Dropped non-seed ancestor %s (%s) — it would "
+                    "displace a seed concept",
+                    cid,
+                    getattr(candidate_map.get(cid), "concept_name", cid),
+                )
+            return [c for c in candidates if c.concept_id not in displacing_ids]
+
+        except Exception as e:
+            logger.warning("[Expression Builder] Non-seed ancestor guard error: %s", e)
+            return candidates
+
     def _roll_up(
         self,
-        candidates: List[ConceptCandidate]
+        candidates: List[ConceptCandidate],
+        seed_concept_ids: Optional[List[int]] = None,
     ) -> List[ConceptCandidate]:
         """
         Roll-up 최적화: 중복되는 하위 개념을 상위 개념으로 압축.
 
         알고리즘:
-        0. 과도하게 넓은 조상 개념 먼저 제거 (descendant_count 기준)
+        0a. seed가 아닌 후보가 seed의 조상이면 먼저 제거 (provenance 기준)
+        0b. 과도하게 넓은 조상 개념 제거 (descendant_count 기준)
         1. 각 개념의 조상(ancestor) 확인
         2. 후보 중 조상이 있으면 해당 개념 제거
         3. 최상위 개념만 유지
         """
+        candidates = self._drop_non_seed_ancestors(candidates, seed_concept_ids)
         candidates = self._filter_overbroad(candidates)
 
         if len(candidates) <= 1:

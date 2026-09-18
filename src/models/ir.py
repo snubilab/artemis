@@ -403,6 +403,14 @@ class MappingResult(BaseModel):
         description="Concept IDs flagged as overbroad by ConceptSetRefiner. "
                     "Assembler should set includeDescendants=false for these."
     )
+    seed_concept_ids: List[int] = Field(
+        default_factory=list,
+        description="Concept IDs the reranker selected, captured BEFORE KG expansion "
+                    "added ancestors/siblings. The expression builder uses these as "
+                    "provenance: a candidate that was not a seed may not displace one "
+                    "that was (a non-seed proper ancestor of a seed is dropped before "
+                    "roll-up)."
+    )
     concept_sets: List[ConceptSet] = Field(default_factory=list)
     gap_report: GapReport = Field(default_factory=GapReport)
     
