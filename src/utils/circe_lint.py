@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 # Importing the refusal vocabulary keeps this module pure: `criterion_refusal` has no
@@ -1654,6 +1655,160 @@ def aliased_concept_sets(expression: dict[str, Any]) -> list[str]:
             f"{len(names)} different names, so at least one name describes something "
             f"its members do not"
         )
+    return findings
+
+
+@dataclass(frozen=True)
+class ConfusableAnalyte:
+    """One analyte a concept-set NAME can claim, and the concepts that are not it.
+
+    ``states`` matches a name claiming the analyte; ``also_states_other`` is the escape
+    hatch for a name claiming BOTH ('LDL/HDL ratio' legitimately holds HDL), so a
+    finding requires the first to match and the second not to.
+    """
+
+    analyte: str
+    states: re.Pattern[str]
+    also_states_other: re.Pattern[str]
+    #: ``concept_id -> (verbatim vocabulary name, why it is not this analyte)``, the same
+    #: recorded shape :data:`DIMENSIONLESS_VALUE_CONCEPTS` uses.
+    confusables: Mapping[int, tuple[str, str]]
+
+
+#: Concepts that CONTRADICT the analyte a concept set's own name states -- the defect no
+#: other check here can see.
+#:
+#: WHY THIS IS A DIFFERENT DEFECT FROM EVERY UNIT CHECK ABOVE. Those ask whether a bound
+#: is on the right SCALE. This asks whether it is on the right QUANTITY. A unit filter
+#: cannot help: 'LDL cholesterol >= 135 mg/dL' applied to an HDL result is wrong in
+#: mg/dL, and an HDL of 135 mg/dL is not merely a different number but the opposite risk
+#: direction. :func:`aliased_concept_sets` is the nearest existing check and structurally
+#: cannot reach this: it fires when two sets hold IDENTICAL members under two names, and
+#: here one set holds members its single name contradicts.
+#:
+#: WHY THIS ONE READS THE NAME, when every table beside it deliberately does not.
+#: :data:`DIMENSIONLESS_VALUE_CONCEPTS` is keyed on concept id precisely because a
+#: concept-set name is model-written free text and this corpus supplies three spellings
+#: of HbA1c alone. That argument holds and is not contradicted here -- it is about
+#: identifying an ANALYTE, and this check's subject is the NAME itself. The question is
+#: whether the name describes what the members measure, so the name is the claim under
+#: test and cannot be replaced by an id. What follows from the free-text problem is the
+#: shape of ``states``: it matches every spelling the corpus supplies rather than an
+#: exact string, and ``also_states_other`` is what keeps a name claiming both analytes
+#: from firing.
+#:
+#: WHY NOTHING REMOVES THE MEMBER. Every export-time repair beside this
+#: (``presence_unit_repair``, ``entry_exclusion_repair``, ``range_disjunction_repair``)
+#: changes how a criterion is COMPARED. Dropping HDL from an LDL set changes which
+#: patients the cohort SELECTS, which is a mapping correction; making it at export time
+#: would silently decide a clinical question on the way out of the door. So this reports
+#: and the delivery gate refuses, and the fix is upstream.
+#:
+#: MEASURED, not enumerated from what seemed complete. Every concept set in the six
+#: ``deliveries/2026-09-12/`` files and the six ``output/site_gap/2026-09-18_verify/
+#: DELIVERY/`` files was resolved against ``omop_vocab.concept`` and read against its own
+#: name; three pairs came out, and all three appear in BOTH corpora. Each row's name and
+#: domain below is that vocabulary read, dated 2026-09-18.
+#:
+#: The unit-drop allowlist declines a set holding any of these as "unlisted", and
+#: :mod:`src.utils.presence_unit_allowlist`'s docstring records why none of them is ever
+#: a one-line addition there. ``tests/test_confusable_concept_set_lint.py`` gates the two
+#: tables against each other, so a confusable cannot become an allowlisted analyte
+#: member without failing a test first.
+CONFUSABLE_ANALYTES: tuple[ConfusableAnalyte, ...] = (
+    ConfusableAnalyte(
+        analyte="LDL cholesterol",
+        states=re.compile(r"\bldl\b|low[-\s]density lipoprotein", re.IGNORECASE),
+        also_states_other=re.compile(r"\bhdl\b|high[-\s]density lipoprotein", re.IGNORECASE),
+        confusables={
+            3007070: (
+                "Cholesterol in HDL [Mass/volume] in Serum or Plasma",
+                "HDL is a different lipoprotein, and its bound runs the other way -- a "
+                "high HDL is protective while a high LDL is the risk the criterion "
+                "selects on, so 'LDL >= 135' over an HDL result selects the opposite "
+                "patients rather than merely the wrong number",
+            ),
+        },
+    ),
+    ConfusableAnalyte(
+        analyte="HbA1c",
+        # 'a1c' carries no leading \b on purpose: in 'HbA1c' the 'b' and the 'A' are both
+        # word characters, so \ba1c\b never matches it. The trailing \b is what keeps
+        # 'HbA1' and 'Hemoglobin A1' -- the names that legitimately hold 3005446 -- out.
+        states=re.compile(r"a1c\b|glyc(?:osyl|)ated\s+ha?emoglobin", re.IGNORECASE),
+        also_states_other=re.compile(
+            r"h(?:a?emoglobin\s+)?a1\b|a1\s*(?:total|a\b|b\b)", re.IGNORECASE
+        ),
+        confusables={
+            3005446: (
+                "Hemoglobin A1/Hemoglobin.total in Blood",
+                "HbA1 total includes HbA1a and HbA1b as well as HbA1c, so it reads "
+                "HIGHER than HbA1c on the same blood; an upper bound written for HbA1c "
+                "('<= 10.0%') therefore excludes patients who satisfy it",
+            ),
+        },
+    ),
+    ConfusableAnalyte(
+        analyte="systolic blood pressure",
+        states=re.compile(r"\bsystolic\b", re.IGNORECASE),
+        # A name saying 'systolic and diastolic' is describing the panel, not claiming
+        # the single quantity, so the panel concept belongs to it.
+        also_states_other=re.compile(r"\bdiastolic\b", re.IGNORECASE),
+        confusables={
+            40758413: (
+                "Blood pressure systolic and diastolic",
+                "a panel over TWO quantities rather than a single value, so Circe "
+                "compares 'systolic > 140' against whichever of the two the site "
+                "recorded on the row -- a diastolic of 141 would satisfy it and a "
+                "systolic of 141 stored on a diastolic row would not",
+            ),
+        },
+    ),
+)
+
+
+def confusable_concept_sets(expression: dict[str, Any]) -> list[str]:
+    """Locators for concept sets holding a concept that is not the analyte they name.
+
+    See :data:`CONFUSABLE_ANALYTES` for the table, why this one check reads the name, and
+    why the member is never removed automatically.
+
+    ``isExcluded`` members are skipped -- via :func:`~src.utils.presence_unit_allowlist.
+    seed_concept_ids`, the same helper the unit checks use. An exclusion REMOVES the
+    concept, so the bound never reaches it and there is nothing to report.
+
+    Seed concepts, not the resolved closure -- the same limit
+    :func:`_concept_set_is_dimensionless` carries and for the same reason: this module is
+    pure functions over a CIRCE expression dict. The consequence is one-directional and
+    worth stating: a confusable reached only as a DESCENDANT of a listed seed is missed.
+    All three pairs in both corpora are seeds, so the gap costs nothing measured today.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per offending concept set, empty when none.
+    """
+    findings: list[str] = []
+    for concept_set in expression.get("ConceptSets") or []:
+        if not isinstance(concept_set, Mapping):
+            continue
+        name = str(concept_set.get("name") or "")
+        members = seed_concept_ids(concept_set)
+        for entry in CONFUSABLE_ANALYTES:
+            if not entry.states.search(name) or entry.also_states_other.search(name):
+                continue
+            held = sorted(members & set(entry.confusables))
+            if not held:
+                continue
+            detail = "; ".join(
+                f"{cid} {entry.confusables[cid][0]!r} -- {entry.confusables[cid][1]}"
+                for cid in held
+            )
+            findings.append(
+                f"codeset {concept_set.get('id')} {name!r} names {entry.analyte} but "
+                f"holds {len(held)} concept(s) that measure something else: {detail}. "
+                f"The bound is applied to the wrong quantity, so no unit filter can make "
+                f"it right; removing the member changes which patients the cohort "
+                f"selects, which is a mapping correction and not an export-time repair"
+            )
     return findings
 
 

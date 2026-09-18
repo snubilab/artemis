@@ -37,17 +37,27 @@ only when EVERY concept it selects is listed under that one analyte. A member li
 nowhere, or members from two analytes, means the scale table does not cover the whole
 set, and the answer is to decline.
 
-Deliberately NOT listed, each found in the delivered sets, each therefore declining
-the set that holds it (a one-line addition here if the decision changes):
+Deliberately NOT listed, each found in the delivered sets, each therefore declining the
+set that holds it. Two DIFFERENT reasons, and conflating them is what made the LDL sets
+decline for the wrong one:
 
-* ``3005446`` Hemoglobin A1/Hemoglobin.total -- HbA1, which includes A1a and A1b and
-  reads higher than HbA1c. In both EMPA-REG HbA1c sets.
-* ``40758413`` Blood pressure systolic and diastolic -- a panel over two quantities.
-  In CAROLINA's systolic BP set.
-* ``3007070`` Cholesterol in HDL [Mass/volume] -- a different lipoprotein. In
-  CAROLINA's LDL set.
-* ``3035009`` Cholesterol in LDL [Units/volume] by Electrophoresis -- a relative
-  fraction whose scale was not analysed. In CAROLINA's LDL set.
+* **A different analyte entirely** -- ``3005446`` HbA1 total in both EMPA-REG HbA1c
+  sets, ``40758413`` the BP panel in CAROLINA's systolic set, ``3007070`` HDL in
+  CAROLINA's LDL set. These are never a one-line addition here: the bound is applied to
+  the wrong quantity, so listing one would make the repair drop a unit filter on a set
+  that is wrong with or without units. They are recorded with their reasons in
+  :data:`~src.utils.circe_lint.CONFUSABLE_ANALYTES`, which reports them, and
+  ``tests/test_confusable_concept_set_lint.py`` gates the two tables against each other
+  so a member of one can never be added to the other.
+* **The right analyte on a scale this table does not model** -- ``3035009`` Cholesterol
+  in LDL ``[Units/volume]`` by Electrophoresis. LDL, so not a confusable, but a third
+  scale that neither ``mmol/L`` nor ``g/L`` converts. It stays unlisted until someone
+  measures what that property reports; see the LDL entry's own comment.
+
+The five LDL variants that WERE added on 2026-09-18 -- by electrophoresis, by
+ultracentrifugate, by Martin-Hopkins, in Body fluid, in Moles/volume by direct assay --
+were the third case: the right analyte on a scale already modelled, unlisted by
+omission. The LDL entry records each one's scale and the vocabulary read behind it.
 
 Pure: no I/O and no imports outside the standard library, so both the vocabulary-
 backed export repair (:mod:`src.services.presence_unit_repair`) and the DB-free lint
@@ -206,6 +216,35 @@ PRESENCE_UNIT_ANALYTES: tuple[PresenceUnitAnalyte, ...] = (
         ),
     ),
     # delivered: gte 135 (only miss)
+    #
+    # SCALE PER CONCEPT, read from `omop_vocab.concept` on 2026-09-18 rather than
+    # inferred from the name the pipeline wrote. Every LOINC member's verbatim name
+    # carries its own LOINC PROPERTY, so the scale below is the recorded name and not a
+    # second column that could drift from it:
+    #
+    #   Mass/volume (mg/dL, the stated unit):  3009966 3028288 3028437 1761709
+    #                                          3035899 3053341 36031404
+    #   Moles/volume (mmol/L, the `mmol/L` alternative): 3001308 3038988 3039873
+    #                                                    42870529
+    #   no LOINC property -- SNOMED procedure concepts, `Measurement` domain, which name
+    #   the test and not a scale:              4041556 4042061 4042062
+    #
+    # The five 2026-09-18 additions (3035899 3039873 3053341 36031404 42870529) are all
+    # `Cholesterol in LDL`: ultracentrifugate, Body fluid, by Electrophoresis, by
+    # Martin-Hopkins, and by Direct assay in Moles/volume. They are LDL by a method or a
+    # specimen this table did not list, NOT a different analyte, and unlisting them made
+    # every LDL set on the 2026-09-18 re-extraction classify as "unlisted" -- the repair
+    # declined for the wrong reason. They add NO alternative unit: `mmol/L` was already
+    # one (3001308 and 3038988 predate them), so `residual_risk` is unchanged and
+    # `gte 135` remains "can only miss" -- no plausible mmol/L LDL value (<= 20) reaches
+    # 135. `tests/test_confusable_concept_set_lint.py` pins that direction.
+    #
+    # `3035009 Cholesterol in LDL [Units/volume] in Serum or Plasma by Electrophoresis`
+    # is deliberately still absent, and the vocabulary is why: its property is
+    # `[Units/volume]`, a THIRD scale neither `mmol/L` nor `g/L` converts, and no
+    # alternative here models it. It is LDL -- so it is not a confusable below -- but a
+    # set holding it stays "unlisted" and declines, which is the correct direction to
+    # fail for a scale nobody analysed.
     PresenceUnitAnalyte(
         name="LDL cholesterol",
         stated_unit_ids=frozenset({8840}),  # mg/dL
@@ -219,6 +258,14 @@ PRESENCE_UNIT_ANALYTES: tuple[PresenceUnitAnalyte, ...] = (
             4042061: "Serum fasting LDL cholesterol measurement",
             4042062: "Serum random LDL cholesterol measurement",
             1761709: "Cholesterol in LDL [Mass/volume] by calculation, corrected for Lp(a)",
+            3035899: "Cholesterol in LDL [Mass/volume] in Serum or Plasma ultracentrifugate",
+            3039873: "Cholesterol in LDL [Moles/volume] in Body fluid",
+            3053341: "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Electrophoresis",
+            36031404: (
+                "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Calculated by "
+                "Martin-Hopkins"
+            ),
+            42870529: "Cholesterol in LDL [Moles/volume] in Serum or Plasma by Direct assay",
         },
         alternatives=(
             AlternativeUnit(

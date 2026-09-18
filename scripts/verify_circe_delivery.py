@@ -190,6 +190,36 @@ Checks per file:
     ``DIMENSIONLESS_VALUE_CONCEPTS`` beside it, whose comment records how it was
     derived from the corpus and which three ratio-looking candidates were rejected.
 
+(r) no concept set holds a concept that is not the analyte its own name states. Check
+    (q) and everything beside it ask whether a numeric bound is on the right SCALE; this
+    one asks whether it is on the right QUANTITY, and a unit cannot repair it: 'LDL
+    cholesterol >= 135 mg/dL' applied to an HDL result is wrong in mg/dL, and because a
+    high HDL is protective while a high LDL is the risk being selected on, it selects the
+    OPPOSITE patients rather than merely the wrong number. Check (m) is the nearest
+    existing check and structurally cannot reach it: it fires when TWO sets hold
+    identical members under two names, and here ONE set holds members its single name
+    contradicts. Measured by resolving every concept set in the six
+    ``deliveries/2026-09-12/`` files and the six
+    ``output/site_gap/2026-09-18_verify/DELIVERY/`` files against ``omop_vocab.concept``
+    and reading each against its own name -- three pairs, all three present in BOTH
+    corpora: CAROLINA codeset 30 ``'LDL cholesterol'`` holds ``3007070 Cholesterol in HDL
+    [Mass/volume]``; EMPA-REG codesets 3 and 4 ``'Glycosylated haemoglobin (HbA1c)'`` hold
+    ``3005446 Hemoglobin A1/Hemoglobin.total``, which includes HbA1a and HbA1b and so
+    reads higher than HbA1c, meaning the delivered ``<= 10.0%`` excludes patients who
+    satisfy it; CAROLINA codeset 28 ``'Systolic blood pressure'`` holds ``40758413 Blood
+    pressure systolic and diastolic``, a panel over two quantities. Nothing repairs any of
+    them: every export-time repair in this pipeline changes how a criterion is COMPARED,
+    while dropping HDL from an LDL set changes which patients the cohort SELECTS, so it is
+    a mapping correction and this gate refuses instead. ``isExcluded`` members are skipped
+    -- an exclusion removes the concept, so the bound never reaches it. This is the one
+    check here that reads a concept-set NAME, and deliberately: the name is the claim
+    under test, so it cannot be replaced by a concept id the way
+    ``DIMENSIONLESS_VALUE_CONCEPTS`` is. What the free-text problem costs instead is the
+    shape of the match -- every spelling the corpus supplies, plus an escape for a name
+    claiming both analytes ('LDL/HDL ratio' legitimately holds HDL). See
+    ``src.utils.circe_lint.confusable_concept_sets`` and the table
+    ``CONFUSABLE_ANALYTES`` beside it.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -248,6 +278,7 @@ from src.utils.circe_lint import (  # noqa: E402
     DROPPED_CRITERIA_KEY,
     aliased_concept_sets,
     asserted_bound_missing_criteria,
+    confusable_concept_sets,
     conjoined_disjunction_rules,
     contradictory_absence_rules,
     contradictory_presence_absence_criteria,
@@ -2156,6 +2187,18 @@ def main(argv: list[str] | None = None) -> int:
         if aliases:
             reasons.append(
                 f"aliased concept sets ({len(aliases)}): {'; '.join(aliases)}"
+            )
+
+        # (r) a concept set holding a concept that is not the analyte its own name
+        # states. Every check above -- (q) included -- asks whether a bound is on the
+        # right SCALE; this one asks whether it is on the right QUANTITY, and no unit
+        # filter can make 'LDL >= 135 mg/dL' right over an HDL result. Check (m) is the
+        # nearest and cannot reach it: it needs TWO sets with identical members, and
+        # here ONE set holds members its single name contradicts.
+        confusables = confusable_concept_sets(expression)
+        if confusables:
+            reasons.append(
+                f"confusable concept sets ({len(confusables)}): {'; '.join(confusables)}"
             )
 
         # (n) a mandatory presence and a mandatory absence over one concept set. Check
