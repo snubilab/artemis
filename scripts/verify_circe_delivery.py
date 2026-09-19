@@ -267,6 +267,7 @@ import hashlib
 import json
 import sys
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -276,6 +277,9 @@ from src.agents.agent1.repair_accounting import (  # noqa: E402
     DISPOSITION_DEMOTION,
     KNOWN_DISPOSITIONS,
     REPAIR_ACCOUNTING_KEY,
+)
+from src.services.restated_absence_repair import (  # noqa: E402
+    RESTATED_ABSENCE_REMOVALS_KEY,
 )
 from src.services.restated_demographics import (  # noqa: E402
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
@@ -649,8 +653,19 @@ def reconcile_dropped_rules(
         rule the store does not carry, which means the record describes some other
         file's drop and explains nothing about this one.
     """
-    records = expression.get(DROPPED_CRITERIA_KEY)
-    if not isinstance(records, list) or not records:
+    # Two record channels, one replay. `_droppedCriteria` removes criteria and may take
+    # their rule with them; `_restatedAbsenceRemovals` removes a whole rule because
+    # another rule the file still carries forbade its entire range. Both spell
+    # `ruleIndex`/`rule`/`ruleAfter`/`outcome` the same way on purpose, so the store side
+    # moves forward identically -- what differs is who re-judges the permit:
+    # `dropped_criteria_violations` for the first, `restated_absence_removal_violations`
+    # for the second. A removal for a restatement names no unreadable attribute, so it
+    # cannot be laundered through the first channel and must not be.
+    channels = [
+        (DROPPED_CRITERIA_KEY, expression.get(DROPPED_CRITERIA_KEY)),
+        (RESTATED_ABSENCE_REMOVALS_KEY, expression.get(RESTATED_ABSENCE_REMOVALS_KEY)),
+    ]
+    if not any(isinstance(records, list) and records for _key, records in channels):
         return list(store_names), []
 
     counter = Counter(store_names)
@@ -659,20 +674,24 @@ def reconcile_dropped_rules(
     # One transformation per rule the drop touched, not one per criterion: CARMELINA's
     # incretin rule loses two members and leaves the file once. `ruleIndex` keys it, so
     # two distinct rules that happen to share a name stay two transformations.
-    transformations: list[tuple[Any, str, Any, Any]] = []
-    for record in records:
-        if not isinstance(record, dict):
+    transformations: list[tuple[Any, str, Any, Any, str]] = []
+    for source_key, records in channels:
+        if not isinstance(records, list):
             continue
-        key = (
-            record.get("ruleIndex"),
-            str(record.get("rule") or ""),
-            record.get("ruleAfter"),
-            record.get("outcome"),
-        )
-        if key not in transformations:
-            transformations.append(key)
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            key = (
+                record.get("ruleIndex"),
+                str(record.get("rule") or ""),
+                record.get("ruleAfter"),
+                record.get("outcome"),
+                source_key,
+            )
+            if key not in transformations:
+                transformations.append(key)
 
-    for _rule_index, rule, rule_after, outcome in transformations:
+    for _rule_index, rule, rule_after, outcome, source_key in transformations:
         if outcome == DROP_OUTCOME_RULE_KEPT:
             continue
         if outcome not in (DROP_OUTCOME_RULE_REMOVED, DROP_OUTCOME_RULE_RENAMED):
@@ -682,7 +701,7 @@ def reconcile_dropped_rules(
             continue
         if counter[rule] <= 0:
             violations.append(
-                f"{DROPPED_CRITERIA_KEY} records a drop from rule {rule!r}, which the "
+                f"{source_key} records a drop from rule {rule!r}, which the "
                 "store study does not carry"
             )
             continue
@@ -691,6 +710,106 @@ def reconcile_dropped_rules(
             counter[str(rule_after)] += 1
 
     return list(counter.elements()), violations
+
+
+def _states_between_bound(rule: Any, low: Any, high: Any) -> bool:
+    """Does ``rule`` carry a ``bt low..high`` value bound anywhere inside it?
+
+    Deliberately shallow about WHERE: the question is only whether the surviving rule
+    really states the range the removal record says it states. Whether it states it in
+    the shape the repair required is that repair's business, re-judged by its own
+    conditions; here it is the file bearing out its own record.
+    """
+    if low is None or high is None:
+        return False
+    stack: list[Any] = [rule]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, Mapping):
+            value = node.get("ValueAsNumber")
+            if isinstance(value, Mapping) and str(value.get("Op")) == "bt":
+                try:
+                    if float(value.get("Value")) == float(low) and float(
+                        value.get("Extent")
+                    ) == float(high):
+                        return True
+                except (TypeError, ValueError):
+                    pass
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    return False
+
+
+def restated_absence_removal_violations(expression: dict[str, Any]) -> list[str]:
+    """Re-judge every ``_restatedAbsenceRemovals`` record against the delivered file.
+
+    The record is written by the artifact being checked, so on its own it is an amnesty:
+    a producer that lost a rule and wrote a removal record for it would move the store
+    side forward by one and pass check (b) with real loss inside. What makes the permit
+    earned is that the whole justification for the removal is visible in the same file —
+    the rule that survives states the range the removed rule forbade — so all three
+    parts of the claim are re-derived here rather than taken:
+
+    * the removed rule really is gone from the delivered rules,
+    * the surviving partner the record names really is still there,
+    * and that partner really carries ``bt low..high``, which is why removing a rule
+      that forbade every value in it was safe.
+
+    ``outcome`` is checked too: this channel replays a rule removal and nothing else, so
+    any other outcome is a record the reconciliation would silently mis-replay.
+
+    :param expression: the delivered CIRCE expression.
+    :returns: one line per record whose claim the file does not bear out, empty when
+        every record checks out (including when there are none).
+    """
+    records = expression.get(RESTATED_ABSENCE_REMOVALS_KEY)
+    if not isinstance(records, list) or not records:
+        return []
+
+    rules = [r for r in (expression.get("InclusionRules") or []) if isinstance(r, Mapping)]
+    by_name: dict[str, list[Mapping[str, Any]]] = {}
+    for rule in rules:
+        by_name.setdefault(str(rule.get("name") or ""), []).append(rule)
+
+    violations: list[str] = []
+    for record in records:
+        if not isinstance(record, dict):
+            violations.append(f"{RESTATED_ABSENCE_REMOVALS_KEY} carries a non-record entry")
+            continue
+        removed = str(record.get("rule") or "")
+        partner = str(record.get("partnerRule") or "")
+        outcome = record.get("outcome")
+
+        if outcome != DROP_OUTCOME_RULE_REMOVED:
+            violations.append(
+                f"{RESTATED_ABSENCE_REMOVALS_KEY} records rule {removed!r} with outcome "
+                f"{outcome!r}; this channel replays {DROP_OUTCOME_RULE_REMOVED!r} only"
+            )
+            continue
+        if removed in by_name:
+            violations.append(
+                f"{RESTATED_ABSENCE_REMOVALS_KEY} says rule {removed!r} was removed, but "
+                "the delivered file still carries it"
+            )
+            continue
+        partner_rules = by_name.get(partner)
+        if not partner_rules:
+            violations.append(
+                f"{RESTATED_ABSENCE_REMOVALS_KEY} removes rule {removed!r} because rule "
+                f"{partner!r} states its range, but the delivered file does not carry "
+                f"{partner!r} -- nothing in the file justifies the removal"
+            )
+            continue
+        low, high = record.get("low"), record.get("high")
+        if not any(_states_between_bound(rule, low, high) for rule in partner_rules):
+            violations.append(
+                f"{RESTATED_ABSENCE_REMOVALS_KEY} removes rule {removed!r} because rule "
+                f"{partner!r} requires bt {low}..{high}, but that rule carries no such "
+                "bound in the delivered file"
+            )
+
+    return violations
 
 
 def criteria_index(study: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -2090,6 +2209,10 @@ def main(argv: list[str] | None = None) -> int:
             expression, store_rule_names
         )
         reasons.extend(drop_reconcile_violations)
+        # The removal channel's own re-judgement. `dropped_criteria_violations` cannot do
+        # it: it re-judges against `unreadable_value_attributes`, and a rule removed
+        # because another rule forbade its whole range names no unreadable attribute.
+        reasons.extend(restated_absence_removal_violations(expression))
         rules_ok, rules_detail = _rule_multiset_check(rules, expected_rule_names)
         if not rules_ok:
             reasons.append(f"rule set mismatch: {rules_detail}")
