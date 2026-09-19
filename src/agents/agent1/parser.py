@@ -6,7 +6,7 @@ import os
 import json
 import logging
 import re
-from typing import Optional
+from typing import NamedTuple, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import ValidationError
@@ -143,6 +143,19 @@ _INCLUSIVE_UPPER_OP = re.compile(r"(?:<=|=<|≤|≦)\s*(" + _NUMBER + r")")
 #: ran on. The same trial's TROY v1.1 gold encodes its band `!bt [6.5, 8.5]`, which
 #: is inclusive at both ends.
 _RANGE = re.compile(r"(" + _NUMBER + r")\s*(?:-|–|—|to)\s*(" + _NUMBER + r")")
+
+
+class _NegatedUpper(NamedTuple):
+    """How to say, in a record a human reads, what one wrong operator did.
+
+    ``symbol`` is the comparison the operator states, ``effective`` is the bound the
+    ABSENCE negation of it actually applies, and ``harm`` names who that bound
+    removes. Carried as data rather than built with an ``if`` in the message, so the
+    two spellings cannot drift into describing each other.
+    """
+    symbol: str
+    effective: str
+    harm: str
 
 
 def inclusive_upper_bounds(source_text: Optional[str]) -> set[float]:
@@ -1534,14 +1547,38 @@ class LogicDecomposer:
             repair_accounting=ledger.records(),
         )
 
+    #: The two operators an ABSENCE rule writes an upper bound with and gets wrong,
+    #: and what each one's negation really applies.
+    #:
+    #: `gte` is the near miss: `NOT (>= X)` is `< X`, one boundary value away from the
+    #: `<= X` the line states. `lte` is the inversion: `NOT (<= X)` is `> X`, which
+    #: demands the very values the line excludes, so the rule selects exactly the
+    #: patients the protocol does not admit. Measured on CARMELINA's
+    #: `NCT01897532_..._97e28790a4d24072` arm, `target/inclusion_rules[5]` is
+    #: `ABSENCE lte 10.0` off the line "HbA1c of >= 6.5% and <= 10.0%", i.e. "no
+    #: HbA1c at or below 10" -- and because the pair it belongs to is then unmergeable
+    #: (`_repair_split_bands` reads `{gt, gte}` on the upper half), the 2026-09-18
+    #: delivery shipped it as its own inclusion rule.
+    #:
+    #: `lt` and `gt` are absent deliberately: `NOT (> X)` IS `<= X`, the correct
+    #: encoding and this repair's own target shape, and `NOT (< X)` is `>= X`, a lower
+    #: bound rather than an upper one.
+    _NEGATED_UPPER_OPS = {
+        "gte": _NegatedUpper(">=", "<", "excludes a patient at exactly"),
+        "lte": _NegatedUpper("<=", ">", "admits only patients above"),
+    }
+
     def _repair_inclusive_upper_bounds(self, rules: list, ledger: "RepairLedger" = None) -> list:
         """Correct an upper bound the model negated with the wrong operator.
 
         A protocol states `<= X`. Agent 1 encodes the upper half of a band as an
         ABSENCE rule, which is right -- `<= X` is `NOT (> X)` -- but it writes the
-        operator as `gte`, giving `NOT (>= X)`, which is `< X`. The two agree only
-        when X is an integer and the analyte is integral. HbA1c 8.5%, eGFR 59, an
-        age of 85: none of them are.
+        operator on the ALLOWED side of the bound instead of the forbidden one. Two
+        spellings do that, and `_NEGATED_UPPER_OPS` above records what each costs:
+        `gte` gives `NOT (>= X)` = `< X`, which moves the boundary by one value, and
+        `lte` gives `NOT (<= X)` = `> X`, which inverts the criterion outright.
+        `gte` and `<= X` agree only when X is an integer and the analyte is integral.
+        HbA1c 8.5%, eGFR 59, an age of 85: none of them are.
 
         Measured over the 65 current-model IR caches, both cohorts, 1520 parsed
         constraints: 191 ABSENCE `gte` constraints, of which 116 sit at a value the
@@ -1561,12 +1598,26 @@ class LogicDecomposer:
         `ABSENCE` on every exclusion rule, so the operator alone cannot tell the two
         apart; the side can.
 
-        Measured, that restriction currently prevents nothing: of the 191 ABSENCE
-        `gte` constraints in the corpus, all 116 that this detector matches are on
-        the inclusion side and zero on the exclusion side, because those exclusion
-        lines state `>= X` and the detector reads only inclusive UPPER bounds. The
-        restriction is a boundary, not a filter that is doing work today, and it is
-        stated as such rather than credited with a save it did not make.
+        That restriction used to prevent nothing, and with `lte` in scope it now
+        prevents eight wrong flips. Re-measured over all 234 IR caches under
+        `data/cache/agent1_ir`, both cohorts, counting ABSENCE constraints whose
+        value their OWN line states as an inclusive upper bound:
+
+        ===========  ==============  ==============
+        operator     inclusion side  exclusion side
+        ===========  ==============  ==============
+        ``gte``      127             0
+        ``lte``      2               8
+        ===========  ==============  ==============
+
+        The `gte` column is still all inclusion, for the reason above -- an exclusion
+        line states `>= X` and this detector reads only inclusive UPPER bounds. The
+        `lte` column is not: all eight exclusion matches are one line, PLATO's
+        "Severe comorbid condition with life expectancy of ≤ 1 year", where
+        `ABSENCE lte 1.0` is "exclude if life expectancy <= 1 year" and is exactly
+        right. Flipping it to `gt 1.0` would exclude every patient expected to live
+        LONGER than a year, which is the whole cohort. The two inclusion matches are
+        both CARMELINA's `HbA1c upper limit check`, the delivered defect.
 
         Recurses into `sub_criteria`: an upper bound is no more correct for sitting
         inside a group the model emitted.
@@ -1586,35 +1637,43 @@ class LogicDecomposer:
             vc = criterion.value_constraint
             needs_fix = (
                 vc is not None
-                and vc.op == "gte"
+                and vc.op in self._NEGATED_UPPER_OPS
                 and criterion.logic_type == "ABSENCE"
                 and vc.value is not None
                 and float(vc.value) in inclusive_upper_bounds(criterion.source_text)
             )
             if not needs_fix:
                 return criterion
+            was = vc.op
             corrected = criterion.model_copy(update={
                 "value_constraint": vc.model_copy(update={"op": "gt"}),
             })
             # The ORIGINAL, not the copy: the gate matches by object identity, and
             # it is the original that leaves the tree here. Recording the copy would
             # leave the original looking like an unexplained deletion.
+            wrong = self._NEGATED_UPPER_OPS[was]
             ledger.rewritten(
                 criterion,
                 action="inclusive-upper-bound-corrected",
                 reason=(
                     f"the protocol line states an inclusive upper bound at {vc.value}, "
-                    f"and an ABSENCE rule carrying 'gte' encodes NOT(>= {vc.value}), "
-                    f"which is < {vc.value} and excludes a patient at exactly "
-                    f"{vc.value}; NOT(> {vc.value}) is the inclusive reading"
+                    f"and an ABSENCE rule carrying '{was}' encodes "
+                    f"NOT({wrong.symbol} {vc.value}), which is {wrong.effective} "
+                    f"{vc.value} and {wrong.harm}; NOT(> {vc.value}) is the inclusive "
+                    f"reading"
                 ),
-                before={"op": "gte", "value": vc.value, "effectiveBound": f"< {vc.value}"},
+                before={
+                    "op": was,
+                    "value": vc.value,
+                    "effectiveBound": f"{wrong.effective} {vc.value}",
+                },
                 after={"op": "gt", "value": vc.value, "effectiveBound": f"<= {vc.value}"},
             )
             logger.info(
-                "[Agent 1] Inclusive-upper-bound repair: '%s' ABSENCE gte %s -> gt %s "
+                "[Agent 1] Inclusive-upper-bound repair: '%s' ABSENCE %s %s -> gt %s "
                 "(line states an inclusive bound: %r)",
-                criterion.name, vc.value, vc.value, (criterion.source_text or "")[:120],
+                criterion.name, was, vc.value, vc.value,
+                (criterion.source_text or "")[:120],
             )
             return corrected
 

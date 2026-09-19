@@ -180,6 +180,105 @@ def _exception_kept_whole(
     return None
 
 
+#: Bounds that state ONE side of a range. `bt` is deliberately absent -- it is a whole
+#: band and states both sides -- and so is None, which is no bound at all. A member can
+#: never actually carry `bt`: `parse_value_constraint` returns None for a range phrase
+#: (measured: `"6.5 - 10.0%"` and `"between 6.5 and 10.0%"` both parse to None), so a
+#: member's bound is one-sided or absent. It is listed as excluded anyway, because the
+#: check below must keep meaning what it says if that ever changes.
+_ONE_SIDED_OPS = frozenset({"gt", "gte", "lt", "lte"})
+
+
+def _torn_range_declined(entity_text: str, members: list[Criteria]) -> Optional[str]:
+    """Why this split is one criterion's range torn in half, or None to let it through.
+
+    CARMELINA states one line -- "HbA1c of >= 6.5% and <= 10.0% at Visit 1
+    (screening)" -- and the 2026-09-18 delivery shipped two inclusion rules off it
+    that no patient can satisfy together::
+
+        #12 ANY( Measurement gte 6.5 , Measurement lte 10.0 )   -> has a %-unit HbA1c
+        #13 ALL( Occurrence{Type:0,Count:0} gte 6.5
+               , Occurrence{Type:0,Count:0} lte 10.0 )          -> has NO %-unit HbA1c
+
+    CIRCE ANDs inclusion rules, so #12 and #13 are complements and the cohort is empty
+    on every CDM. Both come from this method's caller: the model answered that "HbA1c"
+    is an umbrella term and returned two members per parent, each member the SAME
+    analyte with one side of the band copied verbatim off the line. The member NAMES
+    then describe the opposite of their own operators -- "below lower limit" carrying
+    `gte 6.5` -- because `logic_type` is inherited from the parent while
+    `value_constraint_text` is copied in the allowed polarity. Those two names appear
+    in none of the 234 IR caches; they are this module's.
+
+    The prompt's own rule is that such a criterion is atomic. A member that is the
+    parent analyte again, carrying one side of the parent's range, is not a codeable
+    sub-term -- it maps to the parent's own concept set -- so there is nothing for the
+    fan-out to gain and a boundary to lose.
+
+    Three gates, and the split is declined only when ALL of them hold for EVERY
+    member. Measured over the 101 decomposition groups of
+    ``output/site_gap/2026-09-18_verify4/store/studies.json``, the first two fire
+    together on six groups and the third holds five of them:
+
+    1. **Every member names the parent's own entity**, under :func:`_comparison_form`.
+       This is the gate that separates the defect from the thing this module is FOR:
+       CAROLINA's liver panel decomposes ``ALT or AST or alkaline phosphatase`` into
+       three members whose parent ALSO carries a one-sided bound (``gt 3.0 x ULN``),
+       and the analyte identity is the only difference between the two cases.
+    2. **Every member carries a one-sided bound.** A member with no parsed bound is
+       not half of a range: EMPA-REG's ``Bariatric surgery or intervention`` fans out
+       into three procedures carrying no number, and a rule about bounds must not
+       reach it.
+    3. **The members agree on one unit.** The sixth group is CAROLINA study 10's
+       ``Uncontrolled hyperglycaemia``, whose two members are ``>240 mg/dl`` and
+       ``>13.3 mmol/L`` -- ONE threshold restated in two units, where the second
+       member adds real coverage because Circe's unit filter is a per-criterion AND,
+       so a row recorded in mmol/L is matched by that member and by nothing else.
+       Gates 1 and 2 alone would decline it and drop those rows; this gate is what
+       keeps it split. It is the one gate the brief for this fix did not state, and it
+       is here because the corpus had a case for it.
+
+    Deliberately silent about the PARENT's own operator, which is never read. The
+    parent is `PRESENCE gte 6.5` before Agent 1's inclusive-upper-bound repair and
+    `PRESENCE bt 6.5..10.0` after it merges the pair, and the same two members are
+    torn out of both -- so a condition written on the parent's bound would let the
+    merged band be torn apart again and the delivered shape would come straight back.
+
+    :param entity_text: the parent criterion's entity text.
+    :param members: the sub-criteria as they would be installed, already built, so
+        each member's ``value_constraint`` is the one it would really carry --
+        including the None that :func:`parse_value_constraint` fail-open produces.
+        Checked after construction rather than off the raw payload for that reason:
+        the raw ``value_constraint_text`` is a phrase, and what matters is what it
+        parses to.
+    :returns: the reason to record, or None to leave the split alone.
+    """
+    parent = _comparison_form(entity_text or "")
+    if not parent or not members:
+        # Without the parent's own analyte there is nothing to compare a member to,
+        # and declining on that would refuse every split. The safe direction here is
+        # to let the split through: it is what happens today.
+        return None
+    units: set[str] = set()
+    for member in members:
+        if _comparison_form(member.entity_text or "") != parent:
+            return None
+        vc = member.value_constraint
+        if vc is None or vc.op not in _ONE_SIDED_OPS:
+            return None
+        units.add(_comparison_form(vc.unit_text or ""))
+    if len(units) > 1:
+        return None
+    bounds = ", ".join(
+        f"{m.value_constraint.op} {m.value_constraint.value}" for m in members
+    )
+    return (
+        f"every member is {entity_text.strip()!r} again, each carrying a one-sided "
+        f"bound ({bounds}) in one unit -- the parent's own range redistributed across "
+        f"{len(members)} rules, not a decomposition into codeable sub-terms "
+        f"({', '.join(repr(m.name) for m in members)})"
+    )
+
+
 class CriteriaPlanner:
     """
     Agent 1.5: Analyzes each criterion from Agent 1's IR output and
@@ -351,7 +450,16 @@ class CriteriaPlanner:
                         value_constraint=value_constraint,
                     )
                     sub_criteria.append(sc)
-                
+
+                # One criterion's range torn in half is not a decomposition. Consulted
+                # AFTER the members are built because it reads their parsed bounds, and
+                # before they are installed, so a declined split leaves this criterion
+                # exactly as Agent 1 extracted it -- no members, `group_type` untouched.
+                torn = _torn_range_declined(criterion.entity_text or "", sub_criteria)
+                if torn is not None:
+                    print(f"  ⊘ '{criterion.entity_text}' → split declined: {torn}")
+                    return criterion
+
                 criterion.sub_criteria = sub_criteria
                 # De Morgan: negating a disjunction distributes as a conjunction.
                 # "cardiovascular disease" (PRESENCE) → any sub-term qualifies → ANY.
