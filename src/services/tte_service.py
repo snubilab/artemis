@@ -91,6 +91,11 @@ from src.services.range_disjunction_repair import (
     iter_range_disjunctions,
     repair_range_disjunctions,
 )
+from src.services.restated_absence_repair import (
+    RESTATED_ABSENCE_REMOVALS_KEY,
+    iter_restated_absences,
+    repair_restated_absences,
+)
 from src.services.restated_clusters import detect_all_restated_clusters
 from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
@@ -4724,6 +4729,15 @@ class TTEService:
                 # what makes that criterion's unit filter droppable -- the unit repair
                 # declines a one-sided bound because an alternative unit can pass it.
                 self._repair_range_disjunctions(built)
+                # Order is load-bearing for the same reason, one link further along: the
+                # restated-absence repair looks for a partner presence that states the
+                # protocol range as a SINGLE `bt` criterion, which is precisely what the
+                # collapse above produces. Run before it, CARMELINA's #12 is still two
+                # alternatives under `ANY`, the partner search finds nothing eligible, and
+                # the repair declines -- deliberately, so a pair the collapse would not
+                # touch keeps failing `unsatisfiable_presence_rules` instead of being
+                # half-fixed. See `_repair_restated_absences`.
+                self._repair_restated_absences(built)
                 # Same kind of load-bearing edge as the pair above, one step earlier in
                 # the chain: dropping the confusable member is what makes the set
                 # classify as a SINGLE analyte, and a single analyte is what lets the
@@ -7795,6 +7809,53 @@ class TTEService:
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
         repair_range_disjunctions(base, lookup)
+
+    def _repair_restated_absences(self, base: dict[str, Any]) -> None:
+        """Remove an inclusion rule that forbids every value its partner presence
+        requires, so the two are logical complements. Mutates ``base`` in place.
+
+        Measured on the 2026-09-12 delivery and reproduced in the 2026-09-18 cold
+        re-extraction: CARMELINA #12 requires a %-unit HbA1c and #13 forbids one, from one
+        protocol sentence ("HbA1c of >= 6.5% and <= 10.0% at visit 1"). CIRCE conjoins
+        inclusion rules, so the cohort is 0 people on any CDM. The hospital's per-rule
+        counts sum to the entry count in all four measured arms, which is what a pair of
+        complements looks like from outside.
+
+        Runs AFTER :meth:`_repair_range_disjunctions` on purpose: condition 2 needs the
+        partner presence to already be one ``bt`` criterion, and before the collapse #12's
+        two bounds are still alternatives under ``ANY``. Runs BEFORE
+        :meth:`_repair_confusable_concept_set_members` and
+        :meth:`_repair_presence_unit_filters`, neither of which it depends on -- it does
+        not compare unit filters at all, because the finding is that the absence restates
+        the presence's bounds in the presence's own polarity, which holds under any unit.
+
+        The five conditions, the three satisfiable shapes that must decline, the
+        deliberate divergence from the gold ``!bt`` shape, and what removing a rule does to
+        the delivery gate's rule-multiset check live in
+        :mod:`src.services.restated_absence_repair`; this is the wiring. Same two
+        properties as its siblings: a DB-free pre-gate, and a vocabulary failure that
+        propagates rather than silently shipping the complementary pair.
+        """
+        # Present and empty on every emitted expression, whichever way the pre-gate
+        # answers -- the same contract `_droppedCriteria` carries, and for the same
+        # reason: an absent key must mean "predates this record", never "nothing was
+        # removed". Set here rather than only inside the repair, because the pre-gate
+        # returns before the repair on almost every file.
+        base.setdefault(RESTATED_ABSENCE_REMOVALS_KEY, [])
+        if not next(iter_restated_absences(base), None):
+            return
+
+        from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
+
+        items = items_of_cohort(base)
+        if not items:
+            return
+
+        from src.settings import settings
+
+        with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
+            lookup = vocab.prefetch(items)
+        repair_restated_absences(base, lookup)
 
     def _repair_confusable_concept_set_members(self, base: dict[str, Any]) -> None:
         """Remove a member that is not the analyte its concept set names, where every
