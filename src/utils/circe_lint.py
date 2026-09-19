@@ -15,6 +15,7 @@ satisfies it, so the rule silently does nothing.
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -2028,6 +2029,508 @@ def contradictory_presence_absence_criteria(expression: dict[str, Any]) -> list[
                 f"no patient can satisfy both"
             )
     return findings
+
+
+#: Criterion-body attributes the signature below reads by name. Anything else in the
+#: body narrows the criterion in a way this module does not model, so it is folded into
+#: the signature verbatim: two criteria differing by an unmodelled attribute then get
+#: DIFFERENT signatures, which is the direction a gate should be wrong in.
+_SIGNATURE_READ_ATTRIBUTES = frozenset({"CodesetId", "ValueAsNumber", "Unit"})
+
+#: Admits every value. Returned for a filter this module cannot read, so an unreadable
+#: bound never silences a check -- the same convention :func:`_intervals_overlap` uses
+#: for an unprovable window.
+_ANY_VALUE = ((float("-inf"), True, float("inf"), True),)
+
+
+def _numeric(value: Any) -> float | None:
+    """``value`` as a float, or ``None`` when it is not a number. ``bool`` is not one."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def _criterion_body(entry: Mapping[str, Any]) -> tuple[str, Mapping[str, Any]] | None:
+    """``(criteria type, payload)`` for the concept-set-bearing body of one entry.
+
+    Tolerates an entry handed in already unwrapped, the way :func:`_leaf_codeset_id`
+    does; unlike that one it returns the payload as well, because every signature
+    component but the window lives inside it.
+    """
+    body = entry.get("Criteria")
+    body = body if isinstance(body, Mapping) else entry
+    for criteria_type, payload in body.items():
+        if isinstance(payload, Mapping) and "CodesetId" in payload:
+            return criteria_type, payload
+    return None
+
+
+def _non_excluded_member_ids(concept_set: Mapping[str, Any]) -> tuple[int, ...]:
+    """The sorted concept ids a set actually selects -- ``isExcluded`` members removed.
+
+    Deliberately narrower than :func:`_concept_set_members`, which keeps ``isExcluded``
+    in the identity because a dropped negation is exactly a disagreement about that flag.
+    Here the question is which concepts the criterion SELECTS, and an excluded member is
+    selected by neither side of a presence/absence pair, so keeping it would split two
+    sets that behave identically.
+    """
+    items = (concept_set.get("expression") or {}).get("items") or []
+    return tuple(
+        sorted(
+            item["concept"]["CONCEPT_ID"]
+            for item in items
+            if isinstance(item, Mapping)
+            and not item.get("isExcluded")
+            and isinstance(item.get("concept"), Mapping)
+            and isinstance(item["concept"].get("CONCEPT_ID"), int)
+            and not isinstance(item["concept"]["CONCEPT_ID"], bool)
+        )
+    )
+
+
+def _member_ids_by_codeset(expression: dict[str, Any]) -> dict[Any, tuple[int, ...]]:
+    """Every concept set's selected ids, keyed by ``id``. Empty sets are omitted.
+
+    An empty set is dropped rather than recorded as ``()`` because two unrelated empty
+    sets would otherwise signature identically. An empty concept set is its own defect
+    and the delivery gate already fails on one.
+    """
+    return {
+        concept_set.get("id"): members
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+        and (members := _non_excluded_member_ids(concept_set))
+    }
+
+
+def _value_bound_key(value: Any) -> tuple[Any, ...]:
+    """A hashable identity for one ``ValueAsNumber`` filter, or the absent-filter marker.
+
+    ``Op`` is kept verbatim rather than normalised into an interval: this key decides
+    whether two criteria are the SAME predicate, and ``gte 6.5`` and ``bt 6.5..10`` are
+    not, even though both admit 7. The interval reading is
+    :func:`_value_ranges`, used by the overlap check where it is the right question.
+    """
+    if not isinstance(value, Mapping):
+        return ("no-bound",)
+    return (
+        "bound",
+        str(value.get("Op") or ""),
+        _numeric(value.get("Value")),
+        _numeric(value.get("Extent")),
+    )
+
+
+def _criterion_unit_ids(payload: Mapping[str, Any]) -> frozenset[int]:
+    """The unit concept ids a criterion filters on. Empty means unconstrained."""
+    units = payload.get("Unit")
+    if not isinstance(units, Sequence) or isinstance(units, (str, bytes)):
+        return frozenset()
+    return frozenset(
+        unit["CONCEPT_ID"]
+        for unit in units
+        if isinstance(unit, Mapping)
+        and isinstance(unit.get("CONCEPT_ID"), int)
+        and not isinstance(unit["CONCEPT_ID"], bool)
+    )
+
+
+def _window_key(entry: Mapping[str, Any]) -> tuple[Any, ...]:
+    """A hashable identity for one entry's ``StartWindow``.
+
+    Day offsets when :func:`_entry_interval` can prove them; otherwise the window dict
+    verbatim, so two windows rebased by ``UseIndexEnd`` match only when they are
+    structurally identical -- which is sound, since the same rebasing applies to both.
+    """
+    interval = _entry_interval(dict(entry))
+    if interval is not None:
+        return ("days", interval[0], interval[1])
+    return ("raw", json.dumps(entry.get("StartWindow"), sort_keys=True, default=str))
+
+
+def _criterion_signature(
+    member_ids_by_codeset: Mapping[Any, tuple[int, ...]], entry: Mapping[str, Any]
+) -> tuple[Any, ...] | None:
+    """What a criterion SELECTS, as a hashable key -- never which codeset it reads.
+
+    ``(selected concept ids, domain, value bound, unit ids, window, unmodelled residue)``.
+    Comparing by member list rather than by ``CodesetId`` is the whole point: CARMELINA's
+    codesets 8 and 10 are different ids holding the identical five HbA1c concepts under
+    the identical name, so every id-keyed check treats them as unrelated while the
+    criteria over them select exactly the same rows.
+
+    ``None`` when the entry references no concept set, or references one this expression
+    does not define or defines as empty -- both are their own defects, reported elsewhere,
+    and a signature built on a set nobody can resolve would pair on nothing.
+    """
+    found = _criterion_body(entry)
+    if found is None:
+        return None
+    criteria_type, payload = found
+    members = member_ids_by_codeset.get(payload.get("CodesetId"))
+    if members is None:
+        return None
+    residue = {
+        key: value
+        for key, value in payload.items()
+        if key not in _SIGNATURE_READ_ATTRIBUTES
+    }
+    return (
+        members,
+        criteria_type,
+        _value_bound_key(payload.get("ValueAsNumber")),
+        tuple(sorted(_criterion_unit_ids(payload))),
+        _window_key(entry),
+        json.dumps(residue, sort_keys=True, default=str) if residue else "",
+    )
+
+
+def _required_occurrence(entry: Mapping[str, Any]) -> bool:
+    """Whether the entry demands at least one occurrence (``Type: 2, Count >= 1``)."""
+    occurrence = entry.get("Occurrence") or {}
+    count = occurrence.get("Count")
+    return (
+        occurrence.get("Type") == 2
+        and isinstance(count, int)
+        and not isinstance(count, bool)
+        and count >= 1
+    )
+
+
+def _forbidden_occurrence(entry: Mapping[str, Any]) -> bool:
+    """Whether the entry demands zero occurrences (:data:`_ABSENT_OCCURRENCE`)."""
+    occurrence = entry.get("Occurrence") or {}
+    return (occurrence.get("Type"), occurrence.get("Count")) == _ABSENT_OCCURRENCE
+
+
+def _forbidden_signatures(
+    expression: dict[str, Any], member_ids_by_codeset: Mapping[Any, tuple[int, ...]]
+) -> dict[tuple[Any, ...], str]:
+    """Signatures a mandatory zero-occurrence criterion forbids, to the rule forbidding it.
+
+    Mandatory means reached through ``ALL`` nodes only -- :func:`_conjoined_entries`.
+    An absence under ``ANY`` forbids nothing, because one satisfied alternative is enough
+    for the rule to hold, so descending into it would invent contradictions.
+    """
+    forbidden: dict[tuple[Any, ...], str] = {}
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        if not isinstance(rule, Mapping):
+            continue
+        where = f"InclusionRules[{index}] {(rule.get('name') or '')!r}"
+        for entry in _conjoined_entries(rule.get("expression") or {}):
+            if not _forbidden_occurrence(entry):
+                continue
+            signature = _criterion_signature(member_ids_by_codeset, entry)
+            if signature is not None:
+                forbidden.setdefault(signature, where)
+    return forbidden
+
+
+def unsatisfiable_presence_rules(expression: dict[str, Any]) -> list[str]:
+    """Locators for a presence rule whose EVERY required criterion is forbidden outright.
+
+    CIRCE conjoins every ``InclusionRules`` entry, so a mandatory zero-occurrence
+    criterion in one rule forbids that predicate for the whole cohort. When every
+    alternative a second rule offers is one of those forbidden predicates, the second
+    rule admits nobody -- on any CDM, with any data, however complete the ETL.
+
+    The motivating case, ``deliveries/2026-09-12/carmelina_comparator.circe.json`` and
+    ``carmelina_treatment`` (byte-identical), rules 12 and 13 as the hospital received
+    them::
+
+        #12 'HbA1c at least 6.5% + HbA1c at most 10.0%'
+            ANY( >=1  Measurement cs8  gte 6.5  unit[8554] win -180..0
+               , >=1  Measurement cs9  lte 10.0 unit[8554] win -180..0 )
+        #13 'HbA1c below lower limit + HbA1c above upper limit'
+            ALL( ==0  Measurement cs10 gte 6.5  unit[8554] win -180..0
+               , ==0  Measurement cs11 lte 10.0 unit[8554] win -180..0 )
+
+    Codesets 8, 9, 10 and 11 are four different ids holding the identical five members
+    ``[3004410, 3007263, 3034639, 4197971, 44793001]`` under the identical name
+    ``'HbA1c'``. #13 forbids exactly the two predicates #12's two disjuncts require, so
+    #12 is empty by construction. The hospital's per-rule counts corroborate it: #12 and
+    #13 sum to the entry count exactly in all four measured arms. The upstream cause is
+    an exclusion negated without inverting the comparison operator (the stored criterion
+    carries ``op: gte 6.5, logicType: ABSENCE``); this check reads the emitted shape only.
+
+    Criteria are matched on what they SELECT -- :func:`_criterion_signature` -- and never
+    on ``CodesetId``, which is what the two nearest checks compare and why both are blind
+    here. :func:`aliased_concept_sets` needs identical members under DIFFERENT names and
+    all four are named ``'HbA1c'``. :func:`contradictory_presence_absence_criteria`
+    already pairs by member set, so that is NOT the hole; two of its documented silences
+    are -- it drops a narrowed absence (#13's carry a bound and a unit) and does not
+    descend a top-level ``ANY`` (#12's is one). Both silences are right in general, and
+    what closes the gap is comparing the BOUNDS rather than widening either one.
+
+    Three deliberate silences:
+
+    * **an absence under ``ANY``.** It forbids nothing -- see
+      :func:`_forbidden_signatures`.
+    * **one disjunct left standing.** ``every`` is the requirement: a rule with an
+      unforbidden alternative is satisfiable through it, and firing on ``any`` would
+      report every ordinary washout-then-treatment pair in the corpus.
+    * **a bound that merely overlaps.** ``gte 6.5`` does not forbid ``bt 6.5..10``
+      verbatim even though it covers it; that weaker shape is
+      :func:`overlapping_presence_absence_bounds`, kept separate because it is not
+      provable from the file alone.
+
+    One accepted miss, for the same reason: a rule whose mandatory presence is forbidden
+    while a sibling ``ANY`` branch is not goes unreported, because the check asks about
+    the rule's whole required set rather than tracing mandatory-ness per criterion. That
+    is a miss, not a false positive.
+
+    Measured at ``28a7299`` over 48 files -- the 24 delivered under ``deliveries/``, the
+    six under ``output/site_gap/2026-09-18_verify4/DELIVERY/`` and the 18 hand-built TROY
+    v1.1 files under ``data/gold/``: two findings, both the CARMELINA rule 12 above, and
+    zero on the other 46. ``verify4`` is clean here and correctly so: a repair rewrote its
+    #12 to ``bt 6.5..10`` with the unit filter removed, so no signature matches what #13
+    still forbids.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per unsatisfiable rule, empty when none.
+    """
+    member_ids_by_codeset = _member_ids_by_codeset(expression)
+    forbidden = _forbidden_signatures(expression, member_ids_by_codeset)
+    if not forbidden:
+        return []
+
+    findings: list[str] = []
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        if not isinstance(rule, Mapping):
+            continue
+        required = [
+            _criterion_signature(member_ids_by_codeset, entry)
+            for entry in _walk_criteria_entries(rule.get("expression") or {})
+            if _required_occurrence(entry)
+        ]
+        if not required or any(
+            signature is None or signature not in forbidden for signature in required
+        ):
+            continue
+        blockers = sorted({forbidden[signature] for signature in required})
+        findings.append(
+            f"InclusionRules[{index}] {(rule.get('name') or '')!r} requires at least one "
+            f"occurrence of {len(required)} criteri{'on' if len(required) == 1 else 'a'} "
+            f"and EVERY one of them is forbidden outright -- a mandatory zero-occurrence "
+            f"criterion over the identical concept-set members, domain, value bound, "
+            f"unit list and window already exists in {'; '.join(blockers)}. CIRCE "
+            f"conjoins every InclusionRules entry, so this rule selects nobody on any "
+            f"CDM with any data"
+        )
+    return findings
+
+
+def _value_ranges(value: Any) -> tuple[tuple[float, bool, float, bool], ...]:
+    """The value ranges a ``ValueAsNumber`` filter admits.
+
+    Each range is ``(low, low closed, high, high closed)``. A union rather than one
+    interval because ``!bt`` and ``neq`` admit two disjoint pieces. Circe's ``bt`` is
+    inclusive at both ends, so ``!bt`` is strictly outside them.
+
+    An absent or unreadable filter returns :data:`_ANY_VALUE` -- everything -- so an
+    unreadable bound overlaps rather than silences.
+    """
+    if not isinstance(value, Mapping):
+        return _ANY_VALUE
+    low = _numeric(value.get("Value"))
+    if low is None:
+        return _ANY_VALUE
+    high = _numeric(value.get("Extent"))
+    negative_infinity, infinity = float("-inf"), float("inf")
+    op = str(value.get("Op") or "").strip().lower()
+    if op == "gt":
+        return ((low, False, infinity, True),)
+    if op == "gte":
+        return ((low, True, infinity, True),)
+    if op == "lt":
+        return ((negative_infinity, True, low, False),)
+    if op == "lte":
+        return ((negative_infinity, True, low, True),)
+    if op == "eq":
+        return ((low, True, low, True),)
+    if op in {"neq", "!eq"}:
+        return (
+            (negative_infinity, True, low, False),
+            (low, False, infinity, True),
+        )
+    if high is None:
+        return _ANY_VALUE
+    if op == "bt":
+        return ((low, True, high, True),)
+    if op == "!bt":
+        return (
+            (negative_infinity, True, low, False),
+            (high, False, infinity, True),
+        )
+    return _ANY_VALUE
+
+
+def _range_is_inhabited(value_range: tuple[float, bool, float, bool]) -> bool:
+    """Whether any number lies in the range. ``(6.5, False, 6.5, False)`` does not."""
+    low, low_closed, high, high_closed = value_range
+    return low < high or (low == high and low_closed and high_closed)
+
+
+def _subtract_range(
+    minuend: tuple[float, bool, float, bool],
+    subtrahend: tuple[float, bool, float, bool],
+) -> list[tuple[float, bool, float, bool]]:
+    """The part of ``minuend`` no value of ``subtrahend`` covers -- at most two pieces."""
+    low, low_closed, high, high_closed = minuend
+    cut_low, cut_low_closed, cut_high, cut_high_closed = subtrahend
+    pieces = [
+        (low, low_closed, cut_low, not cut_low_closed),
+        (cut_high, not cut_high_closed, high, high_closed),
+    ]
+    return [piece for piece in pieces if _range_is_inhabited(piece)]
+
+
+def _value_ranges_cover(
+    outer: tuple[tuple[float, bool, float, bool], ...],
+    inner: tuple[tuple[float, bool, float, bool], ...],
+) -> bool:
+    """Whether ``outer`` covers every value ``inner`` admits -- ``inner`` minus ``outer``
+    is empty. Containment, NOT overlap, and the difference is the whole check below."""
+    remaining = [piece for piece in inner if _range_is_inhabited(piece)]
+    if not remaining:
+        return True
+    for cut in outer:
+        remaining = [
+            piece for chunk in remaining for piece in _subtract_range(chunk, cut)
+        ]
+        if not remaining:
+            return True
+    return not remaining
+
+
+def _unit_ids_compatible(left: frozenset[int], right: frozenset[int]) -> bool:
+    """Whether one measurement could satisfy both unit filters. Empty is unconstrained."""
+    return not left or not right or bool(left & right)
+
+
+def bound_contradicted_presence_criteria(expression: dict[str, Any]) -> list[str]:
+    """Locators for a mandatory presence whose every admissible value a mandatory absence
+    forbids, escapable only through a unit the absence does not filter on.
+
+    The pair reads the same concept-set members, the same domain and the same window, and
+    the absence's forbidden range COVERS the presence's admissible range entirely, so no
+    value satisfies both. What keeps it from being provably empty is the unit filter: the
+    two sides constrain different unit sets, so a result recorded in a unit the absence
+    does not name escapes. At a site that records the analyte one way that is effectively
+    nobody, which is why this is separate from :func:`unsatisfiable_presence_rules` and
+    carries less weight.
+
+    The motivating case, ``output/site_gap/2026-09-18_verify4/DELIVERY/`` CARMELINA both
+    arms::
+
+        #12 'HbA1c at least 6.5% + HbA1c at most 10.0%'
+            ALL( >=1  Measurement cs8  bt 6.5..10  NO unit filter  win -180..0 )
+        #13 'HbA1c below lower limit + HbA1c above upper limit'
+            ALL( ==0  Measurement cs10 gte 6.5     unit[8554]      win -180..0
+               , ==0  Measurement cs11 lte 10.0    unit[8554]      win -180..0 )
+
+    A repair rewrote #12 to a single ``bt`` and dropped its unit filter, so
+    :func:`unsatisfiable_presence_rules` correctly reports nothing -- no signature
+    matches. #13 was left untouched, and ``gte 6.5`` covers the whole of ``6.5..10``, so
+    a patient whose in-range HbA1c carries ``%`` satisfies #12 and fails #13. What
+    survives is "only patients whose HbA1c is recorded in a non-% unit".
+
+    The predicate is CONTAINMENT, not overlap, and that choice is the one measurement here
+    that changed a decision. Overlap -- "some value satisfies both", the reading a
+    self-contradiction seems to call for -- was implemented first and measured over the
+    same 30 files: 28 findings across 14 files, of which 24 are the ordinary way a range
+    is written and are perfectly satisfiable. ``>=1 HbA1c gte 6.5`` beside
+    ``==0 HbA1c gte 10`` overlaps on ``[10, inf)`` while every patient between 6.5 and 10
+    satisfies both, and that pair is in every CARMELINA, CAROLINA and EMPA-REG arm of the
+    2026-06-24 and 2026-08-31 deliveries. Containment separates the two exactly: the
+    absence has to forbid the presence's WHOLE range, which ``gte 10`` does not and
+    ``gte 6.5`` does.
+
+    Both sides must be mandatory (:func:`_conjoined_entries`). The consequence is
+    measured, not assumed: this check reports NOTHING on the 2026-09-12 CARMELINA files,
+    because there the presences sit under a top-level ``ANY``. That file is
+    :func:`unsatisfiable_presence_rules`' finding, and reading a disjunct as mandatory
+    here to reach it would report every ordinary alternative in the corpus.
+
+    Three deliberate silences:
+
+    * **a bound the absence only clips.** See the containment paragraph above -- 24 of the
+      28 overlap-era findings were this shape, and every one of them was correct CIRCE.
+    * **incompatible units.** Two disjoint unit filters select disjoint rows, so neither
+      constrains the other.
+    * **a presence under ``ANY``.** An alternative survives a contradicted branch.
+
+    Measured at ``28a7299`` over the same 48 files: four findings, all of them the
+    ``verify4`` CARMELINA pair above (two per arm, one per absence), and zero on the 24
+    delivered files and zero on the 18 hand-built gold files. A pair whose unit filters
+    were IDENTICAL and non-empty would be
+    provably empty rather than escapable and belongs at the severity of
+    :func:`unsatisfiable_presence_rules`; no such pair exists in either corpus, so the
+    distinction is recorded here rather than branched on.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per contradicted presence, empty when none.
+    """
+    member_ids_by_codeset = _member_ids_by_codeset(expression)
+    presences: list[tuple[str, tuple[Any, ...], Mapping[str, Any]]] = []
+    absences: list[tuple[str, tuple[Any, ...], Mapping[str, Any]]] = []
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        if not isinstance(rule, Mapping):
+            continue
+        where = f"InclusionRules[{index}] {(rule.get('name') or '')!r}"
+        for entry in _conjoined_entries(rule.get("expression") or {}):
+            signature = _criterion_signature(member_ids_by_codeset, entry)
+            if signature is None:
+                continue
+            # The pairing key is the signature with the bound and the unit list removed:
+            # those two are what the overlap test reads, and everything else has to match
+            # exactly for the pair to be about one population at all.
+            shared = (signature[0], signature[1], signature[4], signature[5])
+            if _required_occurrence(entry):
+                presences.append((where, shared, entry))
+            elif _forbidden_occurrence(entry):
+                absences.append((where, shared, entry))
+
+    findings: list[str] = []
+    for present_where, present_shared, present_entry in presences:
+        present_body = _criterion_body(present_entry)
+        for absent_where, absent_shared, absent_entry in absences:
+            if present_shared != absent_shared:
+                continue
+            absent_body = _criterion_body(absent_entry)
+            if present_body is None or absent_body is None:
+                continue
+            if not _value_ranges_cover(
+                _value_ranges(absent_body[1].get("ValueAsNumber")),
+                _value_ranges(present_body[1].get("ValueAsNumber")),
+            ):
+                continue
+            if not _unit_ids_compatible(
+                _criterion_unit_ids(present_body[1]),
+                _criterion_unit_ids(absent_body[1]),
+            ):
+                continue
+            findings.append(
+                f"{present_where}: {present_body[0]} over codeset "
+                f"{present_body[1].get('CodesetId')} requires at least one occurrence "
+                f"{_render_bound_phrase(present_body[1])} while {absent_where} requires "
+                f"ZERO occurrences {_render_bound_phrase(absent_body[1])} over the "
+                f"IDENTICAL {len(present_shared[0])} concept ids in the same window -- "
+                f"the absence forbids EVERY value the presence admits, so the only "
+                f"patients left are those whose result carries a unit the absence does "
+                f"not filter on"
+            )
+    return findings
+
+
+def _render_bound_phrase(payload: Mapping[str, Any]) -> str:
+    """``'gte 6.5 in unit 8554'`` -- the bound and unit filter of one criterion, for a
+    locator. ``_render_numeric_bound`` renders the number; this adds the unit list, which
+    is the axis that decides whether an overlapping pair is escapable."""
+    value = payload.get("ValueAsNumber")
+    bound = _render_numeric_bound(value) if isinstance(value, Mapping) else "with no bound"
+    units = sorted(_criterion_unit_ids(payload))
+    return f"{bound} {'in unit ' + ', '.join(map(str, units)) if units else 'in any unit'}"
 
 
 #: A connective that joins alternatives. ``and/or`` is matched by ``\bor\b`` -- the

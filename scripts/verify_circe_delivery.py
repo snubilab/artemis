@@ -220,6 +220,27 @@ Checks per file:
     ``src.utils.circe_lint.confusable_concept_sets`` and the table
     ``CONFUSABLE_ANALYTES`` beside it.
 
+(s) no inclusion rule requires at least one occurrence of criteria that are EVERY ONE of
+    them forbidden outright by a mandatory zero-occurrence criterion elsewhere in the
+    file. CIRCE conjoins every ``InclusionRules`` entry, so such a rule selects nobody on
+    any CDM with any data, and no ETL or vocabulary can change that. Criteria are matched
+    on what they SELECT -- concept-set members, domain, value bound, unit list, window --
+    never on ``CodesetId``, which is what makes it see past four different codeset ids
+    holding the identical members. Checks (m) and (n) are the near misses and both return
+    nothing on the motivating file: (m) needs identical members under DIFFERENT names and
+    all four sets are named ``'HbA1c'``; (n) drops an absence that carries a value bound
+    and does not descend a top-level ``ANY``, and the shipped rules are both. Measured on
+    ``deliveries/2026-09-12/``: ``carmelina_comparator`` and ``carmelina_treatment``,
+    ``InclusionRules[11]`` ``'HbA1c at least 6.5% + HbA1c at most 10.0%'``, whose two
+    disjuncts are forbidden verbatim by ``InclusionRules[12]``'s two absences -- and the
+    hospital's own per-rule counts corroborate it, the two rules summing to the entry
+    count exactly in all four measured arms. Zero on the other 22 delivered files, zero on
+    the six ``output/site_gap/2026-09-18_verify4/DELIVERY/`` files and zero on the 18
+    hand-built TROY v1.1 files under ``data/gold/``. See
+    ``src.utils.circe_lint.unsatisfiable_presence_rules``, and
+    ``bound_contradicted_presence_criteria`` beside it for the weaker not-provably-empty
+    shape this one deliberately does not report.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -293,6 +314,7 @@ from src.utils.circe_lint import (  # noqa: E402
     ungrounded_criteria,
     unitless_value_bound_criteria,
     unreadable_value_attributes,
+    unsatisfiable_presence_rules,
 )
 from src.utils.criterion_refusal import (  # noqa: E402
     REFUSAL_CODES,
@@ -2210,6 +2232,20 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"contradictory presence/absence ({len(presence_absence)}): "
                 f"{'; '.join(presence_absence)}"
+            )
+
+        # (s) an inclusion rule whose EVERY required criterion is forbidden outright by a
+        # mandatory zero-occurrence criterion elsewhere in the file. Checks (m) and (n)
+        # are the nearest and both stay silent on the shipped shape: (m) excludes
+        # identical names and all four HbA1c sets carry one, (n) drops a bounded absence
+        # and does not descend a top-level `ANY`. Matching on what a criterion SELECTS
+        # rather than on its `CodesetId` is what makes four ids over identical members
+        # visible as one predicate.
+        unsatisfiable_presences = unsatisfiable_presence_rules(expression)
+        if unsatisfiable_presences:
+            reasons.append(
+                f"unsatisfiable presence rule ({len(unsatisfiable_presences)}): "
+                f"{'; '.join(unsatisfiable_presences)}"
             )
 
         # (o) a rule emitted as a conjunction over a stated disjunction. Check (n)
