@@ -41,9 +41,22 @@ step "0 environment gate"
 "$PY" -m pytest -q tests/test_environment_matches_requirements.py
 
 step "1 LLM backend"
-LLM_MODEL="$(rg -N '^LLM_MODEL=' .env | cut -d= -f2-)"
-VLLM_BASE_URL="$(rg -N '^VLLM_BASE_URL=' .env | cut -d= -f2-)"
-served="$(curl -s --max-time 10 "$VLLM_BASE_URL/models" | "$PY" -c 'import json,sys; print(" ".join(m["id"] for m in json.load(sys.stdin)["data"]))')"
+# Check the value the RUN will use, not the one the file holds. `src/settings.py` is a
+# pydantic BaseSettings, so an exported variable beats `.env` -- reading `.env`
+# unconditionally here checked a different backend than the extraction would call, and
+# on 2026-09-22 that meant the gate passed on an address the run could not reach
+# (and, had it been reachable but wrong, would have passed on the wrong model).
+LLM_MODEL="${LLM_MODEL:-$(rg -N '^LLM_MODEL=' .env | cut -d= -f2-)}"
+VLLM_BASE_URL="${VLLM_BASE_URL:-$(rg -N '^VLLM_BASE_URL=' .env | cut -d= -f2-)}"
+echo "checking $VLLM_BASE_URL (env override: ${VLLM_BASE_URL_SOURCE:-env-or-.env})"
+models_json="$(curl -s --max-time 10 "$VLLM_BASE_URL/models")" || true
+[[ -n "$models_json" ]] || {
+  echo "FAIL: $VLLM_BASE_URL/models returned nothing -- the backend is unreachable."
+  echo "      A silent fallback here would run the extraction on OpenRouter and call it"
+  echo "      a re-extraction of the same model, so this stops."
+  exit 1
+}
+served="$(printf '%s' "$models_json" | "$PY" -c 'import json,sys; print(" ".join(m["id"] for m in json.load(sys.stdin)["data"]))')"
 case "$LLM_MODEL" in
   vllm/*) want="${LLM_MODEL#vllm/}" ;;
   *) echo "FAIL: LLM_MODEL=$LLM_MODEL has no vllm/ prefix and would route to OpenRouter"; exit 1 ;;
