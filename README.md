@@ -64,7 +64,6 @@ The repository holds code only. A fresh clone needs the following before the pip
 |------|-------------------|---------|---------------|
 | `.env` | — | Credentials and endpoints for every agent | Copy `.env.example` and fill it in. Never commit it. |
 | `chroma_db/` | 3.0 GB | Agent 2 concept search | Lab shared storage: `<path to be filled>` |
-| `data/pubchem/pubchem_synonyms.sqlite` | 22 GB | Agent 2 drug-name normalizer | Rebuild with `scripts/build_pubchem_synonym_db.py`, or copy from lab shared storage |
 | `data/gold/` | 2.6 MB | Per-criterion evaluation (TROY v1.1 CIRCE gold) | Lab shared storage. Keep it inside the lab until its licence is confirmed. |
 | OMOP vocabulary | — | Mounted at `/omop_vocab` by the Broadsea compose stack | Athena download, or lab shared storage |
 
@@ -72,6 +71,9 @@ The pipeline also connects to an OMOP CDM PostgreSQL (`OMOP_DB_*`), Neo4j for th
 knowledge-graph expander (`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`; these three are
 not in `.env.example`), and an LLM endpoint (`OPENROUTER_API_KEY`, or `VLLM_BASE_URL`
 for a local model).
+
+`data/pubchem/` (22 GB) is not needed. Its only reader,
+`src/agents/agent2/drug_name_normalizer.py`, has no caller in the current pipeline.
 
 **Never copy `data/site_snapshots/`.** It holds the prevalence snapshots received from
 partner hospitals. It is gitignored and must stay out of every copy of this repository.
