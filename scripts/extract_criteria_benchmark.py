@@ -72,9 +72,27 @@ def _is_meaningful_name(name: str) -> bool:
 
 
 def _extract_concept_ids(concept_set: dict) -> list[int]:
-    """Return sorted list of CONCEPT_IDs from a ConceptSet object."""
+    """Return sorted CONCEPT_IDs that the expert INCLUDED in this concept set.
+
+    `isExcluded` was ignored, so every concept the expert deliberately removed was
+    recorded as a correct answer. Measured on the shipped benchmark: 596 of 2,109
+    ground-truth ids (28.3%) are excluded concepts, across 33 of 242 questions, and
+    three questions are 100% excluded -- a mapper scores full marks there only by
+    returning exactly what the expert deleted, and is penalised on both recall and
+    precision for getting it right.
+
+    benchmark_v5.py:336-343 already documents the intended rule ("isExcluded=true:
+    remove from result set") and implements it. This extractor and the scorer in
+    quick_concept_benchmark_v2.py never read the flag, so the rule existed in one
+    place and the gold was built in another.
+
+    Descendant expansion (`includeDescendants`) is a separate question and is
+    deliberately left alone here.
+    """
     ids: list[int] = []
     for item in concept_set.get("expression", {}).get("items", []):
+        if item.get("isExcluded"):
+            continue
         concept = item.get("concept", {})
         cid = concept.get("CONCEPT_ID")
         if cid is not None:
