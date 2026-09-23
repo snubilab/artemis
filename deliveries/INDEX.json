@@ -198,6 +198,59 @@
           "bytes": 226443
         }
       ]
+    },
+    {
+      "date": "2026-09-23",
+      "tag": "delivery/2026-09-23",
+      "sent_confirmed_by_user": true,
+      "studies": [
+        "CARMELINA",
+        "CAROLINA",
+        "EMPA-REG"
+      ],
+      "sent_zip": "output/circe_be/tte_circe_2026-09-23.zip",
+      "head_at_send": "4de5e93",
+      "content_code_version": "849dba5",
+      "version_note": "Cold re-extraction output/site_gap/2026-09-22_verify5/ started 09-22 16:38 at 849dba5; head_at_send 4de5e93 differs only in scripts/run_fix_verification.sh, which does not touch the export path. The zip went out under the name tte_circe_2026-09-23.zip, not the tte_circe_3studies_arms_<date>.zip convention; recorded as sent. Zip md5 a38f574706ce824c36fdeadb1f7a2a62.",
+      "file_count": 6,
+      "files": [
+        {
+          "name": "carmelina_comparator.circe.json",
+          "path_in_zip": "carmelina_comparator.circe.json",
+          "md5": "0b6f90129a42c301341f188e6f3b2ac5",
+          "bytes": 200534
+        },
+        {
+          "name": "carmelina_treatment.circe.json",
+          "path_in_zip": "carmelina_treatment.circe.json",
+          "md5": "b1d46519e1e34c6d94aa8ff1cd352464",
+          "bytes": 199747
+        },
+        {
+          "name": "carolina_comparator.circe.json",
+          "path_in_zip": "carolina_comparator.circe.json",
+          "md5": "9dc8ee3f03f900c9bc1444bf5abfc416",
+          "bytes": 416748
+        },
+        {
+          "name": "carolina_treatment.circe.json",
+          "path_in_zip": "carolina_treatment.circe.json",
+          "md5": "96c6b0acdbed95f8889e2df7b9ff2f08",
+          "bytes": 416747
+        },
+        {
+          "name": "empa-reg_comparator.circe.json",
+          "path_in_zip": "empa-reg_comparator.circe.json",
+          "md5": "bfa0e386b05bc13047b98d3107115253",
+          "bytes": 233271
+        },
+        {
+          "name": "empa-reg_treatment.circe.json",
+          "path_in_zip": "empa-reg_treatment.circe.json",
+          "md5": "af2204206d5478b8a4e12749b4ccabf8",
+          "bytes": 231255
+        }
+      ]
     }
   ]
 }
