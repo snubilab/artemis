@@ -1,0 +1,157 @@
+diff --git a/scripts/extract_criteria_benchmark.py b/scripts/extract_criteria_benchmark.py
+index c831352..df8309d 100644
+--- a/scripts/extract_criteria_benchmark.py
++++ b/scripts/extract_criteria_benchmark.py
+@@ -23,7 +23,9 @@ from pathlib import Path
+ # Constants
+ # ---------------------------------------------------------------------------
+ 
+-STUDIES_DIR = Path(__file__).parent.parent / "data" / "ohdsi_studies"
++STUDIES_DIR = Path(
++    os.getenv("BENCHMARK_STUDIES_DIR", Path(__file__).parent.parent / "data" / "ohdsi_studies")
++)
+ OUTPUT_DIR = Path(__file__).parent.parent / "data" / "benchmark_data"
+ OUTPUT_FILE = OUTPUT_DIR / "ohdsi_criteria_benchmark.json"
+ 
+diff --git a/scripts/quick_concept_benchmark_v2.py b/scripts/quick_concept_benchmark_v2.py
+index e298fd9..4b4752a 100644
+--- a/scripts/quick_concept_benchmark_v2.py
++++ b/scripts/quick_concept_benchmark_v2.py
+@@ -98,6 +98,11 @@ ALLOWED_RUNTIME_ENV = {
+     "RAG_COLLECTION_NAME",
+     "RAG_TOP_K",
+     "AGENT2_CRITIC_MODEL_TIER",
++    # Without these the bootstrap below wipes them from os.environ, so a
++    # shell-exported local-model target silently reverts to the default OpenAI
++    # model and the run is mislabelled. (LLM_MODEL is already allowlisted above.)
++    "VLLM_BASE_URL",
++    "VLLM_API_KEY",
+ }
+ SAFE_PASSTHROUGH_ENV = {
+     "HOME",
+@@ -202,6 +207,13 @@ def bootstrap_runtime_env() -> None:
+         if key not in os.environ and key in dotenv_values:
+             os.environ[key] = dotenv_values[key]
+ 
++    # Pin the critic to one model so it is a constant across mapper arms. In "auto"
++    # mode select_critic_model() routes Condition/Drug/Measurement to gpt-4o-mini --
++    # the three domains carrying nearly every criterion in this benchmark -- so a run
++    # labelled with a local model would mostly reflect whatever OpenAI tier answered.
++    # An explicit shell/.env value still wins; this only fills the default.
++    os.environ.setdefault("AGENT2_CRITIC_MODEL_TIER", "gpt-4o")
++
+     os.environ.setdefault("CHROMA_PERSIST_DIRECTORY", str(APP_DIR / "chroma_db"))
+     os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+@@ -427,6 +439,7 @@ def save_progress(
+         "sample_ids": [item["id"] for item in sample],
+         "domains": list(CLINICAL_DOMAINS),
+         "mappers": mapper_names,
++        "critic_model_tier": os.environ.get("AGENT2_CRITIC_MODEL_TIER"),
+         "progress": {slugify_mapper(name): len(results.get(name, [])) for name in mapper_names},
+         "results_raw": serialize_results_raw(mapper_names, results),
+     }
+@@ -1056,6 +1069,7 @@ def save_results(
+         "sample_ids": [item["id"] for item in sample],
+         "domains": list(CLINICAL_DOMAINS),
+         "mappers": mapper_names,
++        "critic_model_tier": os.environ.get("AGENT2_CRITIC_MODEL_TIER"),
+         "progress": {slugify_mapper(name): len(results.get(name, [])) for name in mapper_names},
+         "results_raw": serialize_results_raw(mapper_names, results),
+         "aggregate": aggregate,
+diff --git a/src/agents/agent2/critic.py b/src/agents/agent2/critic.py
+index f191c66..1c5fa7c 100644
+--- a/src/agents/agent2/critic.py
++++ b/src/agents/agent2/critic.py
+@@ -48,17 +48,29 @@ def select_critic_model(domain_hint: str | None = None) -> str:
+     Returns:
+         Model name string ("gpt-4o" or "gpt-4o-mini").
+     """
+-    tier = os.environ.get("AGENT2_CRITIC_MODEL_TIER", "auto").strip()
+-
+-    if tier == "gpt-4o":
++    # BENCHMARK INSTRUMENT FIX, 2026-07-29. Default changed from "auto" to "follow".
++    #
++    # This is a measurement-instrument defect, not part of the pipeline under test, so
++    # it is corrected in this baseline worktree as well as in the main checkout. Auto
++    # mode returned the literal "gpt-4o-mini" for Condition, Drug and Measurement —
++    # 217 of the benchmark's 242 items (90%) — and a name without the vllm/ prefix
++    # falls through to OpenRouter no matter what LLM_MODEL says. Every "local model"
++    # row would have been 90% produced by OpenAI, with a clean-looking table at the end.
++    #
++    # AGENT2_CRITIC_MODEL_TIER=gpt-4o was the earlier mitigation. It was not set in the
++    # benchmark process that was running when this was written, which is exactly why an
++    # env var is the wrong place for this: forgetting it fails silently.
++    tier = os.environ.get("AGENT2_CRITIC_MODEL_TIER", "follow").strip()
++
++    if tier in ("", "follow"):
++        return None
++
++    if tier == "auto":
++        if domain_hint and domain_hint in _WELL_DEFINED_DOMAINS:
++            return "gpt-4o-mini"
+         return "gpt-4o"
+-    if tier == "gpt-4o-mini":
+-        return "gpt-4o-mini"
+ 
+-    # Auto mode: domain-based selection
+-    if domain_hint and domain_hint in _WELL_DEFINED_DOMAINS:
+-        return "gpt-4o-mini"
+-    return "gpt-4o"
++    return tier
+ 
+ 
+ # ── Output Schema ──────────────────────────────────────────
+@@ -375,13 +387,17 @@ class ConceptCritic:
+ 
+         # Domain-aware model tiering (REQ-02)
+         model_name = select_critic_model(domain_hint)
+-        if model_name != "gpt-4o":
+-            # Use tiered model instead of default
++        if model_name is not None:
++            # Tiering explicitly asked for a specific model.
+             llm = get_llm(model_name=model_name, temperature=0.0)
+             chain = self.prompt | llm | self.parser
+         else:
++            # None means "follow LLM_MODEL", which _default_chain already holds.
+             chain = self._default_chain
+-        logger.info(f"[Critic] Model: {model_name} (domain={domain_hint})")
++        logger.info(
++            f"[Critic] Model: {model_name or os.environ.get('LLM_MODEL', 'gpt-4o')} "
++            f"(domain={domain_hint})"
++        )
+ 
+         try:
+             result = chain.invoke({
+diff --git a/tests/test_interaction_regression.py b/tests/test_interaction_regression.py
+index b5e6d64..ff4da00 100644
+--- a/tests/test_interaction_regression.py
++++ b/tests/test_interaction_regression.py
+@@ -46,8 +46,13 @@ def _build_critic(self_reflect: bool) -> ConceptCritic:
+ def _run_evaluate(critic: ConceptCritic, mock_result: dict, query: str,
+                   seed_ids: list, kg_list: list, kg_concept_ids=None):
+     """Run evaluate() with a mocked LLM chain and empty cache."""
++    # None means "follow LLM_MODEL", which routes evaluate() through _default_chain —
++    # the chain this helper replaces with a mock. "gpt-4o" was the old sentinel for the
++    # same thing; after the critic default flipped it became a real request for a
++    # specific model, so these tests made billed OpenAI calls whose responses decided
++    # the assertions.
+     with patch.object(critic, "_cache") as mock_cache, \
+-         patch("src.agents.agent2.critic.select_critic_model", return_value="gpt-4o"):
++         patch("src.agents.agent2.critic.select_critic_model", return_value=None):
+         mock_cache.make_key.return_value = "test-key"
+         mock_cache.get.return_value = None  # Force fresh evaluation
+ 
+diff --git a/tests/test_map_002_m3_critic_reflection.py b/tests/test_map_002_m3_critic_reflection.py
+index 44a8ca5..c6ee90f 100644
+--- a/tests/test_map_002_m3_critic_reflection.py
++++ b/tests/test_map_002_m3_critic_reflection.py
+@@ -98,7 +98,7 @@ class TestCriticSelfReflection:
+     def _run_evaluate(self, critic, mock_result, query, seed_ids, kg, domain_hint="Condition"):
+         """Helper to run evaluate with mocked chain and cache."""
+         with patch.object(critic, "_cache") as mock_cache, \
+-             patch("src.agents.agent2.critic.select_critic_model", return_value="gpt-4o"):
++             patch("src.agents.agent2.critic.select_critic_model", return_value=None):
+             mock_cache.make_key.return_value = "key"
+             mock_cache.get.return_value = None
+ 
