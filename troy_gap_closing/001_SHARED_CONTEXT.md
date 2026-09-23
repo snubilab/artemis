@@ -95,7 +95,6 @@ DOMAIN_TO_CRITERIA_TYPE = {
 
 - **기존 테스트**: `tests/test_agent3.py` (4 tests: mappings, structure, concept_sets, inclusion_rules)
 - **실행 명령**: `cd /Users/kyh/Workspace/Broadsea/artemis && conda run -n artemis python -m pytest tests/test_agent3.py -v`
-- **LEADER 파이프라인**: `notebooks/leader_step_by_step.ipynb`
 
 ## 5. TROY Ground Truth (LEADER DPP-4)
 
