@@ -120,3 +120,123 @@ def test_should_reject_a_match_that_expands_to_fewer_than_three_ingredients(atc,
 
     assert matched is None
     assert ingredient_ids == []
+
+
+# ── Rank-1 is not the only candidate ───────────────────────────────────────────
+#
+# For antidiabetic wording the nearest ATC entries are A10X / A10XX ('OTHER DRUGS USED
+# IN DIABETES', 2 and 1 ingredients) at an exact distance tie, and A10 'DRUGS USED IN
+# DIABETES' (84 ingredients) sits only a hair further away. Querying one result meant
+# the <3-ingredient rule rejected A10X and A10 was never looked at, so the seed fell
+# to the product path and shipped as two or three drugs. Rankings below are the
+# observed ChromaDB output for the store's own seeds (atc_drug_classes, 2026-10-07).
+
+A10X = (21600797, "A10X", "OTHER DRUGS USED IN DIABETES")
+A10XX = (955112, "A10XX", "Other drugs used in diabetes")
+A10 = (21600712, "A10", "DRUGS USED IN DIABETES")
+A08AX = (21600695, "A08AX", "Other antiobesity drugs")
+V06A = (21605343, "V06A", "DIET FORMULATIONS FOR TREATMENT OF OBESITY")
+A10BX = (21600788, "A10BX", "Other blood glucose lowering drugs, excl. insulins")
+A10BH = (21600783, "A10BH", "Dipeptidyl peptidase 4 (DPP-4) inhibitors")
+L04AK = (954954, "L04AK", "Dihydroorotate dehydrogenase (DHODH) inhibitors")
+
+INGREDIENTS_BY_CLASS = {
+    A10X[0]: [1, 2],
+    A10XX[0]: [1],
+    A10[0]: [1503297, 1580747, 1597756, 1502905, 44785829],
+    A08AX[0]: [1],
+    V06A[0]: [],
+    A10BH[0]: INGREDIENTS,
+    L04AK[0]: [7, 8],
+}
+
+
+class _RankedCollection:
+    """Answers with the observed ranking, truncated to ``n_results`` like Chroma."""
+
+    def __init__(self, ranking):
+        self._ranking = ranking
+
+    def query(self, query_texts, n_results):
+        top = self._ranking[:n_results]
+        return {
+            "documents": [[name for (_cid, _code, name), _d in top]],
+            "metadatas": [[{"concept_id": cid, "concept_code": code}
+                           for (cid, code, _n), _d in top]],
+            "distances": [[d for _c, d in top]],
+        }
+
+
+class _ClassCursor:
+    """Returns the ingredients of whichever ATC concept the expander asks about."""
+
+    def __init__(self):
+        self.asked = []
+        self._rows = []
+
+    def execute(self, _sql, params=None):
+        atc_id = params[0]
+        self.asked.append(atc_id)
+        self._rows = [(i,) for i in INGREDIENTS_BY_CLASS[atc_id]]
+
+    def fetchall(self):
+        return self._rows
+
+
+class _ClassConn:
+    def __init__(self):
+        self.cur = _ClassCursor()
+
+    def cursor(self):
+        return self.cur
+
+
+@pytest.fixture
+def ranked_atc(monkeypatch):
+    def _install(ranking):
+        monkeypatch.setattr(dce, "expand_drug_class_via_umls", lambda *a, **k: (None, []))
+        collection = _RankedCollection(ranking)
+        monkeypatch.setattr("src.utils.vector.get_chroma_client",
+                            lambda: type("C", (), {"get_collection": lambda _s, _n: collection})())
+        return _ClassConn()
+    return _install
+
+
+def test_should_accept_the_next_class_when_rank_one_has_fewer_than_three_ingredients(ranked_atc):
+    # "Anti-diabetic medication": A10X 0.3977 (2), A10XX 0.3977 (1), A10 0.4054 (84)
+    conn = ranked_atc([(A10X, 0.3977), (A10XX, 0.3977), (A10, 0.4054),
+                       (A10BX, 0.7116)])
+
+    matched, ingredient_ids = dce.expand_drug_class_via_vocab(
+        "Anti-diabetic medication", conn, schema="cdm")
+
+    assert matched == "DRUGS USED IN DIABETES"
+    assert ingredient_ids == INGREDIENTS_BY_CLASS[A10[0]]
+
+
+def test_should_accept_nothing_when_the_only_three_ingredient_class_is_beyond_threshold(
+        ranked_atc):
+    # "Anti-obesity drug": A08AX 0.6588 (1), V06A 0.7016 (0), A10X 0.8125, A10XX 0.8125,
+    # A10 0.8353 (84).
+    # A10 has enough ingredients but sits past 0.75 -- the distance gate still decides.
+    conn = ranked_atc([(A08AX, 0.6588), (V06A, 0.7016), (A10X, 0.8125), (A10XX, 0.8125),
+                       (A10, 0.8353)])
+
+    matched, ingredient_ids = dce.expand_drug_class_via_vocab(
+        "Anti-obesity drug", conn, schema="cdm")
+
+    assert matched is None
+    assert ingredient_ids == []
+    assert A10[0] not in conn.cur.asked, "a class beyond the threshold must not be expanded"
+
+
+def test_should_keep_rank_one_when_rank_one_already_passes(ranked_atc):
+    # "DPP-4 inhibitors": A10BH 0.4557 (8), then L04AK 0.9150 -- nothing past rank 1 is consulted.
+    conn = ranked_atc([(A10BH, 0.4557), (L04AK, 0.9150)])
+
+    matched, ingredient_ids = dce.expand_drug_class_via_vocab(
+        "DPP-4 inhibitors", conn, schema="cdm")
+
+    assert matched == "Dipeptidyl peptidase 4 (DPP-4) inhibitors"
+    assert ingredient_ids == INGREDIENTS
+    assert conn.cur.asked == [A10BH[0]]

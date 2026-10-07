@@ -246,6 +246,13 @@ class ExpressionBuilder:
 
         This prevents overbroad ancestors like "Clinical finding" or "Disease"
         from surviving roll-up and replacing clinically specific concepts.
+
+        RxNorm / RxNorm Extension Ingredients (Drug domain) are exempt: an
+        ingredient's descendants are its products, so the count measures how
+        widely a drug is marketed, not how broad the concept is. The guard used
+        to remove exactly the most-prescribed drugs -- metformin (8,197),
+        sitagliptin (760), aspirin (10,719). Every other concept, including ATC
+        classes in the Drug domain, is still subject to it.
         """
         threshold = int(os.environ.get("AGENT2_ROLLUP_MAX_DESCENDANTS", "500"))
         if len(candidates) <= 1:
@@ -253,11 +260,15 @@ class ExpressionBuilder:
 
         concept_ids = [c.concept_id for c in candidates]
         query = f"""
-            SELECT ancestor_concept_id, COUNT(*) AS desc_count
-            FROM {self.schema}.concept_ancestor
-            WHERE ancestor_concept_id = ANY(:ids)
-              AND ancestor_concept_id != descendant_concept_id
-            GROUP BY ancestor_concept_id
+            SELECT ca.ancestor_concept_id, COUNT(*) AS desc_count
+            FROM {self.schema}.concept_ancestor ca
+            JOIN {self.schema}.concept c ON c.concept_id = ca.ancestor_concept_id
+            WHERE ca.ancestor_concept_id = ANY(:ids)
+              AND ca.ancestor_concept_id != ca.descendant_concept_id
+              AND NOT (c.domain_id = 'Drug'
+                       AND c.concept_class_id = 'Ingredient'
+                       AND c.vocabulary_id IN ('RxNorm', 'RxNorm Extension'))
+            GROUP BY ca.ancestor_concept_id
             HAVING COUNT(*) > :threshold
         """
 

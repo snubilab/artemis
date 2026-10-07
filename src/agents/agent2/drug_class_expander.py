@@ -24,6 +24,11 @@ _MRCONSO_DB_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "..", "data", "umls", "mrconso.sqlite"
 )
 
+# How many ranked ATC classes `expand_drug_class_via_vocab` considers. Each still has
+# to pass the distance threshold and the ≥3-ingredient rule; this only stops rank 1
+# from being the sole candidate.
+_ATC_CANDIDATES = 5
+
 
 def expand_drug_class_via_umls(
     text: str,
@@ -225,51 +230,60 @@ def expand_drug_class_via_vocab(
         logger.warning(f"[DrugClass] ATC collection not available: {e}")
         return None, []
 
-    results = atc_collection.query(query_texts=[text], n_results=1)
+    # Rank 1 alone is not enough: for antidiabetic wording the nearest entries are
+    # A10X / A10XX ('OTHER DRUGS USED IN DIABETES', 2 and 1 ingredients) at an exact
+    # distance tie, with A10 'DRUGS USED IN DIABETES' (84) 0.0004-0.008 further away.
+    # Asking for one result let the <3-ingredient rule reject A10X and never look at
+    # A10. The first candidate, in distance order, that passes BOTH unchanged gates wins.
+    results = atc_collection.query(query_texts=[text], n_results=_ATC_CANDIDATES)
 
     if not results['documents'][0]:
         return None, []
 
-    atc_name = results['documents'][0][0]
-    atc_id = results['metadatas'][0][0]['concept_id']
-    atc_code = results['metadatas'][0][0].get('concept_code', '?')
-    distance = results['distances'][0][0]
-
-    if distance > distance_threshold:
-        logger.info(
-            f"[DrugClass] ATC match '{text}' → '{atc_name}' rejected "
-            f"(dist={distance:.3f} > {distance_threshold})"
-        )
-        return None, []
-
-    logger.info(
-        f"[DrugClass] ATC match '{text}' → '{atc_name}' "
-        f"(code={atc_code}, dist={distance:.3f})"
+    ranked = sorted(
+        zip(results['documents'][0], results['metadatas'][0], results['distances'][0]),
+        key=lambda hit: hit[2],
     )
-
     cur = db_conn.cursor()
-    cur.execute(f"""
-        SELECT DISTINCT c2.concept_id
-        FROM {schema}.concept_ancestor ca
-        JOIN {schema}.concept c2 ON ca.descendant_concept_id = c2.concept_id
-        WHERE ca.ancestor_concept_id = %s
-          AND c2.concept_class_id = 'Ingredient'
-          AND c2.vocabulary_id IN ('RxNorm', 'RxNorm Extension')
-          AND c2.invalid_reason IS NULL
-    """, (atc_id,))
+    for atc_name, meta, distance in ranked:
+        atc_id = meta['concept_id']
+        atc_code = meta.get('concept_code', '?')
 
-    ingredient_ids = [row[0] for row in cur.fetchall()]
+        if distance > distance_threshold:
+            # Ranked by distance, so every remaining candidate is further away still.
+            logger.info(
+                f"[DrugClass] ATC match '{text}' → '{atc_name}' rejected "
+                f"(dist={distance:.3f} > {distance_threshold})"
+            )
+            return None, []
 
-    # Minimum ingredient count: real drug classes have ≥3.
-    if len(ingredient_ids) > 2:
         logger.info(
-            f"[DrugClass] ATC '{atc_code}' → "
-            f"{len(ingredient_ids)} RxNorm Ingredients"
+            f"[DrugClass] ATC match '{text}' → '{atc_name}' "
+            f"(code={atc_code}, dist={distance:.3f})"
         )
-        return atc_name, ingredient_ids
 
-    logger.info(
-        f"[DrugClass] ATC '{atc_name}' rejected: only "
-        f"{len(ingredient_ids)} ingredients (not a class)"
-    )
+        cur.execute(f"""
+            SELECT DISTINCT c2.concept_id
+            FROM {schema}.concept_ancestor ca
+            JOIN {schema}.concept c2 ON ca.descendant_concept_id = c2.concept_id
+            WHERE ca.ancestor_concept_id = %s
+              AND c2.concept_class_id = 'Ingredient'
+              AND c2.vocabulary_id IN ('RxNorm', 'RxNorm Extension')
+              AND c2.invalid_reason IS NULL
+        """, (atc_id,))
+
+        ingredient_ids = [row[0] for row in cur.fetchall()]
+
+        # Minimum ingredient count: real drug classes have ≥3.
+        if len(ingredient_ids) > 2:
+            logger.info(
+                f"[DrugClass] ATC '{atc_code}' → "
+                f"{len(ingredient_ids)} RxNorm Ingredients"
+            )
+            return atc_name, ingredient_ids
+
+        logger.info(
+            f"[DrugClass] ATC '{atc_name}' rejected: only "
+            f"{len(ingredient_ids)} ingredients (not a class)"
+        )
     return None, []
