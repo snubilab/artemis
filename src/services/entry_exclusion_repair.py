@@ -34,9 +34,28 @@ safety one:
    entry concepts is exactly what a legitimate washout or contraindication rule
    looks like, and repairing it would erase a real exclusion. The repair only
    ever implements what the protocol text already said;
-2. the absence set's resolved closure covers the ENTIRE entry closure. Partial
-   overlap is a population cut, not an unsatisfiable rule -- the detector
-   reports it WARN and this leaves it alone;
+2. the absence set forbids entry concepts on one of two paths
+   (:func:`entry_overlap` decides which, for the gate and the repair alike):
+
+   a. **full coverage** -- its resolved closure covers the ENTIRE entry closure,
+      so the rule as written can never be satisfied;
+   b. **residual after an exception** -- it already carries ``isExcluded`` items
+      whose closure reaches the entry closure, AND it still forbids some entry
+      concepts once they are subtracted. The shape the description-stated
+      exception leaves on the EMPA-REG comparator: 201826 'T2DM' excluded, while
+      44793113 -- a sibling of 201826 under 201820, not a descendant -- is still
+      forbidden through 201820. 2a no longer holds there, and before 2b existed the
+      repair declined and the comparator kept forbidding 44793113.
+
+   The excluded items reaching the entry are 2b's safety condition. They show a
+   stated exception was already APPLIED and that it concerns the entry concept,
+   so subtracting the remainder of the entry completes that exception instead of
+   inventing one. A partial overlap with no such item -- none at all, or only
+   items unrelated to the entry -- is a population cut the protocol may intend; the
+   detector reports it WARN and this leaves it alone. What 2b cannot tell apart:
+   an exception NARROWER than the entry (entry 'diabetes', rule 'other endocrine
+   disorders excluding T2DM') also satisfies it, and the mirror would then subtract
+   the whole entry closure, not just the excepted part;
 3. the criterion's window covers index day 0 AND every group from the rule root
    down to the criterion is Type ALL. A window ending at -1d can be satisfied by
    a patient whose first qualifying event IS the index event; under an ANY group
@@ -45,7 +64,9 @@ safety one:
 Conditions 2 and 3 are precisely the detector's FAIL predicate, and the
 traversal primitives they are computed from live here so that the gate and the
 repair cannot drift apart: ``scripts/verify_entry_exclusion_conflict.py``
-imports them from this module.
+imports them from this module. After a repair, no entry concept is left
+forbidden on either path; a mirror that could not achieve that is declined
+before anything is written.
 
 THE REPAIR ITSELF mirrors the entry concept set's items into the absence set as
 ``isExcluded`` items, rather than listing the resolved closure concept by
@@ -67,7 +88,12 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Iterator
 
-from src.services.conceptset_closure import VocabularyLookup, resolve_concept_set
+from src.services.conceptset_closure import (
+    VocabularyLookup,
+    expand_items,
+    iter_items,
+    resolve_concept_set,
+)
 from src.services.entity_exception import EntityException, detect_entity_exception
 
 #: Keys of a Circe criterion object that are not a domain criterion.
@@ -151,6 +177,46 @@ def iter_absence_criteria(
         yield from iter_absence_criteria(group, here)
 
 
+#: The two ways an absence set can earn a repair; see the module docstring.
+PATH_FULL_COVERAGE = "full-coverage"
+PATH_RESIDUAL_AFTER_EXCEPTION = "residual-after-exception"
+
+
+@dataclass(frozen=True)
+class EntryOverlap:
+    """How one absence set meets the entry closure -- the reading the gate and the
+    repair both act on, so the two cannot disagree about which sets qualify.
+
+    :param overlap: entry concepts the set still forbids, ``isExcluded`` subtracted.
+    :param excepts_entry: an ``isExcluded`` item's closure reaches the entry closure.
+    """
+
+    entry_ids: frozenset[int]
+    overlap: frozenset[int]
+    excepts_entry: bool
+
+    @property
+    def path(self) -> str:
+        """Which repair path qualifies; empty when neither does."""
+        if self.entry_ids and self.overlap == self.entry_ids:
+            return PATH_FULL_COVERAGE
+        if self.overlap and self.excepts_entry:
+            return PATH_RESIDUAL_AFTER_EXCEPTION
+        return ""
+
+
+def entry_overlap(
+    absence_set: dict, entry_ids: set[int], lookup: VocabularyLookup
+) -> EntryOverlap:
+    """Read one absence set against the entry closure, as Circe resolves both."""
+    excluded = [i for i in iter_items(absence_set) if i.is_excluded]
+    return EntryOverlap(
+        entry_ids=frozenset(entry_ids),
+        overlap=frozenset(entry_ids & resolve_concept_set(absence_set, lookup).concept_ids),
+        excepts_entry=bool(excluded) and bool(entry_ids & expand_items(excluded, lookup)),
+    )
+
+
 # --------------------------------------------------------------------------
 # the repair
 # --------------------------------------------------------------------------
@@ -182,6 +248,7 @@ class EntryExclusionRepair:
     codeset_name: str
     excepted: list[str]
     excluded_concept_ids: list[int] = field(default_factory=list)
+    path: str = PATH_FULL_COVERAGE
 
 
 def _rule_texts(rule: dict, criterion: dict) -> list[str]:
@@ -301,10 +368,11 @@ def repair_entry_exclusion_conflicts(
         cs = by_id.get(candidate.codeset_id)
         if cs is None:
             continue
-        absence_ids = resolve_concept_set(cs, lookup).concept_ids
-        if not entry_ids or not entry_ids <= absence_ids:
-            # Condition 2. Partial or no overlap: a population cut at most, and
-            # the detector reports it WARN rather than FAIL.
+        reading = entry_overlap(cs, entry_ids, lookup)
+        if not reading.path:
+            # Condition 2 and the residual path both false: no overlap, or a partial
+            # one no stated exception reached -- a population cut at most, and the
+            # detector reports it WARN rather than FAIL.
             continue
 
         items = (cs.setdefault("expression", {})).setdefault("items", [])
@@ -316,6 +384,21 @@ def repair_entry_exclusion_conflicts(
         added = [deepcopy(m) for m in mirrored
                  if (m.get("concept") or {}).get("CONCEPT_ID") not in already]
         if not added:
+            continue
+        # The repair's post-condition, checked before anything is written: no entry
+        # concept left forbidden. An excluded item already carrying an entry id with
+        # narrower flags would be skipped by the dedupe above and leave a residual;
+        # declining keeps the set as it was, and the detector still fails it.
+        repaired = {**cs, "expression": {**cs["expression"], "items": items + added}}
+        left = entry_overlap(repaired, entry_ids, lookup).overlap
+        if left:
+            logging.warning(
+                "[TTE] entry-exclusion repair declines on rule #%d %r: mirroring the "
+                "entry set into concept set %d would still forbid %d entry concept(s), "
+                "e.g. %s",
+                candidate.rule_index + 1, candidate.rule_name, candidate.codeset_id,
+                len(left), sorted(left)[:5],
+            )
             continue
         items.extend(added)
 
@@ -330,15 +413,22 @@ def repair_entry_exclusion_conflicts(
                 excluded_concept_ids=[
                     int((m.get("concept") or {}).get("CONCEPT_ID")) for m in added
                 ],
+                path=reading.path,
             )
+        )
+        why = (
+            "whose closure contains the whole entry closure -- the rule as written can "
+            "never be satisfied"
+            if reading.path == PATH_FULL_COVERAGE
+            else f"which already excepts part of the entry closure but still forbids "
+            f"{len(reading.overlap)} of its {len(entry_ids)} concepts"
         )
         logging.warning(
             "[TTE] entry-exclusion repair: rule #%d %r requires the absence of concept "
-            "set %d %r, whose closure contains the whole entry closure -- the rule as "
-            "written can never be satisfied. Its text excepts %s, so concepts %s are "
-            "marked isExcluded in that set.",
+            "set %d %r, %s. Its text excepts %s, so concepts %s are marked isExcluded "
+            "in that set.",
             candidate.rule_index + 1, candidate.rule_name, candidate.codeset_id,
-            cs.get("name"), ", ".join(candidate.exception.excepted),
+            cs.get("name"), why, ", ".join(candidate.exception.excepted),
             ", ".join(str(c) for c in applied[-1].excluded_concept_ids),
         )
     return applied

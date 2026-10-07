@@ -32,8 +32,11 @@ never a downgrade to a name-based comparison.
 Three conditions must hold together before this is called a FAIL, and each one
 is reported so a reader can disagree with it:
 
-  1. the absence set covers the ENTIRE entry closure -- partial coverage is a
-     silent population cut, reported as WARN with its percentage, not a defect;
+  1. the absence set covers the ENTIRE entry closure, OR it already carries
+     isExcluded items reaching the entry closure and still forbids part of it --
+     a stated exception applied incompletely, which the export repair now
+     completes (``entry_exclusion_repair`` path 2b). Any other partial coverage is
+     a silent population cut, reported as WARN with its percentage, not a defect;
   2. the criterion's window covers index day 0, so the entry event itself falls
      inside the window being required empty;
   3. every group between the rule root and the criterion is Type ALL, so no
@@ -69,10 +72,13 @@ from src.services.conceptset_closure import (  # noqa: E402
 # The traversal below is shared verbatim with the export-time repair
 # (`src.services.entry_exclusion_repair`), which keys on exactly the conditions
 # this gate computes. Kept in one module so the gate and the repair cannot drift
-# into disagreeing about what an unsatisfiable rule is.
+# into disagreeing about which absence sets a delivery must not carry.
 from src.services.entry_exclusion_repair import (  # noqa: E402
+    PATH_FULL_COVERAGE,
+    PATH_RESIDUAL_AFTER_EXCEPTION,
     domain_of,
     entry_codeset_ids,
+    entry_overlap,
     iter_absence_criteria,
     window_covers_index,
 )
@@ -155,19 +161,24 @@ def check_cohort(cohort: dict, lookup: VocabularyLookup) -> tuple[list[Finding],
             if cs is None:
                 notes.append(f"rule #{index + 1} references missing codeset {codeset}")
                 continue
-            absence_ids = resolve_concept_set(cs, lookup).concept_ids
-            overlap = entry_ids & absence_ids
+            reading = entry_overlap(cs, entry_ids, lookup)
+            overlap = reading.overlap
             if not overlap:
                 continue
 
             covers, window = window_covers_index(criterion)
-            full = overlap == entry_ids
-            severity = "FAIL" if (full and covers and conjunctive) else "WARN"
+            severity = "FAIL" if (reading.path and covers and conjunctive) else "WARN"
             extra: list[str] = []
-            if full and not covers:
-                extra.append("full coverage, but the window excludes index day 0")
-            if full and not conjunctive:
-                extra.append("full coverage, but the criterion sits under a non-ALL group")
+            if reading.path == PATH_RESIDUAL_AFTER_EXCEPTION:
+                extra.append(
+                    "the set already excepts part of the entry closure and still forbids "
+                    "the rest -- a stated exception applied incompletely"
+                )
+            label = "full coverage" if reading.path == PATH_FULL_COVERAGE else "residual"
+            if reading.path and not covers:
+                extra.append(f"{label}, but the window excludes index day 0")
+            if reading.path and not conjunctive:
+                extra.append(f"{label}, but the criterion sits under a non-ALL group")
 
             findings.append(
                 Finding(
@@ -211,7 +222,7 @@ def report(path: Path, findings: list[Finding], notes: list[str], names: dict[in
     fails = [f for f in findings if f.severity == "FAIL"]
     warns = [f for f in findings if f.severity == "WARN"]
     if fails:
-        head = f"FAIL  {path.name}  ({len(fails)} unsatisfiable rule(s), {len(warns)} warning(s))"
+        head = f"FAIL  {path.name}  ({len(fails)} failing rule(s), {len(warns)} warning(s))"
     elif warns:
         head = f"WARN  {path.name}  ({len(warns)} partial overlap(s))"
     else:
@@ -295,7 +306,7 @@ def main(argv: list[str]) -> int:
 
     print(
         f"\n{len(files) - bad - warned}/{len(files)} files clean, "
-        f"{warned} with partial overlap, {bad} with an unsatisfiable rule"
+        f"{warned} with partial overlap, {bad} with a failing rule"
     )
     return 1 if bad else 0
 

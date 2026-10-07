@@ -184,3 +184,35 @@ def test_should_ignore_a_presence_criterion_that_names_the_entry_concepts():
     findings, _ = check_cohort(doc, vocabulary())
 
     assert findings == []
+
+
+def test_should_report_fail_when_the_set_excepts_part_of_the_entry_and_forbids_the_rest():
+    """The repair's second path, seen from the gate. The stated exception reached the
+    entry concept (201826 is isExcluded) but 44793113 is still forbidden through 201820.
+    The repair now fixes this shape, so the gate fails a delivery that still carries it."""
+    doc = cohort(
+        concept_sets=[ENTRY_SET, concept_set(29, "Endocrine disorder (excluding T2DM)",
+                                             item(DM, descendants=True),
+                                             item(T2DM, descendants=True, excluded=True))],
+        rules=[rule("Endocrine disorder (excluding T2DM)", absence_criterion(29))],
+    )
+
+    findings, _ = check_cohort(doc, vocabulary())
+
+    assert [(f.severity, f.n_overlap, f.sample_ids) for f in findings] == [
+        ("FAIL", 1, [T2DM_OTHER])
+    ]
+    assert 0.0 < findings[0].fraction < 1.0
+
+
+def test_should_keep_warn_when_the_excluded_item_lies_outside_the_entry_closure():
+    """An exception that touches no entry concept leaves a partial overlap a WARN."""
+    doc = cohort(
+        concept_sets=[ENTRY_SET, concept_set(30, "T2DM with ulcer", item(T2DM_ULCER),
+                                             item(UNRELATED, excluded=True))],
+        rules=[rule("Ulcer (excluding T2DM)", absence_criterion(30))],
+    )
+
+    findings, _ = check_cohort(doc, vocabulary())
+
+    assert [f.severity for f in findings] == ["WARN"]
