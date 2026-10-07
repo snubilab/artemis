@@ -64,8 +64,10 @@ Checks per file:
     one under an allowed reason is re-derived here from the store criterion it
     names and from the delivered file — a ``group-label`` row must be a group label
     whose threshold strands no member and at least one of whose members emitted, a
-    ``demographic-no-rule`` row must be demographic-domain and carry no bound, and a
-    restated-* row must have a collapse record naming a survivor that emitted. An
+    ``demographic-no-rule`` row must be demographic-domain and carry no bound, a
+    restated-* row must have a collapse record naming a survivor that emitted, and a
+    ``dose-stability-not-representable`` row must be an inclusion the producer's own
+    predicate (``src.services.dose_stability``) selects. An
     ``_unmappedCriteria`` row is permitted only when its ``refusalCode`` says the loss
     is IRREDUCIBLE — see ``PERMITTED_REFUSAL_CODES`` for the axis and for why the
     reason prose cannot carry it — and one carrying no reason, no code, or an unknown
@@ -295,6 +297,10 @@ from src.services.conceptset_closure import (  # noqa: E402
     DEFAULT_VOCAB_SCHEMA,
     iter_items,
 )
+from src.services.dose_stability import (  # noqa: E402
+    DOSE_STABILITY_REASON,
+    dose_stability_criterion_ids,
+)
 from src.services.restated_absence_repair import (  # noqa: E402
     RESTATED_ABSENCE_REMOVALS_KEY,
 )
@@ -393,6 +399,12 @@ ACCOUNTING_KEYS = ("_generationCensus", "_unmappedCriteria", "_skippedCriteria")
 #: * the two collapse reasons (458 rows) — a restatement deliberately dropped onto
 #:   its retained sibling, which does emit. Both are recorded a second time under
 #:   ``_restatedDemographicsCollapse`` / ``_restatedDistinctnessCollapse``.
+#: * ``DOSE_STABILITY_REASON`` (no exported rows yet; added with the producer branch) —
+#:   an inclusion stating that background drug therapy was held at an unchanged dose
+#:   (CARMELINA inclusion 7, CAROLINA 37/38 and 41). OMOP has no unchanged-dose
+#:   construct, and the presence rule it used to ship as dropped the drug-naive
+#:   patients both protocols admit: Ajou's CARMELINA comparator fell 38,664 -> 1,257
+#:   at that rule. Not loss: there is no faithful rule to lose.
 #:
 #: The two collapse spellings are imported from the modules that own them rather
 #: than retyped; the other two are bare literals in ``tte_service.py`` with no
@@ -409,7 +421,10 @@ ACCOUNTING_KEYS = ("_generationCensus", "_unmappedCriteria", "_skippedCriteria")
 #: ``demographic-no-rule`` as: the store row is demographic-domain and carries no
 #: numeric bound. The two restated-* reasons as: the file carries a collapse record
 #: naming the criterion as dropped, whose survivor exists in the store and was not
-#: itself lost. A record the gate cannot re-judge — one naming a criterion absent
+#: itself lost. ``DOSE_STABILITY_REASON`` as: the store row is an inclusion that
+#: :func:`~src.services.dose_stability.dose_stability_criterion_ids` -- the producer's
+#: own predicate -- selects, so the reason cannot carry an arbitrary criterion out.
+#: A record the gate cannot re-judge — one naming a criterion absent
 #: from the store, or a collapse list absent from the file — fails closed.
 #:
 #: ``STRANDED_GROUP_CONSTRAINT_REASON`` is deliberately absent. It records a group
@@ -433,6 +448,7 @@ ALLOWED_SKIP_REASONS = frozenset(
         "demographic-no-rule",
         RESTATED_DEMOGRAPHICS_REASON,
         RESTATED_DISTINCTNESS_REASON,
+        DOSE_STABILITY_REASON,
     }
 )
 
@@ -1313,6 +1329,11 @@ def skipped_criteria_violations(
     # and `_restatement_survivor` needs it to tell a survivor that emitted from one
     # that was itself skipped. `None` (no refs map recorded) reconciles nothing.
     emitted = emitted_criterion_keys(expression)
+    # The producer's own predicate over the store's inclusion rows, asked once: it
+    # decides per role, because a firing group label takes its members with it.
+    dose_stability_ids = dose_stability_criterion_ids(
+        criterion for (row_role, _id), criterion in index.items() if row_role == "inclusion"
+    )
 
     violations: list[str] = []
     for position, record in enumerate(records):
@@ -1362,6 +1383,14 @@ def skipped_criteria_violations(
                     f"{where} is a demographic criterion carrying a bound {constraint!r} "
                     "recorded as demographic-no-rule: the producer had a number and "
                     "built no rule from it"
+                )
+        elif reason == DOSE_STABILITY_REASON:
+            if role != "inclusion" or criterion_id not in dose_stability_ids:
+                violations.append(
+                    f"{where} is recorded as {DOSE_STABILITY_REASON} but the producer's "
+                    "own predicate does not select the store row: it is not an inclusion "
+                    "stating the dose stability of background drug therapy, so this is a "
+                    "criterion lost under a permit that does not cover it"
                 )
         else:
             violations.extend(

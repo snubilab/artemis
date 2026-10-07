@@ -50,6 +50,7 @@ import pytest
 
 # The producer's own spelling, imported and never retyped (AGENTS.md, wire-format
 # constants): a guessed reason string silently reconciles nothing.
+from src.services.dose_stability import DOSE_STABILITY_REASON
 from src.services.restated_demographics import COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON
 from src.services.restated_distinctness import COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON
 from src.services.value_constraint import STRANDED_GROUP_CONSTRAINT_REASON, is_reference_relative
@@ -1062,3 +1063,83 @@ class TestTheExporterRefusesToShipAnUnreconciledSkip:
         rc, err, out_dir = self._export(monkeypatch, tmp_path, capsys, _study(), CLEAN_RECORDS)
         assert rc == 0, err
         assert (out_dir / "manifest.json").exists()
+
+
+class TestADoseStabilitySkipIsReDerivedFromTheStore:
+    """`dose-stability-not-representable` is a permit like the others: re-judged with the
+    producer's own predicate on the store row, so it cannot carry an arbitrary criterion
+    out of the cohort. CARMELINA inclusion 7 is the row it exists for."""
+
+    @staticmethod
+    def _dose_skip(criterion_id: str, label: str, **kwargs: Any) -> dict[str, Any]:
+        kwargs = {"role": "inclusion", "domain": "Drug", "is_group_label": False, **kwargs}
+        return _skip(criterion_id, label, DOSE_STABILITY_REASON, **kwargs)
+
+    def test_should_pass_when_the_skip_names_a_stable_background_medication_row(self, gate):
+        label = "Stable antidiabetic background medication for 8 weeks"
+        study = _study(inclusion=[_criterion(7, label)])
+        records = _records(
+            skipped=[self._dose_skip("7", label)], store_criteria=_store_criteria(study)
+        )
+        rc, out = gate(records, study)
+        assert rc == 0, out
+
+    def test_should_pass_when_a_member_goes_out_with_its_dose_stability_label(self, gate):
+        study = _study(
+            inclusion=[
+                _criterion(
+                    37,
+                    "Stable anti-diabetic background medication",
+                    is_group_label=True,
+                    group_id="g-background",
+                ),
+                _criterion(38, "Anti-diabetic medication", group_id="g-background"),
+            ]
+        )
+        records = _records(
+            skipped=[
+                self._dose_skip(
+                    "37", "Stable anti-diabetic background medication", is_group_label=True
+                ),
+                self._dose_skip("38", "Anti-diabetic medication"),
+            ],
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 0, out
+
+    def test_should_fail_when_the_reason_is_attached_to_a_criterion_that_states_no_dose_stability(
+        self, gate
+    ):
+        """The misuse: a real drug-presence requirement carried out under the permit."""
+        study = _study(inclusion=[_criterion(6, "Metformin")])
+        records = _records(
+            skipped=[self._dose_skip("6", "Metformin")], store_criteria=_store_criteria(study)
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert f"recorded as {DOSE_STABILITY_REASON}" in out
+
+    @pytest.mark.parametrize("text", ["Stable angina", "Stable coronary artery disease"])
+    def test_should_fail_when_the_reason_is_attached_to_a_stable_condition(self, gate, text):
+        study = _study(inclusion=[_criterion(4, text, domain="Condition")])
+        records = _records(
+            skipped=[self._dose_skip("4", text, domain="Condition")],
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert f"recorded as {DOSE_STABILITY_REASON}" in out
+
+    def test_should_fail_when_the_reason_is_attached_to_an_exclusion(self, gate):
+        """Exclusions are out of scope: the forbidden-drug exclusions stay as they are."""
+        label = "Stable antidiabetic background medication for 8 weeks"
+        study = _study(inclusion=[], exclusion=[_criterion(30, label)])
+        records = _records(
+            skipped=[self._dose_skip("30", label, role="exclusion")],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert f"recorded as {DOSE_STABILITY_REASON}" in out

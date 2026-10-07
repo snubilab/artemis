@@ -75,6 +75,11 @@ from src.api.models.tte import (
 )
 from src.models.ir import ProvisionalSectionSource, ProvisionalStudyIR
 from src.pipeline.webapi_client import CohortTableReference, WebAPIClient, WebAPIError
+from src.services.dose_stability import (
+    DOSE_STABILITY_EXPLANATION,
+    DOSE_STABILITY_REASON,
+    dose_stability_criterion_ids,
+)
 from src.services.entry_exclusion_repair import (
     iter_repair_candidates,
     repair_entry_exclusion_conflicts,
@@ -5362,7 +5367,12 @@ class TTEService:
         # criterion. Recording at the branch that does the dropping removes the judgement.
         skipped_criteria: list[dict[str, Any]] = []
 
-        def _record_skip(criterion: dict[str, Any], role: str, reason: str) -> None:
+        def _record_skip(
+            criterion: dict[str, Any],
+            role: str,
+            reason: str,
+            explanation: str | None = None,
+        ) -> None:
             skipped_criteria.append({
                 "criterionId": str(criterion.get("id", "")),
                 "role": role,
@@ -5374,6 +5384,7 @@ class TTEService:
                 "domain": (criterion.get("domain") or "").strip() or None,
                 "isGroupLabel": bool(criterion.get("isGroupLabel")),
                 "reason": reason,
+                **({"explanation": explanation} if explanation else {}),
             })
 
         # SPEC-INFRA-003 REQ-001 / REQ-007. Decided once, up front, over the criteria as
@@ -5402,6 +5413,13 @@ class TTEService:
             inclusion_criteria=inc_criteria,
             exclusion_criteria=exc_criteria,
         )
+
+        # A dose-stability statement about background drug therapy ("Stable antidiabetic
+        # background medication for 8 weeks") has no OMOP expression, and as a presence
+        # rule it drops the drug-naive patients the protocol admits. Decided over the
+        # whole role for the same reason as the drop sets above: a firing group label
+        # takes its members with it. Inclusion only -- see `dose_stability.py`.
+        dose_stability_ids = dose_stability_criterion_ids(inc_criteria)
 
         # Same shape and placement as the two drop sets above: decided over the
         # criteria as they arrived, consumed by the group-label branch in each loop.
@@ -5441,6 +5459,14 @@ class TTEService:
             # attributed both to one reason would hide which signal did the dropping.
             if ("inclusion", str(criterion.get("id", ""))) in restated_distinctness_drops:
                 _record_skip(criterion, "inclusion", RESTATED_DISTINCTNESS_REASON)
+                order += 1
+                continue
+            # Ahead of the group-label branch, so a firing label is recorded under this
+            # reason rather than as a container whose members emitted -- they did not.
+            if str(criterion.get("id", "")) in dose_stability_ids:
+                _record_skip(
+                    criterion, "inclusion", DOSE_STABILITY_REASON, DOSE_STABILITY_EXPLANATION
+                )
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
