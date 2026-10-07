@@ -7119,6 +7119,13 @@ class TTEService:
         # Nothing is deleted: the criterion's own fields and this rule's name are
         # untouched. See `src/utils/criterion_seed.py`.
         seed = criterion_mapper_seed(criterion) or label
+        # The seed is the bare entity, so an exception the extraction wrote only into the
+        # description never reached the parser: EMPA-REG exclusion #30 seeds "Endocrine
+        # disorder" under "Endocrine disorder (excluding T2DM)", and codeset 29 shipped
+        # with T2DM inside it -- 0 people on any CDM. See `description_stated_exception`.
+        from src.services.entity_exception import description_stated_exception
+
+        seed_exception = description_stated_exception(seed, criterion.get("description"))
         raw_domain = (criterion.get("domain") or "").strip() or None
         # A demographic-domain criterion reaching this function (via the exclusion-
         # loop fallthrough) has no real Age/Gender/etc. rule to build, so its raw
@@ -7140,6 +7147,7 @@ class TTEService:
                 expected_domain=criterion_domain,
                 pre_fetched_candidates=pre_fetched_candidates,
                 workflow=workflow,
+                entity_exception=seed_exception,
             )
             # Named rather than inlined into `_seeded_criteria_key` because the window
             # default below is keyed by the same resolved domain: the CIRCE table and the
@@ -8205,6 +8213,7 @@ class TTEService:
         workflow: Any | None = None,
         alias_candidates: list[str] | None = None,
         resolving_entity_exception: bool = False,
+        entity_exception: Any = None,
     ) -> dict[str, Any]:
         normalized_seed = " ".join(seed_text.split()).strip()
         if not normalized_seed:
@@ -8228,11 +8237,15 @@ class TTEService:
         #
         # Every failure falls back to the single call below rather than
         # half-applying -- see resolve_entity_exception.
+        #
+        # `entity_exception` is the one the criterion's description stated about
+        # this seed (`description_stated_exception`); it is only ever supplied when
+        # the seed states none of its own.
         if not resolving_entity_exception:
             from src.services.entity_exception import detect_entity_exception
             from src.services.entity_subtraction import resolve_entity_exception
 
-            _exception = detect_entity_exception(normalized_seed)
+            _exception = entity_exception or detect_entity_exception(normalized_seed)
             if _exception is not None:
                 _resolution = resolve_entity_exception(
                     _exception,

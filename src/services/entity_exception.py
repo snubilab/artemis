@@ -168,3 +168,41 @@ def detect_entity_exception(text: str | None) -> EntityException | None:
         return None
 
     return EntityException(text=normalized, base=base, excepted=excepted)
+
+
+def description_stated_exception(
+    seed: str | None, description: str | None
+) -> EntityException | None:
+    """The exception a criterion's description states about its seed, when the seed does not.
+
+    The mapper seed is ``sourceText`` first, and extraction writes the bare entity there:
+    EMPA-REG exclusion #30 seeds "Endocrine disorder" while its description reads
+    "Endocrine disorder (excluding T2DM)". :func:`detect_entity_exception` on the seed
+    finds nothing, so codeset 29 shipped carrying 201820 'Diabetes mellitus' with
+    descendants and no exclusion, and rule #15 then removed every patient rule #2
+    required -- 0 people on any CDM (2026-09-23 delivery).
+
+    Only when the description's base CONTAINS the seed: that is what ties the exception
+    to this entity. ``protocolLine`` is deliberately not read -- measured over the
+    verify5 store, 6 of the 9 criteria whose exception lives outside ``sourceText`` have
+    it only there, and four of those are CARMELINA exclusions #65-#69 sharing one line
+    whose exception belongs to "cancer", not to them (#65 "Patient reliability or life
+    expectancy" would get "non-melanoma skin cancer").
+
+    The base is the SEED, not the description's base: "Uncontrolled endocrine disorder
+    (other than T2DM)" keeps mapping "Endocrine disorder". Restoring a dropped qualifier
+    is a different change.
+
+    :param seed: the text the mapper is about to be asked, as
+        :func:`src.utils.criterion_seed.criterion_mapper_seed` chose it.
+    :param description: the criterion's ``description``.
+    :returns: an exception over the seed, or None when the seed already states its own
+        (the existing path reads that one) or the description states none about it.
+    """
+    normalized_seed = " ".join((seed or "").split())
+    if not normalized_seed or detect_entity_exception(normalized_seed) is not None:
+        return None
+    stated = detect_entity_exception(description)
+    if stated is None or normalized_seed.lower() not in " ".join(stated.base.split()).lower():
+        return None
+    return EntityException(text=stated.text, base=normalized_seed, excepted=list(stated.excepted))

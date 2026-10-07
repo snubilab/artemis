@@ -109,6 +109,7 @@ def _stub_recommend(
     pre_fetched_candidates: list | None = None,
     workflow: Any | None = None,
     alias_candidates: list[str] | None = None,
+    entity_exception: Any = None,
 ) -> dict[str, Any]:
     """Canned Observation-domain concept-set recommendation.
 

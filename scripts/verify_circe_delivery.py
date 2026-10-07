@@ -241,6 +241,17 @@ Checks per file:
     ``bound_contradicted_presence_criteria`` beside it for the weaker not-provably-empty
     shape this one deliberately does not report.
 
+(t) no mandatory presence is forbidden through ``concept_ancestor``: a presence of
+    concept set A and an absence of B on the same table, both reached through ``ALL``
+    only, where A's resolved closure lies inside B's and A's window inside B's. Check
+    (s) compares member lists and cannot see it. Measured on
+    ``deliveries/2026-09-23/empa-reg_treatment.circe.json``: #2 requires T2DM (201826,
+    44793113) and #15 forbids 'Endocrine disorder', which carries 201820 'Diabetes
+    mellitus' with descendants -- 0 people at two hospitals, and on any CDM. This is the
+    one check here that needs the vocabulary (``--dsn``); a file with no such pair never
+    opens it, and an unreachable vocabulary when one is needed aborts rather than
+    passing. See ``src.utils.circe_lint.closure_subsumed_presence_criteria``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -273,10 +284,16 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# The vocabulary DSN check (t) reads, from the gate that already resolves closures.
+from scripts.verify_entry_exclusion_conflict import DEFAULT_DSN  # noqa: E402
 from src.agents.agent1.repair_accounting import (  # noqa: E402
     DISPOSITION_DEMOTION,
     KNOWN_DISPOSITIONS,
     REPAIR_ACCOUNTING_KEY,
+)
+from src.services.conceptset_closure import (  # noqa: E402
+    DEFAULT_VOCAB_SCHEMA,
+    iter_items,
 )
 from src.services.restated_absence_repair import (  # noqa: E402
     RESTATED_ABSENCE_REMOVALS_KEY,
@@ -303,6 +320,8 @@ from src.utils.circe_lint import (  # noqa: E402
     DROPPED_CRITERIA_KEY,
     aliased_concept_sets,
     asserted_bound_missing_criteria,
+    closure_subsumed_presence_criteria,
+    closure_subsumption_codesets,
     confusable_concept_sets,
     conjoined_disjunction_rules,
     contradictory_absence_rules,
@@ -333,6 +352,25 @@ from src.utils.disease_anchor import DiseaseAnchorError, expected_anchor_concept
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
 DEFAULT_MAP = "carmelina=9,empa-reg=8,carolina=10,aristotle=3,plato=2,leader=1"
+
+
+def _open_vocabulary(dsn: str, schema: str):
+    """The vocabulary check (t) resolves closures through. The seam tests replace."""
+    from src.services.conceptset_closure import PostgresVocabulary
+
+    return PostgresVocabulary(dsn, schema)
+
+
+def _subsumption_lookup(expression: dict[str, Any], vocabulary: Any) -> Any:
+    """Prefetch only the concept sets check (t) will resolve on this file."""
+    codesets = closure_subsumption_codesets(expression)
+    return vocabulary.prefetch(
+        item
+        for concept_set in expression.get("ConceptSets") or []
+        if concept_set.get("id") in codesets
+        for item in iter_items(concept_set)
+    )
+
 
 #: The three keys ``TTEService._build_seeded_target_circe`` writes together to
 #: account for every criterion that did not become a rule. Emitted as a set —
@@ -2096,6 +2134,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip files with fewer than 2 InclusionRules instead of failing them",
     )
+    parser.add_argument(
+        "--dsn",
+        default=DEFAULT_DSN,
+        help="read-only vocabulary DSN for check (t) (default: $ARTEMIS_VOCAB_DSN)",
+    )
+    parser.add_argument("--vocab-schema", default=DEFAULT_VOCAB_SCHEMA)
     return parser
 
 
@@ -2141,6 +2185,8 @@ def main(argv: list[str] | None = None) -> int:
     rows: list[dict[str, Any]] = []
     any_fail = False
     produced_roles_by_study: dict[int, set[str]] = {}
+    # Opened on the first file that has a pair for check (t) to prove, and only then.
+    vocabulary: Any = None
 
     for path in circe_files:
         parsed = _split_filename(path)
@@ -2371,6 +2417,32 @@ def main(argv: list[str] | None = None) -> int:
                 f"{'; '.join(unsatisfiable_presences)}"
             )
 
+        # (t) the same contradiction proved through `concept_ancestor`: a presence whose
+        # whole closure an absence forbids. (s) compares member lists, and EMPA-REG's
+        # T2DM set shares no literal member with the 'Endocrine disorder' set that
+        # forbids it from 201820 down. An unreachable vocabulary aborts: the hop it
+        # exists to see is invisible without one.
+        if closure_subsumption_codesets(expression):
+            if vocabulary is None:
+                try:
+                    vocabulary = _open_vocabulary(args.dsn, args.vocab_schema)
+                except Exception as exc:  # noqa: BLE001 -- re-raised as a named abort
+                    print(
+                        f"ABORT: vocabulary unreachable at DSN {args.dsn!r} (schema "
+                        f"{args.vocab_schema}): {exc}. Check (t) resolves closures "
+                        f"through concept_ancestor and will not fall back to comparing "
+                        f"ids as written.",
+                        file=sys.stderr,
+                    )
+                    return 2
+            subsumed = closure_subsumed_presence_criteria(
+                expression, _subsumption_lookup(expression, vocabulary)
+            )
+            if subsumed:
+                reasons.append(
+                    f"closure-subsumed presence ({len(subsumed)}): {'; '.join(subsumed)}"
+                )
+
         # (o) a rule emitted as a conjunction over a stated disjunction. Check (n)
         # reaches LEADER's rule 2 only because codesets 10 and 11 are byte-identical;
         # the same inversion over sets that merely differ contradicts nothing a
@@ -2453,6 +2525,9 @@ def main(argv: list[str] | None = None) -> int:
                 ),
             }
         )
+
+    if vocabulary is not None:
+        vocabulary.close()
 
     # (e) arm completeness, across files rather than per file.
     id_to_slug = {study_id: slug for slug, study_id in slug_to_id.items()}

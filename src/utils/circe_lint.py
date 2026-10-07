@@ -21,6 +21,11 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+# Same purity contract: `conceptset_closure` imports no database driver at module level.
+# The vocabulary arrives as an injected `VocabularyLookup`, so the one check here that
+# needs `concept_ancestor` still does no I/O of its own.
+from src.services.conceptset_closure import VocabularyLookup, resolve_concept_set
+
 # Importing the refusal vocabulary keeps this module pure: `criterion_refusal` has no
 # I/O and no imports of its own beyond `__future__`. The codes live there and nowhere
 # else -- a code retyped at a raise site is a code that eventually gets retyped wrong,
@@ -2316,6 +2321,156 @@ def unsatisfiable_presence_rules(expression: dict[str, Any]) -> list[str]:
             f"unit list and window already exists in {'; '.join(blockers)}. CIRCE "
             f"conjoins every InclusionRules entry, so this rule selects nobody on any "
             f"CDM with any data"
+        )
+    return findings
+
+
+def _window_inside(inner: Mapping[str, Any], outer: Mapping[str, Any]) -> bool:
+    """Whether ``inner``'s ``StartWindow`` provably lies inside ``outer``'s.
+
+    Unprovable offsets count only when the two windows are structurally identical --
+    the opposite convention to :func:`_intervals_overlap`, because here a guess would
+    FAIL a delivery rather than keep a check awake.
+    """
+    left, right = _entry_interval(dict(inner)), _entry_interval(dict(outer))
+    if left is None or right is None:
+        return _window_key(inner) == _window_key(outer)
+    return right[0] <= left[0] and left[1] <= right[1]
+
+
+def _subsumption_candidates(
+    expression: dict[str, Any],
+) -> list[tuple[str, str, Any, str, Any]]:
+    """``(presence where, criteria type, presence codeset, absence where, absence codeset)``.
+
+    Every pair of a mandatory presence and a mandatory, unnarrowed absence reading the
+    same table, whose absence would see every event the presence can count: the
+    presence window lies inside the absence window, and the absence is not cut down by
+    ``EndWindow``, ``RestrictVisit`` or a narrower observation-period rule. What is left
+    to prove is closure containment, which needs the vocabulary.
+
+    A pair over the same codeset or byte-identical members is left out: that is
+    :func:`contradictory_presence_absence_criteria`'s finding, and reporting it twice
+    would make one defect read as two.
+    """
+    presences: list[tuple[str, str, Any, dict[str, Any]]] = []
+    absences: list[tuple[str, str, Any, dict[str, Any]]] = []
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        if not isinstance(rule, Mapping):
+            continue
+        where = f"InclusionRules[{index}] #{index + 1} {(rule.get('name') or '')!r}"
+        for entry in _conjoined_entries(rule.get("expression") or {}):
+            if _required_occurrence(entry):
+                found = _criterion_body(entry)
+                if found is not None:
+                    presences.append((where, found[0], found[1]["CodesetId"], entry))
+            elif _forbidden_occurrence(entry):
+                leaf = _unnarrowed_codeset(entry)
+                if leaf is not None and not entry.get("EndWindow") and not entry.get(
+                    "RestrictVisit"
+                ):
+                    absences.append((where, leaf[0], leaf[1], entry))
+
+    members = {
+        concept_set.get("id"): _concept_set_members(concept_set)
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+    }
+    candidates = []
+    for present_where, present_type, present_id, present_entry in presences:
+        for absent_where, absent_type, absent_id, absent_entry in absences:
+            if present_type != absent_type or present_id == absent_id:
+                continue
+            if members.get(present_id) == members.get(absent_id):
+                continue
+            if present_entry.get("IgnoreObservationPeriod") and not absent_entry.get(
+                "IgnoreObservationPeriod"
+            ):
+                continue
+            if _window_inside(present_entry, absent_entry):
+                candidates.append(
+                    (present_where, present_type, present_id, absent_where, absent_id)
+                )
+    return candidates
+
+
+def closure_subsumption_codesets(expression: dict[str, Any]) -> set[Any]:
+    """Codeset ids :func:`closure_subsumed_presence_criteria` must resolve on this file.
+
+    Empty means the check has no pair to examine and needs no vocabulary at all, which is
+    what lets a caller open a database connection only for a file that can use one.
+    """
+    return {
+        codeset
+        for _pw, _type, present_id, _aw, absent_id in _subsumption_candidates(expression)
+        for codeset in (present_id, absent_id)
+    }
+
+
+def closure_subsumed_presence_criteria(
+    expression: dict[str, Any], lookup: VocabularyLookup
+) -> list[str]:
+    """Locators for a mandatory presence whose WHOLE resolved closure an absence forbids.
+
+    The motivating case, ``deliveries/2026-09-23/empa-reg_treatment.circe.json``::
+
+        #2  'Type 2 Diabetes Mellitus'             >=1 ConditionOccurrence cs2  [-9999,0]
+        #15 'Endocrine disorder (excluding T2DM)'  ==0 ConditionOccurrence cs29 [-9999,0]
+
+    cs2 is 201826 and 44793113 with descendants; cs29 holds 201820 'Diabetes mellitus'
+    with descendants and nothing excluded, and both cs2 concepts sit under 201820. Every
+    patient #2 admits, #15 removes: 0 people at two hospitals, and on any CDM.
+    :func:`unsatisfiable_presence_rules` returned nothing on it, because it pairs criteria
+    on identical member lists and cs2 and cs29 share no literal member -- the containment
+    exists only in ``concept_ancestor``. The comparator file carries the same two rules
+    with 201826 and 44793113 as ``isExcluded`` in cs29, and is not reported.
+
+    Closures are resolved as Circe resolves them (:func:`resolve_concept_set`:
+    descendants through ``concept_ancestor``, ``isExcluded`` subtracted as an anti-join).
+    A presence whose closure is empty is left alone -- an empty concept set is its own
+    defect, and "inside" would be vacuous.
+
+    Same three silences as the checks beside it: anything under ``ANY``, a narrowed
+    absence, and a presence window reaching outside the absence window. Partial
+    containment is a population cut, not an empty cohort, and is not reported.
+
+    :param expression: a CIRCE cohort expression.
+    :param lookup: vocabulary facts covering at least the concept sets
+        :func:`closure_subsumption_codesets` names.
+    :returns: one locator per contradicting pair, empty when none.
+    """
+    concept_sets = {
+        concept_set.get("id"): concept_set
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+    }
+    closures: dict[Any, set[int]] = {}
+
+    def closure(codeset_id: Any) -> set[int]:
+        if codeset_id not in closures:
+            concept_set = concept_sets.get(codeset_id)
+            closures[codeset_id] = (
+                resolve_concept_set(dict(concept_set), lookup).concept_ids
+                if concept_set is not None
+                else set()
+            )
+        return closures[codeset_id]
+
+    findings: list[str] = []
+    for present_where, criteria_type, present_id, absent_where, absent_id in (
+        _subsumption_candidates(expression)
+    ):
+        present = closure(present_id)
+        if not present or not present <= closure(absent_id):
+            continue
+        findings.append(
+            f"{absent_where}: {criteria_type} over codeset {absent_id} "
+            f"{(concept_sets[absent_id].get('name') or '')!r} requires ZERO occurrences "
+            f"while {present_where} requires at least one over codeset {present_id} "
+            f"{(concept_sets[present_id].get('name') or '')!r}, whose resolved closure "
+            f"({len(present)} concepts) lies entirely inside the forbidden one, in a window "
+            f"inside the absence's -- CIRCE conjoins every InclusionRules entry, so no "
+            f"patient can satisfy both"
         )
     return findings
 
