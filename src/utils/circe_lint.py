@@ -3517,3 +3517,110 @@ def ungrounded_criteria(
         f"protocolLine (report only){gap}"
     )
     return records, summary
+
+
+def _measurement_lab_test_reads(
+    expression: dict[str, Any],
+) -> list[tuple[str, dict[str, Any], dict[str, Any], list[int], list[int]]]:
+    """``(where, attributes, concept set, member ids, claimed lab-test ids)`` per criterion.
+
+    "Claimed" is the item's own metadata (``claims_lab_test``); the vocabulary confirms it.
+    ``isExcluded`` items are skipped -- an exclusion removes the concept, so the criterion
+    never reads it.
+    """
+    from src.services.loinc_specimen import claims_lab_test
+
+    reads = []
+    for where, entry in _criterion_locations(expression):
+        body = entry.get("Criteria")
+        body = body if isinstance(body, dict) else entry
+        payload = body.get(_BOUND_BEARING_CRITERIA_TYPE)
+        if not isinstance(payload, dict) or "CodesetId" not in payload:
+            continue
+        concept_set = _find_concept_set(expression, payload["CodesetId"]) or {}
+        items = [
+            item
+            for item in (concept_set.get("expression") or {}).get("items") or []
+            if not item.get("isExcluded")
+        ]
+        claimed = [int(item["concept"]["CONCEPT_ID"]) for item in items if claims_lab_test(item)]
+        if claimed:
+            members = [int(item["concept"]["CONCEPT_ID"]) for item in items]
+            reads.append((where, payload, concept_set, members, claimed))
+    return reads
+
+
+def measurement_lab_test_ids(expression: dict[str, Any]) -> set[int]:
+    """The LOINC lab-test ids :func:`specimen_mismatched_measurement_criteria` will look up.
+
+    Empty means the check has nothing to read and the vocabulary need not be opened.
+    """
+    return {cid for *_rest, claimed in _measurement_lab_test_reads(expression) for cid in claimed}
+
+
+def specimen_mismatched_measurement_criteria(
+    expression: dict[str, Any],
+    lab_tests: Mapping[int, Any],
+    analyte_lab_tests: Any,
+) -> tuple[list[str], list[str]]:
+    """``(fail, warn)`` locators for Measurement criteria reading lab tests in a specimen or
+    property they did not state.
+
+    Two shapes, both from ``deliveries/2026-09-23`` and both invisible to every other check:
+
+    * a LOINC lab test whose System the criterion never named -- 3004676 'Glucose [Mass/volume]
+      in Vitreous fluid' and 3004378 'Glucose in CSF/Glucose plas' in EMPA-REG codeset 10 and
+      CAROLINA codesets 41/42, beside red-cell, dried-blood-spot and amniotic ALT/AST codes;
+    * a lab test whose Property contradicts the criterion's own ``Unit``. CAROLINA codeset 42
+      is read by ``> 13.3`` in 8753 mmol/L over Mass-Concentration codes only, so the filter
+      matches no row on any CDM.
+
+    Severity is ``src.services.loinc_specimen.specimen_verdict``: FAIL when the builder would
+    repair the set, WARN -- with the builder's own decline reason -- when it declines (no analyte
+    majority, a unit contradicting every member, no member in a serum, plasma, blood or named
+    specimen). What the criterion "names" is read from the rule name and the concept set name,
+    the only text a Circe file carries; the unit's property from the ``Unit``'s first, standard,
+    CONCEPT_CODE.
+
+    :param expression: a CIRCE cohort expression.
+    :param lab_tests: concept id -> ``LabTest`` for every id :func:`measurement_lab_test_ids`
+        names. An id it lacks is not a LOINC lab test and is not judged.
+    :param analyte_lab_tests: the vocabulary's analyte query, which the builder's decision needs.
+    :returns: FAIL locators and WARN locators, each empty when none.
+    """
+    from src.services.loinc_specimen import (
+        carries_numeric_bound,
+        criterion_words,
+        specimen_verdict,
+        value_filter_unit_property,
+    )
+
+    fail: list[str] = []
+    warn: list[str] = []
+    for where, payload, concept_set, members, _claimed in _measurement_lab_test_reads(expression):
+        words = criterion_words(where, concept_set.get("name"))
+        verdict = specimen_verdict(
+            member_ids=members,
+            lab_tests=lab_tests,
+            words=words,
+            description_words=words,
+            unit_prop=value_filter_unit_property(payload),
+            numeric_bound=carries_numeric_bound(payload),
+            analyte_lab_tests=analyte_lab_tests,
+        )
+        if verdict.severity is None:
+            continue
+        detail = "; ".join(
+            f"{t.concept_id} {t.concept_name!r} ({', '.join(reasons)})"
+            for t, reasons in verdict.violations
+        )
+        locator = (
+            f"{where}: Measurement over codeset {payload['CodesetId']} "
+            f"{concept_set.get('name') or ''!r} holds {len(verdict.violations)} lab test(s) the "
+            f"criterion did not state: {detail}"
+        )
+        if verdict.severity == "WARN":
+            warn.append(f"{locator} -- the builder declined to repair it: {verdict.declined}")
+        else:
+            fail.append(locator)
+    return fail, warn

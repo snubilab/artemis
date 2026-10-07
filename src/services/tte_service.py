@@ -7272,6 +7272,17 @@ class TTEService:
         refuse_unstated_unit_bound(effective_constraint, label)
         criteria_attrs.update(value_filter)
 
+        # The mapper only ever sees the bare analyte ("glucose"), so the specimen, the
+        # unit's property and the challenge axis are decided here, where the criterion's
+        # own words and emitted Unit are in hand. See `src/services/loinc_specimen.py`.
+        concept_set_expression = self._refine_measurement_specimen(
+            mapped_criterion["expression"],
+            criteria_key=criteria_key,
+            seed=seed,
+            description=criterion.get("description"),
+            value_filter=value_filter,
+        )
+
         # Heuristic: derive minimum era length from the total temporal window span
         if criteria_key == "DrugEra" and criterion.get("window"):
             era_length = abs(criterion["window"]["start"]) + criterion["window"]["end"]
@@ -7348,7 +7359,7 @@ class TTEService:
             "conceptSet": {
                 "id": codeset_id,
                 "name": mapped_criterion["name"],
-                "expression": deepcopy(mapped_criterion["expression"]),
+                "expression": deepcopy(concept_set_expression),
             },
             "rule": {
                 "name": label,
@@ -7365,6 +7376,59 @@ class TTEService:
             # `DEFAULTED_WINDOW_CRITERIA_KEY`.
             "_defaulted_window": defaulted_window,
         }
+
+    def _lab_test_vocabulary(self) -> Any:
+        """The LOINC-axis vocabulary `_refine_measurement_specimen` reads; tests replace it."""
+        from src.services.loinc_specimen import PostgresLabTestVocabulary
+        from src.settings import settings
+
+        return PostgresLabTestVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA)
+
+    def _refine_measurement_specimen(
+        self,
+        expression: dict[str, Any],
+        *,
+        criteria_key: str,
+        seed: str,
+        description: str | None,
+        value_filter: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Apply `loinc_specimen.refine_measurement_concept_set` to a Measurement criterion.
+
+        Every other criteria type, and every set with no LOINC lab test in it, is returned
+        as mapped without opening the vocabulary. A vocabulary that cannot be reached
+        raises: the criterion is then recorded as unmapped rather than shipped with the
+        wrong-specimen set this step exists to repair.
+        """
+        from src.services.loinc_specimen import claims_lab_test, refine_measurement_concept_set
+
+        if criteria_key != "Measurement" or not any(
+            claims_lab_test(item) for item in expression.get("items") or []
+        ):
+            return expression
+        vocabulary = self._lab_test_vocabulary()
+        try:
+            refined, plan = refine_measurement_concept_set(
+                expression,
+                seed=seed,
+                description=description,
+                value_filter=value_filter,
+                vocabulary=vocabulary,
+            )
+        finally:
+            close = getattr(vocabulary, "close", None)
+            if callable(close):
+                close()
+        if plan.declined:
+            logging.info("[TTE] specimen refinement declined for %r: %s", seed, plan.declined)
+        elif plan.changed:
+            logging.info(
+                "[TTE] specimen refinement for %r (analyte %r): removed %s, added %s",
+                seed, plan.analyte,
+                [(cid, list(reasons)) for cid, reasons in plan.removed],
+                [t.concept_id for t in plan.added],
+            )
+        return refined
 
     def _resolve_ingredient_concept_id(self, seed: str) -> int | None:
         """Resolve a drug name to the single standard Ingredient concept it names.

@@ -254,6 +254,18 @@ Checks per file:
     opens it, and an unreachable vocabulary when one is needed aborts rather than
     passing. See ``src.utils.circe_lint.closure_subsumed_presence_criteria``.
 
+(u) no Measurement criterion reads a LOINC lab test in a specimen it did not name, or in a
+    property its own ``Unit`` contradicts. Measured on ``deliveries/2026-09-23/``: EMPA-REG
+    codeset 10 and CAROLINA codesets 41/42 'Glucose' hold 3004676 (vitreous fluid) and 3004378
+    (CSF/plasma ratio), ALT/AST sets hold red-cell, dried-blood-spot, amniotic and urine codes,
+    and CAROLINA codeset 42 is read in 8753 mmol/L over Mass-Concentration codes only, so its
+    filter matches no row anywhere. A finding on a set the builder declines to repair (no
+    analyte majority, a unit contradicting every member) is printed as a WARN with the builder's
+    reason and does not fail the file. Reads the vocabulary (``--dsn``) only when a Measurement
+    criterion reads an item claiming to be a LOINC lab test; unreachable then aborts. See
+    ``src.utils.circe_lint.specimen_mismatched_measurement_criteria`` and the rule it shares
+    with the builder, ``src.services.loinc_specimen.specimen_violations``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -336,9 +348,11 @@ from src.utils.circe_lint import (  # noqa: E402
     entry_concept_ids,
     entry_concept_set_name,
     entry_matches_expected,
+    measurement_lab_test_ids,
     missing_arm_roles,
     noop_exclusion_rules,
     rule_names,
+    specimen_mismatched_measurement_criteria,
     unfiltered_measurement_absence_criteria,
     ungrounded_criteria,
     unitless_value_bound_criteria,
@@ -365,6 +379,13 @@ def _open_vocabulary(dsn: str, schema: str):
     from src.services.conceptset_closure import PostgresVocabulary
 
     return PostgresVocabulary(dsn, schema)
+
+
+def _open_lab_test_vocabulary(dsn: str, schema: str):
+    """The LOINC-axis vocabulary check (u) reads. The seam tests replace."""
+    from src.services.loinc_specimen import PostgresLabTestVocabulary
+
+    return PostgresLabTestVocabulary(dsn, schema)
 
 
 def _subsumption_lookup(expression: dict[str, Any], vocabulary: Any) -> Any:
@@ -2216,6 +2237,8 @@ def main(argv: list[str] | None = None) -> int:
     produced_roles_by_study: dict[int, set[str]] = {}
     # Opened on the first file that has a pair for check (t) to prove, and only then.
     vocabulary: Any = None
+    # Same for check (u): opened on the first file whose Measurement criteria read a lab test.
+    lab_test_vocabulary: Any = None
 
     for path in circe_files:
         parsed = _split_filename(path)
@@ -2472,6 +2495,40 @@ def main(argv: list[str] | None = None) -> int:
                     f"closure-subsumed presence ({len(subsumed)}): {'; '.join(subsumed)}"
                 )
 
+        # (u) a Measurement criterion reading a lab test in a specimen it never named, or in a
+        # property its own Unit contradicts. Every check above reads the criterion's filter,
+        # window or name; none reads which specimen and quantity its LOINC members measure.
+        lab_test_ids = measurement_lab_test_ids(expression)
+        specimen_warn_clause = ""
+        if lab_test_ids:
+            if lab_test_vocabulary is None:
+                try:
+                    lab_test_vocabulary = _open_lab_test_vocabulary(args.dsn, args.vocab_schema)
+                except Exception as exc:  # noqa: BLE001 -- re-raised as a named abort
+                    print(
+                        f"ABORT: vocabulary unreachable at DSN {args.dsn!r} (schema "
+                        f"{args.vocab_schema}): {exc}. Check (u) reads each lab test's LOINC "
+                        f"System and Property and will not pass a file it could not read.",
+                        file=sys.stderr,
+                    )
+                    return 2
+            mismatched, declined = specimen_mismatched_measurement_criteria(
+                expression,
+                lab_test_vocabulary.lab_tests(lab_test_ids),
+                lab_test_vocabulary.analyte_lab_tests,
+            )
+            if mismatched:
+                reasons.append(
+                    f"specimen-mismatched measurement ({len(mismatched)}): {'; '.join(mismatched)}"
+                )
+            # REPORTED, NOT FAILED: a set the builder itself declines to repair (no analyte
+            # majority, a unit contradicting every member). Failing on it would block a
+            # delivery on a defect no re-export can remove; staying silent would hide it.
+            if declined:
+                specimen_warn_clause = (
+                    f"specimen refinement declined (WARN, {len(declined)}): {'; '.join(declined)}"
+                )
+
         # (o) a rule emitted as a conjunction over a stated disjunction. Check (n)
         # reaches LEADER's rule 2 only because codesets 10 and 11 are byte-identical;
         # the same inversion over sets that merely differ contradicts nothing a
@@ -2551,12 +2608,15 @@ def main(argv: list[str] | None = None) -> int:
                         f"entry: {case}; rules: {rules_detail}; {accounting_summary}",
                         grounding_clause,
                     ]
-                ),
+                )
+                + ([specimen_warn_clause] if specimen_warn_clause else []),
             }
         )
 
     if vocabulary is not None:
         vocabulary.close()
+    if lab_test_vocabulary is not None:
+        lab_test_vocabulary.close()
 
     # (e) arm completeness, across files rather than per file.
     id_to_slug = {study_id: slug for slug, study_id in slug_to_id.items()}
