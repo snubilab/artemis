@@ -33,16 +33,53 @@ one -- the whole basis for the reversal:
 3. at least one included member remains after the removal. An empty concept set is not a
    narrower cohort -- Circe compiles it to a criterion nothing can satisfy, or to one
    everything does, depending on the domain, and neither is the repair's intent;
-4. EVERY criterion anywhere in the expression that reads the codeset is a presence
+4. EVERY criterion anywhere in the expression that reads the codeset is either a presence
    criterion -- ``Occurrence {Type: 2, Count: >= 1}`` reached only through ALL/ANY/
-   AT_LEAST groups. Removing a member SHRINKS the set, so under presence the cohort can
-   only select FEWER patients, the same "can only miss patients" direction the unit
-   allowlist requires. Under an ABSENCE criterion a smaller set makes the absence EASIER
-   to satisfy and the direction flips to "can wrongly include patients";
+   AT_LEAST groups -- or a CONVERTED value-range absence (below). Removing a member
+   SHRINKS the set, so under presence the cohort can only select FEWER patients, the same
+   "can only miss patients" direction the unit allowlist requires. Under an arbitrary
+   ABSENCE criterion a smaller set makes the absence EASIER to satisfy and the direction
+   flips to "can wrongly include patients", so a plain absence still declines;
 5. the concept set carries no ``isExcluded`` item. An exclusion SUBTRACTS, so removing a
    member from the included side changes what the subtraction lands on -- the same
    grounds ``entry_exclusion_repair`` declines an entry set carrying one, where a flat
    mirror cannot express the subtraction it would need to.
+
+THE CONVERTED-ABSENCE READER, and why its direction differs from a plain absence's.
+``src.utils.circe_lint.convert_value_range_inclusions`` restates "at least 1 ANALYTE result
+in [lo, hi]" as "no ANALYTE result below lo, none above hi", unitless, and records it under
+``VALUE_RANGE_CONVERSIONS_KEY``. A reader counts as converted only when all of these hold:
+it is a mandatory absence reached through ``ALL`` groups of an InclusionRule
+(:attr:`~src.utils.presence_unit_allowlist.CodesetReader.is_absence`), on ``Measurement``,
+with no ``Unit``, its ``ValueAsNumber`` is one of the bounds a ``converted`` record for the
+same codeset lists under ``absences``. Measured instance: the 2026-10-08 dry rebuild,
+EMPA-REG codesets 3 and 4, "no HbA1c < 7.0, no HbA1c > 10.0", still holding HbA1 total.
+
+Removing the confusable member from such a set does narrow what the absence forbids, so a
+patient whose ONLY out-of-range result is the confusable now passes. That is correct here
+because of what the conversion already decided: a patient with no result for the analyte
+in the window passes the converted rule. Removing the member makes a patient measured only
+by the confusable into exactly such a patient. The repair adds no patient class that the
+conversion did not already admit. Keeping the member does something different: it applies
+the analyte's bound to another quantity. HbA1 includes A1a and A1b and reads higher than
+HbA1c, so "HbA1 > 10" excludes patients whose HbA1c may be in range.
+
+The residual risk is stated rather than claimed away. The confusable can imply the
+analyte's side of a bound: HbA1 < 7 implies HbA1c < 7. A patient with only such a result
+would be excluded by the protocol's intent and is now admitted, as an unmeasured patient
+is. That risk is the conversion's own risk for missing results, which it accepted when it
+dropped the presence. Removal does not create it.
+
+When the same removal would NOT be correct, and so still declines:
+
+* a plain absence that no conversion record covers. Its provenance is unknown. The
+  protocol may exclude on the confusable itself, or on a class the name only abbreviates,
+  and nothing in the expression shows that "no result" was already accepted as a pass;
+* an absence carrying a ``Unit``, or a bound the record does not list. The conversion
+  emits neither, so the reader is not the converted criterion, whatever its codeset;
+* an absence under a non-``ALL`` group, or a correlated criterion. There the direction of
+  "fewer forbidden events" depends on the surrounding shape, which this module does not
+  model.
 
 Conditions 1 and 2 are precisely the lint's own predicate, and it lives in
 :func:`~src.utils.circe_lint.iter_confusable_members` so that the gate and the repair
@@ -59,8 +96,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from src.utils.circe_lint import iter_confusable_members
-from src.utils.presence_unit_allowlist import iter_codeset_readers
+from src.utils.circe_lint import VALUE_RANGE_CONVERSIONS_KEY, iter_confusable_members
+from src.utils.presence_unit_allowlist import CodesetReader, iter_codeset_readers
 
 
 @dataclass(frozen=True)
@@ -72,6 +109,39 @@ class ConfusableMemberRepair:
     reasons: list[str]
 
 
+def _converted_absence_bounds(base: dict[str, Any]) -> dict[int, list[dict]]:
+    """Codeset id -> the absence bounds its ``converted`` value-range records emitted."""
+    bounds: dict[int, list[dict]] = {}
+    for record in base.get(VALUE_RANGE_CONVERSIONS_KEY) or []:
+        if not isinstance(record, dict) or record.get("status") != "converted":
+            continue
+        try:
+            codeset_id = int(record.get("codesetId"))
+        except (TypeError, ValueError):
+            continue
+        bounds.setdefault(codeset_id, []).extend(record.get("absences") or [])
+    return bounds
+
+
+def _why_not_converted(reader: CodesetReader, bounds: dict[int, list[dict]]) -> str | None:
+    """None when ``reader`` is a converted value-range absence; else why it is not."""
+    if not reader.is_absence:
+        return reader.why_not
+    payload = reader.payload or {}
+    if reader.locator.rsplit("/", 1)[-1] != "Measurement":
+        return "an absence on a domain a value-range conversion never emits"
+    if reader.codeset_id not in bounds:
+        return "an absence no value-range conversion record covers"
+    if payload.get("Unit"):
+        return "an absence carrying a Unit, which a value-range conversion never emits"
+    if payload.get("ValueAsNumber") not in bounds[reader.codeset_id]:
+        return (
+            f"an absence bounding {payload.get('ValueAsNumber')}, which is not a bound "
+            f"the codeset's value-range conversion record emitted"
+        )
+    return None
+
+
 def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepair]:
     """Remove confusable members where conditions 1-5 hold. Mutates ``base`` in place.
 
@@ -81,6 +151,7 @@ def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepa
     readers_by_codeset: dict[int, list] = {}
     for reader in iter_codeset_readers(base):
         readers_by_codeset.setdefault(reader.codeset_id, []).append(reader)
+    converted_bounds = _converted_absence_bounds(base)
 
     applied: list[ConfusableMemberRepair] = []
 
@@ -125,17 +196,22 @@ def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepa
                 codeset_id, name, entry.analyte, list(held),
             )
             continue
-        blocking = [reader for reader in readers if not reader.is_presence]
+        blocking = [
+            (reader, why)
+            for reader in readers
+            if not reader.is_presence
+            and (why := _why_not_converted(reader, converted_bounds)) is not None
+        ]
         if blocking:
             logging.warning(
                 "[TTE] confusable-member repair declines codeset %s %r (%s): %d of %d "
-                "reader(s) are not provably a presence criterion -- %s (%s). Removing "
-                "%s from a set an ABSENCE criterion reads makes that absence EASIER to "
-                "satisfy, so the direction flips from 'can only miss patients' to 'can "
-                "wrongly include patients'",
+                "reader(s) are not provably a presence criterion or a converted "
+                "value-range absence -- %s. Removing %s from a set an ABSENCE criterion "
+                "reads makes that absence EASIER to satisfy, so the direction flips from "
+                "'can only miss patients' to 'can wrongly include patients'",
                 codeset_id, name, entry.analyte, len(blocking), len(readers),
-                "; ".join(reader.locator for reader in blocking),
-                blocking[0].why_not, list(held),
+                "; ".join(f"{reader.locator} ({why})" for reader, why in blocking),
+                list(held),
             )
             continue
 
@@ -155,8 +231,13 @@ def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepa
         )
         logging.warning(
             "[TTE] confusable-member repair: codeset %s %r names %s -- %s removed, %d "
-            "included member(s) remain, read only by presence criteria (%s). %s",
+            "included member(s) remain, read only by presence criteria or converted "
+            "value-range absences (%s). %s",
             codeset_id, name, entry.analyte, list(held), len(remaining),
-            "; ".join(reader.locator for reader in readers), "; ".join(reasons),
+            "; ".join(
+                f"{reader.locator} [{'presence' if reader.is_presence else 'converted absence'}]"
+                for reader in readers
+            ),
+            "; ".join(reasons),
         )
     return applied

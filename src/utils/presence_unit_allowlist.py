@@ -69,7 +69,7 @@ DIMENSIONLESS_VALUE_CONCEPTS` carries, stated there.
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 CAN_ONLY_MISS = "can only miss patients"
@@ -294,8 +294,42 @@ class Classification:
     detail: str = ""
 
 
-def classify_concepts(concept_ids: Iterable[int]) -> Classification:
-    """Which allowlisted analyte a set of concepts measures, if exactly one."""
+#: A LOINC lab test's identity short of its method: ``(component, property, system, scale,
+#: time aspect)``, as :class:`src.services.loinc_specimen.LabTest` reads them. Two concepts
+#: with equal axes are the same measurement reported on the same scale; they differ only in
+#: method (CKD-EPI vs MDRD, VAP vs direct assay), which the table already tolerates among
+#: its own listed members.
+LabTestAxes = tuple[str, str | None, str | None, str | None, str | None]
+
+
+def _admitted_by_axes(
+    unlisted: list[int], listed: list[int], member_axes: Mapping[int, LabTestAxes]
+) -> bool:
+    """Whether every unlisted member has the axes of some listed member of the set.
+
+    The listed member is the anchor: its scale is the one the analyte's residual-risk table
+    analysed, so a member identical to it on every LOINC axis is covered by that analysis.
+    A member, or an anchor, with no component or no property vouches for nothing.
+    """
+    def complete(axes: LabTestAxes | None) -> bool:
+        return axes is not None and bool(axes[0]) and bool(axes[1])
+
+    anchors = {member_axes[cid] for cid in listed if complete(member_axes.get(cid))}
+    return all(
+        complete(member_axes.get(cid)) and member_axes[cid] in anchors for cid in unlisted
+    )
+
+
+def classify_concepts(
+    concept_ids: Iterable[int], member_axes: Mapping[int, LabTestAxes] | None = None
+) -> Classification:
+    """Which allowlisted analyte a set of concepts measures, if exactly one.
+
+    :param member_axes: concept id -> :data:`LabTestAxes`, from the vocabulary. When given,
+        a member listed under no analyte is admitted if its axes equal those of a listed
+        member of the set's one analyte (:func:`_admitted_by_axes`). Without it -- the
+        DB-free lint -- a set with an unlisted member is ``unlisted``, as before.
+    """
     ids = set(concept_ids)
     if not ids:
         return Classification(None, "none", "empty concept set")
@@ -316,6 +350,12 @@ def classify_concepts(concept_ids: Iterable[int]) -> Classification:
         )
     if unlisted:
         name = next(iter(owners))
+        if member_axes is not None and _admitted_by_axes(unlisted, owners[name], member_axes):
+            return Classification(
+                next(a for a in PRESENCE_UNIT_ANALYTES if a.name == name), "ok",
+                f"{name} set also holds {unlisted}, each with the LOINC axes of a listed "
+                f"{name} member",
+            )
         return Classification(
             None, "unlisted",
             f"{name} set also holds concept(s) not listed under {name}: {unlisted}",
@@ -437,12 +477,51 @@ class CodesetReader:
     all the way down. Anything else -- an absence criterion, an ``AT_MOST`` group, an
     entry event, a censoring criterion, a shape this module does not model -- is false,
     with ``why_not`` saying which.
+
+    ``is_absence`` names the one non-presence shape a caller may reason about further:
+    an InclusionRules criterion entry with ``Occurrence {Type: 0, Count: 0}`` reached
+    through ``ALL`` groups only, read by the entry's own domain payload (not a correlated
+    criterion under it). That is the shape a value-range conversion emits; whether a given
+    absence IS one is the caller's question, answered from ``payload``.
     """
 
     codeset_id: int
     locator: str
     is_presence: bool
     why_not: str
+    is_absence: bool = False
+    #: The domain payload carrying the ``CodesetId``; identity, not value, is what matters.
+    payload: Mapping[str, Any] | None = field(default=None, compare=False, repr=False)
+
+
+def is_absent_occurrence(occurrence: Mapping[str, Any] | None) -> bool:
+    """``exactly 0`` -- the occurrence a mandatory absence carries."""
+    occurrence = occurrence or {}
+    return occurrence.get("Type") == 0 and occurrence.get("Count") == 0
+
+
+def _iter_absence_codeset_nodes(
+    expression: Mapping[str, Any],
+) -> Iterator[Mapping[str, Any]]:
+    """Domain payloads read by a mandatory absence (see :class:`CodesetReader`)."""
+
+    def from_group(group: Any) -> Iterator[Mapping[str, Any]]:
+        if not isinstance(group, Mapping) or str(group.get("Type", "ALL")).upper() != "ALL":
+            return
+        for entry in group.get("CriteriaList") or []:
+            if not isinstance(entry, Mapping) or not is_absent_occurrence(entry.get("Occurrence")):
+                continue
+            criteria = entry.get("Criteria")
+            if isinstance(criteria, Mapping):
+                for payload in criteria.values():
+                    if isinstance(payload, Mapping) and payload.get("CodesetId") is not None:
+                        yield payload
+        for sub in group.get("Groups") or []:
+            yield from from_group(sub)
+
+    for rule in expression.get("InclusionRules") or []:
+        if isinstance(rule, Mapping):
+            yield from from_group(rule.get("expression"))
 
 
 def _iter_presence_codeset_nodes(
@@ -524,6 +603,7 @@ def iter_codeset_readers(expression: Mapping[str, Any]) -> Iterator[CodesetReade
         id(payload): locator
         for locator, payload in _iter_presence_codeset_nodes(expression)
     }
+    absence = {id(payload) for payload in _iter_absence_codeset_nodes(expression)}
 
     def everything() -> Iterator[tuple[str, Mapping[str, Any]]]:
         # Sectioned rather than one walk from the root, so a read inside an inclusion
@@ -544,12 +624,14 @@ def iter_codeset_readers(expression: Mapping[str, Any]) -> Iterator[CodesetReade
             continue
         presence_locator = presence.get(id(payload))
         if presence_locator is not None:
-            yield CodesetReader(codeset_id, presence_locator, True, "")
+            yield CodesetReader(codeset_id, presence_locator, True, "", payload=payload)
         else:
             yield CodesetReader(
                 codeset_id, locator.lstrip("/"), False,
                 "it is not an `at least N >= 1` occurrence reached only through "
                 "ALL/ANY/AT_LEAST groups",
+                is_absence=id(payload) in absence,
+                payload=payload,
             )
 
 
@@ -562,15 +644,22 @@ class UnitDropVerdict:
     why: str
 
 
-def unit_drop_verdict(concept_ids: Iterable[int], value: Mapping[str, Any]) -> UnitDropVerdict:
+def unit_drop_verdict(
+    concept_ids: Iterable[int],
+    value: Mapping[str, Any],
+    member_axes: Mapping[int, LabTestAxes] | None = None,
+) -> UnitDropVerdict:
     """May a presence Measurement bound over these concepts go without a ``Unit``?
 
     The single predicate both the repair and the lint apply. The caller has already
     established that the criterion is a presence criterion (:func:`iter_presence_
     criteria`) on ``Measurement``; the repair additionally checks the unit it removes
     is the analyte's stated one, which the lint cannot see once it is gone.
+
+    ``member_axes`` is passed through to :func:`classify_concepts`. The repair and the lint
+    must pass the SAME answer for a set, or the repair drops a unit the lint then reports.
     """
-    classification = classify_concepts(concept_ids)
+    classification = classify_concepts(concept_ids, member_axes)
     if classification.analyte is None:
         return UnitDropVerdict(False, None, classification, "", classification.detail)
     risk, why = residual_risk(classification.analyte, value)
