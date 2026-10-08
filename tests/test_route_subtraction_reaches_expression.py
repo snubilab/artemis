@@ -16,6 +16,7 @@ import pytest
 
 from src.agents.agent2.criterion_cache import CriterionResultCache
 from src.models.ir import MappingResult
+from src.services.overbroad_absence_repair import ConceptRecord
 from src.services.route_subtraction import DrugForm
 
 INGREDIENT_ID = 1001
@@ -54,6 +55,16 @@ def _candidate() -> MagicMock:
     return cand
 
 
+def _rows(forms: list[DrugForm]) -> dict:
+    """The CONCEPT rows the vocabulary would return for the stubbed forms."""
+    return {
+        f.concept_id: ConceptRecord(
+            f.concept_id, f.concept_name, "Drug", "RxNorm", "Clinical Drug Form", "S", "", None
+        )
+        for f in forms
+    }
+
+
 def _run(forms: list[DrugForm], cache: CriterionResultCache | None = None) -> dict:
     """Call the real mapper once with Agent 2, the builder and the vocabulary stubbed."""
     from src.services.tte_service import TTEService
@@ -73,6 +84,7 @@ def _run(forms: list[DrugForm], cache: CriterionResultCache | None = None) -> di
     with patch.object(TTEService, "_exact_ingredient_match_enabled", return_value=False), \
          patch.object(TTEService, "_fetch_concept_candidates", return_value=[_candidate()]), \
          patch.object(TTEService, "_fetch_drug_forms", return_value=forms), \
+         patch.object(TTEService, "_fetch_concept_records", return_value=_rows(forms)), \
          patch("src.agents.conceptset.expression_builder.get_expression_builder",
                return_value=builder), \
          patch("src.services.tte_service._criterion_cache_enabled",

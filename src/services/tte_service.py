@@ -16,7 +16,7 @@ from copy import deepcopy
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 # WebAPI cohort_inclusion.name column is varchar(255).
 _MAX_RULE_NAME_LENGTH = 255
@@ -110,7 +110,10 @@ from src.services.restated_distinctness import (
     COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
     collapse_all_restated_criteria,
 )
-from src.services.restated_rules import collapse_redundant_inclusion_rules
+from src.services.restated_rules import (
+    RESTATED_RULE_COLLAPSE_KEY,
+    collapse_redundant_inclusion_rules,
+)
 from src.agents.agent1.parser import get_agent1  # lazy factory; import does not construct Agent 1
 from src.agents.agent1.repair_accounting import REPAIR_ACCOUNTING_KEY
 from src.agents.agent2.criterion_cache import (
@@ -310,6 +313,116 @@ def describe_mapping_failure(exc: BaseException) -> dict[str, Any]:
         "refusalCode": refusal_code,
         "refusalDetail": refusal_detail,
     }
+
+
+def _codeset_ids(node: Any) -> set[Any]:
+    """Every ``CodesetId`` value under ``node``."""
+    found: set[Any] = set()
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "CodesetId":
+                found.add(value)
+            else:
+                found |= _codeset_ids(value)
+    elif isinstance(node, list):
+        for value in node:
+            found |= _codeset_ids(value)
+    return found
+
+
+def _cohort_codeset_ids(expression: dict[str, Any]) -> set[Any]:
+    """Codeset ids the cohort itself reads: every CIRCE key, none of the ``_`` records."""
+    return _codeset_ids(
+        {k: v for k, v in expression.items() if k != "ConceptSets" and not k.startswith("_")}
+    )
+
+
+def _rewrite_with_collapsed_rules(
+    expression: dict[str, Any], rewrite: Callable[[dict[str, Any]], Any]
+) -> Any:
+    """Apply an export-time rewrite to ``expression`` AND to the rules its collapse records carry.
+
+    A ``_restatedRuleCollapse`` record is written at build time and carries the removed rule's
+    expression so the delivery gate can re-derive the redundancy from the file. Every rewrite the
+    export then applies to the surviving rules -- the entry-colliding washout shift, the
+    unreadable-value drop, the arm repairs, the stale-drug re-map -- must reach that carried rule
+    too, or the two drift apart and the gate reads the removal as a lost criterion. Measured on the
+    2026-10-08 dry rebuild: the washout shift moved CARMELINA treatment's surviving DPP-4 window to
+    End -1 while both carried copies kept End 0.
+
+    The carried rules get the SAME function, never a copy of the survivor, so a record that did
+    not restate its survivor still fails the gate. They are rewritten in a shadow holding only
+    them, the file's non-rule CIRCE keys (the entry the washout shift reads) and the concept sets
+    those reference -- so the rewrite's own decisions and log lines concern the carried rules
+    alone and the file's rules are not rewritten twice. Back from the shadow come each carried
+    rule and every concept set no rule of the file reads (only records read it, so the file's pass
+    could not reach it); a set the file reads keeps what the file's pass made of it.
+
+    A carried rule the rewrite removes from the shadow leaves its record as it was, with a
+    warning: the gate then decides on the record as built rather than on a guess.
+
+    :param expression: the cohort expression, mutated in place.
+    :param rewrite: the export-time rewrite, called on ``expression`` and then on the shadow.
+    :returns: whatever ``rewrite`` returned for ``expression``.
+    """
+    result = rewrite(expression)
+    records = [
+        record
+        for record in expression.get(RESTATED_RULE_COLLAPSE_KEY) or []
+        if isinstance(record, dict) and isinstance(record.get("expression"), dict)
+    ]
+    if not records:
+        return result
+
+    carried = [{"name": r.get("rule"), "expression": deepcopy(r["expression"])} for r in records]
+    shadow = {
+        key: deepcopy(value)
+        for key, value in expression.items()
+        if key not in ("InclusionRules", "ConceptSets", RESTATED_RULE_COLLAPSE_KEY)
+    }
+    shadow["InclusionRules"] = list(carried)
+    read_in_shadow = _cohort_codeset_ids(shadow)
+    shadow["ConceptSets"] = [
+        deepcopy(cs) for cs in expression.get("ConceptSets") or [] if cs.get("id") in read_in_shadow
+    ]
+    rewrite(shadow)
+
+    kept = shadow.get("InclusionRules") or []
+    file_reads = _cohort_codeset_ids(expression)
+    shadow_sets = {cs.get("id"): cs for cs in shadow.get("ConceptSets") or []}
+    rewritten_rules: list[str] = []
+    rewritten_sets: set[Any] = set()
+    for record, rule in zip(records, carried):
+        if not any(r is rule for r in kept):
+            logging.warning(
+                "[TTE] %s removed the collapsed rule %r from its replay; its %s record keeps "
+                "the expression it was collapsed with", getattr(rewrite, "__name__", rewrite),
+                record.get("rule"), RESTATED_RULE_COLLAPSE_KEY,
+            )
+            continue
+        if rule["expression"] != record["expression"]:
+            record["expression"] = rule["expression"]
+            rewritten_rules.append(str(record.get("rule")))
+        for codeset_id in _codeset_ids(rule["expression"]) - file_reads:
+            if codeset_id not in shadow_sets:
+                continue
+            sets = expression.setdefault("ConceptSets", [])
+            position = next((i for i, cs in enumerate(sets) if cs.get("id") == codeset_id), None)
+            if position is None:
+                sets.append(shadow_sets[codeset_id])
+            elif sets[position] != shadow_sets[codeset_id]:
+                sets[position] = shadow_sets[codeset_id]
+            else:
+                continue
+            rewritten_sets.add(codeset_id)
+    if rewritten_rules or rewritten_sets:
+        logging.info(
+            "[TTE] %s also rewrote %d collapsed rule(s) (%s) and %d concept set(s) only "
+            "they read (%s)", getattr(rewrite, "__name__", rewrite), len(rewritten_rules),
+            "; ".join(rewritten_rules), len(rewritten_sets),
+            ", ".join(str(i) for i in sorted(rewritten_sets, key=repr)),
+        )
+    return result
 
 
 def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]) -> str:
@@ -4724,37 +4837,10 @@ class TTEService:
                         study=study,
                     )
                 # One chokepoint for all four arm shapes: the entry event is settled
-                # by the branch above, and the repair needs to read it. Placed here
+                # by the branch above, and the repairs need to read it. Placed here
                 # rather than inside each builder so a fifth arm shape cannot be added
-                # without it -- see `_repair_entry_excluded_by_own_rule`.
-                #
-                # Narrowing runs BEFORE the entry-exclusion mirror: both write to an
-                # absence concept set, and the mirror would leave the over-broad member
-                # in place and then block the narrowing, which declines on an isExcluded
-                # item. See `_repair_overbroad_absence_sets`.
-                self._repair_overbroad_absence_sets(built)
-                self._repair_entry_excluded_by_own_rule(built)
-                # Order is load-bearing: collapsing a two-sided bound into one `bt` is
-                # what makes that criterion's unit filter droppable -- the unit repair
-                # declines a one-sided bound because an alternative unit can pass it.
-                self._repair_range_disjunctions(built)
-                # Order is load-bearing for the same reason, one link further along: the
-                # restated-absence repair looks for a partner presence that states the
-                # protocol range as a SINGLE `bt` criterion, which is precisely what the
-                # collapse above produces. Run before it, CARMELINA's #12 is still two
-                # alternatives under `ANY`, the partner search finds nothing eligible, and
-                # the repair declines -- deliberately, so a pair the collapse would not
-                # touch keeps failing `unsatisfiable_presence_rules` instead of being
-                # half-fixed. See `_repair_restated_absences`.
-                self._repair_restated_absences(built)
-                # Same kind of load-bearing edge as the pair above, one step earlier in
-                # the chain: dropping the confusable member is what makes the set
-                # classify as a SINGLE analyte, and a single analyte is what lets the
-                # unit repair act at all -- it declines an "unlisted" set. EMPA-REG
-                # codeset 3 is the measured instance. See
-                # `_repair_confusable_concept_set_members`.
-                self._repair_confusable_concept_set_members(built)
-                self._repair_presence_unit_filters(built)
+                # without them -- see `_apply_export_repairs`.
+                self._apply_export_repairs(built)
                 return built
 
             # Label: active comparator uses its own drug; derived uses "No <treatment>"
@@ -4900,7 +4986,10 @@ class TTEService:
         # CARMELINA's incretin rule is both a colliding washout and a refused
         # criterion, and moving its window before removing it reported a correction to
         # a rule that then left the file.
-        dropped = drop_unreadable_value_criteria(expression)
+        # Each rewrite below goes through `_rewrite_with_collapsed_rules`, so a rule the build
+        # collapsed as redundant receives it as well and its `_restatedRuleCollapse` record
+        # still restates the survivor it names. See that function.
+        dropped = _rewrite_with_collapsed_rules(expression, drop_unreadable_value_criteria)
         # Recorded into the payload, not only logged. The log line went to stderr and
         # the delivered file said nothing: `deliver_20260908/aristotle_treatment` and
         # its re-export differ by a rule and a concept set, while `_generationCensus`,
@@ -4920,7 +5009,7 @@ class TTEService:
                 len(dropped),
                 "; ".join(record["summary"] for record in dropped),
             )
-        moved = end_entry_colliding_washouts_before_index(expression)
+        moved = _rewrite_with_collapsed_rules(expression, end_entry_colliding_washouts_before_index)
         if moved:
             logging.info(
                 "[TTE] Ended %d washout rule(s) a day before index (their concept set "
@@ -6330,7 +6419,7 @@ class TTEService:
             # about what the study drug was. Prefer the stored answer; fall through to
             # name resolution only when the store has none.
             if self._resolved_entry_concept_set(base) is not None:
-                self._repair_stale_drug_concept_sets(base)
+                _rewrite_with_collapsed_rules(base, self._repair_stale_drug_concept_sets)
                 return base
             logging.warning(
                 "[TTE] Drug-anchored entry: no resolved entry concept set in the store "
@@ -6361,7 +6450,7 @@ class TTEService:
                 for domain, body in crit.items():
                     if domain in ("DrugEra", "DrugExposure") and isinstance(body, dict):
                         body["CodesetId"] = next_id
-            self._repair_stale_drug_concept_sets(base)
+            _rewrite_with_collapsed_rules(base, self._repair_stale_drug_concept_sets)
             return base
 
         # Drug PRESENCE rule: at least 1 occurrence
@@ -6551,7 +6640,7 @@ class TTEService:
         for body in entry_bodies:
             body["CodesetId"] = new_id
 
-        self._repair_stale_drug_concept_sets(base)
+        _rewrite_with_collapsed_rules(base, self._repair_stale_drug_concept_sets)
         return base
 
     # ------------------------------------------------------------------
@@ -7826,6 +7915,48 @@ class TTEService:
             if expr and expr.get("items"):
                 cs["expression"] = expr
 
+    def _apply_export_repairs(self, built: dict[str, Any]) -> None:
+        """Run the arm-level export repairs on an assembled arm, and on its collapsed rules.
+
+        One chokepoint for all four arm shapes (see the arm builder closure in
+        `_build_seeded_cohort_artifact_payload`). The chain goes through
+        `_rewrite_with_collapsed_rules` as one unit, so a rule the build collapsed as redundant
+        receives the same repairs, in the same order, as the survivor its record names.
+
+        :param built: the assembled arm expression, mutated in place.
+        """
+        _rewrite_with_collapsed_rules(built, self._export_repair_chain)
+
+    def _export_repair_chain(self, built: dict[str, Any]) -> None:
+        """The arm-level export repairs, in their load-bearing order. Mutates ``built``."""
+        # Narrowing runs BEFORE the entry-exclusion mirror: both write to an
+        # absence concept set, and the mirror would leave the over-broad member
+        # in place and then block the narrowing, which declines on an isExcluded
+        # item. See `_repair_overbroad_absence_sets`.
+        self._repair_overbroad_absence_sets(built)
+        self._repair_entry_excluded_by_own_rule(built)
+        # Order is load-bearing: collapsing a two-sided bound into one `bt` is
+        # what makes that criterion's unit filter droppable -- the unit repair
+        # declines a one-sided bound because an alternative unit can pass it.
+        self._repair_range_disjunctions(built)
+        # Order is load-bearing for the same reason, one link further along: the
+        # restated-absence repair looks for a partner presence that states the
+        # protocol range as a SINGLE `bt` criterion, which is precisely what the
+        # collapse above produces. Run before it, CARMELINA's #12 is still two
+        # alternatives under `ANY`, the partner search finds nothing eligible, and
+        # the repair declines -- deliberately, so a pair the collapse would not
+        # touch keeps failing `unsatisfiable_presence_rules` instead of being
+        # half-fixed. See `_repair_restated_absences`.
+        self._repair_restated_absences(built)
+        # Same kind of load-bearing edge as the pair above, one step earlier in
+        # the chain: dropping the confusable member is what makes the set
+        # classify as a SINGLE analyte, and a single analyte is what lets the
+        # unit repair act at all -- it declines an "unlisted" set. EMPA-REG
+        # codeset 3 is the measured instance. See
+        # `_repair_confusable_concept_set_members`.
+        self._repair_confusable_concept_set_members(built)
+        self._repair_presence_unit_filters(built)
+
     def _repair_overbroad_absence_sets(self, base: dict[str, Any]) -> None:
         """Narrow a concept set that an absence rule reads from an over-broad ancestor
         back to the concept the set's own name states. Mutates ``base`` in place.
@@ -8265,6 +8396,20 @@ class TTEService:
         return [DrugForm(concept_id=int(cid), concept_name=name, dose_form=form)
                 for cid, name, form in rows]
 
+    def _fetch_concept_records(self, concept_ids: list[int]) -> dict[int, Any]:
+        """The CONCEPT rows for these ids, as ``ConceptRecord`` (one batched query).
+
+        :param concept_ids: concept ids to read.
+        :returns: id -> ``ConceptRecord``; an id the vocabulary lacks is absent.
+        :raises psycopg2.Error: the database could not be reached or queried -- not swallowed,
+            because the caller has no honest member to emit without the row.
+        """
+        from src.services.overbroad_absence_repair import PostgresConceptCatalog
+        from src.settings import settings
+
+        with PostgresConceptCatalog(settings.DATABASE_URL, settings.CDM_SCHEMA) as catalog:
+            return catalog.concepts_by_id(concept_ids)
+
     def _apply_route_subtraction(
         self,
         items: list[dict[str, Any]],
@@ -8317,20 +8462,27 @@ class TTEService:
             return
 
         already = {(item.get("concept") or {}).get("CONCEPT_ID") for item in items}
-        for form in result.excluded:
-            if form.concept_id in already:
-                continue
+        to_exclude = [form for form in result.excluded if form.concept_id not in already]
+        # Each member's concept is its CONCEPT row, in the shape the expression builder emits:
+        # Atlas aborts the whole concept-set table on a member missing a field it reads
+        # (`scripts/verify_atlas_renderable.py`), and hand-built members carried fixed values
+        # and no STANDARD_CONCEPT_CAPTION -- 1,756 of them per CAROLINA arm on the 2026-10-08
+        # dry rebuild. The forms came from the same table one query earlier, so a missing row
+        # is an inconsistency to stop on rather than a member to invent fields for.
+        rows = (
+            self._fetch_concept_records([form.concept_id for form in to_exclude])
+            if to_exclude
+            else {}
+        )
+        missing = [form.concept_id for form in to_exclude if form.concept_id not in rows]
+        if missing:
+            raise RuntimeError(
+                f"route subtraction on {seed_text!r}: the vocabulary returned no CONCEPT row for "
+                f"excluded drug form(s) {missing}"
+            )
+        for form in to_exclude:
             items.append({
-                "concept": {
-                    "CONCEPT_ID": form.concept_id,
-                    "CONCEPT_NAME": form.concept_name,
-                    "DOMAIN_ID": "Drug",
-                    "CONCEPT_CLASS_ID": "Clinical Drug Form",
-                    "STANDARD_CONCEPT": "S",
-                    "VOCABULARY_ID": "RxNorm",
-                    "CONCEPT_CODE": "",
-                    "INVALID_REASON": None,
-                },
+                "concept": rows[form.concept_id].as_circe_concept(),
                 "isExcluded": True,
                 "includeDescendants": True,
                 "includeMapped": False,
