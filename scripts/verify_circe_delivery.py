@@ -274,6 +274,17 @@ Checks per file:
     ``src.utils.circe_lint.value_range_inclusion_criteria`` and the predicate it shares with the
     builder, ``is_value_range_inclusion``.
 
+(w) no inclusion rule is identical to, or implied by, another inclusion rule in the same file:
+    both reached through ``ALL`` nodes only, compared on what they SELECT -- every ``CodesetId``
+    replaced by its concept set's items, every table, filter, occurrence and window verbatim. A
+    rule whose conjuncts all appear in another rule adds nothing, because CIRCE conjoins every
+    ``InclusionRules`` entry. Measured on ``deliveries/2026-09-23``: CARMELINA #14 'Use of GLP-1
+    receptor agonists + ...' is #11 'Exclusion of GLP-1 receptor agonists if recent + ...' over
+    other codeset ids, and #15 'DPP-4 inhibitors' is one of #11's conjuncts -- both sites reported
+    #11 and #14 with the same N. The builder collapses such rules and records each under
+    ``_restatedRuleCollapse``; :func:`restated_rule_collapse_violations` re-derives every record on
+    the file rather than trusting it. See ``src.services.restated_rules``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -331,6 +342,18 @@ from src.services.restated_distinctness import (  # noqa: E402
     COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
 )
 from src.services.restated_distinctness import distinctness_key  # noqa: E402
+from src.services.restated_rules import (  # noqa: E402
+    COLLAPSE_REASONS as RESTATED_RULE_COLLAPSE_REASONS,
+)
+from src.services.restated_rules import (  # noqa: E402
+    IDENTICAL_REASON as RESTATED_RULE_IDENTICAL_REASON,
+)
+from src.services.restated_rules import (  # noqa: E402
+    RESTATED_RULE_COLLAPSE_KEY,
+    missing_codeset_ids,
+    redundant_inclusion_rule_findings,
+    rule_relation,
+)
 from src.services.value_constraint import (  # noqa: E402
     STRANDED_GROUP_CONSTRAINT_REASON,
     resolve_group_member_constraint,
@@ -894,6 +917,94 @@ def restated_absence_removal_violations(expression: dict[str, Any]) -> list[str]
                 "bound in the delivered file"
             )
 
+    return violations
+
+
+def restated_rule_collapse_violations(expression: dict[str, Any]) -> list[str]:
+    """Re-judge every ``_restatedRuleCollapse`` record against the delivered file.
+
+    The record is written by the artifact being checked, so taken on its own it would be an
+    amnesty: a producer that lost a rule could record it as "redundant" and the file would read
+    clean under check (w). What makes the permit earned is that the claim is decidable from the
+    file alone -- the record carries the removed rule's expression, its concept sets stay in
+    ``ConceptSets``, and the survivor it names is still a rule -- so the relation is re-derived
+    here with :func:`src.services.restated_rules.rule_relation`, the predicate the producer
+    collapsed with, rather than read off the record:
+
+    * the reason is one the producer can write (:data:`RESTATED_RULE_COLLAPSE_REASONS`),
+    * the removed rule's expression is present and every concept set it reads is in the file,
+    * the survivor it names is in the file,
+    * and that survivor makes the removed rule redundant -- ``identical`` or ``implied`` --
+      exactly as the recorded reason says.
+
+    A file carrying no record (one exported before the key existed) has nothing to re-judge;
+    check (w) is what reads such a file.
+
+    :param expression: the delivered CIRCE expression.
+    :returns: one line per record the file does not bear out, empty when every one checks out.
+    """
+    records = expression.get(RESTATED_RULE_COLLAPSE_KEY)
+    if records is None:
+        return []
+    if not isinstance(records, list):
+        return [f"{RESTATED_RULE_COLLAPSE_KEY} is not a list: {type(records).__name__}"]
+
+    concept_sets = expression.get("ConceptSets") or []
+    by_name: dict[str, list[Mapping[str, Any]]] = {}
+    for rule in expression.get("InclusionRules") or []:
+        if isinstance(rule, Mapping):
+            by_name.setdefault(str(rule.get("name") or ""), []).append(rule)
+
+    violations: list[str] = []
+    for index, record in enumerate(records):
+        if not isinstance(record, Mapping):
+            violations.append(
+                f"{RESTATED_RULE_COLLAPSE_KEY}[{index}] is not a record: {record!r}"
+            )
+            continue
+        where = f"{RESTATED_RULE_COLLAPSE_KEY}[{index}] rule {record.get('rule')!r}"
+        reason = record.get("reason")
+        if reason not in RESTATED_RULE_COLLAPSE_REASONS:
+            violations.append(f"{where} carries unknown reason {reason!r}")
+            continue
+        removed = record.get("expression")
+        if not isinstance(removed, Mapping):
+            violations.append(
+                f"{where} carries no expression, so its redundancy cannot be re-derived"
+            )
+            continue
+        missing = missing_codeset_ids(removed, concept_sets)
+        if missing:
+            violations.append(
+                f"{where} reads codeset {', '.join(str(m) for m in missing)}, which the delivered "
+                "file does not carry -- its redundancy cannot be re-derived"
+            )
+            continue
+        survivor = str(record.get("survivorRule") or "")
+        survivors = by_name.get(survivor)
+        if not survivors:
+            violations.append(
+                f"{where} was collapsed onto {survivor!r}, which the delivered file does not carry"
+            )
+            continue
+        expected = "identical" if reason == RESTATED_RULE_IDENTICAL_REASON else "implied"
+        found = {
+            rule_relation(removed, rule.get("expression") or {}, concept_sets)
+            for rule in survivors
+        }
+        if expected in found:
+            continue
+        shown = sorted(r for r in found if r is not None)
+        if shown:
+            violations.append(
+                f"{where} is recorded as {reason!r}, but the file shows it {shown[0]!r} "
+                f"by {survivor!r}"
+            )
+        else:
+            violations.append(
+                f"{where} was removed as {reason!r}, but the delivered file's {survivor!r} "
+                "does not make it redundant -- the removal lost a criterion"
+            )
     return violations
 
 
@@ -2321,6 +2432,14 @@ def main(argv: list[str] | None = None) -> int:
         # it: it re-judges against `unreadable_value_attributes`, and a rule removed
         # because another rule forbade its whole range names no unreadable attribute.
         reasons.extend(restated_absence_removal_violations(expression))
+        # (w)'s permit: a rule the producer removed as redundant must still be redundant in
+        # the file -- re-derived, never read off the record.
+        collapse_violations = restated_rule_collapse_violations(expression)
+        if collapse_violations:
+            reasons.append(
+                f"restated rule collapse ({len(collapse_violations)}): "
+                f"{'; '.join(collapse_violations)}"
+            )
         rules_ok, rules_detail = _rule_multiset_check(rules, expected_rule_names)
         if not rules_ok:
             reasons.append(f"rule set mismatch: {rules_detail}")
@@ -2389,6 +2508,15 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"criterion domain mismatch ({len(domain_mismatches)}): "
                 f"{'; '.join(domain_mismatches)}"
+            )
+
+        # (w) an inclusion rule another inclusion rule already says. CIRCE conjoins every
+        # entry, so it selects nothing -- but it is not harmless: a site reads it as a second
+        # criterion, and both 2026-09-23 sites reported CARMELINA #11 and #14 with one N.
+        redundant_rules = redundant_inclusion_rule_findings(expression)
+        if redundant_rules:
+            reasons.append(
+                f"redundant inclusion rules ({len(redundant_rules)}): {'; '.join(redundant_rules)}"
             )
 
         # (j) a Measurement criterion whose own name asserts a bound it does not

@@ -110,6 +110,7 @@ from src.services.restated_distinctness import (
     COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
     collapse_all_restated_criteria,
 )
+from src.services.restated_rules import collapse_redundant_inclusion_rules
 from src.agents.agent1.parser import get_agent1  # lazy factory; import does not construct Agent 1
 from src.agents.agent1.repair_accounting import REPAIR_ACCOUNTING_KEY
 from src.agents.agent2.criterion_cache import (
@@ -5946,14 +5947,6 @@ class TTEService:
             inclusion_rules.append(rule)
             rule_criterion_keys.append(group_rule_keys.get(gid, []))
 
-        # Build rule-index-keyed metadata for frontend consumption
-        rule_index_meta: dict[str, Any] = {}
-        for rule_idx, crit_keys in enumerate(rule_criterion_keys):
-            for crit_key in crit_keys:
-                if crit_key in criterion_mapping_meta:
-                    rule_index_meta[str(rule_idx)] = criterion_mapping_meta[crit_key]
-                    break
-
         primary_key = self._seeded_primary_criteria_key(mapped_target["domain"])
         primary_attrs: dict[str, Any] = {"CodesetId": 1}
 
@@ -5985,7 +5978,10 @@ class TTEService:
             "InclusionRules": inclusion_rules,
             "_criterionMappingMetadata": criterion_mapping_meta,
             CRITERION_CONCEPT_SET_REFS_KEY: criterion_concept_set_refs,
-            "_ruleIndexMeta": rule_index_meta,
+            # Filled in below, once the rule list is final: the redundant-rule collapse
+            # removes entries, and a key naming a pre-collapse index would point the frontend
+            # at the wrong rule.
+            "_ruleIndexMeta": {},
             # Always present, empty when nothing failed -- an absent key would be
             # indistinguishable from a clean run on an artifact built before this.
             "_unmappedCriteria": sorted(unmapped_criteria, key=lambda r: (r["role"], r["criterionId"])),
@@ -6047,6 +6043,21 @@ class TTEService:
         # types corrected above, and whether a lab range sits among alternative risk factors
         # or among other ranges is only decidable on that geometry.
         self._convert_value_range_inclusions(base)
+        # Last of all, because identity is judged on what the rules SELECT and every step above
+        # can change that: a group's type, a member's value filter, a presence turned into an
+        # absence. Measured on `deliveries/2026-09-23`: CARMELINA #11 and #14 are the same three
+        # GLP-1 / DPP-4 / SGLT-2 absences from two store groups, and #15 is one of #11's
+        # conjuncts; the IR-level restated paths above cannot see it -- two roles, three
+        # description stems. Predicate, survivor rule and record: `restated_rules.py`.
+        collapsed = collapse_redundant_inclusion_rules(base, rule_criterion_keys)
+        removed = {record["ruleIndex"] for record in collapsed}
+        rule_criterion_keys = [k for i, k in enumerate(rule_criterion_keys) if i not in removed]
+        # Rule-index-keyed metadata for frontend consumption, over the final rule list.
+        for rule_idx, crit_keys in enumerate(rule_criterion_keys):
+            for crit_key in crit_keys:
+                if crit_key in criterion_mapping_meta:
+                    base["_ruleIndexMeta"][str(rule_idx)] = criterion_mapping_meta[crit_key]
+                    break
         return base
 
     def _convert_value_range_inclusions(self, base: dict[str, Any]) -> None:

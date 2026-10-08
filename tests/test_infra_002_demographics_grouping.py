@@ -80,8 +80,15 @@ def _stub_recommend(name: str, expected_domain: str | None = None, workflow=None
 
 
 def _stub_eligibility_rule(criterion, *, codeset_id, exclusion):
-    """Return a minimal eligibility rule result stub."""
+    """Return a minimal eligibility rule result stub.
+
+    The rule reads a codeset id derived from the criterion rather than the ``codeset_id``
+    placeholder: the fixture mocks ``_patch_codeset_id_in_rule``, so the placeholder is never
+    replaced, and two criteria would otherwise emit rules selecting the identical thing -- which
+    the builder now collapses as a restatement (``src/services/restated_rules.py``).
+    """
     label = criterion.get("description", "rule")
+    rule_codeset_id = 1000 + int(criterion.get("id", 0))
     return {
         "conceptSet": {
             "id": codeset_id,
@@ -93,7 +100,7 @@ def _stub_eligibility_rule(criterion, *, codeset_id, exclusion):
             "expression": {
                 "Type": "ALL",
                 "CriteriaList": [
-                    {"ConditionOccurrence": {"CodesetId": codeset_id}}
+                    {"ConditionOccurrence": {"CodesetId": rule_codeset_id}}
                 ],
                 "DemographicCriteriaList": [],
                 "Groups": [],
