@@ -8510,7 +8510,10 @@ class TTEService:
                         seed_concept_ids=mapping_result.seed_concept_ids or None,
                     )
                     expression = recommendation.expression.to_atlas_json()
-                    items = list(expression.get("items") or [])
+                    # One list, bound into the expression: _apply_route_subtraction
+                    # APPENDS its exclusions, and an append to a copy never reached the
+                    # returned or cached expression.
+                    items = expression["items"] = list(expression.get("items") or [])
 
                     if items:
                         for item in items:
