@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -1382,8 +1383,16 @@ def _render_numeric_bound(value: Mapping[str, Any]) -> str:
     return f"{operator} {low}"
 
 
-def unitless_value_bound_criteria(expression: dict[str, Any]) -> list[str]:
+def unitless_value_bound_criteria(
+    expression: dict[str, Any], member_properties: Mapping[int, str | None] | None = None
+) -> list[str]:
     """Locators for criteria bounding a value numerically while naming no unit.
+
+    One exemption beyond the two below: a converted value-range absence
+    (:func:`convert_value_range_inclusions`) whose concept set, as delivered, verifies against
+    the unit its record states -- every member's LOINC property is the one that unit measures.
+    That is decided by :func:`_verified_converted_absences` from ``member_properties``, the
+    vocabulary's answer; without it (``None``) nothing is exempted.
 
     The asymmetry this closes. ``src.services.value_constraint`` REFUSES a criterion
     whose unit string resolves to no UCUM concept
@@ -1480,6 +1489,7 @@ def unitless_value_bound_criteria(expression: dict[str, Any]) -> list[str]:
     """
     findings: list[str] = []
     presence_entries = {id(entry) for _index, entry in iter_presence_criteria(expression)}
+    verified_absences = _verified_converted_absences(expression, member_properties)
     for where, entry in _criterion_locations(expression):
         body = entry.get("Criteria")
         body = body if isinstance(body, dict) else entry
@@ -1492,6 +1502,8 @@ def unitless_value_bound_criteria(expression: dict[str, Any]) -> list[str]:
             if not isinstance(value, Mapping):
                 continue
             if payload.get("Unit"):
+                continue
+            if id(entry) in verified_absences:
                 continue
             codeset_id = payload["CodesetId"]
             concept_set = _find_concept_set(expression, codeset_id)
@@ -3624,3 +3636,407 @@ def specimen_mismatched_measurement_criteria(
         else:
             fail.append(locator)
     return fail, warn
+
+
+#: Expression key: one record per value-range inclusion the builder converted or declined. Check
+#: (q) reads the stated unit from it, because a converted absence no longer carries its ``Unit``.
+VALUE_RANGE_CONVERSIONS_KEY = "_valueRangeConversions"
+
+_VALUE_RANGE_OPS = frozenset({"lt", "lte", "gt", "gte", "bt"})
+
+#: ``(low, low closed, high, high closed)``; ``None`` is unbounded on that side.
+_Interval = tuple[float | None, bool, float | None, bool]
+
+
+def is_value_range_inclusion(entry: Mapping[str, Any]) -> bool:
+    """Whether a criteria entry requires at least 1 Measurement result inside a numeric range.
+
+    The shape ``deliveries/2026-09-23`` shipped for CAROLINA's ``BMI <= 45`` and the HbA1c
+    ranges of all three trials: ``Occurrence {Type: 2, Count: 1}`` over a ``Measurement``
+    carrying ``ValueAsNumber``. It drops every patient with no measurement in the window, where
+    the protocol only excludes a patient whose result is out of range.
+
+    Not selected: an absence, a presence with no ``ValueAsNumber``, ``RangeHighRatio`` /
+    ``RangeLowRatio``, ``Count > 1`` (forbidding the complement does not restate "at least two
+    results in range"), a ``CorrelatedCriteria``, and every criteria type but ``Measurement``.
+
+    The one home of this decision, read by the builder's conversion
+    (:func:`convert_value_range_inclusions`) and by check (v).
+    """
+    occurrence = entry.get("Occurrence") or {}
+    if (occurrence.get("Type"), occurrence.get("Count")) != (2, 1):
+        return False
+    criteria = entry.get("Criteria")
+    payload = criteria.get("Measurement") if isinstance(criteria, Mapping) else None
+    if not isinstance(payload, Mapping) or "CodesetId" not in payload:
+        return False
+    if any(key in payload for key in ("RangeHighRatio", "RangeLowRatio", "CorrelatedCriteria")):
+        return False
+    value = payload.get("ValueAsNumber")
+    if not isinstance(value, Mapping) or value.get("Op") not in _VALUE_RANGE_OPS:
+        return False
+    if _numeric(value.get("Value")) is None:
+        return False
+    return value.get("Op") != "bt" or _numeric(value.get("Extent")) is not None
+
+
+def _value_interval(value: Mapping[str, Any]) -> _Interval:
+    """The values a ``ValueAsNumber`` admits. Circe's ``bt`` is inclusive at both ends: WebAPI
+    2.15.1 renders ``{Value: a, Extent: b, Op: bt}`` as ``value_as_number >= a and <= b``."""
+    op, low = value["Op"], float(value["Value"])
+    if op == "bt":
+        return (low, True, float(value["Extent"]), True)
+    return {
+        "lt": (None, False, low, False),
+        "lte": (None, False, low, True),
+        "gt": (low, False, None, False),
+        "gte": (low, True, None, False),
+    }[op]
+
+
+def _interval_union(intervals: Sequence[_Interval]) -> _Interval | None:
+    """The union of ``intervals`` when it is ONE interval, else None."""
+    ordered = sorted(
+        intervals, key=lambda i: (float("-inf") if i[0] is None else i[0], not i[1])
+    )
+    low, low_closed, high, high_closed = ordered[0]
+    for n_low, n_low_closed, n_high, n_high_closed in ordered[1:]:
+        if high is not None and n_low is not None:
+            if n_low > high or (n_low == high and not (high_closed or n_low_closed)):
+                return None
+        if high is None:
+            continue
+        if n_high is None or n_high > high:
+            high, high_closed = n_high, n_high_closed
+        elif n_high == high:
+            high_closed = high_closed or n_high_closed
+    return (low, low_closed, high, high_closed)
+
+
+def _complement_bounds(interval: _Interval) -> list[dict[str, Any]]:
+    """The ``ValueAsNumber`` bounds of the values outside ``interval``, low tail first."""
+    low, low_closed, high, high_closed = interval
+    bounds = []
+    if low is not None:
+        bounds.append({"Value": low, "Op": "lt" if low_closed else "lte"})
+    if high is not None:
+        bounds.append({"Value": high, "Op": "gt" if high_closed else "gte"})
+    return bounds
+
+
+def _absence_entries(entry: Mapping[str, Any], interval: _Interval) -> list[dict[str, Any]]:
+    """``entry`` restated as exactly 0 results outside ``interval``, with no ``Unit``.
+
+    No unit filter, as decided: a NULL or unexpected ``unit_concept_id`` matches no ``IN`` list,
+    so on an absence a unit filter would let an out-of-range result through unseen. Unit safety
+    comes from the concept set instead -- :func:`convert_value_range_inclusions` keeps only the
+    members verified to be measured in the stated unit.
+    """
+    absences = []
+    for bound in _complement_bounds(interval):
+        absence = json.loads(json.dumps(entry))
+        payload = absence["Criteria"]["Measurement"]
+        payload.pop("Unit", None)
+        payload["ValueAsNumber"] = bound
+        absence["Occurrence"] = {**absence["Occurrence"], "Type": 0, "Count": 0}
+        absences.append(absence)
+    return absences
+
+
+def _subtree_entries(node: Mapping[str, Any]) -> list[dict[str, Any]]:
+    entries = [e for e in node.get("CriteriaList") or [] if isinstance(e, dict)]
+    for group in node.get("Groups") or []:
+        if isinstance(group, Mapping):
+            entries.extend(_subtree_entries(group))
+    return entries
+
+
+def _subtree_has_demographics(node: Mapping[str, Any]) -> bool:
+    return bool(node.get("DemographicCriteriaList")) or any(
+        _subtree_has_demographics(g) for g in node.get("Groups") or [] if isinstance(g, Mapping)
+    )
+
+
+def _value_range_conversion_units(
+    expression: Mapping[str, Any],
+) -> list[tuple[str, dict[str, Any] | None, list[tuple[dict[str, Any], dict[str, Any]]]]]:
+    """``(rule name, group or None, [(parent node, entry)])`` per conversion unit.
+
+    A value-range inclusion is converted only when (a) every node above it is ``ALL`` -- then it
+    is its own unit, group None -- or (b) it sits under a non-ALL node every leaf of which is a
+    value-range inclusion -- then that outermost non-ALL node is the unit. A non-ALL node mixing
+    labs with conditions, procedures or demographics (CAROLINA's CV-risk group, LEADER's, PLATO's
+    ST elevation) is a list of alternative risk factors, which gold keeps as presences, so
+    nothing under it is a unit.
+    """
+    units: list[tuple[str, dict[str, Any] | None, list[tuple[dict[str, Any], dict[str, Any]]]]] = []
+
+    def parents(node: dict[str, Any]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+        found = [(node, e) for e in node.get("CriteriaList") or [] if isinstance(e, dict)]
+        for group in node.get("Groups") or []:
+            if isinstance(group, dict):
+                found.extend(parents(group))
+        return found
+
+    def walk(rule_name: str, node: dict[str, Any]) -> None:
+        if str(node.get("Type") or "ALL").upper() != "ALL":
+            leaves = _subtree_entries(node)
+            if leaves and not _subtree_has_demographics(node) and all(
+                is_value_range_inclusion(e) for e in leaves
+            ):
+                units.append((rule_name, node, parents(node)))
+            return
+        for entry in node.get("CriteriaList") or []:
+            if isinstance(entry, dict) and is_value_range_inclusion(entry):
+                units.append((rule_name, None, [(node, entry)]))
+        for group in node.get("Groups") or []:
+            if isinstance(group, dict):
+                walk(rule_name, group)
+
+    for rule in expression.get("InclusionRules") or []:
+        if isinstance(rule.get("expression"), dict):
+            walk(rule.get("name", ""), rule["expression"])
+    return units
+
+
+def _included_member_ids(concept_set: Mapping[str, Any]) -> list[int]:
+    return [
+        int(item["concept"]["CONCEPT_ID"])
+        for item in (concept_set.get("expression") or {}).get("items") or []
+        if not item.get("isExcluded")
+    ]
+
+
+def _stated_unit(payload: Mapping[str, Any]) -> dict[str, Any] | None:
+    units = [u for u in payload.get("Unit") or [] if isinstance(u, Mapping)]
+    if not units:
+        return None
+    return {"CONCEPT_ID": units[0].get("CONCEPT_ID"), "CONCEPT_CODE": units[0].get("CONCEPT_CODE")}
+
+
+def convert_value_range_inclusions(
+    expression: dict[str, Any], member_properties: Mapping[int, str | None]
+) -> list[dict[str, Any]]:
+    """Restate each convertible value-range inclusion as the absence of out-of-range results.
+
+    Per unit (:func:`_value_range_conversion_units`):
+
+    1. Every entry's concept set is verified against the unit the entry states
+       (:func:`src.services.loinc_specimen.verify_members_against_unit`); members that cannot be
+       verified -- another property, or no LOINC property at all -- are removed. Only then can
+       the absence carry no ``Unit`` safely.
+    2. A group unit must be ``ANY`` (or ``AT_LEAST`` 1) over branches of one criterion each,
+       whose verified members are identical and stated in one unit, and whose ranges union to
+       one interval. It is emitted as ONE ``ALL`` rule: every branch forbids the values outside
+       that union, over its own (identical) concept set, so no criterion loses its concept set
+       and EMPA-REG's "7..10 or 7..9" becomes no <7 AND no >10 on each.
+    3. Anything else declines: the presence keeps its ``Unit`` and the concept set is untouched.
+
+    Also declined: a concept set some other criterion in the expression reads, because pruning
+    it would change that criterion. Mutates ``expression`` and writes the records under
+    :data:`VALUE_RANGE_CONVERSIONS_KEY`, one per entry, converted or declined.
+
+    :param expression: a CIRCE cohort expression.
+    :param member_properties: concept id -> LOINC property, for every member of every set a
+        unit reads (:func:`value_range_conversion_candidate_ids`); a non-LOINC id is absent.
+    :returns: the records written.
+    """
+    from src.services.loinc_specimen import verify_members_against_unit
+
+    readers: Counter[Any] = Counter()
+    for _where, entry in _criterion_locations(expression):
+        found = _criterion_body(entry)
+        if found is not None:
+            readers[found[1].get("CodesetId")] += 1
+
+    records: list[dict[str, Any]] = []
+    for rule_name, group, members in _value_range_conversion_units(expression):
+        entries = [entry for _parent, entry in members]
+        payloads = [entry["Criteria"]["Measurement"] for entry in entries]
+        codesets = [payload["CodesetId"] for payload in payloads]
+        concept_sets = [_find_concept_set(expression, cs) or {} for cs in codesets]
+        units = [_stated_unit(payload) for payload in payloads]
+        verdicts = [
+            verify_members_against_unit(
+                _included_member_ids(cs), member_properties, (unit or {}).get("CONCEPT_CODE")
+            )
+            for cs, unit in zip(concept_sets, units)
+        ]
+        kind = str((group or {}).get("Type") or "ALL").upper()
+        reason = None
+        one_of = kind == "ANY" or (kind == "AT_LEAST" and (group or {}).get("Count") == 1)
+        if group is not None and not one_of:
+            reason = f"a {kind}/{group.get('Count')} group of ranges is not one range"
+        elif group is not None and any(
+            len(_subtree_entries(g)) != 1
+            for g in group.get("Groups") or []
+            if isinstance(g, Mapping)
+        ):
+            reason = "a branch of the group holds more than one criterion"
+        if reason is None:
+            shared = [cs for cs in set(codesets) if readers[cs] > codesets.count(cs)]
+            if shared:
+                reason = (
+                    f"concept set(s) {sorted(shared)} also read by a criterion that is not "
+                    f"converted"
+                )
+        if reason is None:
+            reason = next(
+                (f"codeset {cs}: {v.declined}" for cs, v in zip(codesets, verdicts) if v.declined),
+                None,
+            )
+        if reason is None and group is not None:
+            if len({tuple(sorted(v.kept)) for v in verdicts}) != 1:
+                reason = "the branches do not hold identical verified members"
+            elif len({(u or {}).get("CONCEPT_CODE") for u in units}) != 1:
+                reason = "the branches state different units"
+        union = None
+        if reason is None:
+            union = _interval_union([_value_interval(p["ValueAsNumber"]) for p in payloads])
+            if union is None:
+                reason = "the ranges do not union to one interval"
+            elif not _complement_bounds(union):
+                reason = "the ranges together admit every value"
+
+        for entry, payload, cs, concept_set, unit, verdict in zip(
+            entries, payloads, codesets, concept_sets, units, verdicts
+        ):
+            record: dict[str, Any] = {
+                "rule": rule_name,
+                "codesetId": cs,
+                "group": None if group is None else kind,
+                "status": "declined" if reason else "converted",
+                "reason": reason,
+                "statedUnit": unit,
+                "presence": dict(payload["ValueAsNumber"]),
+                "property": verdict.property,
+                "absences": [] if reason else _complement_bounds(union),
+                "removedMembers": []
+                if reason
+                else [{"conceptId": cid, "reason": why} for cid, why in verdict.removed],
+            }
+            records.append(record)
+        if reason:
+            continue
+        for concept_set, verdict in zip(concept_sets, verdicts):
+            removed = {cid for cid, _why in verdict.removed}
+            items = (concept_set.get("expression") or {}).get("items") or []
+            concept_set["expression"]["items"] = [
+                item
+                for item in items
+                if item.get("isExcluded") or int(item["concept"]["CONCEPT_ID"]) not in removed
+            ]
+        for parent, entry in members:
+            criteria_list = parent["CriteriaList"]
+            index = next(i for i, e in enumerate(criteria_list) if e is entry)
+            criteria_list[index : index + 1] = _absence_entries(entry, union)
+        if group is not None:
+            group["Type"] = "ALL"
+            group.pop("Count", None)
+    expression[VALUE_RANGE_CONVERSIONS_KEY] = records
+    return records
+
+
+def value_range_conversion_candidate_ids(expression: Mapping[str, Any]) -> set[int]:
+    """Members of every concept set a conversion unit reads -- what the builder must look up.
+
+    Empty means there is nothing to convert and the vocabulary need not be opened.
+    """
+    ids: set[int] = set()
+    for _rule, _group, members in _value_range_conversion_units(expression):
+        for _parent, entry in members:
+            codeset = entry["Criteria"]["Measurement"]["CodesetId"]
+            concept_set = _find_concept_set(expression, codeset)
+            ids.update(_included_member_ids(concept_set or {}))
+    return ids
+
+
+def _converted_units_by_codeset(expression: Mapping[str, Any]) -> dict[Any, str | None]:
+    return {
+        record.get("codesetId"): (record.get("statedUnit") or {}).get("CONCEPT_CODE")
+        for record in expression.get(VALUE_RANGE_CONVERSIONS_KEY) or []
+        if isinstance(record, Mapping) and record.get("status") == "converted"
+    }
+
+
+def value_range_conversion_member_ids(expression: Mapping[str, Any]) -> set[int]:
+    """Members of every concept set a converted absence reads -- what check (q) must look up."""
+    ids: set[int] = set()
+    for codeset in _converted_units_by_codeset(expression):
+        ids.update(_included_member_ids(_find_concept_set(dict(expression), codeset) or {}))
+    return ids
+
+
+def _verified_converted_absences(
+    expression: dict[str, Any], member_properties: Mapping[int, str | None] | None
+) -> set[int]:
+    """``id()`` of every unitless absence entry the conversion record covers AND whose concept
+    set, as it stands now, verifies against the recorded unit with nothing left to remove.
+
+    The record supplies only the stated unit. The verdict is recomputed from the vocabulary
+    here, so a member added after conversion, or a record that names the wrong unit, fails.
+    """
+    from src.services.loinc_specimen import verify_members_against_unit
+
+    if member_properties is None:
+        return set()
+    units = _converted_units_by_codeset(expression)
+    verified: set[int] = set()
+    for _where, entry in _criterion_locations(expression):
+        payload = (entry.get("Criteria") or {}).get("Measurement")
+        occurrence = entry.get("Occurrence") or {}
+        if not isinstance(payload, Mapping) or payload.get("Unit"):
+            continue
+        if (occurrence.get("Type"), occurrence.get("Count")) != _ABSENT_OCCURRENCE:
+            continue
+        codeset = payload.get("CodesetId")
+        if codeset not in units:
+            continue
+        verdict = verify_members_against_unit(
+            _included_member_ids(_find_concept_set(expression, codeset) or {}),
+            member_properties,
+            units[codeset],
+        )
+        if verdict.declined is None and not verdict.removed:
+            verified.add(id(entry))
+    return verified
+
+
+def value_range_inclusion_criteria(expression: dict[str, Any]) -> list[str]:
+    """Check (v): :func:`is_value_range_inclusion` entries every patient must satisfy.
+
+    Read through ``ALL`` nodes only (:func:`_conjoined_entries`): there the presence is
+    mandatory, so a patient with no result in the window is dropped by this rule alone, which is
+    how Ajou's CAROLINA lost 90.27% / 93.56% of its arms at ``'Body Mass Index'``.
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one locator per offending entry, empty when none.
+    """
+    findings: list[str] = []
+    for rule in expression.get("InclusionRules") or []:
+        for entry in _conjoined_entries(rule.get("expression") or {}):
+            if not is_value_range_inclusion(entry):
+                continue
+            payload = entry["Criteria"]["Measurement"]
+            concept_set = _find_concept_set(expression, payload["CodesetId"]) or {}
+            units = [
+                u.get("CONCEPT_CODE") for u in payload.get("Unit") or [] if isinstance(u, Mapping)
+            ]
+            start = (entry.get("StartWindow") or {}).get("Start") or {}
+            end = (entry.get("StartWindow") or {}).get("End") or {}
+            window = (
+                f"{(start.get('Coeff') or 0) * (start.get('Days') or 0)}.."
+                f"{(end.get('Coeff') or 0) * (end.get('Days') or 0)} days"
+            )
+            absences = " AND ".join(
+                f"exactly 0 {_render_numeric_bound(bound)}"
+                for bound in _complement_bounds(_value_interval(payload["ValueAsNumber"]))
+            )
+            findings.append(
+                f"{rule.get('name', '')}: Measurement over codeset {payload['CodesetId']} "
+                f"{concept_set.get('name') or ''!r} requires at least 1 result "
+                f"{_render_numeric_bound(payload['ValueAsNumber'])} (Unit {units or 'none'}) in "
+                f"{window}, so a patient with no measurement in the window is dropped -- the range "
+                f"restated as an absence is {absences}"
+            )
+    return findings

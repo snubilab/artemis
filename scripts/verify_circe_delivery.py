@@ -266,6 +266,14 @@ Checks per file:
     ``src.utils.circe_lint.specimen_mismatched_measurement_criteria`` and the rule it shares
     with the builder, ``src.services.loinc_specimen.specimen_violations``.
 
+(v) no inclusion rule requires, through ``ALL`` nodes only, at least 1 Measurement result
+    inside a numeric range. That shape drops every patient with no measurement in the window:
+    ``deliveries/2026-09-23`` CAROLINA ``'Body Mass Index'`` (at least 1 BMI ``lte 45``) cost
+    Ajou 90.27% / 93.56% of its arms by itself. The builder states such a range as the absence
+    of an out-of-range result, as gold does. See
+    ``src.utils.circe_lint.value_range_inclusion_criteria`` and the predicate it shares with the
+    builder, ``is_value_range_inclusion``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -358,6 +366,8 @@ from src.utils.circe_lint import (  # noqa: E402
     unitless_value_bound_criteria,
     unreadable_value_attributes,
     unsatisfiable_presence_rules,
+    value_range_conversion_member_ids,
+    value_range_inclusion_criteria,
 )
 from src.utils.criterion_refusal import (  # noqa: E402
     REFUSAL_CODES,
@@ -2392,6 +2402,16 @@ def main(argv: list[str] | None = None) -> int:
                 f"{'; '.join(missing_bounds)}"
             )
 
+        # (v) a lab range required as a PRESENCE on a mandatory path. Check (j) asks whether a
+        # bound went missing; this one asks whether a bound that is present was stated in the
+        # polarity that drops every patient lacking the test.
+        value_range_presences = value_range_inclusion_criteria(expression)
+        if value_range_presences:
+            reasons.append(
+                f"value-range inclusion as presence ({len(value_range_presences)}): "
+                f"{'; '.join(value_range_presences)}"
+            )
+
         # (l) an absence over a lab with no result filter. Check (j) reads a NAME
         # that promised a bound; this one reads what the rule SELECTS without one --
         # "excluded anyone ever tested" rather than "anyone whose result crossed a
@@ -2415,7 +2435,28 @@ def main(argv: list[str] | None = None) -> int:
         # no one. Covers `Observation` as well as `Measurement` -- CARMELINA's
         # 'Life expectancy' < 5 carries no unit while CAROLINA's same-concept criterion
         # carries `year`, and months rather than years is a twelve-fold error.
-        unitless_bounds = unitless_value_bound_criteria(expression)
+        # A converted value-range absence carries no Unit by design; (q) accepts it only when
+        # the vocabulary verifies every member against the unit its conversion record states.
+        # Reads the vocabulary only for a file carrying such a record; unreachable then aborts.
+        conversion_member_ids = value_range_conversion_member_ids(expression)
+        member_properties = None
+        if conversion_member_ids:
+            if lab_test_vocabulary is None:
+                try:
+                    lab_test_vocabulary = _open_lab_test_vocabulary(args.dsn, args.vocab_schema)
+                except Exception as exc:  # noqa: BLE001 -- re-raised as a named abort
+                    print(
+                        f"ABORT: vocabulary unreachable at DSN {args.dsn!r} (schema "
+                        f"{args.vocab_schema}): {exc}. Check (q) verifies converted value-range "
+                        f"absences against the LOINC property of their stated unit and will not "
+                        f"pass them unverified.",
+                        file=sys.stderr,
+                    )
+                    return 2
+            member_properties = lab_test_vocabulary.properties(conversion_member_ids)
+        unitless_bounds = unitless_value_bound_criteria(
+            expression, member_properties=member_properties
+        )
         if unitless_bounds:
             reasons.append(
                 f"unitless value bound ({len(unitless_bounds)}): "

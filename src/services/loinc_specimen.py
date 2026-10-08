@@ -82,7 +82,7 @@ _UNIT_DIMENSION: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^\[[iI]U\]$"), "arbitrary"),
     (_VOLUME, "volume"),
     (re.compile(r"^(min|h|s|d)$"), "time"),
-    (re.compile(r"^\(.*m2\)$"), "area"),
+    (re.compile(r"^\(.*m2\)$|^(c|d|m)?m2$"), "area"),
 )
 _PROPERTY_BY_DIMENSIONS = {
     ("mass", "volume"): "Mass Concentration",
@@ -92,6 +92,31 @@ _PROPERTY_BY_DIMENSIONS = {
     ("arbitrary", "volume"): "Arbitrary Concentration",
     ("volume", "time"): "Volume Rate",
     ("volume", "time", "area"): "Volume Rate/Area",
+}
+# The readings below name a FAMILY of LOINC properties, each name read from the vocabulary's
+# 'Has property' targets (synthea23m, 2026-10-08), not assumed:
+# * mass/area: the vocabulary has no areic-mass property; both BMI ratio codes (39156-5,
+#   89270-3) carry 'Ratio' (LP6852-0), and their percentile siblings 'Percentile' (LP6846-2).
+# * substance/substance: 'Substance Fraction' (LP6866-0, e.g. HbA1c by IFCC 59261-8) and
+#   'Substance Ratio' (LP6868-6) -- a quotient of two amounts of substance is one or the other.
+_PROPERTY_FAMILIES_BY_DIMENSIONS: dict[tuple[str, ...], frozenset[str]] = {
+    ("mass", "area"): frozenset({"Ratio"}),
+    ("substance", "substance"): frozenset({"Substance Fraction", "Substance Ratio"}),
+}
+#: '%' is the dimensionless unit 1 scaled by 1/100. LOINC reports its non-decimal fraction
+#: properties in it -- 'Mass fraction' (LP6831-4, HbA1c 4548-4), 'Number Fraction' (LP6838-9),
+#: 'Volume Fraction' (LP6891-8) ... -- and gives the unit-1 forms their own 'Decimal ...'
+#: properties ('Decimal mass fraction' LP150070-3, HbA1c 71875-9), which '%' does not name.
+PERCENT_FRACTION_PROPERTIES = frozenset({
+    "Mass fraction", "Substance Fraction", "Volume Fraction", "Number Fraction",
+    "Arbitrary fraction", "Catalytic Fraction", "Length fraction", "Saturation Fraction",
+    "Area Fraction", "Time Fraction", "Circumference Fraction",
+})
+#: Single-atom units: '%' above; mm[Hg] is a pressure, which LOINC files as 'Pressure'
+#: (LP6847-0, systolic blood pressure 8480-6) or 'Partial pressure' (LP6845-4, pO2/pCO2).
+_PROPERTY_FAMILIES_BY_ATOM: dict[str, frozenset[str]] = {
+    "%": PERCENT_FRACTION_PROPERTIES,
+    "mm[Hg]": frozenset({"Pressure", "Partial pressure"}),
 }
 # Deliberately absent: mass/mass and substance/substance. LOINC files the same urine
 # albumin/creatinine quotient under both 'Mass Ratio' (14959-1) and 'Ratio' (32294-1), both
@@ -193,26 +218,99 @@ def system_allowed(system: str | None, words: frozenset[str]) -> bool:
     )
 
 
-def unit_property(ucum_code: str | None) -> str | None:
-    """The LOINC property a UCUM unit is a measure of, or None when the grammar does not say.
+def unit_properties(ucum_code: str | None) -> frozenset[str]:
+    """Every LOINC property a UCUM unit can be a measure of; empty when the grammar does not say.
 
-    ``"mg/dL"`` -> Mass Concentration, ``"mmol/L"`` -> Substance Concentration, ``"[U]/L"`` ->
-    Catalytic Concentration. A bare or dimensionless unit (``"%"``, ``"a"``) and a quotient of
-    like dimensions (``"mg/g"``) return None, which callers read as "the unit constrains no
-    property".
+    ``"mg/dL"`` -> {Mass Concentration}, ``"kg/m2"`` -> {Ratio}, ``"%"`` -> the non-decimal
+    fraction properties, ``"mmol/mol"`` -> {Substance Fraction, Substance Ratio}. A quotient of
+    two masses (``"mg/g"``) stays empty: LOINC files urine albumin/creatinine under both 'Mass
+    Ratio' and 'Ratio' (see above), so the unit cannot choose.
     """
     if not ucum_code:
-        return None
+        return frozenset()
+    if ucum_code in _PROPERTY_FAMILIES_BY_ATOM:
+        return _PROPERTY_FAMILIES_BY_ATOM[ucum_code]
     atoms = ucum_code.split("/")
     if len(atoms) < 2:
-        return None
+        return frozenset()
     dimensions = []
     for atom in atoms:
         dimension = next((d for pattern, d in _UNIT_DIMENSION if pattern.match(atom)), None)
         if dimension is None:
-            return None
+            return frozenset()
         dimensions.append(dimension)
-    return _PROPERTY_BY_DIMENSIONS.get(tuple(dimensions))
+    single = _PROPERTY_BY_DIMENSIONS.get(tuple(dimensions))
+    if single:
+        return frozenset({single})
+    return _PROPERTY_FAMILIES_BY_DIMENSIONS.get(tuple(dimensions), frozenset())
+
+
+def unit_property(ucum_code: str | None) -> str | None:
+    """The ONE LOINC property a UCUM unit is a measure of, or None when it names none or several.
+
+    The specimen step and check (u) read this: they compare each lab test to a single property,
+    so a unit naming a family (``"%"``) constrains nothing there, as before. Only
+    :func:`verify_members_against_unit` resolves a family, against the set's own members.
+    """
+    family = unit_properties(ucum_code)
+    return next(iter(family)) if len(family) == 1 else None
+
+
+@dataclass(frozen=True)
+class UnitVerification:
+    """Which members of a concept set are verified to be measured in a stated unit."""
+
+    property: str | None = None
+    kept: tuple[int, ...] = ()
+    removed: tuple[tuple[int, str], ...] = ()
+    declined: str | None = None
+
+
+def verify_members_against_unit(
+    member_ids: Sequence[int],
+    member_properties: Mapping[int, str | None],
+    ucum_code: str | None,
+) -> UnitVerification:
+    """Keep only the members whose LOINC property is the one the stated unit measures.
+
+    The property is the member of :func:`unit_properties` held by a strict majority of the
+    members whose property is in that family -- '%' over HbA1c resolves to 'Mass fraction', so
+    an IFCC 'Substance Fraction' code is dropped with the 'Mass Concentration' one. A member with
+    no LOINC property (a SNOMED procedure) cannot be verified and is dropped. Declines, keeping
+    nothing, when the criterion states no unit, the unit names no property, or no property
+    holds a majority.
+
+    :param member_ids: the set's non-excluded concept ids, in order.
+    :param member_properties: concept id -> LOINC property name; a non-LOINC id is absent.
+    :param ucum_code: the CONCEPT_CODE of the unit the criterion stated.
+    """
+    if not ucum_code:
+        return UnitVerification(
+            declined="the criterion states no unit, so no member's property can be verified"
+        )
+    family = unit_properties(ucum_code)
+    if not family:
+        return UnitVerification(declined=f"the stated unit {ucum_code!r} names no LOINC property")
+    ids = list(dict.fromkeys(int(i) for i in member_ids))
+    in_family = [member_properties.get(i) for i in ids if member_properties.get(i) in family]
+    if not in_family:
+        return UnitVerification(
+            declined=f"no member carries a LOINC property the unit {ucum_code!r} names"
+        )
+    resolved, count = Counter(in_family).most_common(1)[0]
+    if count * 2 <= len(in_family):
+        return UnitVerification(
+            declined=f"no property majority for {ucum_code!r}: {dict(Counter(in_family))}"
+        )
+    removed = []
+    for cid in ids:
+        prop = member_properties.get(cid)
+        if prop is None:
+            removed.append((cid, "not a LOINC concept with a property, so it cannot be verified"))
+        elif prop != resolved:
+            removed.append((cid, f"property {prop!r} is not the unit's {resolved!r}"))
+    kept = tuple(cid for cid in ids if member_properties.get(cid) == resolved)
+    return UnitVerification(property=resolved, kept=kept, removed=tuple(removed))
 
 
 def value_filter_unit_property(criteria_attributes: Mapping[str, Any]) -> str | None:
@@ -521,6 +619,18 @@ SELECT DISTINCT c.concept_id
 """
 
 
+_PROPERTY_SQL = """
+SELECT c.concept_id, MAX(x.concept_name)
+  FROM {schema}.concept c
+  JOIN {schema}.concept_relationship r
+    ON r.concept_id_1 = c.concept_id AND r.invalid_reason IS NULL
+   AND r.relationship_id = 'Has property'
+  JOIN {schema}.concept x ON x.concept_id = r.concept_id_2
+ WHERE c.concept_id = ANY(%s) AND c.vocabulary_id = 'LOINC'
+ GROUP BY 1
+"""
+
+
 def _like_prefix(text: str) -> str:
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "^%"
 
@@ -567,6 +677,15 @@ class PostgresLabTestVocabulary:
             )
             for row in rows
         }
+
+    def properties(self, concept_ids: Iterable[int]) -> dict[int, str]:
+        """LOINC ``Has property`` name per concept, any concept class; a non-LOINC id is absent."""
+        ids = sorted({int(c) for c in concept_ids})
+        if not ids:
+            return {}
+        with self._conn.cursor() as cur:
+            cur.execute(_PROPERTY_SQL.format(schema=self._schema), (ids,))
+            return {row[0]: row[1] for row in cur.fetchall() if row[1] is not None}
 
     def analyte_lab_tests(self, analyte: str) -> list[LabTest]:
         with self._conn.cursor() as cur:

@@ -129,6 +129,8 @@ from src.utils.circe_lint import (
     CRITERION_CONCEPT_SET_REFS_KEY,
     DEFAULTED_WINDOW_CRITERIA_KEY,
     DROPPED_CRITERIA_KEY,
+    VALUE_RANGE_CONVERSIONS_KEY,
+    convert_value_range_inclusions,
     criteria_types_by_codeset,
     default_criterion_window,
     drop_unreadable_value_criteria,
@@ -141,6 +143,7 @@ from src.utils.circe_lint import (
     refuse_domain_contradiction,
     refuse_unreadable_value_filter,
     states_flat_disjunction,
+    value_range_conversion_candidate_ids,
 )
 from src.utils.criterion_refusal import (
     REFUSAL_DOMAIN_CONTRADICTION,
@@ -5972,7 +5975,7 @@ class TTEService:
             "skippedByReason": skipped_by_reason,
         }
 
-        return {
+        base = {
             "ConceptSets": concept_sets,
             "PrimaryCriteria": {
                 "CriteriaList": [{primary_key: primary_attrs}],
@@ -6040,6 +6043,43 @@ class TTEService:
             # SPEC-INFRA-004 mis-classified in the first place.
             "_restatedIntactGroups": restated_intact_groups,
         }
+        # Last, so the narrowing reads the final rule geometry: groups are folded and their
+        # types corrected above, and whether a lab range sits among alternative risk factors
+        # or among other ranges is only decidable on that geometry.
+        self._convert_value_range_inclusions(base)
+        return base
+
+    def _convert_value_range_inclusions(self, base: dict[str, Any]) -> None:
+        """Restate lab-range inclusions as the absence of out-of-range results. Mutates ``base``.
+
+        Measured on ``deliveries/2026-09-23``: CAROLINA ``'Body Mass Index'`` shipped as "at
+        least 1 BMI <= 45 kg/m2", which drops every patient with no BMI in the window -- 90.27% /
+        93.56% of Ajou's CAROLINA arms at that rule alone -- where gold states "no BMI > 45". What
+        is converted, how a group of ranges is merged, which members are removed so the absence
+        can carry no unit, and every decline, live in
+        :func:`src.utils.circe_lint.convert_value_range_inclusions`; this is the wiring.
+
+        The record key is present and empty when nothing qualified. A DB-free pre-gate skips the
+        vocabulary when no rule holds a candidate; a vocabulary failure propagates rather than
+        shipping a unitless absence whose members were never verified.
+        """
+        base[VALUE_RANGE_CONVERSIONS_KEY] = []
+        ids = value_range_conversion_candidate_ids(base)
+        if not ids:
+            return
+        vocabulary = self._lab_test_vocabulary()
+        try:
+            properties = vocabulary.properties(ids)
+        finally:
+            close = getattr(vocabulary, "close", None)
+            if callable(close):
+                close()
+        for record in convert_value_range_inclusions(base, properties):
+            logging.info(
+                "[TTE] value-range inclusion %s: rule %r codeset %s%s",
+                record["status"], record["rule"], record["codesetId"],
+                f" -- {record['reason']}" if record["reason"] else "",
+            )
 
     def _build_combined_treatment_circe(
         self,
