@@ -110,11 +110,15 @@ def test_should_still_reject_the_class_when_the_match_is_wrong(case, atc):
     assert ingredient_ids == []
 
 
-def test_should_reject_a_match_that_expands_to_fewer_than_three_ingredients(atc, monkeypatch):
-    """A correct-looking name that yields 2 ingredients is not a class. Unchanged by
-    the threshold move, and worth pinning so raising it does not weaken this guard."""
+def test_should_reject_a_small_class_that_has_no_therapeutic_parent_to_climb_to(atc, monkeypatch):
+    """A correct-looking name that yields 2 ingredients is not a class. Since
+    2026-10-08 its parent is tried instead (tests/test_atc_class_selection.py); with
+    only the anatomical main group above it, there is nothing to try and the guard
+    still rejects."""
     conn = atc(*DPP4[1:])
     monkeypatch.setattr(_Cursor, "fetchall", lambda _s: [(1,), (2,)])
+    top = (21600673, "A", "ALIMENTARY TRACT AND METABOLISM", "ATC 1st")
+    monkeypatch.setattr(dce, "atc_parent", lambda *_a: top)
 
     matched, ingredient_ids = dce.expand_drug_class_via_vocab(DPP4[0], conn, schema="cdm")
 
@@ -136,6 +140,7 @@ A10XX = (955112, "A10XX", "Other drugs used in diabetes")
 A10 = (21600712, "A10", "DRUGS USED IN DIABETES")
 A08AX = (21600695, "A08AX", "Other antiobesity drugs")
 V06A = (21605343, "V06A", "DIET FORMULATIONS FOR TREATMENT OF OBESITY")
+A08A = (21600680, "A08A", "ANTIOBESITY PREPARATIONS, EXCL. DIET PRODUCTS")
 A10BX = (21600788, "A10BX", "Other blood glucose lowering drugs, excl. insulins")
 A10BH = (21600783, "A10BH", "Dipeptidyl peptidase 4 (DPP-4) inhibitors")
 L04AK = (954954, "L04AK", "Dihydroorotate dehydrogenase (DHODH) inhibitors")
@@ -145,6 +150,7 @@ INGREDIENTS_BY_CLASS = {
     A10XX[0]: [1],
     A10[0]: [1503297, 1580747, 1597756, 1502905, 44785829],
     A08AX[0]: [1],
+    A08A[0]: [1, 3, 4, 5],
     V06A[0]: [],
     A10BH[0]: INGREDIENTS,
     L04AK[0]: [7, 8],
@@ -193,8 +199,13 @@ class _ClassConn:
 
 @pytest.fixture
 def ranked_atc(monkeypatch):
+    # Since 2026-10-08 a class too small to be one is replaced by its ATC parent.
+    parents = {A10X[0]: (*A10, "ATC 2nd"), A10XX[0]: (*A10X, "ATC 3rd"),
+               A08AX[0]: (*A08A, "ATC 3rd")}
+
     def _install(ranking):
         monkeypatch.setattr(dce, "expand_drug_class_via_umls", lambda *a, **k: (None, []))
+        monkeypatch.setattr(dce, "atc_parent", lambda _c, _s, cid: parents.get(cid))
         collection = _RankedCollection(ranking)
         monkeypatch.setattr("src.utils.vector.get_chroma_client",
                             lambda: type("C", (), {"get_collection": lambda _s, _n: collection})())
@@ -202,8 +213,10 @@ def ranked_atc(monkeypatch):
     return _install
 
 
-def test_should_accept_the_next_class_when_rank_one_has_fewer_than_three_ingredients(ranked_atc):
-    # "Anti-diabetic medication": A10X 0.3977 (2), A10XX 0.3977 (1), A10 0.4054 (84)
+def test_should_reach_the_diabetes_class_when_rank_one_has_fewer_than_three_ingredients(ranked_atc):
+    # "Anti-diabetic medication": A10X 0.3977 (2), A10XX 0.3977 (1), A10 0.4054 (84).
+    # A10X and A10XX are one name in one subtree, so one candidate; it is too small, and
+    # its parent is A10.
     conn = ranked_atc([(A10X, 0.3977), (A10XX, 0.3977), (A10, 0.4054),
                        (A10BX, 0.7116)])
 
@@ -214,19 +227,19 @@ def test_should_accept_the_next_class_when_rank_one_has_fewer_than_three_ingredi
     assert ingredient_ids == INGREDIENTS_BY_CLASS[A10[0]]
 
 
-def test_should_accept_nothing_when_the_only_three_ingredient_class_is_beyond_threshold(
-        ranked_atc):
+def test_should_climb_from_the_residual_antiobesity_bucket_not_jump_to_a_far_class(ranked_atc):
     # "Anti-obesity drug": A08AX 0.6588 (1), V06A 0.7016 (0), A10X 0.8125, A10XX 0.8125,
-    # A10 0.8353 (84).
-    # A10 has enough ingredients but sits past 0.75 -- the distance gate still decides.
+    # A10 0.8353 (84). Until 2026-10-08 this returned nothing: A08AX was too small and
+    # the old rule moved on to the next candidate instead of up to A08A. A10 has enough
+    # ingredients but sits past 0.75 -- the distance gate still keeps it out.
     conn = ranked_atc([(A08AX, 0.6588), (V06A, 0.7016), (A10X, 0.8125), (A10XX, 0.8125),
                        (A10, 0.8353)])
 
     matched, ingredient_ids = dce.expand_drug_class_via_vocab(
         "Anti-obesity drug", conn, schema="cdm")
 
-    assert matched is None
-    assert ingredient_ids == []
+    assert matched == "ANTIOBESITY PREPARATIONS, EXCL. DIET PRODUCTS"
+    assert ingredient_ids == INGREDIENTS_BY_CLASS[A08A[0]]
     assert A10[0] not in conn.cur.asked, "a class beyond the threshold must not be expanded"
 
 
@@ -239,4 +252,4 @@ def test_should_keep_rank_one_when_rank_one_already_passes(ranked_atc):
 
     assert matched == "Dipeptidyl peptidase 4 (DPP-4) inhibitors"
     assert ingredient_ids == INGREDIENTS
-    assert conn.cur.asked == [A10BH[0]]
+    assert set(conn.cur.asked) == {A10BH[0]}

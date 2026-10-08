@@ -5,10 +5,11 @@ When Agent 2 receives a drug class name (e.g., "DPP-4 inhibitors"),
 this module expands it into individual ingredient concept IDs.
 
 Strategy (waterfall — all vocabulary-based):
-1. ATC vocab: ChromaDB ATC collection → concept_ancestor expansion
-2. UMLS MRREL: drug class CUI → MRREL `isa` children → RxNorm names → OMOP concept_id
+1. UMLS MRREL: drug class CUI → MRREL `isa` children → RxNorm names → OMOP concept_id
+2. ATC vocab: ChromaDB ATC collection → class selection → concept_ancestor expansion
 """
-from typing import List, Optional, Dict, Set, Tuple
+from dataclasses import dataclass
+from typing import Callable, List, Optional, Dict, Set, Tuple
 import os
 import re
 import sqlite3
@@ -24,10 +25,247 @@ _MRCONSO_DB_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "..", "data", "umls", "mrconso.sqlite"
 )
 
-# How many ranked ATC classes `expand_drug_class_via_vocab` considers. Each still has
-# to pass the distance threshold and the ≥3-ingredient rule; this only stops rank 1
-# from being the sole candidate.
+# How many ranked ATC classes `expand_drug_class_via_vocab` considers. Rank 1 is not
+# the only candidate: its parent/child of the same wording, or a descendant whose name
+# makes it specific, may sit right behind it.
 _ATC_CANDIDATES = 5
+
+# The collection the ATC classes are read from. `atc_drug_classes` indexes each class
+# under its bare ATC name; `scripts/build_atc_class_index.py` writes
+# `atc_drug_classes_v2`, which appends the names of SNOMED substance classes holding
+# the same ingredients. Read per call, so setting the variable takes effect at once.
+_ATC_COLLECTION_DEFAULT = "atc_drug_classes"
+
+# A class with fewer ingredients than this is a residual bucket ("Other antiobesity
+# drugs", 1 ingredient) rather than the class the wording names; its parent is tried.
+_MIN_CLASS_SIZE = 3
+
+# A descendant whose name extends the best hit's ("CORTICOSTEROIDS FOR SYSTEMIC USE" ->
+# "..., PLAIN") replaces it only when it keeps at least this share of the best hit's
+# ingredients: then it is the same class with a residual removed (H02A keeps 20 of H02's
+# 23; the 3 dropped are the antiadrenals). Every child of A10A "INSULINS AND ANALOGUES"
+# also extends that name ("...for injection, long-acting"), and the closest of them,
+# A10AE, keeps 6 of 29 -- a subdivision the wording did not choose. Observed shares:
+# 0.87 for the one case that should descend, at most 0.48 for those that should not.
+_MIN_EXTENSION_SHARE = 2 / 3
+
+# Rank 1 just over the distance threshold is accepted when nothing else is near it.
+# Calibrated on the 2026-09-22 verify5 store's Drug class seeds: see
+# tests/test_atc_class_selection.py for the observed distances on both sides. With the
+# v2 index no correct match in that data sits over the threshold, so these defaults
+# admit none of it; they are set to keep the CYP3A -> Pi3K false match (gap 0.096) out.
+_ATC_MARGIN_BAND = float(os.environ.get("AGENT2_ATC_MARGIN_BAND", "0.05"))
+_ATC_MARGIN_GAP = float(os.environ.get("AGENT2_ATC_MARGIN_GAP", "0.15"))
+
+
+@dataclass(frozen=True)
+class AtcHit:
+    """One ranked ATC class from the vector index.
+
+    :param concept_id: the ATC concept_id.
+    :param code: the ATC code; its prefixes are its ancestors (B01 > B01A > B01AC).
+    :param name: the ATC concept_name, not the indexed document.
+    :param distance: vector distance from the query; lower is closer.
+    """
+
+    concept_id: int
+    code: str
+    name: str
+    distance: float
+
+
+def _norm(name: str) -> str:
+    return " ".join(name.casefold().split())
+
+
+def _related(a: AtcHit, b: AtcHit) -> bool:
+    """True when one class is the other or its ATC ancestor."""
+    return a.code.startswith(b.code) or b.code.startswith(a.code)
+
+
+def merge_identical_names(hits: List[AtcHit]) -> List[AtcHit]:
+    """Collapse a class and its ancestor when both carry the same name.
+
+    B01 and B01A are both "ANTITHROMBOTIC AGENTS": one class, indexed twice. The
+    shallower code is kept (it holds the deeper one) at the closer distance. Classes
+    that share a name in different subtrees (S02B and S03B, both "CORTICOSTEROIDS")
+    are different classes and stay apart.
+
+    :param hits: ranked hits, closest first.
+    :returns: the hits with same-name ancestor/descendant pairs merged, closest first.
+    """
+    merged: List[AtcHit] = []
+    for hit in hits:
+        for k, kept in enumerate(merged):
+            if _norm(kept.name) == _norm(hit.name) and _related(kept, hit):
+                shallow = kept if len(kept.code) <= len(hit.code) else hit
+                merged[k] = AtcHit(shallow.concept_id, shallow.code, shallow.name,
+                                   min(kept.distance, hit.distance))
+                break
+        else:
+            merged.append(hit)
+    return sorted(merged, key=lambda h: h.distance)
+
+
+def _extends(child: AtcHit, parent: AtcHit) -> bool:
+    """True when the child is an ATC descendant whose name is the parent's made longer."""
+    return (child.code != parent.code and child.code.startswith(parent.code)
+            and _norm(child.name).startswith(_norm(parent.name))
+            and len(_norm(child.name)) > len(_norm(parent.name)))
+
+
+def select_atc_class(
+    hits: List[AtcHit],
+    threshold: float,
+    band: float = _ATC_MARGIN_BAND,
+    gap: float = _ATC_MARGIN_GAP,
+    *,
+    share_of_parent: Callable[[AtcHit, AtcHit], float],
+) -> Optional[AtcHit]:
+    """Pick the ATC class a drug-class phrase names, or None.
+
+    1. Same-name ancestor/descendant hits count once (`merge_identical_names`).
+    2. The closest class within ``threshold`` is the best hit. With none within it,
+       rank 1 is still accepted when it is at most ``band`` over the threshold and the
+       next distinct class exists and is at least ``gap`` further away.
+    3. A descendant of the best hit, within threshold, whose name is the best hit's
+       name made longer and which keeps at least `_MIN_EXTENSION_SHARE` of the best
+       hit's ingredients replaces it ("CORTICOSTEROIDS FOR SYSTEMIC USE" ->
+       "..., PLAIN"), closest first, repeated while one exists.
+
+    :param hits: ranked hits in any order.
+    :param threshold: maximum distance for an ordinary match.
+    :param band: how far over the threshold an isolated rank 1 may sit.
+    :param gap: minimum distance from rank 1 to the next distinct class.
+    :param share_of_parent: (child, parent) -> fraction of the parent's ingredients
+        the child holds.
+    :returns: the chosen hit, or None.
+    """
+    ranked = merge_identical_names(sorted(hits, key=lambda h: h.distance))
+    if not ranked:
+        return None
+    within = [h for h in ranked if h.distance <= threshold]
+    if not within:
+        # Isolation has to be seen: with no runner-up there is no gap to measure.
+        if len(ranked) < 2:
+            return None
+        first, runner_up = ranked[0], ranked[1]
+        if first.distance <= threshold + band and runner_up.distance - first.distance >= gap:
+            return first
+        return None
+    best = within[0]
+    while True:
+        longer = [h for h in within if _extends(h, best)
+                  and share_of_parent(h, best) >= _MIN_EXTENSION_SHARE]
+        if not longer:
+            return best
+        best = longer[0]
+
+
+def drop_combination_partners(
+    ingredients: List[int], alone_in_class: Set[int], alone_anywhere: Set[int]
+) -> List[int]:
+    """Remove ingredients that belong to a class only as a combination partner.
+
+    An ingredient is dropped when it is sold on its own somewhere but never on its
+    own under the class: bupropion reaches ATC A08 only through bupropion/naltrexone,
+    and is an antidepressant on its own. An ingredient that is never sold on its own
+    (insulin aspart protamine, premixed only) is kept -- combining is what it is.
+
+    :param ingredients: the class's ingredient concept_ids, in order.
+    :param alone_in_class: ingredients of single-ingredient drug forms under the class.
+    :param alone_anywhere: ingredients of single-ingredient drug forms anywhere.
+    :returns: the kept ingredients, order preserved.
+    """
+    return [i for i in ingredients if i in alone_in_class or i not in alone_anywhere]
+
+
+_INGREDIENT = ("{alias}.concept_class_id = 'Ingredient' "
+               "AND {alias}.vocabulary_id IN ('RxNorm', 'RxNorm Extension') "
+               "AND {alias}.invalid_reason IS NULL")
+_DRUG_FORM = ("{alias}.concept_class_id = 'Clinical Drug Form' "
+              "AND {alias}.vocabulary_id IN ('RxNorm', 'RxNorm Extension')")
+
+
+def class_ingredients(cur, schema: str, class_id: int) -> List[int]:
+    """RxNorm ingredients of an ATC class, without combination partners.
+
+    :param cur: an open cursor on the OMOP vocabulary.
+    :param schema: the vocabulary schema.
+    :param class_id: the ATC concept_id.
+    :returns: ingredient concept_ids (see `drop_combination_partners`).
+    """
+    cur.execute(f"""
+        SELECT DISTINCT c2.concept_id
+        FROM {schema}.concept_ancestor ca
+        JOIN {schema}.concept c2 ON ca.descendant_concept_id = c2.concept_id
+        WHERE ca.ancestor_concept_id = %s
+          AND {_INGREDIENT.format(alias="c2")}
+    """, (class_id,))
+    ingredients = [row[0] for row in cur.fetchall()]
+    if not ingredients:
+        return []
+
+    # Single-ingredient drug forms under the class, by their one ingredient.
+    cur.execute(f"""
+        SELECT MIN(ci.ancestor_concept_id)
+        FROM {schema}.concept_ancestor cf
+        JOIN {schema}.concept f ON f.concept_id = cf.descendant_concept_id
+        JOIN {schema}.concept_ancestor ci ON ci.descendant_concept_id = f.concept_id
+        JOIN {schema}.concept i ON i.concept_id = ci.ancestor_concept_id
+        WHERE cf.ancestor_concept_id = %s
+          AND {_DRUG_FORM.format(alias="f")}
+          AND i.concept_class_id = 'Ingredient'
+        GROUP BY f.concept_id
+        HAVING COUNT(DISTINCT ci.ancestor_concept_id) = 1
+    """, (class_id,))
+    alone_in_class = {row[0] for row in cur.fetchall()}
+    residual = [i for i in ingredients if i not in alone_in_class]
+    if not residual:
+        return ingredients
+
+    # Of the rest, which exist as a single-ingredient drug form anywhere at all.
+    cur.execute(f"""
+        SELECT DISTINCT ci.ancestor_concept_id
+        FROM {schema}.concept_ancestor ci
+        JOIN {schema}.concept f ON f.concept_id = ci.descendant_concept_id
+        WHERE ci.ancestor_concept_id = ANY(%s)
+          AND {_DRUG_FORM.format(alias="f")}
+          AND NOT EXISTS (
+            SELECT 1 FROM {schema}.concept_ancestor co
+            JOIN {schema}.concept o ON o.concept_id = co.ancestor_concept_id
+            WHERE co.descendant_concept_id = f.concept_id
+              AND o.concept_class_id = 'Ingredient'
+              AND o.concept_id <> ci.ancestor_concept_id)
+    """, (residual,))
+    alone_anywhere = {row[0] for row in cur.fetchall()}
+    return drop_combination_partners(ingredients, alone_in_class, alone_anywhere)
+
+
+def atc_parent(cur, schema: str, class_id: int) -> Optional[Tuple[int, str, str, str]]:
+    """The ATC class one level above, as (concept_id, code, name, concept_class_id).
+
+    :param cur: an open cursor on the OMOP vocabulary.
+    :param schema: the vocabulary schema.
+    :param class_id: the ATC concept_id.
+    :returns: the parent, or None at the top of the hierarchy.
+    """
+    cur.execute(f"""
+        SELECT a.concept_id, a.concept_code, a.concept_name, a.concept_class_id
+        FROM {schema}.concept_ancestor ca
+        JOIN {schema}.concept a ON a.concept_id = ca.ancestor_concept_id
+        WHERE ca.descendant_concept_id = %s AND ca.min_levels_of_separation = 1
+          AND a.vocabulary_id = 'ATC' AND a.invalid_reason IS NULL
+    """, (class_id,))
+    row = cur.fetchone()
+    return tuple(row) if row else None
+
+
+def _states_route(text: str) -> bool:
+    """True when the phrase names a route or a systemic/local intent."""
+    from src.services.route_qualifier import detect_route_qualifiers
+    found = detect_route_qualifiers(text)
+    return bool(found.qualifiers) or found.systemic_intent is not None
 
 
 def expand_drug_class_via_umls(
@@ -187,6 +425,12 @@ def expand_drug_class_via_vocab(
         # Pi3K inhibitors), so 0.75 takes 14 true positives and no false one.
         # It cost recall 0.04 on a 2093-concept gold set: ATC A10BH expands to 8 of
         # the 10 gold DPP-4 ingredients with nothing extra, and never ran.
+        # Re-checked 2026-10-08 on the 40 ATC query texts of the 2026-09-22 verify5
+        # store, on both collections: the furthest accepted correct-or-broader rank 1 is
+        # 0.716 ('human NPH insulin' -> A10A), the nearest wrong one a threshold can
+        # separate is 0.773 ('treated with specific drugs' -> J04AM). 0.75 stays.
+        # The wrong matches inside it (Short-acting -> A10AE 0.410, Systemic steroids ->
+        # A14A 0.523, premixed -> A10AB 0.627) are lexical neighbours no threshold separates.
         # Note this default binds at import; setting the env var later has no effect.
         os.environ.get("AGENT2_ATC_DISTANCE_THRESHOLD", "0.75")
     ),
@@ -222,68 +466,69 @@ def expand_drug_class_via_vocab(
         return mrrel_name, mrrel_ids
 
     # ── Strategy 2: ATC vocab-based (broad, generalizable) ──
+    collection_name = os.environ.get("AGENT2_ATC_COLLECTION", _ATC_COLLECTION_DEFAULT)
     try:
         from src.utils.vector import get_chroma_client
         client = get_chroma_client()
-        atc_collection = client.get_collection("atc_drug_classes")
+        atc_collection = client.get_collection(collection_name)
     except Exception as e:
-        logger.warning(f"[DrugClass] ATC collection not available: {e}")
+        logger.warning(f"[DrugClass] ATC collection '{collection_name}' not available: {e}")
         return None, []
 
-    # Rank 1 alone is not enough: for antidiabetic wording the nearest entries are
-    # A10X / A10XX ('OTHER DRUGS USED IN DIABETES', 2 and 1 ingredients) at an exact
-    # distance tie, with A10 'DRUGS USED IN DIABETES' (84) 0.0004-0.008 further away.
-    # Asking for one result let the <3-ingredient rule reject A10X and never look at
-    # A10. The first candidate, in distance order, that passes BOTH unchanged gates wins.
     results = atc_collection.query(query_texts=[text], n_results=_ATC_CANDIDATES)
-
     if not results['documents'][0]:
         return None, []
 
-    ranked = sorted(
-        zip(results['documents'][0], results['metadatas'][0], results['distances'][0]),
-        key=lambda hit: hit[2],
-    )
+    hits = [
+        AtcHit(int(meta['concept_id']), meta.get('concept_code', '?'),
+               meta.get('concept_name') or doc, distance)
+        for doc, meta, distance in zip(
+            results['documents'][0], results['metadatas'][0], results['distances'][0])
+    ]
     cur = db_conn.cursor()
-    for atc_name, meta, distance in ranked:
-        atc_id = meta['concept_id']
-        atc_code = meta.get('concept_code', '?')
+    known: Dict[int, List[int]] = {}
 
-        if distance > distance_threshold:
-            # Ranked by distance, so every remaining candidate is further away still.
-            logger.info(
-                f"[DrugClass] ATC match '{text}' → '{atc_name}' rejected "
-                f"(dist={distance:.3f} > {distance_threshold})"
-            )
+    def _ingredients(class_id: int) -> List[int]:
+        if class_id not in known:
+            known[class_id] = class_ingredients(cur, schema, class_id)
+        return known[class_id]
+
+    def _share(child: AtcHit, parent: AtcHit) -> float:
+        held = set(_ingredients(parent.concept_id))
+        return len(held & set(_ingredients(child.concept_id))) / len(held) if held else 0.0
+
+    chosen = select_atc_class(hits, distance_threshold, share_of_parent=_share)
+    ranking = ", ".join(f"{h.code} {h.distance:.3f}"
+                        for h in sorted(hits, key=lambda h: h.distance))
+    if chosen is None:
+        logger.info(f"[DrugClass] ATC match '{text}' rejected "
+                    f"(threshold={distance_threshold}; {ranking})")
+        return None, []
+    logger.info(f"[DrugClass] ATC match '{text}' → '{chosen.name}' "
+                f"(code={chosen.code}, dist={chosen.distance:.3f}; {ranking})")
+
+    keep_route = _states_route(text)
+    class_id, code, name = chosen.concept_id, chosen.code, chosen.name
+    climbed = {class_id}
+    while True:
+        ingredient_ids = _ingredients(class_id)
+        if len(ingredient_ids) >= _MIN_CLASS_SIZE:
+            logger.info(f"[DrugClass] ATC '{code}' → {len(ingredient_ids)} RxNorm Ingredients")
+            return name, ingredient_ids
+        if keep_route:
+            # The phrase names a route and this class is that route's ("Insulins and
+            # analogues for inhalation"); its parent would drop the route.
+            if ingredient_ids:
+                logger.info(f"[DrugClass] ATC '{code}' → {len(ingredient_ids)} RxNorm "
+                            f"Ingredients (route-specific class, not climbed)")
+                return name, ingredient_ids
             return None, []
-
-        logger.info(
-            f"[DrugClass] ATC match '{text}' → '{atc_name}' "
-            f"(code={atc_code}, dist={distance:.3f})"
-        )
-
-        cur.execute(f"""
-            SELECT DISTINCT c2.concept_id
-            FROM {schema}.concept_ancestor ca
-            JOIN {schema}.concept c2 ON ca.descendant_concept_id = c2.concept_id
-            WHERE ca.ancestor_concept_id = %s
-              AND c2.concept_class_id = 'Ingredient'
-              AND c2.vocabulary_id IN ('RxNorm', 'RxNorm Extension')
-              AND c2.invalid_reason IS NULL
-        """, (atc_id,))
-
-        ingredient_ids = [row[0] for row in cur.fetchall()]
-
-        # Minimum ingredient count: real drug classes have ≥3.
-        if len(ingredient_ids) > 2:
-            logger.info(
-                f"[DrugClass] ATC '{atc_code}' → "
-                f"{len(ingredient_ids)} RxNorm Ingredients"
-            )
-            return atc_name, ingredient_ids
-
-        logger.info(
-            f"[DrugClass] ATC '{atc_name}' rejected: only "
-            f"{len(ingredient_ids)} ingredients (not a class)"
-        )
-    return None, []
+        parent = atc_parent(cur, schema, class_id)
+        if parent is None or parent[3] == "ATC 1st" or parent[0] in climbed:
+            logger.info(f"[DrugClass] ATC '{code}' rejected: {len(ingredient_ids)} "
+                        f"ingredients and no therapeutic parent to try")
+            return None, []
+        logger.info(f"[DrugClass] ATC '{code}' has {len(ingredient_ids)} ingredients; "
+                    f"trying its parent {parent[1]}")
+        class_id, code, name = parent[0], parent[1], parent[2]
+        climbed.add(class_id)
