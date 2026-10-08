@@ -249,3 +249,54 @@ note-026은 배제 규칙의 단위 필터를 유지하기로 했다. 단위가 
   내용은 받지 않았다.
 - 결함 3의 gold 대조는 CAROLINA와 EMPA-REG의 BMI·HbA1c에 대해서만 했다. CARMELINA의 HbA1c 규칙은
   gold와 대조하지 않았다.
+
+## 수정 내역 (2026-09-23 ~ 10-08, 브랜치 fix/0923-reply)
+
+이번 발신 전 커밋 8개를 묶었다. "측정 결과"는 각 커밋 본문이 적은 수치를 그대로 옮긴
+것이다. 스토어는 이미 빌드된 CIRCE 표현식을 캐시하므로, 이 여덜 커밋 중 어느 것도
+재빌드(재export) 전에는 발송 대상 파일에 반영되지 않는다. 재빌드는 아직 하지
+않았다. `b306088`은 이 분석 문서 자체를 쓴 커밋이라 표에서 뺐다.
+
+| 커밋 | 고친 결함 | 바뀐 것 | 측정 결과 |
+| --- | --- | --- | --- |
+| `c588aa7` | 결함 1 | `entity_exception.description_stated_exception`이 설명문에 적힌 예외를 매퍼까지 전달; `circe_lint` 검사 (t) 추가(같은 테이블에서 ALL 경로로만 도달한 presence의 closure가 absence의 closure 안에 있으면 FAIL) | 검사 (t)는 `deliveries/2026-09-23`에서 `empa-reg_treatment`(#2 대 #15)만 FAIL, 나머지는 통과; `entity_exception`은 verify5 스토어에서 EMPA-REG 제외 #29/#30에서만 발동(3회 동일), "T2DM"은 201826으로 귀결 |
+| `e0d2221` | 결함 1 (후속) | `entry_exclusion_repair`에 residual-after-exception 경로 추가 — description이 예외를 명시하고, 배제 집합에 이미 `isExcluded` 항목이 있고 그 closure가 entry closure와 겹치고, 잔여 겹침이 남을 때만 entry 항목을 미러링 | `deliveries/2026-09-23`·`2026-09-12`·gold 18개 파일 전체에서 새 경로를 타는 파일 없음; `2026-09-12`의 `empa-reg_comparator`는 기존 full-coverage 경로로 여전히 발동; 대조군(closure 밖 배제 항목, 배제 항목 없는 부분 겹침) 모두 declined |
+| `26119e9` | 결함 2(배경약 규칙을 스킵) | `dose_stability.py`의 단일 술어(안정성 용어 + Drug 도메인 + 치료·복약·용량 용어)로 CARMELINA #7, CAROLINA #37·38·41을 식별; `_build_seeded_target_circe`가 `dose-stability-not-representable` 사유로 스킵; `verify_circe_delivery`가 그 사유를 스토어 행에서 술어로 재검사 | stub 빌드: CARMELINA 24 → 23 규칙, CAROLINA 26 → 24 규칙, 나머지 규칙·concept set 동일 |
+| `d97397e` | 결함 4, 결함 5(eGFR) | `loinc_specimen.py`로 검사 concept set을 LOINC specimen·property·challenge 기준으로 재구성; 다수 LOINC 성분으로 analyte 결정, 시스템·property·challenge가 안 맞는 멤버 제거, 숫자 조건이 있으면 순환혈액 Qn 검사 추가; 게이트 (u) 추가 | 실제 매퍼 51개 Measurement seed x 2모드 x 3회, 독립 재서술 대비 불일치 0; EMPA-REG·CAROLINA mg/dL 혈당 집합이 세 사이트 모두 0 → 0 아님; EMPA-REG eGFR recall 0.2 → 1.0; CARMELINA UACR precision 1.000 유지; `deliveries/2026-09-23`에서 게이트(u)는 발송된 glucose·ALT/AST·LDL 집합 FAIL, CARMELINA ALP·EMPA-REG GFR(mL/min) WARN |
+| `b1e18e6` | 결함 3 | `_convert_value_range_inclusions`가 숫자 조건을 가진 ALL 경로의 Measurement presence 규칙을 complement의 exactly 0으로 변환(Circe `bt`는 inclusive); LOINC property family로 단위를 확인 못 하면 변환 안 함; 검사 (v)(옛 presence 형식 FAIL), (q)(변환된 absence에서만 단위 없는 조건 예외) | stub 빌드에서 예측한 4개 규칙의 6개 항목만 정확히 변환, 나머지 동일. 알려진 한계: LEADER HbA1c(단위 미기재)는 변환 안 됨; BMI percentile 제거로 BMI recall 1.0 → 0.5 |
+| `5d9bf6c` | 결함 6 | `restated_rules.py`의 단일 술어로, 역할별로 모은 ALL-only 규칙 중 CodesetId를 집합 내용으로 바꾼 뒤 동일한 것(identical)과 다른 규칙 결합의 한 성분인 것(implied)을 빌드 마지막 단계에서 합침; 합침마다 `_restatedRuleCollapse`에 기록, 게이트가 발송 파일에서 재도출 | stub 빌드: EMPA-REG 20 → 19 규칙(ALT/AST/ALP 재서술), CARMELINA 21 → 19 규칙, CAROLINA 변화 없음; 게이트(w)는 `2026-09-23`·`2026-09-12`의 CARMELINA comparator·treatment 모두 FAIL, gold 18개 파일은 0건 FAIL; 기준별 gold 평가 변화 없음 |
+| `03717a8` | 결함 2(concept set 내용) | `drug_class_expander`가 ATC 상위 1건만 조회하던 것을 상위 5건까지 읽고 `AGENT2_ATC_DISTANCE_THRESHOLD` 안에서 성분 3개 이상인 첫 후보를 선택; `ExpressionBuilder._filter_overbroad`가 RxNorm·RxNorm Extension Ingredient를 500개 초과 하위개념 필터에서 제외 | verify5 스토어의 Drug class seed 37개(실제 매퍼, 3회씩, comparator·treatment 모두 결정적)에서 4개 seed가 A10으로 이동, 엉뚱한 계열로 가는 pick 없음, GLP-1 6/6과 SGLT-2 7/7 변화 없음; gold 대비 closure: DPP4 inhibitors recall 0.621 → 0.984(precision 1.000), CAROLINA any insulin 0.203 → 1.000, systemic glucocorticoid 0.010 → 0.998 |
+| `907ab84` | 결함 2 관련(경로 배제) — 이 문서의 결함 2(CARMELINA·CAROLINA 배경약)와 다른 사례(CAROLINA systemic glucocorticoid, LEADER oral anti-diabetic drugs)에서 측정 | `_recommend_seeded_concept_set`이 표현식 항목을 복사한 뒤 `_apply_route_subtraction`이 그 복사본에만 `isExcluded` 형태를 추가하고 원본 표현식을 반환하던 결함을 수정 — 복사본을 표현식 자신의 항목 리스트로 바꿔 반환 표현식·캐시 항목·domain 해석이 모두 배제를 보게 함 | 실제 매퍼 3회(prefetch·direct)에서 경로 배제 카운트가 로그 수치와 일치(systemic corticosteroid 779, oral anti-diabetic drugs 191, inhaled insulin 16), 포함 항목 변화 없음; gold 대비 closure: CAROLINA systemic glucocorticoid precision 0.273 → 0.561(recall 0.998), LEADER oral anti-diabetic drugs precision 0.665 → 0.947, recall 0.995 → 0.937(recall 하락은 한계로 기록, gold는 그대로 둠) |
+
+## 한계와 미해결
+
+- LEADER 경구 항당뇨약(oral anti-diabetic drugs): gold의 "OADs and GLP-1 only" 집합에
+  주사형 GLP-1 RA 제형이 들어 있어 프로토콜의 "oral"과 어긋난다. precision 0.665 →
+  0.947, recall 0.995 → 0.937. gold는 결정에 따라 그대로 둔다(커밋 `907ab84`).
+- BMI percentile 코드를 제거한 BMI absence 변환: gold 대비 BMI recall 1.0 → 0.5(커밋
+  `b1e18e6`).
+- LEADER HbA1c `gte 7`은 단위가 적혀 있지 않아 변환되지 않는다(커밋 `b1e18e6`).
+- CAROLINA mmol/L 혈당 기준은 세 사이트 모두 계속 0이다. 사이트에 Substance
+  Concentration 단위의 혈당 측정 행이 없다.
+- CAROLINA fasting glucose(cs41)는 recall 0.000 → 1.000, precision 0.000 → 0.021이다. gold
+  `'[TROY lab] Fasting glucose'`는 코드 하나를 보유한다. 출처: d97397e 검증 실행의 gold 대조
+  (`scripts/conceptset_overlap_eval.py` closure, 실제 매퍼 direct#1).
+- LEADER HbA1c는 `conceptset_overlap_eval`에서 짝짓기 오류가 있다(gold 코드는 집합에
+  그대로 있다).
+- 기준 캐시(criterion cache)에는 코드 버전이 없다. `907ab84` 이전에 쓰인 항목은 TTL이
+  끝날 때까지 예전 표현식을 그대로 돌려준다. TTL 기본값(`CRITERION_CACHE_TTL_HOURS`
+  24시간)은 `src/agents/agent2/criterion_cache.py`의 현재 코드에서 확인한 것이고,
+  커밋 본문이나 계획 문서에는 적혀 있지 않다.
+- 여러 검증 실행이 재사용한 stub 매퍼가 스토어에서 매핑되지 않은 기준에 임의 개념을
+  만들어 넣고 있었다. 수정 전후 비교는 같은 stub을 썼으므로 유효하지만, 매핑되지 않은
+  기준(EMPA-REG 제외 #22·#33, CARMELINA 포함 #3·제외 #35·#44, CAROLINA 제외 #33·#69)에
+  대한 결론은 실제 매퍼 재빌드로 다시 확인한다.
+- 계획 문서에 남은 미결 항목: 7번 약물 계열 매핑 정밀도 중 D(ATC 문서 텍스트를 다른
+  vocabulary의 같은 분류 이름으로 보강해 0.75 기준을 다시 맞추는 것)와 B+C(상위
+  분류를 포함하는 더 구체적인 하위 분류 선택 규칙 + 복합제 성분만으로 닿는 성분
+  제외)는 합의만 됐고 구현 전이다. 8번 UMLS MRREL 관계 데이터 부재(M4, 첫 단계가
+  서버에 없어 디버그 로그만 남기고 조용히 넘어감)는 데이터를 배포할지 없으면 실패로
+  드러낼지 결정이 필요하다. 범위 밖에서 CARMELINA `ALT (SGPT)` concept set에 AST 코드
+  `3013721`이 섞여 있는 것을 발견했다. 추출 단계에서 PLATO 항혈소판제 기준이 새로
+  생겼다. 내보내기 단계의 range_disjunction 수정이 값 범위 변환 뒤 다시 presence로
+  되돌리지 않는지는 재빌드 때 확인해야 한다.
