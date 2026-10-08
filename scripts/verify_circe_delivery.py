@@ -384,6 +384,7 @@ from src.utils.circe_lint import (  # noqa: E402
     measurement_lab_test_ids,
     missing_arm_roles,
     noop_exclusion_rules,
+    presence_unit_axes_ids,
     rule_names,
     specimen_mismatched_measurement_criteria,
     unfiltered_measurement_absence_criteria,
@@ -404,6 +405,7 @@ from src.utils.delivery_mode import (  # noqa: E402
     resolve_drug_anchored_entry,
 )
 from src.utils.disease_anchor import DiseaseAnchorError, expected_anchor_concept_ids
+from src.utils.presence_unit_allowlist import lab_test_axes  # noqa: E402
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
 DEFAULT_MAP = "carmelina=9,empa-reg=8,carolina=10,aristotle=3,plato=2,leader=1"
@@ -2575,10 +2577,15 @@ def main(argv: list[str] | None = None) -> int:
         # carries `year`, and months rather than years is a twelve-fold error.
         # A converted value-range absence carries no Unit by design; (q) accepts it only when
         # the vocabulary verifies every member against the unit its conversion record states.
-        # Reads the vocabulary only for a file carrying such a record; unreachable then aborts.
+        # A unitless presence over a set holding a member the presence-unit allowlist does not
+        # list is exempted only on LOINC axes, read here exactly as the export repair reads
+        # them, so (q) and the repair cannot disagree about the same set.
+        # Reads the vocabulary only for a file needing either; unreachable then aborts.
         conversion_member_ids = value_range_conversion_member_ids(expression)
+        axes_ids = presence_unit_axes_ids(expression)
         member_properties = None
-        if conversion_member_ids:
+        member_axes = None
+        if conversion_member_ids or axes_ids:
             if lab_test_vocabulary is None:
                 try:
                     lab_test_vocabulary = _open_lab_test_vocabulary(args.dsn, args.vocab_schema)
@@ -2586,14 +2593,17 @@ def main(argv: list[str] | None = None) -> int:
                     print(
                         f"ABORT: vocabulary unreachable at DSN {args.dsn!r} (schema "
                         f"{args.vocab_schema}): {exc}. Check (q) verifies converted value-range "
-                        f"absences against the LOINC property of their stated unit and will not "
-                        f"pass them unverified.",
+                        f"absences and unlisted presence-unit members against the LOINC "
+                        f"vocabulary and will not pass them unverified.",
                         file=sys.stderr,
                     )
                     return 2
-            member_properties = lab_test_vocabulary.properties(conversion_member_ids)
+            if conversion_member_ids:
+                member_properties = lab_test_vocabulary.properties(conversion_member_ids)
+            if axes_ids:
+                member_axes = lab_test_axes(lab_test_vocabulary.lab_tests(axes_ids))
         unitless_bounds = unitless_value_bound_criteria(
-            expression, member_properties=member_properties
+            expression, member_properties=member_properties, member_axes=member_axes
         )
         if unitless_bounds:
             reasons.append(

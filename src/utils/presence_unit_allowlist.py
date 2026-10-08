@@ -302,6 +302,17 @@ class Classification:
 LabTestAxes = tuple[str, str | None, str | None, str | None, str | None]
 
 
+def lab_test_axes(lab_tests: Mapping[int, Any]) -> dict[int, LabTestAxes]:
+    """concept id -> :data:`LabTestAxes`, from ``PostgresLabTestVocabulary.lab_tests`` rows.
+
+    The one conversion the repair and the lint both apply, so they compare the same tuple.
+    """
+    return {
+        int(cid): (t.component, t.property, t.system, t.scale, t.time_aspect)
+        for cid, t in lab_tests.items()
+    }
+
+
 def _admitted_by_axes(
     unlisted: list[int], listed: list[int], member_axes: Mapping[int, LabTestAxes]
 ) -> bool:

@@ -26,12 +26,31 @@ delivered file and is reported rather than engineered around.
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Iterator
 
 from src.services.conceptset_closure import VocabularyLookup, resolve_concept_set
-from src.utils.presence_unit_allowlist import iter_presence_criteria, unit_drop_verdict
+from src.utils.presence_unit_allowlist import (
+    iter_presence_criteria,
+    lab_test_axes,
+    unit_drop_verdict,
+)
+
+#: ``PostgresLabTestVocabulary.lab_tests``: concept id -> a LabTest, LOINC lab tests only.
+LabTestLookup = Callable[[Iterable[int]], Mapping[int, Any]]
+
+
+def _vocabulary_lab_tests(concept_ids: Iterable[int]) -> Mapping[int, Any]:
+    """The live LOINC axes, opened only when a set holds a member the allowlist does not list.
+
+    A failure propagates: an unreadable vocabulary must not read as "unverifiable".
+    """
+    from src.services.loinc_specimen import PostgresLabTestVocabulary
+    from src.settings import settings
+
+    with PostgresLabTestVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocabulary:
+        return vocabulary.lab_tests(concept_ids)
 
 
 @dataclass(frozen=True)
@@ -63,12 +82,23 @@ def iter_unit_candidates(base: Mapping[str, Any]) -> Iterator[tuple[int, dict, d
 
 
 def repair_presence_unit_filters(
-    base: dict[str, Any], lookup: VocabularyLookup
+    base: dict[str, Any],
+    lookup: VocabularyLookup,
+    *,
+    lab_tests: LabTestLookup | None = None,
 ) -> list[PresenceUnitRepair]:
     """Remove ``Unit`` where conditions 1-5 hold. Mutates ``base`` in place.
 
+    Condition 3 has a second way to hold: a closure member the allowlist does not list is
+    admitted when its LOINC axes equal those of a listed member of the same analyte in the
+    set (:func:`src.utils.presence_unit_allowlist.classify_concepts`). The axes are read
+    only for a set that would otherwise be ``unlisted``; gate check (q) reads them for the
+    same sets (:func:`src.utils.circe_lint.presence_unit_axes_ids`).
+
+    :param lab_tests: the LOINC-axis lookup; the live vocabulary when None.
     :returns: one record per removed ``Unit``; empty when nothing qualified.
     """
+    lab_tests = lab_tests or _vocabulary_lab_tests
     by_id = {int(cs["id"]): cs for cs in base.get("ConceptSets") or [] if "id" in cs}
     rules = base.get("InclusionRules") or []
     applied: list[PresenceUnitRepair] = []
@@ -88,6 +118,11 @@ def repair_presence_unit_filters(
             )
             continue
         verdict = unit_drop_verdict(closure.concept_ids, payload["ValueAsNumber"])
+        if verdict.classification.status == "unlisted":
+            verdict = unit_drop_verdict(
+                closure.concept_ids, payload["ValueAsNumber"],
+                lab_test_axes(lab_tests(closure.concept_ids)),
+            )
         status = verdict.classification.status
         if verdict.analyte is None:
             if status in {"mixed", "unlisted"}:

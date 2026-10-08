@@ -8190,7 +8190,22 @@ class TTEService:
 
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
-        repair_presence_unit_filters(base, lookup)
+        # The LOINC axes come from the same seam the specimen refinement reads, opened only
+        # when the repair meets a set holding a member the allowlist does not list.
+        opened: list[Any] = []
+
+        def lab_tests(concept_ids: Any) -> Any:
+            if not opened:
+                opened.append(self._lab_test_vocabulary())
+            return opened[0].lab_tests(concept_ids)
+
+        try:
+            repair_presence_unit_filters(base, lookup, lab_tests=lab_tests)
+        finally:
+            for vocabulary in opened:
+                close = getattr(vocabulary, "close", None)
+                if callable(close):
+                    close()
 
     def _unique_ingredient_ids_by_name(self, names: set[str]) -> dict[str, int]:
         """Lower-cased concept name -> the ONE standard RxNorm Ingredient it names.

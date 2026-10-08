@@ -51,6 +51,8 @@ from src.utils.naming_words import naming_words
 # (`src.services.presence_unit_repair`) reads the identical table, so the gate and the
 # repair cannot disagree about which unitless bound is a decision rather than a defect.
 from src.utils.presence_unit_allowlist import (
+    LabTestAxes,
+    classify_concepts,
     iter_presence_criteria,
     seed_concept_ids,
     unit_drop_verdict,
@@ -1388,8 +1390,44 @@ def _render_numeric_bound(value: Mapping[str, Any]) -> str:
     return f"{operator} {low}"
 
 
+def _unitless_presence_measurement_sets(
+    expression: dict[str, Any],
+) -> Iterator[tuple[dict[str, Any], dict[str, Any]]]:
+    """``(Measurement payload, its concept set)`` for each presence criterion bounding a value
+    with no ``Unit`` -- the criteria :func:`unitless_value_bound_criteria` may exempt as the
+    presence-unit decision."""
+    for _index, entry in iter_presence_criteria(expression):
+        body = entry.get("Criteria")
+        payload = body.get("Measurement") if isinstance(body, Mapping) else None
+        if not isinstance(payload, dict) or "CodesetId" not in payload:
+            continue
+        if not isinstance(payload.get("ValueAsNumber"), Mapping) or payload.get("Unit"):
+            continue
+        concept_set = _find_concept_set(expression, payload["CodesetId"])
+        if concept_set is not None:
+            yield payload, concept_set
+
+
+def presence_unit_axes_ids(expression: dict[str, Any]) -> set[int]:
+    """Seed ids whose LOINC axes check (q) needs to decide a unitless presence bound.
+
+    Only a set the allowlist classifies ``unlisted`` -- some members listed, some not -- can
+    change verdict with axes (:func:`src.utils.presence_unit_allowlist.classify_concepts`),
+    which is also the only case in which the export repair reads them. Empty means the
+    caller need not open the vocabulary.
+    """
+    ids: set[int] = set()
+    for _payload, concept_set in _unitless_presence_measurement_sets(expression):
+        seeds = seed_concept_ids(concept_set)
+        if classify_concepts(seeds).status == "unlisted":
+            ids |= seeds
+    return ids
+
+
 def unitless_value_bound_criteria(
-    expression: dict[str, Any], member_properties: Mapping[int, str | None] | None = None
+    expression: dict[str, Any],
+    member_properties: Mapping[int, str | None] | None = None,
+    member_axes: Mapping[int, LabTestAxes] | None = None,
 ) -> list[str]:
     """Locators for criteria bounding a value numerically while naming no unit.
 
@@ -1489,6 +1527,11 @@ def unitless_value_bound_criteria(
     dimensionless, and the missing concept set is a different defect that would hide
     this one.
 
+    The presence-unit exemption reads ``member_axes`` -- LOINC axes for the ids
+    :func:`presence_unit_axes_ids` names, from the vocabulary -- exactly as the export repair
+    does, so a seed the allowlist does not list is admitted on the same terms and (q) never
+    reports a unit the repair dropped. Without it (``None``) such a set is not exempted.
+
     :param expression: a CIRCE cohort expression.
     :returns: one locator per offending criterion, empty when none.
     """
@@ -1522,7 +1565,7 @@ def unitless_value_bound_criteria(
                 criteria_type == "Measurement"
                 and concept_set is not None
                 and id(entry) in presence_entries
-                and unit_drop_verdict(seed_concept_ids(concept_set), value).allowed
+                and unit_drop_verdict(seed_concept_ids(concept_set), value, member_axes).allowed
             ):
                 continue
             concept_set = concept_set or {}
