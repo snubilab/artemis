@@ -384,18 +384,41 @@ def test_should_repair_the_measured_comparator_to_zero_residual_when_t2dm_is_exc
 
 @pytest.mark.integration
 @pytest.mark.skipif(not DELIVERY.is_dir(), reason=f"delivery not present: {DELIVERY}")
-@pytest.mark.parametrize("part1", [False, True], ids=["as-delivered", "t2dm-excepted"])
-def test_should_leave_the_treatment_file_unchanged_when_its_entry_is_a_drug(part1):
+def test_should_leave_the_treatment_file_unchanged_when_nothing_is_excepted_yet():
+    """As delivered, codeset 29 excepts nothing, so neither path qualifies: the entry is
+    a drug, and the full coverage of presence #2 is check (t)'s refusal, not a repair."""
     import copy
     import json
 
     base = _real("empa-reg_treatment.circe.json")
-    if part1:
-        base = _with_part1_exception(base)
     before = json.dumps(copy.deepcopy(base), sort_keys=True)
 
     assert repair_entry_exclusion_conflicts(base, _real_lookup(base)) == []
     assert json.dumps(base, sort_keys=True) == before
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not DELIVERY.is_dir(), reason=f"delivery not present: {DELIVERY}")
+def test_should_complete_the_exception_against_presence_2_when_t2dm_is_excepted():
+    """Until the presence path existed this asserted NO change, because the entry is a
+    drug. That was the gap: with 201826 excepted, #15 still forbids 44793113, which #2
+    requires -- the 2026-10-08 dry rebuild ships exactly this shape."""
+    import copy
+    import json
+
+    base = _with_part1_exception(_real("empa-reg_treatment.circe.json"))
+    before = copy.deepcopy(base)
+
+    repairs = repair_entry_exclusion_conflicts(base, _real_lookup(base))
+
+    assert [(r.rule_number, r.path, r.target, r.excluded_concept_ids) for r in repairs] == [
+        (15, "residual-after-exception", "presence #2 'Type 2 Diabetes Mellitus'", [T2DM_OTHER])
+    ]
+    assert excluded_ids(base, 29) == {T2DM, T2DM_OTHER}
+    cs29 = next(c for c in base["ConceptSets"] if c["id"] == 29)
+    cs29_before = next(c for c in before["ConceptSets"] if c["id"] == 29)
+    cs29["expression"]["items"] = cs29_before["expression"]["items"]
+    assert json.dumps(base, sort_keys=True) == json.dumps(before, sort_keys=True)
 
 
 def test_should_decline_when_the_mirror_would_still_leave_a_residual():

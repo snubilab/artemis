@@ -61,6 +61,15 @@ safety one:
    a patient whose first qualifying event IS the index event; under an ANY group
    a sibling branch can satisfy the rule instead.
 
+THE PRESENCE PATH applies 2b -- and only 2b -- to every presence on an all-ALL path,
+with condition 3's index-day half replaced by :func:`presence_inside_absence` (one table
+family, unnarrowed absence, presence window inside the absence's). CIRCE conjoins
+inclusion rules, so an absence forbidding part of a required criterion removes those
+patients exactly as it would remove entered ones. Measured on the 2026-10-08 dry
+rebuild: EMPA-REG treatment enters on a drug, so the entry path is silent, while #15
+still forbids 44793113 of #2 'Type 2 Diabetes Mellitus'. A presence fully covered with
+nothing excepted is not repaired -- check (t) refuses it.
+
 Conditions 2 and 3 are precisely the detector's FAIL predicate, and the
 traversal primitives they are computed from live here so that the gate and the
 repair cannot drift apart: ``scripts/verify_entry_exclusion_conflict.py``
@@ -157,6 +166,101 @@ def window_covers_index(criterion: dict) -> tuple[bool, str]:
     return (start <= 0 <= end), label
 
 
+#: Circe criteria types that read one CDM table family: an era is built from the
+#: occurrences/exposures of the same concepts, so an absence over one forbids what a
+#: criterion over the other counts.
+_TABLE_FAMILY = {
+    "DrugEra": "Drug", "DrugExposure": "Drug",
+    "ConditionEra": "Condition", "ConditionOccurrence": "Condition",
+}
+
+
+def table_family(criteria_type: str) -> str:
+    """The CDM table family a Circe criteria type reads."""
+    return _TABLE_FAMILY.get(criteria_type, criteria_type)
+
+
+def is_required_presence(criterion: dict) -> bool:
+    """``Occurrence`` at least N with N >= 1 -- the criterion demands an event."""
+    occurrence = criterion.get("Occurrence") or {}
+    count = occurrence.get("Count")
+    return (
+        occurrence.get("Type") == 2
+        and isinstance(count, int)
+        and not isinstance(count, bool)
+        and count >= 1
+    )
+
+
+def iter_mandatory_presences(cohort: dict) -> Iterator[tuple[int, str, dict]]:
+    """``(rule index, rule name, criterion)`` for every presence on an all-ALL path.
+
+    Mandatory is the point: under an ANY group a sibling branch can satisfy the rule,
+    so an absence forbidding part of one alternative is not by itself a contradiction.
+    """
+    def walk(node: dict, conjunctive: bool) -> Iterator[dict]:
+        if not isinstance(node, dict):
+            return
+        here = conjunctive and str(node.get("Type", "ALL")).upper() == "ALL"
+        if not here:
+            return
+        for entry in node.get("CriteriaList") or []:
+            if is_required_presence(entry):
+                yield entry
+        for group in node.get("Groups") or []:
+            yield from walk(group, here)
+
+    for index, rule in enumerate(cohort.get("InclusionRules") or []):
+        for entry in walk(rule.get("expression") or {}, True):
+            yield index, str(rule.get("name")), entry
+
+
+def _days_window(criterion: dict) -> tuple[float, float]:
+    win = criterion.get("StartWindow") or {}
+    return window_bound(win.get("Start"), float("-inf")), window_bound(win.get("End"), float("inf"))
+
+
+def presence_inside_absence(presence: dict, absence: dict) -> tuple[bool, str]:
+    """Does the absence see every event the presence can count?
+
+    The structural half of the presence path; closure overlap is the other half. All
+    must hold, and each failure names itself so a detector can report it:
+
+    - one table family (an absence on ConditionOccurrence forbids nothing an
+      Observation criterion counts);
+    - the absence is unnarrowed -- ``CodesetId`` alone, no ``EndWindow``, no
+      ``RestrictVisit``. A narrowed absence forbids only some events, so the presence
+      can still be met through the rest;
+    - the presence's StartWindow lies inside the absence's. A window rebased by
+      ``UseIndexEnd``/``UseEventEnd`` counts only when the two are identical;
+    - a presence ignoring the observation period is not inside an absence that keeps it.
+    """
+    found_p = domain_of(presence.get("Criteria") or {})
+    found_a = domain_of(absence.get("Criteria") or {})
+    if not found_p or not found_a:
+        return False, "no domain criterion"
+    if table_family(found_p[0]) != table_family(found_a[0]):
+        return False, f"reads {found_p[0]}, the absence {found_a[0]}"
+    if set(found_a[1]) != {"CodesetId"} or absence.get("EndWindow") or absence.get(
+        "RestrictVisit"
+    ):
+        return False, "the absence is narrowed"
+    if presence.get("IgnoreObservationPeriod") and not absence.get("IgnoreObservationPeriod"):
+        return False, "the presence ignores the observation period, the absence does not"
+    p_win = presence.get("StartWindow") or {}
+    a_win = absence.get("StartWindow") or {}
+    if any(w.get("UseIndexEnd") or w.get("UseEventEnd") for w in (p_win, a_win)):
+        same = p_win == a_win
+        return same, "" if same else "a rebased window that differs"
+    (p_start, p_end), (a_start, a_end) = _days_window(presence), _days_window(absence)
+    if a_start <= p_start and p_end <= a_end:
+        return True, ""
+    return False, (
+        f"the presence window [{p_start:g}d, {p_end:g}d] reaches outside the absence "
+        f"window [{a_start:g}d, {a_end:g}d]"
+    )
+
+
 def iter_absence_criteria(
     expression: dict, conjunctive: bool = True
 ) -> Iterator[tuple[dict, bool]]:
@@ -235,6 +339,13 @@ class RepairCandidate:
     codeset_id: int
     exception: EntityException
     window: str
+    #: Condition 3's index-day half binds the ENTRY path only; against a mandatory
+    #: presence the window condition is :func:`presence_inside_absence`.
+    covers_index: bool = True
+
+
+#: What a repair protected: the cohort's entry, or one mandatory presence criterion.
+TARGET_ENTRY = "entry"
 
 
 @dataclass(frozen=True)
@@ -249,6 +360,7 @@ class EntryExclusionRepair:
     excepted: list[str]
     excluded_concept_ids: list[int] = field(default_factory=list)
     path: str = PATH_FULL_COVERAGE
+    target: str = TARGET_ENTRY
 
 
 def _rule_texts(rule: dict, criterion: dict) -> list[str]:
@@ -267,16 +379,15 @@ def iter_repair_candidates(base: dict[str, Any]) -> Iterator[RepairCandidate]:
     """Rules this repair could fire on, judged without a vocabulary.
 
     Applies conditions 1 (an entity exception stated in the rule's own text) and
-    3 (index-covering window under an all-ALL group path). Condition 2 needs the
-    concept closure and is applied by :func:`repair_entry_exclusion_conflicts`.
+    3's all-ALL group path. Whether the window covers index day 0 is recorded rather
+    than filtered on: the entry path needs it, the presence path does not. Condition 2
+    needs the concept closure and is applied by :func:`repair_entry_exclusion_conflicts`.
     """
     for index, rule in enumerate(base.get("InclusionRules") or []):
         for criterion, conjunctive in iter_absence_criteria(rule.get("expression") or {}):
             if not conjunctive:
                 continue
             covers, window = window_covers_index(criterion)
-            if not covers:
-                continue
             found = domain_of(criterion.get("Criteria") or {})
             if not found:
                 continue
@@ -297,6 +408,7 @@ def iter_repair_candidates(base: dict[str, Any]) -> Iterator[RepairCandidate]:
                 codeset_id=int(codeset),
                 exception=exception,
                 window=window,
+                covers_index=covers,
             )
 
 
@@ -324,111 +436,181 @@ def _mirror_items(entry_sets: list[dict]) -> list[dict] | None:
     return mirrored
 
 
+def _apply_mirror(
+    cs: dict, mirrored: list[dict], target_ids: set[int], lookup: VocabularyLookup,
+    describe: str,
+) -> list[int] | None:
+    """Append ``mirrored`` to ``cs`` as excluded items; the ids added, or None to decline.
+
+    The repair's post-condition is checked before anything is written: no target concept
+    left forbidden. An excluded item already carrying a target id with narrower flags
+    would be skipped by the dedupe and leave a residual; declining keeps the set as it
+    was, and the detector still fails it.
+    """
+    items = (cs.setdefault("expression", {})).setdefault("items", [])
+    already = {
+        (i.get("concept") or {}).get("CONCEPT_ID")
+        for i in items
+        if i.get("isExcluded")
+    }
+    added = [deepcopy(m) for m in mirrored
+             if (m.get("concept") or {}).get("CONCEPT_ID") not in already]
+    if not added:
+        return None
+    repaired = {**cs, "expression": {**cs["expression"], "items": items + added}}
+    left = entry_overlap(repaired, target_ids, lookup).overlap
+    if left:
+        logging.warning(
+            "[TTE] entry-exclusion repair declines on %s: mirroring into concept set %s "
+            "would still forbid %d target concept(s), e.g. %s",
+            describe, cs.get("id"), len(left), sorted(left)[:5],
+        )
+        return None
+    items.extend(added)
+    return [int((m.get("concept") or {}).get("CONCEPT_ID")) for m in added]
+
+
 def repair_entry_exclusion_conflicts(
     base: dict[str, Any], lookup: VocabularyLookup
 ) -> list[EntryExclusionRepair]:
     """Implement the exception a rule's own name states. Mutates ``base`` in place.
 
+    Two targets, one mechanism. The ENTRY path is the module docstring's conditions
+    1-3. The PRESENCE path extends 2b -- and only 2b -- to every presence on an all-ALL
+    path: the rule states an exception, the absence set already carries ``isExcluded``
+    items whose closure reaches the presence closure, the presence closure is still
+    partly forbidden, and :func:`presence_inside_absence` holds. The measured instance is
+    the 2026-10-08 dry rebuild of EMPA-REG treatment: #15 'Endocrine disorder (excluding
+    T2DM)' excepts 201826 but still forbids 44793113, which #2 'Type 2 Diabetes Mellitus'
+    requires. A presence fully covered with nothing excepted is NOT repaired: no
+    exception was begun there, and check (t) refuses it instead.
+
     :param base: a Circe cohort expression (ConceptSets / PrimaryCriteria /
         InclusionRules), mutated in place.
     :param lookup: vocabulary access for resolving concept-set closures.
-    :returns: one record per applied repair; empty means nothing satisfied all
-        three conditions, which is the expected answer for almost every file.
+    :returns: one record per applied repair; empty means nothing satisfied the
+        conditions, which is the expected answer for almost every file.
     """
     candidates = list(iter_repair_candidates(base))
     if not candidates:
         return []
 
     by_id = {int(cs["id"]): cs for cs in base.get("ConceptSets") or [] if "id" in cs}
+
     entry_sets = [
         by_id[codeset] for _domain, codeset in entry_codeset_ids(base) if codeset in by_id
     ]
-    if not entry_sets:
-        return []
-
     entry_ids: set[int] = set()
     for cs in entry_sets:
         entry_ids |= resolve_concept_set(cs, lookup).concept_ids
-    if not entry_ids:
-        return []
-
-    mirrored = _mirror_items(entry_sets)
-    if mirrored is None:
+    entry_mirror = _mirror_items(entry_sets) if entry_ids else None
+    if entry_ids and entry_mirror is None:
         logging.warning(
             "[TTE] entry-exclusion repair declines: the entry concept set carries an "
             "excluded item, which a mirrored exclusion cannot express without removing "
             "more from the absence set than the entry admits",
         )
-        return []
-    if not mirrored:
-        return []
+
+    presences: list[tuple[int, str, dict, int]] = []
+    for p_index, p_name, p_criterion in iter_mandatory_presences(base):
+        found = domain_of(p_criterion.get("Criteria") or {})
+        codeset = found[1].get("CodesetId") if found else None
+        if codeset is not None and int(codeset) in by_id:
+            presences.append((p_index, p_name, p_criterion, int(codeset)))
+    presence_closures: dict[int, set[int]] = {}
 
     applied: list[EntryExclusionRepair] = []
     for candidate in candidates:
         cs = by_id.get(candidate.codeset_id)
         if cs is None:
             continue
-        reading = entry_overlap(cs, entry_ids, lookup)
-        if not reading.path:
-            # Condition 2 and the residual path both false: no overlap, or a partial
-            # one no stated exception reached -- a population cut at most, and the
-            # detector reports it WARN rather than FAIL.
-            continue
 
-        items = (cs.setdefault("expression", {})).setdefault("items", [])
-        already = {
-            (i.get("concept") or {}).get("CONCEPT_ID")
-            for i in items
-            if i.get("isExcluded")
-        }
-        added = [deepcopy(m) for m in mirrored
-                 if (m.get("concept") or {}).get("CONCEPT_ID") not in already]
-        if not added:
-            continue
-        # The repair's post-condition, checked before anything is written: no entry
-        # concept left forbidden. An excluded item already carrying an entry id with
-        # narrower flags would be skipped by the dedupe above and leave a residual;
-        # declining keeps the set as it was, and the detector still fails it.
-        repaired = {**cs, "expression": {**cs["expression"], "items": items + added}}
-        left = entry_overlap(repaired, entry_ids, lookup).overlap
-        if left:
+        # -- the entry path ------------------------------------------------------
+        reading = entry_overlap(cs, entry_ids, lookup) if entry_ids else None
+        if candidate.covers_index and entry_mirror and reading is not None and reading.path:
+            added = _apply_mirror(
+                cs, entry_mirror, entry_ids, lookup,
+                f"rule #{candidate.rule_index + 1} {candidate.rule_name!r}",
+            )
+            if added:
+                applied.append(
+                    EntryExclusionRepair(
+                        rule_index=candidate.rule_index,
+                        rule_number=candidate.rule_index + 1,
+                        rule_name=candidate.rule_name,
+                        codeset_id=candidate.codeset_id,
+                        codeset_name=str(cs.get("name")),
+                        excepted=list(candidate.exception.excepted),
+                        excluded_concept_ids=added,
+                        path=reading.path,
+                    )
+                )
+                why = (
+                    "whose closure contains the whole entry closure -- the rule as written "
+                    "can never be satisfied"
+                    if reading.path == PATH_FULL_COVERAGE
+                    else f"which already excepts part of the entry closure but still "
+                    f"forbids {len(reading.overlap)} of its {len(entry_ids)} concepts"
+                )
+                logging.warning(
+                    "[TTE] entry-exclusion repair: rule #%d %r requires the absence of "
+                    "concept set %d %r, %s. Its text excepts %s, so concepts %s are marked "
+                    "isExcluded in that set.",
+                    candidate.rule_index + 1, candidate.rule_name, candidate.codeset_id,
+                    cs.get("name"), why, ", ".join(candidate.exception.excepted),
+                    ", ".join(str(c) for c in added),
+                )
+
+        # -- the presence path (2b only) --------------------------------------------
+        for p_index, p_name, p_criterion, p_codeset in presences:
+            inside, _why_not = presence_inside_absence(p_criterion, candidate.criterion)
+            if not inside:
+                continue
+            if p_codeset not in presence_closures:
+                presence_closures[p_codeset] = resolve_concept_set(
+                    by_id[p_codeset], lookup
+                ).concept_ids
+            p_ids = presence_closures[p_codeset]
+            if not p_ids:
+                continue
+            p_reading = entry_overlap(cs, p_ids, lookup)
+            if p_reading.path != PATH_RESIDUAL_AFTER_EXCEPTION:
+                continue
+            target = f"presence #{p_index + 1} {p_name!r}"
+            mirror = _mirror_items([by_id[p_codeset]])
+            if not mirror:
+                logging.warning(
+                    "[TTE] entry-exclusion repair declines on rule #%d %r against %s: the "
+                    "presence concept set carries an excluded item a flat mirror cannot "
+                    "express", candidate.rule_index + 1, candidate.rule_name, target,
+                )
+                continue
+            added = _apply_mirror(
+                cs, mirror, p_ids, lookup,
+                f"rule #{candidate.rule_index + 1} {candidate.rule_name!r} against {target}",
+            )
+            if not added:
+                continue
+            applied.append(
+                EntryExclusionRepair(
+                    rule_index=candidate.rule_index,
+                    rule_number=candidate.rule_index + 1,
+                    rule_name=candidate.rule_name,
+                    codeset_id=candidate.codeset_id,
+                    codeset_name=str(cs.get("name")),
+                    excepted=list(candidate.exception.excepted),
+                    excluded_concept_ids=added,
+                    path=p_reading.path,
+                    target=target,
+                )
+            )
             logging.warning(
-                "[TTE] entry-exclusion repair declines on rule #%d %r: mirroring the "
-                "entry set into concept set %d would still forbid %d entry concept(s), "
-                "e.g. %s",
+                "[TTE] entry-exclusion repair: rule #%d %r requires the absence of concept "
+                "set %d %r, which already excepts part of %s (concept set %d) but still "
+                "forbids %d of its %d concepts. Its text excepts %s, so concepts %s are "
+                "marked isExcluded in that set.",
                 candidate.rule_index + 1, candidate.rule_name, candidate.codeset_id,
-                len(left), sorted(left)[:5],
+                cs.get("name"), target, p_codeset, len(p_reading.overlap), len(p_ids),
+                ", ".join(candidate.exception.excepted), ", ".join(str(c) for c in added),
             )
-            continue
-        items.extend(added)
-
-        applied.append(
-            EntryExclusionRepair(
-                rule_index=candidate.rule_index,
-                rule_number=candidate.rule_index + 1,
-                rule_name=candidate.rule_name,
-                codeset_id=candidate.codeset_id,
-                codeset_name=str(cs.get("name")),
-                excepted=list(candidate.exception.excepted),
-                excluded_concept_ids=[
-                    int((m.get("concept") or {}).get("CONCEPT_ID")) for m in added
-                ],
-                path=reading.path,
-            )
-        )
-        why = (
-            "whose closure contains the whole entry closure -- the rule as written can "
-            "never be satisfied"
-            if reading.path == PATH_FULL_COVERAGE
-            else f"which already excepts part of the entry closure but still forbids "
-            f"{len(reading.overlap)} of its {len(entry_ids)} concepts"
-        )
-        logging.warning(
-            "[TTE] entry-exclusion repair: rule #%d %r requires the absence of concept "
-            "set %d %r, %s. Its text excepts %s, so concepts %s are marked isExcluded "
-            "in that set.",
-            candidate.rule_index + 1, candidate.rule_name, candidate.codeset_id,
-            cs.get("name"), why, ", ".join(candidate.exception.excepted),
-            ", ".join(str(c) for c in applied[-1].excluded_concept_ids),
-        )
     return applied

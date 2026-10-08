@@ -42,6 +42,17 @@ is reported so a reader can disagree with it:
   3. every group between the rule root and the criterion is Type ALL, so no
      sibling branch can satisfy the rule instead.
 
+The same reading is applied to every MANDATORY PRESENCE (an all-ALL path, at least
+one occurrence) the absence can see, because CIRCE conjoins inclusion rules: an
+absence forbidding what a required criterion counts removes those patients exactly
+as it would remove entered ones. Measured on the 2026-10-08 dry rebuild, EMPA-REG
+treatment enters on a drug, so the entry reading is clean, while #15 'Endocrine
+disorder (excluding T2DM)' still forbids 44793113 of #2 'Type 2 Diabetes Mellitus'.
+Condition 2 is unchanged; condition 3's index-day half is replaced by the presence's
+window lying inside the absence's (``presence_inside_absence``, shared with the
+repair). Only presences on condition 2's paths are reported here; any other partial
+overlap with a presence is the delivery gate's check (x).
+
 Read-only. Never writes or fixes anything.
 
 Usage:
@@ -76,10 +87,13 @@ from src.services.conceptset_closure import (  # noqa: E402
 from src.services.entry_exclusion_repair import (  # noqa: E402
     PATH_FULL_COVERAGE,
     PATH_RESIDUAL_AFTER_EXCEPTION,
+    TARGET_ENTRY,
     domain_of,
     entry_codeset_ids,
     entry_overlap,
     iter_absence_criteria,
+    iter_mandatory_presences,
+    presence_inside_absence,
     window_covers_index,
 )
 
@@ -110,6 +124,8 @@ class Finding:
     covers_index: bool
     conjunctive: bool
     notes: list[str] = field(default_factory=list)
+    #: What the absence forbids: the entry, or ``presence #N 'name'``.
+    target: str = TARGET_ENTRY
 
     @property
     def fraction(self) -> float:
@@ -127,7 +143,7 @@ def check_cohort(cohort: dict, lookup: VocabularyLookup) -> tuple[list[Finding],
 
     entries = entry_codeset_ids(cohort)
     if not entries:
-        return [], ["no PrimaryCriteria entry event with a CodesetId -- nothing to check"]
+        notes.append("no PrimaryCriteria entry event with a CodesetId -- nothing to check")
 
     entry_ids: set[int] = set()
     entry_labels: list[str] = []
@@ -143,9 +159,10 @@ def check_cohort(cohort: dict, lookup: VocabularyLookup) -> tuple[list[Finding],
         )
     notes.extend(entry_labels)
     if not entry_ids:
-        return [], notes + ["entry event resolved to zero concepts -- nothing to check"]
+        notes.append("entry event resolved to zero concepts -- nothing to check")
 
     findings: list[Finding] = []
+    presence_closures: dict[int, set[int]] = {}
     for index, rule in enumerate(cohort.get("InclusionRules") or []):
         expression = rule.get("expression") or {}
         for criterion, conjunctive in iter_absence_criteria(expression):
@@ -161,9 +178,12 @@ def check_cohort(cohort: dict, lookup: VocabularyLookup) -> tuple[list[Finding],
             if cs is None:
                 notes.append(f"rule #{index + 1} references missing codeset {codeset}")
                 continue
+            presence = _presence_findings(cohort, by_id, index, rule, criterion, conjunctive,
+                                          domain, int(codeset), cs, lookup, presence_closures)
             reading = entry_overlap(cs, entry_ids, lookup)
             overlap = reading.overlap
             if not overlap:
+                findings.extend(presence)
                 continue
 
             covers, window = window_covers_index(criterion)
@@ -198,7 +218,64 @@ def check_cohort(cohort: dict, lookup: VocabularyLookup) -> tuple[list[Finding],
                     notes=extra,
                 )
             )
+            findings.extend(presence)
     return findings, notes
+
+
+def _presence_findings(
+    cohort: dict, by_id: dict[int, dict], index: int, rule: dict, criterion: dict,
+    conjunctive: bool, domain: str, codeset: int, cs: dict, lookup: VocabularyLookup,
+    closures: dict[int, set[int]],
+) -> list[Finding]:
+    """One absence read against every mandatory presence, on condition 2's paths only."""
+    out: list[Finding] = []
+    covers, window = window_covers_index(criterion)
+    for p_index, p_name, p_criterion in iter_mandatory_presences(cohort):
+        found = domain_of(p_criterion.get("Criteria") or {})
+        p_codeset = found[1].get("CodesetId") if found else None
+        if p_codeset is None or int(p_codeset) not in by_id:
+            continue
+        p_codeset = int(p_codeset)
+        if p_codeset not in closures:
+            closures[p_codeset] = resolve_concept_set(by_id[p_codeset], lookup).concept_ids
+        p_ids = closures[p_codeset]
+        if not p_ids:
+            continue
+        reading = entry_overlap(cs, p_ids, lookup)
+        if not reading.path:
+            continue
+        inside, why_not = presence_inside_absence(p_criterion, criterion)
+        label = "full coverage" if reading.path == PATH_FULL_COVERAGE else "residual"
+        extra: list[str] = []
+        if reading.path == PATH_RESIDUAL_AFTER_EXCEPTION:
+            extra.append(
+                "the set already excepts part of this presence's closure and still forbids "
+                "the rest -- a stated exception applied incompletely"
+            )
+        if not inside:
+            extra.append(f"{label}, but {why_not}")
+        if not conjunctive:
+            extra.append(f"{label}, but the criterion sits under a non-ALL group")
+        out.append(
+            Finding(
+                severity="FAIL" if (inside and conjunctive) else "WARN",
+                rule_number=index + 1,
+                rule_index=index,
+                rule_name=str(rule.get("name")),
+                domain=domain,
+                codeset_id=codeset,
+                codeset_name=str(cs.get("name")),
+                n_entry=len(p_ids),
+                n_overlap=len(reading.overlap),
+                sample_ids=sorted(reading.overlap)[:SAMPLE],
+                window=window,
+                covers_index=covers,
+                conjunctive=conjunctive,
+                notes=extra,
+                target=f"presence #{p_index + 1} {p_name!r}",
+            )
+        )
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -237,8 +314,11 @@ def report(path: Path, findings: list[Finding], notes: list[str], names: dict[in
             f"        {f.severity}  rule #{f.rule_number} {f.rule_name!r}"
             f"  absence on {f.domain} codeset {f.codeset_id} {f.codeset_name!r}"
         )
+        closure_of = (
+            "the entry closure" if f.target == TARGET_ENTRY else f"the closure of {f.target}"
+        )
         print(
-            f"               covers {f.n_overlap}/{f.n_entry} of the entry closure"
+            f"               covers {f.n_overlap}/{f.n_entry} of {closure_of}"
             f" ({pct:.1f}%)  window {f.window}"
             f"  covers_index={f.covers_index}  conjunctive={f.conjunctive}"
         )

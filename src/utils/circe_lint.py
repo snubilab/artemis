@@ -27,6 +27,11 @@ from typing import Any
 # needs `concept_ancestor` still does no I/O of its own.
 from src.services.conceptset_closure import VocabularyLookup, resolve_concept_set
 
+# Same purity contract: `entry_exclusion_repair` imports no database driver. Check (x)
+# reads the export repair's table-family and index-window primitives so the gate and the
+# repair cannot disagree about which tables collide or when a window holds index day 0.
+from src.services.entry_exclusion_repair import table_family, window_covers_index
+
 # Importing the refusal vocabulary keeps this module pure: `criterion_refusal` has no
 # I/O and no imports of its own beyond `__future__`. The codes live there and nowhere
 # else -- a code retyped at a raise site is a code that eventually gets retyped wrong,
@@ -2485,6 +2490,236 @@ def closure_subsumed_presence_criteria(
             f"patient can satisfy both"
         )
     return findings
+
+
+@dataclass(frozen=True)
+class _OverlapPair:
+    """One mandatory, unnarrowed absence and one target it can see, before closure."""
+
+    absent_where: str
+    absent_type: str
+    absent_id: Any
+    target_kind: str  # "entry" | "presence"
+    target_where: str
+    target_type: str
+    target_id: Any
+    mandatory: bool
+    group: str  # the first non-ALL group above the target; "" when mandatory
+
+
+def _presence_entries_with_groups(
+    node: Mapping[str, Any], groups: tuple[str, ...] = ()
+) -> Iterator[tuple[dict[str, Any], tuple[str, ...]]]:
+    """Every criterion entry under a rule expression with the group types above it.
+
+    ``CorrelatedCriteria`` is NOT followed: its windows are relative to the correlated
+    event, not to index, so containment against an index-relative absence means nothing.
+    """
+    here = groups + (str(node.get("Type") or "ALL").upper(),)
+    for entry in node.get("CriteriaList") or []:
+        if isinstance(entry, dict):
+            yield entry, here
+    for group in node.get("Groups") or []:
+        if isinstance(group, Mapping):
+            yield from _presence_entries_with_groups(group, here)
+
+
+def _absence_overlap_pairs(expression: dict[str, Any]) -> list[_OverlapPair]:
+    """Absence/target pairs that a closure overlap would turn into a finding.
+
+    Structure only, no vocabulary. The absence is mandatory (``ALL`` path), demands zero
+    occurrences, and is unnarrowed (``CodesetId`` alone, no ``EndWindow``, no
+    ``RestrictVisit``) -- a narrowed absence forbids only some events. The target reads
+    the same table family and sits where the absence sees every event it counts:
+
+    * the ENTRY, when the absence window holds index day 0 -- CIRCE counts the index
+      event itself, and a window ending before index is an ordinary washout;
+    * a PRESENCE anywhere in the cohort, including under ``ANY``/``AT_LEAST``, when its
+      window lies inside the absence's (:func:`_window_inside`) and it does not ignore an
+      observation period the absence keeps. A presence under ``AT_MOST`` is skipped:
+      forbidding an at-most alternative makes the rule easier to meet, not harder.
+    """
+    absences: list[tuple[str, str, Any, dict[str, Any]]] = []
+    rules = expression.get("InclusionRules") or []
+    for index, rule in enumerate(rules):
+        if not isinstance(rule, Mapping):
+            continue
+        where = f"InclusionRules[{index}] #{index + 1} {(rule.get('name') or '')!r}"
+        for entry in _conjoined_entries(rule.get("expression") or {}):
+            if not _forbidden_occurrence(entry):
+                continue
+            leaf = _unnarrowed_codeset(entry)
+            if leaf is None or entry.get("EndWindow") or entry.get("RestrictVisit"):
+                continue
+            absences.append((where, leaf[0], leaf[1], entry))
+    if not absences:
+        return []
+
+    pairs: list[_OverlapPair] = []
+    for absent_where, absent_type, absent_id, absent_entry in absences:
+        if window_covers_index(absent_entry)[0]:
+            for entry in (expression.get("PrimaryCriteria") or {}).get("CriteriaList") or []:
+                found = _criterion_body(entry) if isinstance(entry, Mapping) else None
+                if found and table_family(found[0]) == table_family(absent_type):
+                    pairs.append(_OverlapPair(
+                        absent_where, absent_type, absent_id, "entry", "the entry event",
+                        found[0], found[1]["CodesetId"], True, "",
+                    ))
+        for index, rule in enumerate(rules):
+            if not isinstance(rule, Mapping):
+                continue
+            where = f"InclusionRules[{index}] #{index + 1} {(rule.get('name') or '')!r}"
+            for entry, groups in _presence_entries_with_groups(rule.get("expression") or {}):
+                if "AT_MOST" in groups or not _required_occurrence(entry):
+                    continue
+                found = _criterion_body(entry)
+                if not found or table_family(found[0]) != table_family(absent_type):
+                    continue
+                if entry.get("IgnoreObservationPeriod") and not absent_entry.get(
+                    "IgnoreObservationPeriod"
+                ):
+                    continue
+                if not _window_inside(entry, absent_entry):
+                    continue
+                group = next((g for g in groups if g != "ALL"), "")
+                pairs.append(_OverlapPair(
+                    absent_where, absent_type, absent_id, "presence", where, found[0],
+                    found[1]["CodesetId"], not group, group,
+                ))
+    return pairs
+
+
+def absence_overlap_codesets(expression: dict[str, Any]) -> set[Any]:
+    """Codeset ids :func:`absence_overlap_findings` must resolve on this file.
+
+    Empty means no pair is possible and no vocabulary is needed.
+    """
+    return {
+        codeset
+        for pair in _absence_overlap_pairs(expression)
+        for codeset in (pair.absent_id, pair.target_id)
+    }
+
+
+def absence_overlap_findings(
+    expression: dict[str, Any], lookup: VocabularyLookup
+) -> tuple[list[str], list[str]]:
+    """``(fail, warn)`` locators for a mandatory absence meeting the entry or a presence.
+
+    The motivating case is the 2026-10-08 dry rebuild of CAROLINA. Agent 2 re-rolled
+    #3 'Type 1 diabetes mellitus' to nine concepts including 201826 and 44793113 (T2DM),
+    and the T2DM presence sits under ``ANY`` in #5, so no existing check fired while
+    every T2DM-coded patient is excluded in both arms. :func:`closure_subsumed_presence_
+    criteria` reads mandatory presences only; this reads every presence and the entry.
+
+    Closures are resolved as Circe resolves them (``isExcluded`` subtracted). Severity was
+    set from the 09-12, 09-23 and dry-rebuild deliveries and the 18 gold files:
+
+    * **FAIL** -- the target's WHOLE closure lies inside the absence's. On the entry or a
+      mandatory presence the cohort is empty; under ``ANY``/``AT_LEAST`` that alternative
+      can never be the one satisfied. Gold carries none.
+    * **WARN** -- part of a MANDATORY target's closure is forbidden: a population cut the
+      protocol may intend (combination products of the entry drug, a stated exception
+      applied incompletely) and may not. Gold carries two, both combination products.
+    * **silent** -- part of an alternative under ``ANY``. Gold carries dozens, e.g. 'No
+      ACS in 60 days' meeting 'High risk of CV events'; reporting them is noise.
+
+    One defect, one report: a mandatory presence pair that check (t) proves, and an entry
+    collision on a rule check (f) already names from literal ids, are left to them.
+
+    :param expression: a CIRCE cohort expression.
+    :param lookup: vocabulary facts covering at least :func:`absence_overlap_codesets`.
+    :returns: ``(fail, warn)`` locator lists, both empty when nothing overlaps.
+    """
+    pairs = _absence_overlap_pairs(expression)
+    if not pairs:
+        return [], []
+    concept_sets = {
+        concept_set.get("id"): concept_set
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+    }
+    closures: dict[Any, set[int]] = {}
+
+    def closure(codeset_id: Any) -> set[int]:
+        if codeset_id not in closures:
+            concept_set = concept_sets.get(codeset_id)
+            closures[codeset_id] = (
+                resolve_concept_set(dict(concept_set), lookup).concept_ids
+                if concept_set is not None
+                else set()
+            )
+        return closures[codeset_id]
+
+    def name(codeset_id: Any) -> str:
+        return str((concept_sets.get(codeset_id) or {}).get("name") or "")
+
+    owned_by_t = {
+        (present_where, present_id, absent_where, absent_id)
+        for present_where, _type, present_id, absent_where, absent_id in _subsumption_candidates(
+            expression
+        )
+    }
+    owned_by_f = set(contradictory_absence_rules(expression))
+    rule_names_by_where = {
+        f"InclusionRules[{index}] #{index + 1} {(rule.get('name') or '')!r}": rule.get("name", "")
+        for index, rule in enumerate(expression.get("InclusionRules") or [])
+        if isinstance(rule, Mapping)
+    }
+
+    fail: list[str] = []
+    warn: list[str] = []
+    for pair in pairs:
+        target = closure(pair.target_id)
+        overlap = target & closure(pair.absent_id)
+        if not target or not overlap:
+            continue
+        target_label = (
+            f"{pair.target_where}" if pair.target_kind == "entry"
+            else f"{pair.target_where} ({pair.target_type})"
+        )
+        head = (
+            f"{pair.absent_where}: {pair.absent_type} over codeset {pair.absent_id} "
+            f"{name(pair.absent_id)!r} requires ZERO occurrences"
+        )
+        if overlap == target:
+            if pair.target_kind == "presence" and pair.mandatory and (
+                (pair.target_where, pair.target_id, pair.absent_where, pair.absent_id)
+                in owned_by_t
+            ):
+                continue
+            if pair.target_kind == "entry" and (
+                rule_names_by_where.get(pair.absent_where) in owned_by_f
+            ):
+                continue
+            if pair.target_kind == "entry":
+                consequence = (
+                    "and its window holds index day 0, so every patient the entry admits "
+                    "is removed -- the cohort is empty on any CDM"
+                )
+            elif pair.mandatory:
+                consequence = (
+                    "inside a window that sees every event it counts -- CIRCE conjoins "
+                    "inclusion rules, so the cohort is empty on any CDM"
+                )
+            else:
+                consequence = (
+                    f"inside a window that sees every event it counts -- an alternative "
+                    f"under {pair.group} that can therefore never be the one satisfied"
+                )
+            fail.append(
+                f"{head}, and its resolved closure contains the WHOLE closure "
+                f"({len(target)} concepts) of {target_label} over codeset {pair.target_id} "
+                f"{name(pair.target_id)!r}, {consequence}"
+            )
+        elif pair.mandatory:
+            warn.append(
+                f"{head} and forbids {len(overlap)} of the {len(target)} concepts "
+                f"{target_label} over codeset {pair.target_id} {name(pair.target_id)!r} "
+                f"requires (e.g. {sorted(overlap)[:3]}) -- a population cut on a mandatory "
+                f"criterion, correct only if the protocol excludes those patients"
+            )
+    return fail, warn
 
 
 def _value_ranges(value: Any) -> tuple[tuple[float, bool, float, bool], ...]:

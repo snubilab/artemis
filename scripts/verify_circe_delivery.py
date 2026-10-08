@@ -367,6 +367,8 @@ from src.utils.circe_lint import (  # noqa: E402
     DROP_OUTCOME_RULE_REMOVED,
     DROP_OUTCOME_RULE_RENAMED,
     DROPPED_CRITERIA_KEY,
+    absence_overlap_codesets,
+    absence_overlap_findings,
     aliased_concept_sets,
     asserted_bound_missing_criteria,
     closure_subsumed_presence_criteria,
@@ -423,7 +425,15 @@ def _open_lab_test_vocabulary(dsn: str, schema: str):
 
 def _subsumption_lookup(expression: dict[str, Any], vocabulary: Any) -> Any:
     """Prefetch only the concept sets check (t) will resolve on this file."""
-    codesets = closure_subsumption_codesets(expression)
+    return _prefetch_codesets(expression, vocabulary, closure_subsumption_codesets(expression))
+
+
+def _overlap_lookup(expression: dict[str, Any], vocabulary: Any) -> Any:
+    """Prefetch only the concept sets check (x) will resolve on this file."""
+    return _prefetch_codesets(expression, vocabulary, absence_overlap_codesets(expression))
+
+
+def _prefetch_codesets(expression: dict[str, Any], vocabulary: Any, codesets: set[Any]) -> Any:
     return vocabulary.prefetch(
         item
         for concept_set in expression.get("ConceptSets") or []
@@ -2356,7 +2366,7 @@ def main(argv: list[str] | None = None) -> int:
     rows: list[dict[str, Any]] = []
     any_fail = False
     produced_roles_by_study: dict[int, set[str]] = {}
-    # Opened on the first file that has a pair for check (t) to prove, and only then.
+    # Opened on the first file that has a pair for check (t) or (x) to prove, and only then.
     vocabulary: Any = None
     # Same for check (u): opened on the first file whose Measurement criteria read a lab test.
     lab_test_vocabulary: Any = None
@@ -2664,6 +2674,41 @@ def main(argv: list[str] | None = None) -> int:
                     f"closure-subsumed presence ({len(subsumed)}): {'; '.join(subsumed)}"
                 )
 
+        # (x) an absence that forbids what the cohort enters on or what a presence requires,
+        # wherever that presence sits. (t) reads mandatory presences only, so the 2026-10-08
+        # dry rebuild's CAROLINA #3 'Type 1 diabetes mellitus' -- re-rolled onto the T2DM
+        # concepts the ANY-group alternative #5 requires -- passed every check. A whole
+        # target forbidden fails; part of a mandatory one is reported, never failed: the
+        # corpora carry protocol-intended cuts of that shape (combination products of the
+        # entry drug), and a gate that fails them blocks a correct delivery.
+        overlap_warn_clause = ""
+        if absence_overlap_codesets(expression):
+            if vocabulary is None:
+                try:
+                    vocabulary = _open_vocabulary(args.dsn, args.vocab_schema)
+                except Exception as exc:  # noqa: BLE001 -- re-raised as a named abort
+                    print(
+                        f"ABORT: vocabulary unreachable at DSN {args.dsn!r} (schema "
+                        f"{args.vocab_schema}): {exc}. Check (x) resolves closures "
+                        f"through concept_ancestor and will not fall back to comparing "
+                        f"ids as written.",
+                        file=sys.stderr,
+                    )
+                    return 2
+            overlap_fail, overlap_warn = absence_overlap_findings(
+                expression, _overlap_lookup(expression, vocabulary)
+            )
+            if overlap_fail:
+                reasons.append(
+                    f"absence forbids a whole target ({len(overlap_fail)}): "
+                    f"{'; '.join(overlap_fail)}"
+                )
+            if overlap_warn:
+                overlap_warn_clause = (
+                    f"absence partly forbids a mandatory target (WARN, {len(overlap_warn)}): "
+                    f"{'; '.join(overlap_warn)}"
+                )
+
         # (u) a Measurement criterion reading a lab test in a specimen it never named, or in a
         # property its own Unit contradicts. Every check above reads the criterion's filter,
         # window or name; none reads which specimen and quantity its LOINC members measure.
@@ -2778,7 +2823,8 @@ def main(argv: list[str] | None = None) -> int:
                         grounding_clause,
                     ]
                 )
-                + ([specimen_warn_clause] if specimen_warn_clause else []),
+                + ([specimen_warn_clause] if specimen_warn_clause else [])
+                + ([overlap_warn_clause] if overlap_warn_clause else []),
             }
         )
 
