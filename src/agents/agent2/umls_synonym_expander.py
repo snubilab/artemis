@@ -14,6 +14,7 @@ Strategy (Multi-query):
 import logging
 import os
 import sqlite3
+import threading
 from typing import Dict, List, Optional, Set, Tuple
 
 from src.utils.env_flags import env_flag_enabled
@@ -87,7 +88,10 @@ class UMLSSynonymExpander:
     
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or os.path.normpath(_DEFAULT_DB_PATH)
-        self._conn: Optional[sqlite3.Connection] = None
+        # One connection per thread: Agent 2's workers share this instance, and a
+        # single sqlite3 connection used from several threads returns other
+        # queries' rows or raises InterfaceError.
+        self._local = threading.local()
         self._available = False
         self._has_mrsty = False
         self._init_db()
@@ -103,25 +107,20 @@ class UMLSSynonymExpander:
             return
         
         try:
-            self._conn = sqlite3.connect(
-                self.db_path,
-                check_same_thread=False,
-            )
-            self._conn.execute("PRAGMA query_only=ON")
-            self._conn.execute("PRAGMA cache_size=-50000")  # 50MB cache
+            conn = self._connection()
             self._available = True
             
             # Quick sanity check
-            cur = self._conn.execute("SELECT COUNT(*) FROM mrconso")
+            cur = conn.execute("SELECT COUNT(*) FROM mrconso")
             count = cur.fetchone()[0]
             
             # Check if MRSTY table exists
-            cur2 = self._conn.execute(
+            cur2 = conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='mrsty'"
             )
             if cur2.fetchone():
                 self._has_mrsty = True
-                mrsty_count = self._conn.execute("SELECT COUNT(*) FROM mrsty").fetchone()[0]
+                mrsty_count = conn.execute("SELECT COUNT(*) FROM mrsty").fetchone()[0]
                 logger.info(
                     f"UMLS Synonym Expander loaded: {count:,} mrconso + "
                     f"{mrsty_count:,} mrsty rows from {self.db_path}"
@@ -135,13 +134,23 @@ class UMLSSynonymExpander:
             logger.warning(f"Failed to load UMLS SQLite: {e}")
             self._available = False
     
+    def _connection(self) -> sqlite3.Connection:
+        """This thread's read-only connection, opened on first use."""
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("PRAGMA query_only=ON")
+            conn.execute("PRAGMA cache_size=-50000")  # 50MB cache
+            self._local.conn = conn
+        return conn
+
     @property
     def is_available(self) -> bool:
         return self._available
     
     def _cui_matches_sty(self, cui: str, allowed_stys: Set[str]) -> bool:
         """Check if a CUI has any semantic type in the allowed set."""
-        cur = self._conn.cursor()
+        cur = self._connection().cursor()
         cur.execute("SELECT sty FROM mrsty WHERE cui = ?", (cui,))
         cui_stys = {row[0] for row in cur.fetchall()}
         return bool(cui_stys & allowed_stys)
@@ -221,7 +230,7 @@ class UMLSSynonymExpander:
         if not query:
             return []
         
-        cur = self._conn.cursor()
+        cur = self._connection().cursor()
         
         # 1. Exact match (case-insensitive via COLLATE NOCASE index)
         cur.execute(
@@ -264,7 +273,7 @@ class UMLSSynonymExpander:
             return []
         
         sabs = preferred_sabs or _PREFERRED_SABS
-        cur = self._conn.cursor()
+        cur = self._connection().cursor()
         
         # Get all strings for this CUI, ordered by preference
         # ISPREF='Y' = preferred form, TS='P' = preferred LUI
@@ -361,10 +370,11 @@ class UMLSSynonymExpander:
         return all_synonyms
     
     def close(self) -> None:
-        """Close DB connection."""
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        """Close this thread's DB connection."""
+        conn = getattr(self._local, "conn", None)
+        if conn:
+            conn.close()
+            self._local.conn = None
             self._available = False
 
 
