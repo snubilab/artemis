@@ -297,7 +297,10 @@ def expand_drug_class_via_umls(
     mrrel_path = os.path.abspath(_MRREL_DB_PATH)
     conso_path = os.path.abspath(_MRCONSO_DB_PATH)
     if not os.path.exists(mrrel_path) or not os.path.exists(conso_path):
-        logger.debug("[DrugClass] MRREL/MRCONSO SQLite not available")
+        logger.warning(
+            "[DrugClass] MRREL/MRCONSO SQLite not available (%s, %s): UMLS class "
+            "expansion skipped, ATC only", mrrel_path, conso_path,
+        )
         return None, []
 
     # Step 1: Get UMLS CUI for the drug class
