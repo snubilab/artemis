@@ -102,37 +102,91 @@ def _truncate_by_ic(concepts: List[KGConcept], limit: int) -> List[KGConcept]:
 
 
 def admit_within_seed_closure(
-    concepts: List[KGConcept], seed_ids: Iterable[int]
+    generated: List[Tuple[int, KGConcept]], seed_ids: Iterable[int]
 ) -> List[KGConcept]:
-    """Drop candidates reached through a concept outside the seeds' own hierarchy.
+    """Drop what a subsuming seed reaches through a parent above every seed.
 
-    A sibling is reached through a parent and an ancestor_climb candidate through
-    a climbed ancestor. Either is admitted only when that concept is one of
-    ``seed_ids`` or a descendant of one. A seed's parent outside every seed is a
-    broader concept, and its other children are not what the seeds named: the
-    seeds of "Type 1 diabetes mellitus" otherwise pull in every other diabetes
-    type through "Diabetes mellitus". Candidates with no ``via_concept_id``
-    (ancestor, maps_to) are not affected.
+    A seed is subsuming when it is a proper ancestor of another seed of the same call
+    (the broad end of the seed set). A sibling is reached through a parent and an
+    ancestor_climb candidate through a climbed ancestor; when such a candidate was
+    generated from a subsuming seed and that parent/ancestor is neither a seed nor a
+    descendant of one, it is dropped. That parent sits above everything the seeds
+    named: the seeds of "Type 1 diabetes mellitus" include 201254, the parent of the
+    others, and its parent "Diabetes mellitus" otherwise pulls in every other diabetes
+    type. Candidates from non-subsuming seeds, and ancestor/maps_to candidates, are
+    untouched — without a subsuming seed, siblings are how the right concept is
+    reached (serum ALT through a LOINC parent no seed covers).
 
-    :param concepts: candidates from one or more ``expand`` calls
+    :param generated: ``(source seed, candidate)`` pairs from the ``expand`` calls
     :param seed_ids: every seed of the same expansion call
-    :returns: ``concepts`` in order, minus the inadmissible ones
-    :raises Exception: when the closure lookup fails; admitting everything would
+    :returns: the candidates in order, minus the dropped ones
+    :raises Exception: when a vocabulary lookup fails; admitting everything would
         silently restore the defect this filter exists for
     """
-    via_ids = {c.via_concept_id for c in concepts if c.via_concept_id is not None}
-    if not via_ids:
-        return list(concepts)
-    inside = _seed_closure_members(via_ids, seed_ids)
-    kept = [c for c in concepts if c.via_concept_id is None or c.via_concept_id in inside]
+    seeds = list(seed_ids)
+    concepts = [c for _, c in generated]
+    if not any(c.via_concept_id is not None for c in concepts):
+        return concepts
+    subsuming = _subsuming_seeds(seeds)
+    at_risk = {
+        c.via_concept_id for s, c in generated
+        if s in subsuming and c.via_concept_id is not None
+    }
+    if not at_risk:
+        return concepts
+    outside = at_risk - _seed_closure_members(at_risk, seeds)
+    kept = [c for s, c in generated if not (s in subsuming and c.via_concept_id in outside)]
     dropped = len(concepts) - len(kept)
     if dropped:
         logger.info(
             f"[KG Expander] seed-closure filter: dropped {dropped}/{len(concepts)} "
-            f"candidates reached via {sorted(via_ids - inside)} "
-            f"(outside the closure of seeds {list(seed_ids)})"
+            f"candidates of subsuming seeds {sorted(subsuming)} reached via {sorted(outside)} "
+            f"(outside the closure of seeds {seeds})"
         )
     return kept
+
+
+def _omop_connection():
+    import psycopg2
+
+    return psycopg2.connect(
+        host=os.getenv("OMOP_DB_HOST", "localhost"),
+        port=os.getenv("OMOP_DB_PORT", "5432"),
+        dbname=os.getenv("OMOP_DB_NAME", "postgres"),
+        user=os.getenv("OMOP_DB_USER", "postgres"),
+        password=os.getenv("OMOP_DB_PASS", "mypass"),
+    )
+
+
+def _subsuming_seeds(seed_ids: Iterable[int]) -> Set[int]:
+    """Return the seeds that are a proper ancestor of another seed (both concepts valid).
+
+    Reads CONCEPT_ANCESTOR in PostgreSQL. Raises on failure.
+    """
+    seeds = sorted({int(s) for s in seed_ids})
+    if len(seeds) < 2:
+        return set()
+    schema = os.getenv("CDM_SCHEMA", "synthea23m")
+    conn = _omop_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT DISTINCT ca.ancestor_concept_id
+                FROM {schema}.concept_ancestor ca
+                JOIN {schema}.concept a
+                  ON a.concept_id = ca.ancestor_concept_id AND a.invalid_reason IS NULL
+                JOIN {schema}.concept d
+                  ON d.concept_id = ca.descendant_concept_id AND d.invalid_reason IS NULL
+                WHERE ca.ancestor_concept_id = ANY(%s)
+                  AND ca.descendant_concept_id = ANY(%s)
+                  AND ca.min_levels_of_separation >= 1
+                """,
+                (seeds, seeds),
+            )
+            return {int(row[0]) for row in cur.fetchall()}
+    finally:
+        conn.close()
 
 
 def _seed_closure_members(
@@ -143,19 +197,11 @@ def _seed_closure_members(
     Reads the full CONCEPT_ANCESTOR closure in PostgreSQL (the IS_A edges in
     Neo4j are a partial copy). Raises on failure.
     """
-    import psycopg2
-
     seeds = [int(s) for s in seed_ids]
     candidates = [int(c) for c in candidate_ids]
     members = set(candidates) & set(seeds)
     schema = os.getenv("CDM_SCHEMA", "synthea23m")
-    conn = psycopg2.connect(
-        host=os.getenv("OMOP_DB_HOST", "localhost"),
-        port=os.getenv("OMOP_DB_PORT", "5432"),
-        dbname=os.getenv("OMOP_DB_NAME", "postgres"),
-        user=os.getenv("OMOP_DB_USER", "postgres"),
-        password=os.getenv("OMOP_DB_PASS", "mypass"),
-    )
+    conn = _omop_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(

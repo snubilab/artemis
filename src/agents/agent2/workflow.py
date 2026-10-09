@@ -867,7 +867,9 @@ class Agent2Workflow:
         
         try:
             kg = get_kg_expander()
-            all_kg_concepts = []
+            # (source seed, candidate) — the filter below needs to know which seed
+            # generated each candidate.
+            generated = []
             
             if kg_mode == "clinical_anchor":
                 # ── Anchor-Only Mode ──
@@ -900,9 +902,9 @@ class Agent2Workflow:
                         )
                         for sid in seed_ids
                     ]
-                    for future in futures:
+                    for sid, future in zip(seed_ids, futures):
                         try:
-                            all_kg_concepts.extend(future.result())
+                            generated.extend((sid, c) for c in future.result())
                         except Exception as e:
                             logger.warning(f"[Agent 2] KG anchor expansion failed: {e}")
             else:
@@ -924,9 +926,9 @@ class Agent2Workflow:
                         )
                         for sid in seed_ids
                     ]
-                    for future in futures:
+                    for sid, future in zip(seed_ids, futures):
                         try:
-                            all_kg_concepts.extend(future.result())
+                            generated.extend((sid, c) for c in future.result())
                         except Exception as e:
                             logger.warning(f"[Agent 2] KG expansion for seed failed: {e}")
                 
@@ -940,20 +942,20 @@ class Agent2Workflow:
                             )
                             for sid in seed_ids
                         ]
-                        for future in climb_futures:
+                        for sid, future in zip(seed_ids, climb_futures):
                             try:
-                                all_kg_concepts.extend(future.result())
+                                generated.extend((sid, c) for c in future.result())
                             except Exception as e:
                                 logger.warning(f"[Agent 2] Ancestor climb for seed failed: {e}")
                     logger.info(f"[Agent 2] Ancestor climb pass completed for {len(seed_ids)} seeds")
             
             # Note: save_cache() NOT called here — callers do it once after batch
 
-            # A sibling or climbed candidate is admitted only when the parent/ancestor
-            # it was reached through lies inside some seed's closure. Filtered before
-            # dedup so an in-closure route to a concept survives an out-of-closure one.
-            # A closure-lookup failure raises into the handler below (seed-only result).
-            all_kg_concepts = admit_within_seed_closure(all_kg_concepts, seed_ids)
+            # A sibling or climbed candidate generated from a seed that subsumes another
+            # seed is dropped when its parent/ancestor lies outside every seed's closure.
+            # Filtered before dedup so an admitted route to a concept survives a dropped
+            # one. A vocabulary-lookup failure raises into the handler below (seed-only).
+            all_kg_concepts = admit_within_seed_closure(generated, seed_ids)
 
             # Deduplicate
             seen = set(seed_ids)
