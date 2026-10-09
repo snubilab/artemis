@@ -68,7 +68,7 @@ from src.agents.agent2.rule_extractor import get_extractor, RuleExtractor
 from src.agents.agent2.abbreviation_expander import expand_abbreviation, expand_in_context
 from src.agents.agent2.drug_class_expander import expand_drug_class_via_vocab
 from src.agents.agent2.umls_synonym_expander import get_umls_expander
-from src.agents.agent2.kg_expander import get_kg_expander
+from src.agents.agent2.kg_expander import admit_within_seed_closure, get_kg_expander
 from src.agents.agent2.critic import get_critic
 from src.agents.agent2.concept_set_refiner import get_concept_set_refiner
 from src.models.ir import MappingResult, GapReport
@@ -948,7 +948,13 @@ class Agent2Workflow:
                     logger.info(f"[Agent 2] Ancestor climb pass completed for {len(seed_ids)} seeds")
             
             # Note: save_cache() NOT called here — callers do it once after batch
-            
+
+            # A sibling or climbed candidate is admitted only when the parent/ancestor
+            # it was reached through lies inside some seed's closure. Filtered before
+            # dedup so an in-closure route to a concept survives an out-of-closure one.
+            # A closure-lookup failure raises into the handler below (seed-only result).
+            all_kg_concepts = admit_within_seed_closure(all_kg_concepts, seed_ids)
+
             # Deduplicate
             seen = set(seed_ids)
             unique_kg = []
