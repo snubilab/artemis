@@ -227,11 +227,11 @@ class TestLegitimateShapes:
 
 class TestWarnAndSilence:
     def test_should_warn_when_part_of_a_mandatory_presence_is_forbidden(self):
-        """The dry-rebuild EMPA-REG residual: 201826 excepted, 44793113 still forbidden."""
-        cohort = _mandatory_t2dm(
-            rule_name="Endocrine disorder (excluding T2DM)",
-            absence_items=[_item(DM), _item(OTHER), _item(T2DM, excluded=True)],
-        )
+        """'Has T2DM but not this complication of it': a descendant forbidden, none of the
+        concepts the presence names. The dry-rebuild EMPA-REG residual (201826 excepted,
+        44793113 still forbidden) used to sit here; forbidding a concept the presence
+        names is check (y)'s FAIL now -- see test_circe_lint_explicit_presence_forbidden."""
+        cohort = _mandatory_t2dm(rule_name="T2DM complication", absence_items=[_item(T2DM_LEAF)])
 
         fail, warn = _run(cohort)
 
@@ -351,10 +351,7 @@ class TestTheDeliveryGateRunsTheCheck:
     def test_should_pass_the_delivery_and_report_a_partial_cut_as_warn(
         self, monkeypatch, tmp_path, capsys
     ):
-        cohort = _mandatory_t2dm(
-            rule_name="Endocrine disorder (excluding T2DM)",
-            absence_items=[_item(DM), _item(OTHER), _item(T2DM, excluded=True)],
-        )
+        cohort = _mandatory_t2dm(rule_name="T2DM complication", absence_items=[_item(T2DM_LEAF)])
 
         rc, out, _err = self._run_gate(monkeypatch, tmp_path, capsys, cohort)
 

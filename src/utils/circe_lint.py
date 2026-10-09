@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -2535,6 +2535,115 @@ def closure_subsumed_presence_criteria(
     return findings
 
 
+def _explicitly_forbidden_pairs(
+    expression: dict[str, Any], closure: Callable[[Any], set[int]]
+) -> list[tuple[str, str, Any, str, Any, list[int]]]:
+    """``(presence where, type, presence id, absence where, absence id, forbidden ids)``.
+
+    Pairs are :func:`_subsumption_candidates` -- the one definition of a mandatory presence
+    meeting a mandatory, unnarrowed absence that sees every event it counts. A pair whose
+    whole presence closure is forbidden is check (t)'s and is left out here.
+    """
+    concept_sets = {
+        concept_set.get("id"): concept_set
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+    }
+    found = []
+    for present_where, criteria_type, present_id, absent_where, absent_id in (
+        _subsumption_candidates(expression)
+    ):
+        if present_id not in concept_sets or absent_id not in concept_sets:
+            continue
+        present, forbidden = closure(present_id), closure(absent_id)
+        if present and present <= forbidden:
+            continue
+        named = [
+            concept_id
+            for concept_id in _non_excluded_member_ids(concept_sets[present_id])
+            if concept_id in present and concept_id in forbidden
+        ]
+        if named:
+            found.append(
+                (present_where, criteria_type, present_id, absent_where, absent_id, named)
+            )
+    return found
+
+
+def forbidden_explicit_presence_criteria(
+    expression: dict[str, Any], lookup: VocabularyLookup
+) -> list[str]:
+    """Locators for a mandatory absence forbidding a concept a mandatory presence NAMES.
+
+    The motivating case, 2026-10-09 arm A (no UMLS), CARMELINA treatment::
+
+        #1 'Type 2 Diabetes Mellitus'  >=1 ConditionOccurrence cs2  {201826, 44793113}
+        #3 'Type 1 diabetes mellitus'  ==0 ConditionOccurrence cs10 {..., 44793113, ...}
+
+    A patient whose T2DM is recorded as 44793113 satisfies #1 and is removed by #3. Check
+    (t) needs the WHOLE presence closure forbidden (3 of 16 concepts were); check (x)
+    reported it as a WARN, a cut "correct only if the protocol excludes those patients" --
+    but a concept the presence lists as qualifying cannot also be one the protocol excludes.
+
+    Compared: the presence's explicit, non-excluded members against the absence's resolved
+    closure (Circe's resolution, :func:`resolve_concept_set`). Chosen by measurement over
+    09-12, 09-23, the 10-08 dry rebuild, both 10-09 arms and the 18 gold files:
+
+    * closure against closure reports the gold's own 'T2DM' vs 'Hyperglycemia' /
+      'metabolic acidosis' / 'ESRD' pairs (2-8 shared descendants, 8 files) -- the
+      intended "has X but not complication Y" shape, where Y sits under X;
+    * explicit against explicit misses the 10-08 dry EMPA-REG residual, whose
+      'Endocrine disorder (excluding T2DM)' excepts 201826 but reaches 44793113 through
+      201820's descendants;
+    * explicit presence members against the absence closure reports both and no gold pair.
+      The reverse direction (absence members inside the presence closure) is the
+      complication shape itself, and is not read.
+
+    Same structural silences as (t): anything under ``ANY``, a narrowed absence, a
+    presence window reaching outside the absence window, different criteria types.
+
+    :param expression: a CIRCE cohort expression.
+    :param lookup: vocabulary facts covering at least the concept sets
+        :func:`closure_subsumption_codesets` names.
+    :returns: one locator per contradicting pair, empty when none.
+    """
+    concept_sets = {
+        concept_set.get("id"): concept_set
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+    }
+    closures: dict[Any, set[int]] = {}
+
+    def closure(codeset_id: Any) -> set[int]:
+        if codeset_id not in closures:
+            closures[codeset_id] = resolve_concept_set(
+                dict(concept_sets[codeset_id]), lookup
+            ).concept_ids
+        return closures[codeset_id]
+
+    def label(codeset_id: Any, concept_id: int) -> str:
+        for item in (concept_sets[codeset_id].get("expression") or {}).get("items") or []:
+            concept = item.get("concept") if isinstance(item, Mapping) else None
+            if isinstance(concept, Mapping) and concept.get("CONCEPT_ID") == concept_id:
+                return f"{concept_id} {concept.get('CONCEPT_NAME') or ''!r}"
+        return str(concept_id)
+
+    findings: list[str] = []
+    for present_where, criteria_type, present_id, absent_where, absent_id, named in (
+        _explicitly_forbidden_pairs(expression, closure)
+    ):
+        findings.append(
+            f"{absent_where}: {criteria_type} over codeset {absent_id} "
+            f"{(concept_sets[absent_id].get('name') or '')!r} requires ZERO occurrences of "
+            f"{', '.join(label(present_id, cid) for cid in named)}, which {present_where} "
+            f"names as qualifying over codeset {present_id} "
+            f"{(concept_sets[present_id].get('name') or '')!r} -- a patient recorded with "
+            f"it satisfies the presence and is removed by the absence, in a window inside "
+            f"the absence's; CIRCE conjoins every InclusionRules entry"
+        )
+    return findings
+
+
 @dataclass(frozen=True)
 class _OverlapPair:
     """One mandatory, unnarrowed absence and one target it can see, before closure."""
@@ -2667,8 +2776,10 @@ def absence_overlap_findings(
     * **silent** -- part of an alternative under ``ANY``. Gold carries dozens, e.g. 'No
       ACS in 60 days' meeting 'High risk of CV events'; reporting them is noise.
 
-    One defect, one report: a mandatory presence pair that check (t) proves, and an entry
-    collision on a rule check (f) already names from literal ids, are left to them.
+    One defect, one report: a mandatory presence pair that check (t) proves, a partial cut
+    that forbids a concept the presence names explicitly (check (y),
+    :func:`forbidden_explicit_presence_criteria`), and an entry collision on a rule check
+    (f) already names from literal ids, are left to them.
 
     :param expression: a CIRCE cohort expression.
     :param lookup: vocabulary facts covering at least :func:`absence_overlap_codesets`.
@@ -2704,6 +2815,12 @@ def absence_overlap_findings(
         )
     }
     owned_by_f = set(contradictory_absence_rules(expression))
+    owned_by_y = {
+        (present_where, present_id, absent_where, absent_id)
+        for present_where, _type, present_id, absent_where, absent_id, _named in (
+            _explicitly_forbidden_pairs(expression, closure)
+        )
+    }
     rule_names_by_where = {
         f"InclusionRules[{index}] #{index + 1} {(rule.get('name') or '')!r}": rule.get("name", "")
         for index, rule in enumerate(expression.get("InclusionRules") or [])
@@ -2755,7 +2872,10 @@ def absence_overlap_findings(
                 f"({len(target)} concepts) of {target_label} over codeset {pair.target_id} "
                 f"{name(pair.target_id)!r}, {consequence}"
             )
-        elif pair.mandatory:
+        elif pair.mandatory and (
+            (pair.target_where, pair.target_id, pair.absent_where, pair.absent_id)
+            not in owned_by_y
+        ):
             warn.append(
                 f"{head} and forbids {len(overlap)} of the {len(target)} concepts "
                 f"{target_label} over codeset {pair.target_id} {name(pair.target_id)!r} "

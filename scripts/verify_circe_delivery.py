@@ -285,6 +285,17 @@ Checks per file:
     ``_restatedRuleCollapse``; :func:`restated_rule_collapse_violations` re-derives every record on
     the file rather than trusting it. See ``src.services.restated_rules``.
 
+(y) no mandatory absence forbids a concept a mandatory presence names explicitly: the same
+    pairs as (t), when only part of the presence closure is forbidden but that part holds
+    one of the presence's own listed members. Measured on 2026-10-09 arm A (no UMLS):
+    CARMELINA treatment #1 'Type 2 Diabetes Mellitus' lists 44793113 'Diabetes mellitus
+    with multiple complications' and #3 'Type 1 diabetes mellitus' lists it too, so a
+    patient coded that way is admitted and removed; (t) needed the whole closure and the
+    gate passed it. The absence's members are not compared against the presence closure:
+    "has T2DM but not this complication of it" overlaps by design, as the gold's 'T2DM'
+    vs 'Hyperglycemia' pairs do. Shares (t)'s vocabulary prefetch. See
+    ``src.utils.circe_lint.forbidden_explicit_presence_criteria``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -381,6 +392,7 @@ from src.utils.circe_lint import (  # noqa: E402
     entry_concept_ids,
     entry_concept_set_name,
     entry_matches_expected,
+    forbidden_explicit_presence_criteria,
     measurement_lab_test_ids,
     missing_arm_roles,
     noop_exclusion_rules,
@@ -2676,12 +2688,23 @@ def main(argv: list[str] | None = None) -> int:
                         file=sys.stderr,
                     )
                     return 2
-            subsumed = closure_subsumed_presence_criteria(
-                expression, _subsumption_lookup(expression, vocabulary)
-            )
+            subsumption_lookup = _subsumption_lookup(expression, vocabulary)
+            subsumed = closure_subsumed_presence_criteria(expression, subsumption_lookup)
             if subsumed:
                 reasons.append(
                     f"closure-subsumed presence ({len(subsumed)}): {'; '.join(subsumed)}"
+                )
+            # (y) the same pairs, when only PART of the presence is forbidden but that part
+            # is a concept the presence names as qualifying. Arm A of 2026-10-09 shipped
+            # CARMELINA with 44793113 listed in both 'Type 2 Diabetes Mellitus' (#1) and
+            # 'Type 1 diabetes mellitus' (#3); (t) needs the whole closure, (x) only WARNed.
+            named_forbidden = forbidden_explicit_presence_criteria(
+                expression, subsumption_lookup
+            )
+            if named_forbidden:
+                reasons.append(
+                    f"absence forbids a concept a mandatory presence names "
+                    f"({len(named_forbidden)}): {'; '.join(named_forbidden)}"
                 )
 
         # (x) an absence that forbids what the cohort enters on or what a presence requires,
