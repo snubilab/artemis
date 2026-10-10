@@ -104,18 +104,20 @@ def _truncate_by_ic(concepts: List[KGConcept], limit: int) -> List[KGConcept]:
 def admit_within_seed_closure(
     generated: List[Tuple[int, KGConcept]], seed_ids: Iterable[int]
 ) -> List[KGConcept]:
-    """Drop what a subsuming seed reaches through a parent above every seed.
+    """Drop candidates reached through a concept above a subsuming seed.
 
     A seed is subsuming when it is a proper ancestor of another seed of the same call
     (the broad end of the seed set). A sibling is reached through a parent and an
-    ancestor_climb candidate through a climbed ancestor; when such a candidate was
-    generated from a subsuming seed and that parent/ancestor is neither a seed nor a
-    descendant of one, it is dropped. That parent sits above everything the seeds
-    named: the seeds of "Type 1 diabetes mellitus" include 201254, the parent of the
-    others, and its parent "Diabetes mellitus" otherwise pulls in every other diabetes
-    type. Candidates from non-subsuming seeds, and ancestor/maps_to candidates, are
-    untouched — without a subsuming seed, siblings are how the right concept is
-    reached (serum ALT through a LOINC parent no seed covers).
+    ancestor_climb candidate through a climbed ancestor. Such a candidate is dropped
+    when that parent/ancestor (a) is neither a seed nor a descendant of one and (b) is
+    a proper ancestor of a subsuming seed — whichever seed generated it. That concept
+    sits above everything the seeds named: for "Type 1 diabetes mellitus" the seed
+    201254 is the parent of the others and its parent "Diabetes mellitus" pulls in
+    every other diabetes type; for "Type 2 diabetes mellitus" the non-subsuming seed
+    44793113 reaches the same "Diabetes mellitus" siblings. Calls with no subsuming
+    seed, parents unrelated to a subsuming seed, and ancestor/maps_to candidates are
+    untouched — there, siblings are how the right concept is reached (serum ALT
+    through a LOINC parent no seed covers).
 
     :param generated: ``(source seed, candidate)`` pairs from the ``expand`` calls
     :param seed_ids: every seed of the same expansion call
@@ -125,23 +127,25 @@ def admit_within_seed_closure(
     """
     seeds = list(seed_ids)
     concepts = [c for _, c in generated]
-    if not any(c.via_concept_id is not None for c in concepts):
+    via_ids = {c.via_concept_id for c in concepts if c.via_concept_id is not None}
+    if not via_ids:
         return concepts
     subsuming = _subsuming_seeds(seeds)
-    at_risk = {
-        c.via_concept_id for s, c in generated
-        if s in subsuming and c.via_concept_id is not None
-    }
-    if not at_risk:
+    if not subsuming:
         return concepts
-    outside = at_risk - _seed_closure_members(at_risk, seeds)
-    kept = [c for s, c in generated if not (s in subsuming and c.via_concept_id in outside)]
+    above = _proper_ancestor_members(via_ids, subsuming)
+    if not above:
+        return concepts
+    outside = above - _seed_closure_members(above, seeds)
+    kept = [c for c in concepts if c.via_concept_id not in outside]
     dropped = len(concepts) - len(kept)
     if dropped:
+        sources = sorted({s for s, c in generated if c.via_concept_id in outside})
         logger.info(
             f"[KG Expander] seed-closure filter: dropped {dropped}/{len(concepts)} "
-            f"candidates of subsuming seeds {sorted(subsuming)} reached via {sorted(outside)} "
-            f"(outside the closure of seeds {seeds})"
+            f"candidates reached via {sorted(outside)} (above subsuming seeds "
+            f"{sorted(subsuming)}, outside the closure of seeds {seeds}; "
+            f"generated from seeds {sources})"
         )
     return kept
 
@@ -158,13 +162,17 @@ def _omop_connection():
     )
 
 
-def _subsuming_seeds(seed_ids: Iterable[int]) -> Set[int]:
-    """Return the seeds that are a proper ancestor of another seed (both concepts valid).
+def _proper_ancestor_members(
+    candidate_ids: Iterable[int], of_ids: Iterable[int]
+) -> Set[int]:
+    """Return the ``candidate_ids`` that are a proper ancestor of any of ``of_ids``.
 
-    Reads CONCEPT_ANCESTOR in PostgreSQL. Raises on failure.
+    CONCEPT_ANCESTOR in PostgreSQL, separation >= 1, both concepts valid. Raises on
+    failure.
     """
-    seeds = sorted({int(s) for s in seed_ids})
-    if len(seeds) < 2:
+    candidates = sorted({int(c) for c in candidate_ids})
+    targets = sorted({int(o) for o in of_ids})
+    if not candidates or not targets:
         return set()
     schema = os.getenv("CDM_SCHEMA", "synthea23m")
     conn = _omop_connection()
@@ -182,11 +190,19 @@ def _subsuming_seeds(seed_ids: Iterable[int]) -> Set[int]:
                   AND ca.descendant_concept_id = ANY(%s)
                   AND ca.min_levels_of_separation >= 1
                 """,
-                (seeds, seeds),
+                (candidates, targets),
             )
             return {int(row[0]) for row in cur.fetchall()}
     finally:
         conn.close()
+
+
+def _subsuming_seeds(seed_ids: Iterable[int]) -> Set[int]:
+    """Return the seeds that are a proper ancestor of another seed (both concepts valid)."""
+    seeds = {int(s) for s in seed_ids}
+    if len(seeds) < 2:
+        return set()
+    return _proper_ancestor_members(seeds, seeds)
 
 
 def _seed_closure_members(
