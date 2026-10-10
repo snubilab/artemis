@@ -279,7 +279,7 @@ class TestCriticSelfReflection:
             c = ConceptCritic()
             prompt_text = c.prompt.messages[0].prompt.template
             assert "SELF-REFLECTION PASS" in prompt_text
-            assert "abbreviation confusion" in prompt_text
+            assert "Abbreviation check" in prompt_text
 
     def test_self_reflect_prompt_absent_when_disabled(self):
         """When self-reflect is disabled, prompt omits reflection instructions."""

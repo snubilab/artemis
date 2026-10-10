@@ -135,7 +135,11 @@ class TestCriticInclusivePrompt:
     """M2c: Critic inclusive prompt for broad queries."""
 
     def test_critic_prompt_includes_inclusive_guidance(self):
-        """Critic system prompt should include guidance for broad categories."""
+        """Critic system prompt includes narrower kinds and rejects broader parents.
+
+        The earlier "prefer broad ancestors / false negatives are worse" guidance was
+        replaced by prompt evolution on 2026-10-11 (per-criterion F1 against gold).
+        """
         with patch("src.agents.agent2.critic.get_llm") as mock_llm:
             mock_llm.return_value = MagicMock()
             from src.agents.agent2.critic import ConceptCritic
@@ -143,5 +147,5 @@ class TestCriticInclusivePrompt:
             critic_mod._critic_instance = None
             critic = ConceptCritic()
             prompt_text = critic.prompt.messages[0].prompt.template
-            assert "false negatives" in prompt_text
-            assert "ancestor concept with includeDescendants=true" in prompt_text
+            assert "more specific kind" in prompt_text
+            assert "BROADER than the query" in prompt_text
