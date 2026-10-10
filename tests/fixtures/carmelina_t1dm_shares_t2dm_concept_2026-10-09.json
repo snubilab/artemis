@@ -1,0 +1,372 @@
+{
+ "_provenance": {
+  "source": "output/site_gap/2026-10-09_final_noumls/DELIVERY/carmelina_treatment.circe.json",
+  "source_md5": "b5ed0bae3528bf167fe163a02337eebb",
+  "excerpt": "PrimaryCriteria, ConceptSets 1/2/10 and InclusionRules #1 and #3, verbatim; nothing else"
+ },
+ "ConceptSets": [
+  {
+   "id": 1,
+   "name": "Linagliptin",
+   "expression": {
+    "items": [
+     {
+      "concept": {
+       "CONCEPT_ID": 40239216,
+       "CONCEPT_NAME": "linagliptin",
+       "DOMAIN_ID": "Drug",
+       "VOCABULARY_ID": "RxNorm",
+       "CONCEPT_CLASS_ID": "Ingredient",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     }
+    ]
+   }
+  },
+  {
+   "id": 2,
+   "name": "Type 2 Diabetes Mellitus",
+   "expression": {
+    "items": [
+     {
+      "concept": {
+       "CONCEPT_ID": 201826,
+       "CONCEPT_NAME": "Type 2 diabetes mellitus",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 44793113,
+       "CONCEPT_NAME": "Diabetes mellitus with multiple complications",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     }
+    ]
+   }
+  },
+  {
+   "id": 10,
+   "name": "Type 1 diabetes mellitus",
+   "expression": {
+    "items": [
+     {
+      "concept": {
+       "CONCEPT_ID": 194700,
+       "CONCEPT_NAME": "Diabetes mellitus in mother complicating pregnancy, childbirth AND/OR puerperium",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 195771,
+       "CONCEPT_NAME": "Secondary diabetes mellitus",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 201254,
+       "CONCEPT_NAME": "Type 1 diabetes mellitus",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 604357,
+       "CONCEPT_NAME": "Ketosis-prone diabetes mellitus",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 4024659,
+       "CONCEPT_NAME": "Gestational diabetes mellitus",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 4084643,
+       "CONCEPT_NAME": "Extreme insulin resistance with acanthosis nigricans, hirsutism AND abnormal insulin receptors",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 4129519,
+       "CONCEPT_NAME": "Pregnancy and type 2 diabetes mellitus",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 37116379,
+       "CONCEPT_NAME": "Stimmler syndrome",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 43531007,
+       "CONCEPT_NAME": "Pre-existing diabetes mellitus in pregnancy",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 43531011,
+       "CONCEPT_NAME": "Diabetes mellitus due to genetic defect in beta cell function",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 44793113,
+       "CONCEPT_NAME": "Diabetes mellitus with multiple complications",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     },
+     {
+      "concept": {
+       "CONCEPT_ID": 45757077,
+       "CONCEPT_NAME": "Diabetes mellitus due to pancreatic injury",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     }
+    ]
+   }
+  }
+ ],
+ "PrimaryCriteria": {
+  "CriteriaList": [
+   {
+    "DrugEra": {
+     "CodesetId": 1
+    }
+   }
+  ],
+  "ObservationWindow": {
+   "PriorDays": 365,
+   "PostDays": 0
+  },
+  "PrimaryCriteriaLimit": {
+   "Type": "First"
+  }
+ },
+ "InclusionRules": [
+  {
+   "name": "Type 2 Diabetes Mellitus",
+   "expression": {
+    "Type": "ALL",
+    "CriteriaList": [
+     {
+      "Criteria": {
+       "ConditionOccurrence": {
+        "CodesetId": 2
+       }
+      },
+      "StartWindow": {
+       "Start": {
+        "Days": 9999,
+        "Coeff": -1
+       },
+       "End": {
+        "Days": 0,
+        "Coeff": 1
+       }
+      },
+      "RestrictVisit": false,
+      "IgnoreObservationPeriod": false,
+      "Occurrence": {
+       "Type": 2,
+       "Count": 1
+      }
+     }
+    ],
+    "DemographicCriteriaList": [],
+    "Groups": []
+   }
+  },
+  {
+   "name": "Type 1 diabetes mellitus",
+   "expression": {
+    "Type": "ALL",
+    "CriteriaList": [
+     {
+      "Criteria": {
+       "ConditionOccurrence": {
+        "CodesetId": 10
+       }
+      },
+      "StartWindow": {
+       "Start": {
+        "Days": 9999,
+        "Coeff": -1
+       },
+       "End": {
+        "Days": 0,
+        "Coeff": 1
+       }
+      },
+      "RestrictVisit": false,
+      "IgnoreObservationPeriod": false,
+      "Occurrence": {
+       "Type": 0,
+       "Count": 0
+      }
+     }
+    ],
+    "DemographicCriteriaList": [],
+    "Groups": []
+   }
+  }
+ ]
+}
