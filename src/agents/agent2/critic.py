@@ -49,7 +49,25 @@ _UNSERVABLE_STATUS = frozenset({401, 403, 404})
 # exact before/after the cache is supposed to make cheap. This was added while trying a
 # grouped output schema (2026-08-11); that schema was measured and reverted, but the
 # hole it exposed is real and the guard stays.
-_CRITIC_PROMPT_VERSION = "2026-08-10-per-candidate"
+_CRITIC_PROMPT_VERSION = "2026-10-09-named-seeds"
+
+
+def _concept_rows(concept_ids: List[int]) -> Dict[int, tuple]:
+    """(concept_name, domain_id, vocabulary_id) per id, from the OMOP concept table."""
+    import psycopg2
+    from src.settings import settings
+
+    conn = psycopg2.connect(settings.DATABASE_URL)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT concept_id, concept_name, domain_id, vocabulary_id "
+                f"FROM {settings.CDM_SCHEMA}.concept WHERE concept_id = ANY(%s)",
+                (list(concept_ids),),
+            )
+            return {row[0]: (row[1], row[2], row[3]) for row in cur.fetchall()}
+    finally:
+        conn.close()
 
 
 def critic_signature() -> str:
@@ -444,7 +462,22 @@ class ConceptCritic:
         # Build candidates list: seed + KG expanded
         candidates_text = ""
         all_concept_ids = set()
-        
+
+        # A seed is normally NOT among kg_concepts (workflow.py dedups KG results
+        # against the seeds), so without this the seed went out as a bare id while
+        # every KG candidate carried a name.
+        kg_ids = {c.concept_id for c in kg_concepts}
+        unnamed = [cid for cid in seed_concept_ids if cid not in kg_ids]
+        seed_rows: Dict[int, tuple] = {}
+        if unnamed:
+            try:
+                seed_rows = _concept_rows(unnamed)
+            except Exception as e:
+                logger.warning(f"[Critic] Seed concept lookup failed for {unnamed}: {e}")
+            missing = [cid for cid in unnamed if cid not in seed_rows]
+            if missing:
+                logger.warning(f"[Critic] Seeds rendered without a name (not in concept table): {missing}")
+
         for cid in seed_concept_ids:
             # Find matching KG concept info
             matching = [c for c in kg_concepts if c.concept_id == cid]
@@ -453,6 +486,12 @@ class ConceptCritic:
                 candidates_text += (
                     f"- ID: {cid} | Name: {c.concept_name} | Domain: {c.domain_id} "
                     f"| Vocab: {c.vocabulary_id} | Relationship: seed\n"
+                )
+            elif cid in seed_rows:
+                name, domain, vocab = seed_rows[cid]
+                candidates_text += (
+                    f"- ID: {cid} | Name: {name} | Domain: {domain} "
+                    f"| Vocab: {vocab} | Relationship: seed (vector search top match)\n"
                 )
             else:
                 candidates_text += f"- ID: {cid} | Relationship: seed (vector search top match)\n"
