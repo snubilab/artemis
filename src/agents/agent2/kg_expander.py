@@ -17,7 +17,7 @@ import hashlib
 import logging
 import math
 import threading
-from typing import List, Dict, Optional, Tuple
+from typing import Iterable, List, Dict, Optional, Set, Tuple
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
@@ -47,6 +47,10 @@ TOTAL_STANDARD_CONCEPTS = 2_750_364
 IC_THRESHOLD = 8.0
 
 KG_CACHE_FILE = Path("data/cache/kg_cache.json")
+# Bumped when a cached KGConcept gains a field the callers depend on. "via1": siblings
+# and ancestor_climb candidates carry via_concept_id, which the seed-closure filter needs;
+# an entry cached before that cannot be filtered and must be recomputed.
+KG_CACHE_SCHEMA = "via1"
 
 
 @dataclass
@@ -60,6 +64,9 @@ class KGConcept:
     relationship: str = ""       # How this concept relates to the seed
     separation: int = 0          # Distance from the seed concept
     descendant_count: int = 0    # Number of descendants in CONCEPT_ANCESTOR
+    # The parent (sibling) or climbed ancestor (ancestor_climb) this candidate was
+    # reached through; None for candidates not reached through another concept.
+    via_concept_id: Optional[int] = None
 
 
 def _truncate_by_ic(concepts: List[KGConcept], limit: int) -> List[KGConcept]:
@@ -92,6 +99,124 @@ def _truncate_by_ic(concepts: List[KGConcept], limit: int) -> List[KGConcept]:
         f"(dropped {len(concepts) - limit} broad concepts)"
     )
     return truncated
+
+
+def admit_within_seed_closure(
+    generated: List[Tuple[int, KGConcept]], seed_ids: Iterable[int]
+) -> List[KGConcept]:
+    """Drop what a subsuming seed reaches through a parent above every seed.
+
+    A seed is subsuming when it is a proper ancestor of another seed of the same call
+    (the broad end of the seed set). A sibling is reached through a parent and an
+    ancestor_climb candidate through a climbed ancestor; when such a candidate was
+    generated from a subsuming seed and that parent/ancestor is neither a seed nor a
+    descendant of one, it is dropped. That parent sits above everything the seeds
+    named: the seeds of "Type 1 diabetes mellitus" include 201254, the parent of the
+    others, and its parent "Diabetes mellitus" otherwise pulls in every other diabetes
+    type. Candidates from non-subsuming seeds, and ancestor/maps_to candidates, are
+    untouched — without a subsuming seed, siblings are how the right concept is
+    reached (serum ALT through a LOINC parent no seed covers).
+
+    :param generated: ``(source seed, candidate)`` pairs from the ``expand`` calls
+    :param seed_ids: every seed of the same expansion call
+    :returns: the candidates in order, minus the dropped ones
+    :raises Exception: when a vocabulary lookup fails; admitting everything would
+        silently restore the defect this filter exists for
+    """
+    seeds = list(seed_ids)
+    concepts = [c for _, c in generated]
+    if not any(c.via_concept_id is not None for c in concepts):
+        return concepts
+    subsuming = _subsuming_seeds(seeds)
+    at_risk = {
+        c.via_concept_id for s, c in generated
+        if s in subsuming and c.via_concept_id is not None
+    }
+    if not at_risk:
+        return concepts
+    outside = at_risk - _seed_closure_members(at_risk, seeds)
+    kept = [c for s, c in generated if not (s in subsuming and c.via_concept_id in outside)]
+    dropped = len(concepts) - len(kept)
+    if dropped:
+        logger.info(
+            f"[KG Expander] seed-closure filter: dropped {dropped}/{len(concepts)} "
+            f"candidates of subsuming seeds {sorted(subsuming)} reached via {sorted(outside)} "
+            f"(outside the closure of seeds {seeds})"
+        )
+    return kept
+
+
+def _omop_connection():
+    import psycopg2
+
+    return psycopg2.connect(
+        host=os.getenv("OMOP_DB_HOST", "localhost"),
+        port=os.getenv("OMOP_DB_PORT", "5432"),
+        dbname=os.getenv("OMOP_DB_NAME", "postgres"),
+        user=os.getenv("OMOP_DB_USER", "postgres"),
+        password=os.getenv("OMOP_DB_PASS", "mypass"),
+    )
+
+
+def _subsuming_seeds(seed_ids: Iterable[int]) -> Set[int]:
+    """Return the seeds that are a proper ancestor of another seed (both concepts valid).
+
+    Reads CONCEPT_ANCESTOR in PostgreSQL. Raises on failure.
+    """
+    seeds = sorted({int(s) for s in seed_ids})
+    if len(seeds) < 2:
+        return set()
+    schema = os.getenv("CDM_SCHEMA", "synthea23m")
+    conn = _omop_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT DISTINCT ca.ancestor_concept_id
+                FROM {schema}.concept_ancestor ca
+                JOIN {schema}.concept a
+                  ON a.concept_id = ca.ancestor_concept_id AND a.invalid_reason IS NULL
+                JOIN {schema}.concept d
+                  ON d.concept_id = ca.descendant_concept_id AND d.invalid_reason IS NULL
+                WHERE ca.ancestor_concept_id = ANY(%s)
+                  AND ca.descendant_concept_id = ANY(%s)
+                  AND ca.min_levels_of_separation >= 1
+                """,
+                (seeds, seeds),
+            )
+            return {int(row[0]) for row in cur.fetchall()}
+    finally:
+        conn.close()
+
+
+def _seed_closure_members(
+    candidate_ids: Iterable[int], seed_ids: Iterable[int]
+) -> Set[int]:
+    """Return the ``candidate_ids`` that are a seed or a descendant of one.
+
+    Reads the full CONCEPT_ANCESTOR closure in PostgreSQL (the IS_A edges in
+    Neo4j are a partial copy). Raises on failure.
+    """
+    seeds = [int(s) for s in seed_ids]
+    candidates = [int(c) for c in candidate_ids]
+    members = set(candidates) & set(seeds)
+    schema = os.getenv("CDM_SCHEMA", "synthea23m")
+    conn = _omop_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT DISTINCT descendant_concept_id
+                FROM {schema}.concept_ancestor
+                WHERE ancestor_concept_id = ANY(%s)
+                  AND descendant_concept_id = ANY(%s)
+                """,
+                (seeds, candidates),
+            )
+            members.update(int(row[0]) for row in cur.fetchall())
+    finally:
+        conn.close()
+    return members
 
 
 class KGExpander:
@@ -151,7 +276,8 @@ class KGExpander:
     @staticmethod
     def _cache_key(concept_id: int, strategy: str, max_sep: int,
                    limit: int, domain_filter: Optional[str]) -> str:
-        raw = f"{concept_id}|{strategy}|{max_sep}|{limit}|{domain_filter or ''}"
+        raw = (f"{concept_id}|{strategy}|{max_sep}|{limit}|{domain_filter or ''}"
+               f"|{KG_CACHE_SCHEMA}")
         return hashlib.sha256(raw.encode()).hexdigest()[:16]
     
     @property
@@ -406,7 +532,8 @@ class KGExpander:
             RETURN DISTINCT sib.concept_id AS cid, sib.concept_name AS name,
                    sib.domain_id AS domain, sib.vocabulary_id AS vocab,
                    sib.concept_class_id AS cclass,
-                   parent.concept_name AS parent_name
+                   parent.concept_name AS parent_name,
+                   parent.concept_id AS parent_id
             LIMIT 30
         """
         params = {"concept_id": str(concept_id)}
@@ -424,6 +551,7 @@ class KGExpander:
                     concept_class_id=r["cclass"] or "",
                     relationship=f"sibling (parent: {r['parent_name']})",
                     separation=1,
+                    via_concept_id=int(r["parent_id"]),
                 )
                 for r in result
             ]
@@ -642,6 +770,7 @@ class KGExpander:
                             relationship=f"ancestor_climb (via {anc['name']}, IC={anc_ic:.1f})",
                             separation=0,
                             descendant_count=0,
+                            via_concept_id=int(anc["cid"]),
                         )
             
             # Stop early if we have enough
