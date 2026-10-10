@@ -5,10 +5,12 @@ a climbed ancestor. When one seed of an expansion call is an ancestor of another
 (it "subsumes" it), that seed is the broad end of the seed set, and its parent lies
 above everything the seeds named: for "Type 1 diabetes mellitus" the seed 201254 is
 the parent of the other seeds, and its parent "Diabetes mellitus" pulled in every other
-diabetes type. Such a candidate is dropped only when it was generated FROM a subsuming
-seed AND its parent/climbed ancestor lies outside the closure of every seed. A call with
-no subsuming seed is left alone: there, siblings are how the right concept is reached
-(serum ALT through a LOINC parent no seed covers).
+diabetes type. A sibling/climb candidate is dropped when its parent/climbed ancestor lies
+outside the closure of every seed AND is a proper ancestor of a subsuming seed —
+whichever seed generated it (for "Type 2 diabetes mellitus" the non-subsuming seed
+44793113 reached the same "Diabetes mellitus" siblings). A call with no subsuming seed
+is left alone: there, siblings are how the right concept is reached (serum ALT through
+a LOINC parent no seed covers).
 
 The ids below are toy ids; the hierarchy is the only thing the rule reads.
 """
@@ -26,10 +28,12 @@ from src.agents.agent2.kg_expander import KGConcept, KGExpander
 #   1 <- 10 <- 11 ; 10 <- 12 ; 1 <- 13 ; 1 <- 14
 #   2 <- 20 ; 2 <- 21
 #   3 <- 30 ; 3 <- 31
+#   1 <- 40 ; 1 <- 41          (40: a seed beside 10, under the same outside parent 1)
 ANCESTORS = {
     10: {1}, 11: {10, 1}, 12: {10, 1}, 13: {1}, 14: {1},
     20: {2}, 21: {2},
     30: {3}, 31: {3},
+    40: {1}, 41: {1},
 }
 
 
@@ -43,6 +47,11 @@ def _subsuming_seeds(seed_ids):
     """Stand-in for concept_ancestor: seeds that are a proper ancestor of another seed."""
     seeds = set(seed_ids)
     return {s for s in seeds if any(s in ANCESTORS.get(t, set()) for t in seeds - {s})}
+
+
+def _proper_ancestor_members(candidate_ids, of_ids):
+    """Stand-in for concept_ancestor: candidates that are a proper ancestor of any of of_ids."""
+    return {c for c in candidate_ids if any(c in ANCESTORS.get(o, set()) for o in of_ids)}
 
 
 def _concept(cid, relationship, via=None):
@@ -68,6 +77,7 @@ def _climb(cid, ancestor):
 def toy_vocabulary(monkeypatch):
     monkeypatch.setattr(kge, "_seed_closure_members", _closure_members)
     monkeypatch.setattr(kge, "_subsuming_seeds", _subsuming_seeds, raising=False)
+    monkeypatch.setattr(kge, "_proper_ancestor_members", _proper_ancestor_members, raising=False)
 
 
 @pytest.fixture
@@ -111,6 +121,18 @@ def test_should_drop_subsuming_seed_siblings_and_climbs_when_parent_is_outside_e
 
     assert 13 not in final_ids and 14 not in final_ids
     assert {12, 1}.issubset(final_ids)
+
+
+def test_should_drop_siblings_of_a_non_subsuming_seed_when_their_parent_is_above_a_subsuming_seed(
+    monkeypatch,
+):
+    # T2DM shape: 10 subsumes 11; seed 40 subsumes nothing, but its parent 1 is the parent
+    # of the subsuming seed 10 and outside every seed's closure.
+    per_seed = {11: [], 10: [], 40: [_sib(41, 1)]}
+
+    final_ids = _expand_through_workflow(monkeypatch, per_seed, [11, 10, 40])
+
+    assert 41 not in final_ids
 
 
 def test_should_keep_out_of_closure_siblings_when_no_seed_subsumes_another(monkeypatch):

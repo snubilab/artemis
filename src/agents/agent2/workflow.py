@@ -951,8 +951,8 @@ class Agent2Workflow:
             
             # Note: save_cache() NOT called here — callers do it once after batch
 
-            # A sibling or climbed candidate generated from a seed that subsumes another
-            # seed is dropped when its parent/ancestor lies outside every seed's closure.
+            # A sibling or climbed candidate is dropped when its parent/ancestor lies
+            # outside every seed's closure and above a seed that subsumes another seed.
             # Filtered before dedup so an admitted route to a concept survives a dropped
             # one. A vocabulary-lookup failure raises into the handler below (seed-only).
             all_kg_concepts = admit_within_seed_closure(generated, seed_ids)
