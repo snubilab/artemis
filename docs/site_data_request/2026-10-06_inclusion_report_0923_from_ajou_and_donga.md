@@ -291,12 +291,57 @@ note-026은 배제 규칙의 단위 필터를 유지하기로 했다. 단위가 
   만들어 넣고 있었다. 수정 전후 비교는 같은 stub을 썼으므로 유효하지만, 매핑되지 않은
   기준(EMPA-REG 제외 #22·#33, CARMELINA 포함 #3·제외 #35·#44, CAROLINA 제외 #33·#69)에
   대한 결론은 실제 매퍼 재빌드로 다시 확인한다.
-- 계획 문서에 남은 미결 항목: 7번 약물 계열 매핑 정밀도 중 D(ATC 문서 텍스트를 다른
-  vocabulary의 같은 분류 이름으로 보강해 0.75 기준을 다시 맞추는 것)와 B+C(상위
-  분류를 포함하는 더 구체적인 하위 분류 선택 규칙 + 복합제 성분만으로 닿는 성분
-  제외)는 합의만 됐고 구현 전이다. 8번 UMLS MRREL 관계 데이터 부재(M4, 첫 단계가
-  서버에 없어 디버그 로그만 남기고 조용히 넘어감)는 데이터를 배포할지 없으면 실패로
-  드러낼지 결정이 필요하다. 범위 밖에서 CARMELINA `ALT (SGPT)` concept set에 AST 코드
-  `3013721`이 섞여 있는 것을 발견했다. 추출 단계에서 PLATO 항혈소판제 기준이 새로
-  생겼다. 내보내기 단계의 range_disjunction 수정이 값 범위 변환 뒤 다시 presence로
-  되돌리지 않는지는 재빌드 때 확인해야 한다.
+- 범위 밖에서 CARMELINA `ALT (SGPT)` concept set에 AST 코드 `3013721`이 섞여 있는 것을
+  발견했다. 추출 단계에서 PLATO 항혈소판제 기준이 새로 생겼다.
+- CAROLINA #6(09-23 발송본 기준) 'Type 2 Diabetes Mellitus Diagnosis + Insufficient Glycaemic
+  Control + High Cardiovascular risk'는 세 조건을 `ANY`로 묶었다. 09-23 발송본에도 같은 구조가
+  있다. 추출 단계의 결함이고 이번 수정 범위 밖이다.
+- CAROLINA 'Pre-planned PCI + Pre-planned CABG'는 앞으로 예정된 시술인데, 규칙은 과거 기간
+  `[-9999, 0]`의 시술 기록을 찾도록 만들어졌다. 09-12·09-23 발송본에도 있다. 10-10 통합 재빌드에서 검사 (x)가
+  처음으로 FAIL을 냈다(아래).
+- Neo4j KG에는 `MAPS_TO` 관계가 0개다. 적재 스크립트(`scripts/load_omop_to_neo4j_v2.py`)가
+  표준 개념만 노드로 만들고, 유효한 'Maps to' 745,925개 중 표준→표준(자기 자신 제외)은
+  0개다. 검색 인덱스(`omop_concepts_medcpt`) 440,790개도 모두 표준 개념이라, 관계를 적재해도
+  `get_maps_to`가 돌려줄 후보는 없다. 사용자 결정(10-09)으로 적재하지 않았다.
+- KG 필터(`01ba254`)는 CAROLINA 'CABG'에서 4168831 MIDCAB, 4305852 off-pump CABG도 뺀다.
+  두 개념은 gold `[TROY procedure] CABG`(4336464와 하위 개념)에 들어 있지 않아 gold
+  점수에는 손실이 아니지만, 임상적으로는 CABG의 한 종류다.
+
+## 재빌드와 추가 수정 (2026-10-09 ~ 10-11)
+
+세 시험을 Agent 1 재추출 없이 Agent 2부터 다시 빌드했다. 조건: verify5 스토어 사본, 기준 캐시
+꺼짐, `AGENT2_ATC_COLLECTION=atc_drug_classes_v2`(ChromaDB 사본에 빌드), vllm/google/gemma-4-E4B-it.
+실행 기록은 `output/site_gap/<날짜>_*/PROVENANCE.md`에 있다. 판정은 gold 기준별 대조(closure,
+1:1, macro)와 배송 게이트로 했다.
+
+| 실행 | 코드 | gold macro recall (EMPA-REG / CARMELINA / CAROLINA) | gold macro precision | 비고 |
+| --- | --- | --- | --- | --- |
+| 09-23 발송본 | — | 0.575 / 0.639 / 0.591 | 0.537 / 0.655 / 0.549 | 기준 |
+| 재빌드 A (UMLS 없음) | `a0d8ee4` | 0.620 / 0.694 / 0.677 | 0.571 / 0.588 / 0.528 | 수정 대상 게이트 검사 (t)(u)(v)(w) 0건. `Type 1 diabetes mellitus` precision 1.000→0.250 |
+| 재빌드 B (UMLS 있음) | `abf04f4` | 0.593 / 0.704 / 0.660 | 0.548 / 0.629 / 0.544 | insulin recall 1.000→0.597, 항비만제 0.853→0.221, HbA1c 집합 10개에 3005446 HbA1 총량 |
+| 통합 재빌드 | `4fa65b3` | 0.612 / 0.717 / 0.681 | 0.524 / 0.592 / 0.523 | T1D precision 0.250→1.000. `Type 2 Diabetes Mellitus` precision 0.88→0.47 |
+
+### UMLS
+- 데이터(2026AA)를 받아 `mrconso.sqlite`, `mrrel.sqlite`를 만들었다(`6cb3876`: MRREL 변환기,
+  데이터가 없을 때 경고). 운영 컨테이너가 마운트하는 `data/umls`에는 두지 않았다.
+- 첫 B 실행은 매핑 33건이 실패해 무효다. `UMLSSynonymExpander`가 sqlite 연결 하나를 여러
+  스레드에 잠금 없이 공유했다. `abf04f4`에서 스레드별 연결로 고쳤다.
+- 다시 돌린 B에서 MRREL 경로가 ATC v2보다 먼저 결과를 내 약물 계열 recall이 떨어졌다.
+  현재 구조로는 UMLS를 켜지 않는다.
+
+### `Type 1 diabetes mellitus` 오염
+재빌드 A에서 이 집합에 임신성·이차성 당뇨, 44793113 등이 들어갔다. 44793113은 같은 파일의
+`Type 2 Diabetes Mellitus` 포함 집합에도 있어, 이 코드로 기록된 T2DM 환자가 포함되었다가
+배제된다. 원인은 세 곳이다.
+
+| 수정 | 커밋 | 영향 측정 |
+| --- | --- | --- |
+| K: KG가 시드의 부모 위로 올라가 다른 질환을 후보로 올림 | `bf40e5b`, 보완 `01ba254` | KG 확장 141회 결정적 재실행. 처음 설계(`f793dde`)는 128회를 바꿔 기각. `bf40e5b`는 55회 변경, T1D 후보 47→22. 통합 재빌드에서 T2DM 누출(아래)이 나와 `01ba254`로 보완, T2DM 누출 5개 제거 |
+| C: critic이 시드를 이름 없이 받음 | `7167bda` | 55개 기준 × 수정 전·플라시보·수정 후 각 3회. 시드 범위 밖 선택이 실행당 약 308→262, 플라시보에서는 변화 없음 |
+| G: 포함 집합의 명시 항목이 배제 집합 closure 안에 있어도 게이트가 통과 | `b8250cc`(검사 (y)) | 재빌드 A CARMELINA treatment, 10-08 시험 재빌드 EMPA-REG FAIL. 09-12·09-23·재빌드 B·gold 0건(gold에는 이 검사가 비교할 짝이 없다) |
+
+통합 재빌드(`4fa65b3`)에서 `Type 2 Diabetes Mellitus`에 1340306, 4058243, 4228483, 44793114,
+45766050이 들어갔다. 시드 44793113은 다른 시드의 상위 개념이 아니어서 `bf40e5b`의 필터가
+그 형제를 거르지 않았고, critic이 33개 중 18개를 골랐다(재빌드 A는 10개). `01ba254`는 상위
+시드보다 위의 개념을 거쳐 들어온 범위 밖 후보를, 어느 시드에서 나왔든 뺀다. 이 코드로 한
+통합 재빌드 2의 결과는 다음 기록에 남긴다.
