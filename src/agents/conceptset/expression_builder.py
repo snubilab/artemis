@@ -374,6 +374,75 @@ class ExpressionBuilder:
             logger.warning("[Expression Builder] Non-seed ancestor guard error: %s", e)
             return candidates
 
+    def _drop_non_seed_coparents(
+        self,
+        candidates: List[ConceptCandidate],
+        seed_concept_ids: Optional[List[int]],
+    ) -> List[ConceptCandidate]:
+        """Drop non-seed candidates that subsume part of a seed's closure from outside it.
+
+        ``_drop_non_seed_ancestors`` catches a non-seed that is an ancestor of a seed.
+        A non-seed can also sit outside every seed's closure while being a proper
+        ancestor of another candidate that lies inside one. Roll-up then folds that
+        member under the non-seed, and the non-seed's other descendants -- which no
+        seed names -- ship with the set. Such a candidate widens the seeds rather than
+        refining them, so it is removed.
+
+        Only concept_ancestor relations among the candidates are read. A non-seed that
+        is inside a seed's closure, or that subsumes no member of one, is untouched;
+        ``seed_concept_ids=None`` returns the list unchanged.
+        """
+        if not seed_concept_ids or len(candidates) <= 2:
+            return candidates
+
+        seed_set = set(seed_concept_ids)
+        candidate_ids = [c.concept_id for c in candidates]
+        if not (set(candidate_ids) & seed_set) or not (set(candidate_ids) - seed_set):
+            return candidates
+
+        query = f"""
+            SELECT ancestor_concept_id, descendant_concept_id
+            FROM {self.schema}.concept_ancestor
+            WHERE ancestor_concept_id = ANY(:ids)
+              AND descendant_concept_id = ANY(:ids)
+              AND ancestor_concept_id != descendant_concept_id
+              AND min_levels_of_separation > 0
+        """
+
+        try:
+            with get_db_session() as db:
+                result = db.execute(text(query), {"ids": candidate_ids})
+                pairs = {
+                    (row.ancestor_concept_id, row.descendant_concept_id)
+                    for row in result.fetchall()
+                }
+        except Exception as e:
+            logger.warning("[Expression Builder] Non-seed co-parent guard error: %s", e)
+            return candidates
+
+        def in_seed_closure(cid: int) -> bool:
+            return cid in seed_set or any((s, cid) in pairs for s in seed_set)
+
+        inside = {cid for cid in candidate_ids if in_seed_closure(cid)}
+        widening = {
+            cid
+            for cid in candidate_ids
+            if cid not in inside
+            and any((cid, m) in pairs for m in inside if m not in seed_set)
+        }
+        if not widening:
+            return candidates
+
+        candidate_map = {c.concept_id: c for c in candidates}
+        for cid in sorted(widening):
+            logger.info(
+                "[Expression Builder] Dropped non-seed co-parent %s (%s) — it lies outside "
+                "every seed's closure but subsumes members of one",
+                cid,
+                getattr(candidate_map.get(cid), "concept_name", cid),
+            )
+        return [c for c in candidates if c.concept_id not in widening]
+
     def _roll_up(
         self,
         candidates: List[ConceptCandidate],
@@ -390,6 +459,7 @@ class ExpressionBuilder:
         3. 최상위 개념만 유지
         """
         candidates = self._drop_non_seed_ancestors(candidates, seed_concept_ids)
+        candidates = self._drop_non_seed_coparents(candidates, seed_concept_ids)
         candidates = self._filter_overbroad(candidates)
 
         if len(candidates) <= 1:
