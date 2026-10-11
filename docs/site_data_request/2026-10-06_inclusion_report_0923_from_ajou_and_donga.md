@@ -403,3 +403,4 @@ ischemia'가 들어가 precision이 0.86에서 0.57이 됐고, CAROLINA CABG는 
 | 14 | PLATO anticoagulants precision 하락 | 10-07 성분 예외로 heparin·warfarin이 남음. 원문은 멈출 수 없는 항응고제 | 고치지 않음. 약물 precision이 제품 수에 좌우되는 평가 한계 | 매핑 진단 산출물 |
 | 15 | LEADER CRRT가 gold 짝을 잃음 | KG 필터가 Hemodialysis 경유 후보를 빼 CRRT만 남음 | 프로토콜 문장에 맞으므로 유지, gold 차이는 한계 | `output/site_gap/2026-10-11_alltrials/PROVENANCE.md` |
 | 16 | critic 프롬프트에 예시·개념 이름 포함 | 기존 프롬프트가 예시 3개를 담음 | 고정 입력으로 진화, 예시·이름 없는 F2 | 브랜치 `exp/critic-prompt-evo` `2befcbc`, 6개 시험 검증 진행 중 |
+| 17 | 프롬프트 세 갈래 동시 재빌드에서 F2·F1에 DB 연결 오류 | K 필터·critic 시드 이름 조회가 호출마다 psycopg2 연결을 새로 열고, 세 갈래가 동시에 돌아 Postgres `max_connections` 100을 넘김. KG 확장이 실패한 기준은 경고만 남기고 시드만으로 진행 | F2·F1을 순서대로 다시 돌림. 연결 수 최댓값 기록. 연결 재사용은 별도 과제 | `output/site_gap/2026-10-12_prompt_{f2,f1}_dbconn/INVALID.md` |
