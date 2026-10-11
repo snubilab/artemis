@@ -382,3 +382,24 @@ ischemia'가 들어가 precision이 0.86에서 0.57이 됐고, CAROLINA CABG는 
   'renal dialysis'가 더 넓다. gold는 그대로 두고 한계로 기록한다.
 - 실행 전 예측 네 가지 중 둘이 틀렸다. LEADER 'OADs and GLP-1 only'는 기준 파일에 gold 짝이 없어서
   recall이 떨어지지 않고 0에서 0.937로 올랐다. ARISTOTLE의 검사 (t) FAIL은 예측과 반대다.
+
+## 이슈와 해결 (2026-10-09 ~ 10-11)
+
+| # | 이슈 | 원인 | 해결 또는 결정 | 근거 |
+| --- | --- | --- | --- | --- |
+| 1 | UMLS 경로가 몇 달 동안 실행되지 않음 | `data/umls`가 호스트에 없고, 없을 때 debug 로그만 남김 | 2026AA로 sqlite를 만들고 운영 마운트 밖에 둠. 없을 때 경고 | `6cb3876` |
+| 2 | 재빌드 B 매핑 33건 실패 | UMLS sqlite 연결 하나를 스레드끼리 잠금 없이 공유 | 스레드별 연결 | `abf04f4`, `docs/mistakes.md` |
+| 3 | UMLS를 켜면 약물 계열 recall 하락 | MRREL 경로가 ATC v2보다 먼저 결과를 냄 | UMLS를 켜지 않음 | `output/site_gap/2026-10-09_final_umls/PROVENANCE.md` |
+| 4 | Neo4j `MAPS_TO` 0개 | 그래프·검색 인덱스가 표준 개념만 담고 'Maps to'는 비표준에서만 출발 | 적재하지 않음(사용자 결정) | 위 한계 절 |
+| 5 | `Type 1 diabetes mellitus` 오염 | KG 형제·상위 경유 후보, 이름 없는 시드, 게이트 공백 | K `bf40e5b`, C `7167bda`, G `b8250cc` | 위 재빌드 절, `docs/mistakes.md` |
+| 6 | K의 첫 설계가 너무 넓음 | 모든 시드 범위 밖이면 제거 → KG 확장 141회 중 128회 변경 | 다른 시드의 상위인 시드에서 나온 후보만 제거 | `f793dde` → `bf40e5b` |
+| 7 | 통합 재빌드에서 T2DM 누출 | 상위 시드가 아닌 44793113의 형제가 같은 부모로 통과 | 상위 시드보다 위의 개념을 거친 후보는 시드와 무관하게 제거 | `01ba254` |
+| 8 | ChromaDB 사본의 md5가 매번 다름 | Chroma가 열기만 해도 sqlite를 고쳐 씀 | 사본 동일성은 컬렉션 개수로 판정 | `output/site_gap/2026-10-10_final_t1dfix/PREDICTIONS.md` |
+| 9 | CAROLINA T2DM 머리 규칙이 ANY | planner가 group_type을 logic_type만으로 정함 | 설계안 RFC-014, 사용자 결정 대기 | `2bfdec8` |
+| 10 | 예정된 시술이 과거 기간으로 나감(6개 시험 9건) | Agent 1 스키마에 시점 표현 없음 | 설계안 RFC-014, 사용자 결정 대기 | `2bfdec8` |
+| 11 | TIA에 'Cerebral ischemia' 포함 | 질의와 다른 시드의 부모를 거친 후보를 critic이 선택 | 범위 밖 상위 개념 제거(수정 D) 진행 중 | 브랜치 `fix/mapper-d-row3` |
+| 12 | CAROLINA CABG precision 하락 | 넓은 시드·옆 시드를 거친 형제를 critic이 선택 | 보류, critic 실험 뒤 결정 | 매핑 진단 산출물 |
+| 13 | ARISTOTLE 'Reversible cause AF'에 AF 포함 | 기준 이름만으로 검색해 원인 질환 대신 AF가 잡힘(09-23 이전부터) | 매핑 단계에서 (y) 조건으로 거절(Row 3) 진행 중 | 브랜치 `fix/mapper-d-row3` |
+| 14 | PLATO anticoagulants precision 하락 | 10-07 성분 예외로 heparin·warfarin이 남음. 원문은 멈출 수 없는 항응고제 | 고치지 않음. 약물 precision이 제품 수에 좌우되는 평가 한계 | 매핑 진단 산출물 |
+| 15 | LEADER CRRT가 gold 짝을 잃음 | KG 필터가 Hemodialysis 경유 후보를 빼 CRRT만 남음 | 프로토콜 문장에 맞으므로 유지, gold 차이는 한계 | `output/site_gap/2026-10-11_alltrials/PROVENANCE.md` |
+| 16 | critic 프롬프트에 예시·개념 이름 포함 | 기존 프롬프트가 예시 3개를 담음 | 고정 입력으로 진화, 예시·이름 없는 F2 | 브랜치 `exp/critic-prompt-evo` `2befcbc`, 6개 시험 검증 진행 중 |
