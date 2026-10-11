@@ -2398,6 +2398,11 @@ def _window_inside(inner: Mapping[str, Any], outer: Mapping[str, Any]) -> bool:
     return right[0] <= left[0] and left[1] <= right[1]
 
 
+def _rule_where(index: int, rule: Mapping[str, Any]) -> str:
+    """The locator :func:`_subsumption_candidates` names a rule by, spelled once."""
+    return f"InclusionRules[{index}] #{index + 1} {(rule.get('name') or '')!r}"
+
+
 def _subsumption_candidates(
     expression: dict[str, Any],
 ) -> list[tuple[str, str, Any, str, Any]]:
@@ -2418,7 +2423,7 @@ def _subsumption_candidates(
     for index, rule in enumerate(expression.get("InclusionRules") or []):
         if not isinstance(rule, Mapping):
             continue
-        where = f"InclusionRules[{index}] #{index + 1} {(rule.get('name') or '')!r}"
+        where = _rule_where(index, rule)
         for entry in _conjoined_entries(rule.get("expression") or {}):
             if _required_occurrence(entry):
                 found = _criterion_body(entry)
@@ -2612,14 +2617,7 @@ def forbidden_explicit_presence_criteria(
         for concept_set in expression.get("ConceptSets") or []
         if isinstance(concept_set, Mapping)
     }
-    closures: dict[Any, set[int]] = {}
-
-    def closure(codeset_id: Any) -> set[int]:
-        if codeset_id not in closures:
-            closures[codeset_id] = resolve_concept_set(
-                dict(concept_sets[codeset_id]), lookup
-            ).concept_ids
-        return closures[codeset_id]
+    closure = _closure_resolver(concept_sets, lookup)
 
     def label(codeset_id: Any, concept_id: int) -> str:
         for item in (concept_sets[codeset_id].get("expression") or {}).get("items") or []:
@@ -2642,6 +2640,61 @@ def forbidden_explicit_presence_criteria(
             f"the absence's; CIRCE conjoins every InclusionRules entry"
         )
     return findings
+
+
+def _closure_resolver(
+    concept_sets: Mapping[Any, Mapping[str, Any]], lookup: VocabularyLookup
+) -> Callable[[Any], set[int]]:
+    """A memoised codeset-id -> resolved closure function (Circe's resolution)."""
+    closures: dict[Any, set[int]] = {}
+
+    def closure(codeset_id: Any) -> set[int]:
+        if codeset_id not in closures:
+            closures[codeset_id] = resolve_concept_set(
+                dict(concept_sets[codeset_id]), lookup
+            ).concept_ids
+        return closures[codeset_id]
+
+    return closure
+
+
+def contradicted_absence_pairs(
+    expression: dict[str, Any], lookup: VocabularyLookup
+) -> list[tuple[int, Any, int, Any, list[int]]]:
+    """Check (y)'s pairs by rule index: ``(absence rule index, absence codeset, presence
+    rule index, presence codeset, named ids)``.
+
+    The same predicate :func:`forbidden_explicit_presence_criteria` reports -- read through
+    :func:`_explicitly_forbidden_pairs`, not re-derived -- for a caller that acts on the
+    absence rather than describing it (``src.services.contradicted_absence_refusal``).
+
+    :param expression: a CIRCE cohort expression.
+    :param lookup: vocabulary facts covering at least the concept sets
+        :func:`closure_subsumption_codesets` names.
+    :returns: one tuple per contradicting pair, empty when none.
+    """
+    concept_sets = {
+        concept_set.get("id"): concept_set
+        for concept_set in expression.get("ConceptSets") or []
+        if isinstance(concept_set, Mapping)
+    }
+    index_by_where = {
+        _rule_where(index, rule): index
+        for index, rule in enumerate(expression.get("InclusionRules") or [])
+        if isinstance(rule, Mapping)
+    }
+    return [
+        (index_by_where[absent_where], absent_id, index_by_where[present_where], present_id, named)
+        for present_where, _type, present_id, absent_where, absent_id, named in (
+            _explicitly_forbidden_pairs(expression, _closure_resolver(concept_sets, lookup))
+        )
+    ]
+
+
+#: The key ``src.services.contradicted_absence_refusal`` records a refused absence rule
+#: under, read by the delivery gate's rule-set reconciliation and criterion accounting.
+#: Spelled once here for the reason :data:`DROPPED_CRITERIA_KEY` is.
+CONTRADICTED_ABSENCE_REFUSALS_KEY = "_contradictedAbsenceRefusals"
 
 
 @dataclass(frozen=True)

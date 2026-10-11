@@ -231,3 +231,98 @@ def test_should_leave_a_non_seed_alone_when_it_is_not_an_ancestor_of_any_seed() 
         )
 
     assert sorted(_concept_ids(recommendation)) == sorted([T1DM, ASTHMA])
+
+
+# --- A non-seed that subsumes part of a seed's closure ----------------------
+#
+# Measured event (2026-10-11 integrated rebuild 2, rebuild.log L13292, the same
+# FINAL in EMPA-REG, CARMELINA and CAROLINA): 'transient ischemic attack' mapped to
+# seeds [373503, 40485430, 4238191] and the critic added 374384 'Cerebral ischemia',
+# a KG sibling reached through the parent of seed 4238191. 374384 is not an ancestor
+# of any seed, so the guard above lets it through; but it is a proper ancestor of
+# 4043734 and 4048785, which sit inside seed 373503's closure. Roll-up then folds
+# those two under 374384, and 374384's other descendants (perinatal, neonatal and
+# chronic cerebral ischemia) ship in a set the protocol names as TIA.
+#
+# Ancestry below is the measured CONCEPT_ANCESTOR restricted to these nine concepts
+# (synthea23m, min_levels_of_separation > 0); descendant counts are the full counts.
+
+TIA_SEEDS = [373503, 40485430, 4238191]
+TIA_FINAL = [373503, 40485430, 4238191, 4139517, 4043734, 37163288, 4048785, 46272244, 374384]
+TIA_ANCESTRY = {
+    (373503, 4043734), (373503, 4048785), (373503, 4139517),
+    (373503, 37163288), (373503, 40485430), (373503, 46272244),
+    (374384, 4043734), (374384, 4048785),
+}
+TIA_DESCENDANT_COUNTS = {
+    373503: 11, 40485430: 0, 4238191: 1, 4139517: 0, 4043734: 4,
+    37163288: 0, 4048785: 1, 46272244: 0, 374384: 13,
+}
+
+
+def _tia_candidate(concept_id: int) -> ConceptCandidate:
+    return ConceptCandidate(
+        concept_id=concept_id,
+        concept_name=str(concept_id),
+        domain_id="Condition",
+        vocabulary_id="SNOMED",
+        concept_class_id="Disorder",
+    )
+
+
+def _tia_db(ancestry=TIA_ANCESTRY) -> _FakeDB:
+    return _FakeDB(
+        ancestry=set(ancestry),
+        descendant_counts=TIA_DESCENDANT_COUNTS,
+        standard_ids=set(TIA_FINAL),
+    )
+
+
+def test_should_drop_a_non_seed_when_it_subsumes_members_of_a_seed_closure_from_outside_it() -> None:
+    builder = ExpressionBuilder(schema="cdm")
+    with _patched_session(_tia_db()):
+        recommendation = builder.build_expression(
+            [_tia_candidate(c) for c in TIA_FINAL],
+            roll_up=True,
+            seed_concept_ids=TIA_SEEDS,
+        )
+
+    assert sorted(_concept_ids(recommendation)) == sorted([373503, 4238191])
+
+
+def test_should_keep_a_non_seed_when_it_lies_inside_a_seed_closure() -> None:
+    """The same shape with 374384 placed under seed 373503: nothing widens, it rolls up."""
+    ancestry = TIA_ANCESTRY | {(373503, 374384)}
+    builder = ExpressionBuilder(schema="cdm")
+    with _patched_session(_tia_db(ancestry)):
+        recommendation = builder.build_expression(
+            [_tia_candidate(c) for c in TIA_FINAL],
+            roll_up=True,
+            seed_concept_ids=TIA_SEEDS,
+        )
+
+    assert sorted(_concept_ids(recommendation)) == sorted([373503, 4238191])
+
+
+def test_should_keep_a_non_seed_outside_the_seed_closure_when_it_subsumes_no_member_of_it() -> None:
+    """A lateral concept that absorbs nothing the seeds name is left to the other guards."""
+    ancestry = {(a, d) for (a, d) in TIA_ANCESTRY if a != 374384}
+    builder = ExpressionBuilder(schema="cdm")
+    with _patched_session(_tia_db(ancestry)):
+        recommendation = builder.build_expression(
+            [_tia_candidate(c) for c in TIA_FINAL],
+            roll_up=True,
+            seed_concept_ids=TIA_SEEDS,
+        )
+
+    assert 374384 in _concept_ids(recommendation)
+
+
+def test_should_keep_the_coparent_when_no_seed_ids_are_supplied() -> None:
+    builder = ExpressionBuilder(schema="cdm")
+    with _patched_session(_tia_db()):
+        recommendation = builder.build_expression(
+            [_tia_candidate(c) for c in TIA_FINAL], roll_up=True
+        )
+
+    assert 374384 in _concept_ids(recommendation)
