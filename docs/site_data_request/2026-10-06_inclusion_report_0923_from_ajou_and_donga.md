@@ -352,3 +352,33 @@ CARMELINA·CAROLINA의 `Type 1 diabetes mellitus`는 201254만 담는다. 배송
 개수는 통합 재빌드와 같다. 재빌드 A보다 낮게 남은 행은 두 개다. TIA는 374384 'Cerebral
 ischemia'가 들어가 precision이 0.86에서 0.57이 됐고, CAROLINA CABG는 4336464 외에 6개 개념이
 들어가 0.93에서 0.40이 됐다. CAROLINA의 검사 (x) FAIL은 위의 'Pre-planned PCI' 결함이다.
+
+### 발송 대상이 아닌 세 시험 (LEADER·PLATO·ARISTOTLE)
+
+같은 코드(`993d638`)와 조건으로 스터디 1(LEADER), 2(PLATO), 3(ARISTOTLE)을 다시 빌드했다
+(`output/site_gap/2026-10-11_alltrials/`). 이 세 시험은 이번 수정의 대상이 아니었으므로, 수정이
+다른 시험에서도 통하는지 보는 검증이다. 비교 기준은 같은 verify5 스토어를 09-23 발송 내용 코드
+`849dba5`로 내보낸 파일이다. 같은 방법으로 스터디 8·9·10을 내보내면 09-23 발송 파일 6개가 바이트
+단위로 재현된다.
+
+| 시험 | gold macro recall (기준 → 새 코드) | gold macro precision |
+| --- | --- | --- |
+| LEADER | 0.698 → 0.744 | 0.571 → 0.618 |
+| PLATO | 0.760 → 0.845 | 0.651 → 0.540 |
+| ARISTOTLE | 0.599 → 0.622 | 0.372 → 0.392 |
+
+- 수정 대상이던 게이트 검사의 FAIL이 이 세 시험에서도 줄었다. 검체 불일치(u)는 ARISTOTLE 6→0,
+  PLATO 2→0, 중복 규칙(w)은 ARISTOTLE·LEADER 1→0, LEADER의 포함·배제 모순은 4→0, 검사 (y)는 2→0이다.
+  LEADER `Type 1 diabetes` precision은 0.610에서 0.962가 됐다.
+- ARISTOTLE에서 검사 (t)가 새로 FAIL했다. 'Reversible cause AF/Flutter' 배제 집합에 AF 자체가
+  들어가, 필수 포함 조건 'AF/Flutter documentation details'를 통째로 덮는다. 재매핑이 틀린 경우이고
+  게이트가 잡았다.
+- PLATO 'Anticoagulants' precision은 1.000에서 0.134가 됐다. critic이 warfarin·heparin·rivaroxaban을
+  골랐고, ATC 매칭은 거리 0.840으로 기준값 0.75를 넘어 거절됐다. 이번 수정과 관계없는 재매핑
+  변동이다.
+- LEADER 'continuous renal replacement therapy'는 gold 'renal dialysis'와의 짝을 잃었다(recall
+  0.717→0). KG 필터가 4120120 'Hemodialysis'를 거쳐 들어온 후보 17개를 빼 CRRT만 남았다. 프로토콜
+  문장은 'Current continuous renal replacement therapy'이므로 새 집합이 프로토콜에 맞고, gold의
+  'renal dialysis'가 더 넓다. gold는 그대로 두고 한계로 기록한다.
+- 실행 전 예측 네 가지 중 둘이 틀렸다. LEADER 'OADs and GLP-1 only'는 기준 파일에 gold 짝이 없어서
+  recall이 떨어지지 않고 0에서 0.937로 올랐다. ARISTOTLE의 검사 (t) FAIL은 예측과 반대다.
