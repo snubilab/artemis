@@ -49,7 +49,7 @@ _UNSERVABLE_STATUS = frozenset({401, 403, 404})
 # exact before/after the cache is supposed to make cheap. This was added while trying a
 # grouped output schema (2026-08-11); that schema was measured and reverted, but the
 # hole it exposed is real and the guard stays.
-_CRITIC_PROMPT_VERSION = "2026-10-09-named-seeds"
+_CRITIC_PROMPT_VERSION = "2026-10-11-evolved-no-examples"
 
 
 def _concept_rows(concept_ids: List[int]) -> Dict[int, tuple]:
@@ -203,101 +203,25 @@ class CriticResult(BaseModel):
     )
 
 
-# ── Few-shot Examples ──────────────────────────────────────
-# NOTE: All curly braces are double-escaped ({{ }}) because this string is
-# embedded in a LangChain ChatPromptTemplate. Single braces would be
-# interpreted as template variables.
-FEW_SHOT_EXAMPLES = """
-## Example 1: Multi-concept condition
-Query: "History of stroke"
-Candidates:
-- ID: 4099974 | Name: Completed stroke | Domain: Condition | Relationship: seed
-- ID: 375557 | Name: Cerebral embolism | Domain: Condition | Relationship: 2-hop
-- ID: 35609033 | Name: Haemorrhagic stroke | Domain: Condition | Relationship: 2-hop
-- ID: 374384 | Name: Cerebral ischemia | Domain: Condition | Relationship: 2-hop
-- ID: 4046363 | Name: Stroke of uncertain pathology | Domain: Condition | Relationship: 2-hop
-
-Answer:
-```json
-{{
-  "selected_concepts": [
-    {{"concept_id": 4099974, "relevant": true, "reasoning": "Direct match for stroke."}},
-    {{"concept_id": 375557, "relevant": true, "reasoning": "Cerebral embolism is a type of stroke."}},
-    {{"concept_id": 35609033, "relevant": true, "reasoning": "Haemorrhagic stroke is a type of stroke."}},
-    {{"concept_id": 374384, "relevant": true, "reasoning": "Cerebral ischemia is related to ischemic stroke."}},
-    {{"concept_id": 4046363, "relevant": true, "reasoning": "Stroke of uncertain pathology is still a stroke."}}
-  ],
-  "overall_reasoning": "Stroke is a broad condition. All subtypes should be included."
-}}
-```
-
-## Example 2: Specific measurement (narrow selection)
-Query: "HbA1c >= 7%"
-Candidates:
-- ID: 3034639 | Name: Hemoglobin A1c/Hemoglobin.total in Blood | Domain: Measurement | Relationship: seed
-- ID: 44793001 | Name: Hb A1c measurement - IFCC | Domain: Measurement | Relationship: sibling
-- ID: 4197971 | Name: HbA1c measurement (DCCT aligned) | Domain: Measurement | Relationship: sibling
-
-Answer:
-```json
-{{
-  "selected_concepts": [
-    {{"concept_id": 3034639, "relevant": true, "reasoning": "Standard LOINC code for HbA1c."}},
-    {{"concept_id": 44793001, "relevant": false, "reasoning": "IFCC uses mmol/mol, not percentage."}},
-    {{"concept_id": 4197971, "relevant": true, "reasoning": "DCCT-aligned HbA1c uses percentage."}}
-  ],
-  "overall_reasoning": "Only include HbA1c measurements using percentage units."
-}}
-```
-
-## Example 3: Broad category (prefer ancestor concept)
-Query: "Prior diagnosis of any invasive cancer"
-Candidates:
-- ID: 443392 | Name: Malignant neoplastic disease | Domain: Condition | Relationship: seed
-- ID: 4112853 | Name: Malignant tumor of lung | Domain: Condition | Relationship: child
-- ID: 4178769 | Name: Malignant tumor of breast | Domain: Condition | Relationship: child
-- ID: 4122346 | Name: Malignant tumor of colon | Domain: Condition | Relationship: child
-- ID: 4304596 | Name: Metastatic neoplasm | Domain: Condition | Relationship: 2-hop
-
-Answer:
-```json
-{{
-  "selected_concepts": [
-    {{"concept_id": 443392, "relevant": true, "reasoning": "Broad ancestor covering all malignant neoplasms. Use this with descendants for full coverage."}},
-    {{"concept_id": 4112853, "relevant": false, "reasoning": "Too specific — lung cancer is a subtype. The parent concept with descendants covers this."}},
-    {{"concept_id": 4178769, "relevant": false, "reasoning": "Too specific — breast cancer is a subtype. The parent concept with descendants covers this."}},
-    {{"concept_id": 4122346, "relevant": false, "reasoning": "Too specific — colon cancer is a subtype. The parent concept with descendants covers this."}},
-    {{"concept_id": 4304596, "relevant": true, "reasoning": "Metastatic neoplasm is a related broad concept worth including."}}
-  ],
-  "overall_reasoning": "The query asks for 'malignant neoplasm' as a general category. Select the broadest ancestor concept that covers all subtypes, rather than individual cancer types. With includeDescendants=true, the ancestor concept will capture all subtypes."
-}}
-```
-"""
+# ── No few-shot examples ──
+# The prompt carries no examples and no concept, disease, drug or lab names: general
+# selection rules only. Chosen by prompt evolution on fixed critic inputs (2026-10-11);
+# the examples it replaced scored lower per criterion against gold.
 
 
 # Self-reflection instructions appended when AGENT2_CRITIC_SELF_REFLECT=true.
 _SELF_REFLECTION_INSTRUCTIONS = """
 
 SELF-REFLECTION PASS:
-After your initial evaluation, critically reflect on each selected concept.
-For each concept you marked as relevant, answer these questions and update the fields:
+After your initial evaluation, re-check each concept you marked as relevant and update the fields:
 
-1. Could this be an abbreviation confusion? (e.g., MI=milia vs MI=Myocardial Infarction)
-   -> If yes, set potential_issue="abbreviation_confusion"
-2. Does this concept's domain match the target domain?
-   -> If no, set potential_issue="domain_mismatch"
-3. Is this concept too specific (leaf) when a broader ancestor would capture more patients?
-   -> If yes, set potential_issue="too_specific"
-4. Is there a standard vocabulary concept (LOINC for Measurement, RxNorm for Drug) that should be preferred?
-   -> If yes, set potential_issue="vocab_mismatch"
+1. Abbreviation check: could the query or the concept name be an abbreviation meaning something else here? If yes, set potential_issue="abbreviation_confusion".
+2. Domain check: if the concept's domain differs from the target domain, set potential_issue="domain_mismatch".
+3. Breadth check: if the concept is broader than the query and would admit patients who do not meet it, set assessment="contradicted" and recommended_action="drop".
+4. Quantity check: for a measured quantity, keep only seed result concepts that name the queried analyte. Mark every other selected measurement concept as assessment="contradicted" and recommended_action="drop".
 
-Based on your reflection, set:
-- confidence: 0.0-1.0 (how confident you are after reflection)
-- assessment: "correct" if no issues found, "partially_supported" if minor concerns, "contradicted" if strong counterevidence
-- recommended_action: "keep" if correct, "drop" if contradicted, "rerank" if partially_supported
-
-If counterevidence is strong (assessment="contradicted"), the concept will be filtered out.
-"""
+Set confidence (0.0-1.0) after reflection. Use assessment "correct" with recommended_action "keep" when no issue is found, and "partially_supported" with "rerank" for minor concerns.
+Concepts with assessment="contradicted" are filtered out."""
 
 
 # ── Critic Class ───────────────────────────────────────────
@@ -333,32 +257,21 @@ class ConceptCritic:
 
         self.prompt = ChatPromptTemplate.from_messages([
             ("system",
-             "You are an expert clinical informaticist specializing in OMOP CDM concept mapping.\n\n"
-             "Your task is to evaluate candidate OMOP concepts and select ALL that are clinically relevant "
-             "to the given query. This is MULTI-SELECT — you may select multiple concepts.\n\n"
+             "You are an expert clinical informaticist specializing in OMOP CDM concept mapping.\n"
+             "\n"
+             "Your task is to evaluate candidate OMOP concepts and select ALL that are clinically relevant to the given query. This is MULTI-SELECT — you may select multiple concepts.\n"
+             "\n"
              "Guidelines:\n"
-             "1. For broad conditions (e.g., 'stroke'), include all relevant subtypes.\n"
-             "2. For specific measurements, only include concepts with matching units/standards.\n"
-             "3. For drugs, prefer RxNorm ingredient-level concepts. Include formulation/product "
-             "concepts only when the clinical query explicitly requires that granularity and no "
-             "ingredient-level concept can represent it.\n"
-             "4. Consider the clinical intent: what would a researcher want to capture in a cohort study?\n"
-             "5. Err on the side of inclusion — it's better to include a borderline concept than to miss patients.\n"
-             "6. For general clinical categories (e.g., 'malignancy', 'cardiovascular disease', 'transplant'), "
-             "prefer BROAD ancestor/parent concepts that cover all subtypes. "
-             "Only prefer specific/narrow concepts when the query itself is specific "
-             "(e.g., 'lung cancer', 'liver transplant').\n"
-             "7. For broad clinical categories (e.g., 'cardiovascular disease', 'stroke', "
-             "'chronic kidney disease', 'malignant neoplasm'):\n"
-             "   - Prefer BROAD ancestor concepts that cover all subtypes over narrow leaf concepts\n"
-             "   - When in doubt, INCLUDE rather than EXCLUDE — false negatives (missing patients) "
-             "are worse than false positives\n"
-             "   - A single ancestor concept with includeDescendants=true is often better than "
-             "20 specific leaf concepts\n\n"
+             "1. First state to yourself the single clinical entity the query names (a disorder, a procedure, a measured quantity, a drug, a status) and how broad the query wording is.\n"
+             "2. Judge every candidate by its MEANING, not by the relationship label it was retrieved through. The retrieval label (\"sibling\", \"ancestor\", \"seed\") only describes how a candidate was found.\n"
+             "3. SELECT a candidate when it names the same entity as the query, a synonym of it, or a more specific kind (subtype, variant, stage, anatomical or etiological form) of that entity. Subtypes are often listed as siblings or two-hop neighbours; include every one whose meaning falls inside the query. Every patient coded with such a concept satisfies the query.\n"
+             "4. REJECT a candidate that is BROADER than the query: a parent category that also covers other entities would admit patients who do not meet the criterion.\n"
+             "5. REJECT a candidate that is a different entity, even if related: a complication, cause, predisposing state, test for, treatment of, or neighbouring disorder of the queried entity.\n"
+             "6. For a measured quantity, the criterion is about one numeric result. Select the seed result concept and any other candidate that reports exactly the same quantity in the same kind of specimen. Reject grouping or procedure-level measurement concepts, other analytes, ratios, fractions or sub-forms of the analyte, qualitative presence tests, and challenge or timed variants. Fewer, exact concepts are better than many approximate ones.\n"
+             "7. For drugs, prefer ingredient-level concepts over formulation or product concepts.\n"
+             "8. If the query states a target domain, prefer candidates from that domain."
              + reflection_section +
-             "Here are some examples of correct evaluations:\n"
-             f"{FEW_SHOT_EXAMPLES}\n\n"
-             "{format_instructions}"),
+             "\n\n{format_instructions}"),
             ("user",
              "Clinical Query: {query}\n\n"
              "Candidate Concepts:\n{candidates_text}")
