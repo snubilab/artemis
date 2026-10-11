@@ -101,6 +101,7 @@ from src.services.restated_absence_repair import (
     iter_restated_absences,
     repair_restated_absences,
 )
+from src.services.contradicted_absence_refusal import refuse_contradicted_absences
 from src.services.restated_clusters import detect_all_restated_clusters
 from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
@@ -129,11 +130,13 @@ from src.services.value_constraint import (
     resolve_group_member_constraint,
 )
 from src.utils.circe_lint import (
+    CONTRADICTED_ABSENCE_REFUSALS_KEY,
     CRITERIA_TYPE_DOMAINS,
     CRITERION_CONCEPT_SET_REFS_KEY,
     DEFAULTED_WINDOW_CRITERIA_KEY,
     DROPPED_CRITERIA_KEY,
     VALUE_RANGE_CONVERSIONS_KEY,
+    closure_subsumption_codesets,
     convert_value_range_inclusions,
     criteria_types_by_codeset,
     default_criterion_window,
@@ -7926,6 +7929,42 @@ class TTEService:
         :param built: the assembled arm expression, mutated in place.
         """
         _rewrite_with_collapsed_rules(built, self._export_repair_chain)
+        # After every repair, on the file's own rules only: a repair above may already
+        # have resolved the contradiction (the over-broad-absence narrowing, the entry
+        # mirror), and a carried collapsed rule has no presence partner to contradict.
+        self._refuse_contradicted_absences(built)
+
+    def _refuse_contradicted_absences(self, base: dict[str, Any]) -> None:
+        """Refuse an absence rule that forbids a concept a mandatory presence names.
+
+        Check (y)'s pairs, acted on rather than reported: the absence is removed and
+        recorded under ``CONTRADICTED_ABSENCE_REFUSALS_KEY``, which the delivery gate
+        replays for check (b) and books as criterion loss. Measured on ARISTOTLE #7
+        'Reversible cause AF/Flutter' (2026-10-11), which forbade the AF/flutter concepts
+        #3 requires. Conditions and the record live in
+        :mod:`src.services.contradicted_absence_refusal`; this is the wiring.
+
+        Present-and-empty on every arm, like ``_droppedCriteria``. A DB-free pre-gate
+        skips the vocabulary when no presence/absence pair exists, and a vocabulary
+        failure propagates rather than shipping the contradiction.
+        """
+        base.setdefault(CONTRADICTED_ABSENCE_REFUSALS_KEY, [])
+        if not closure_subsumption_codesets(base):
+            return
+
+        from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
+
+        items = items_of_cohort(base)
+        if not items:
+            return
+
+        from src.settings import settings
+
+        with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
+            lookup = vocab.prefetch(items)
+        base[CONTRADICTED_ABSENCE_REFUSALS_KEY].extend(
+            refuse_contradicted_absences(base, lookup)
+        )
 
     def _export_repair_chain(self, built: dict[str, Any]) -> None:
         """The arm-level export repairs, in their load-bearing order. Mutates ``built``."""

@@ -370,6 +370,7 @@ from src.services.value_constraint import (  # noqa: E402
     resolve_group_member_constraint,
 )
 from src.utils.circe_lint import (  # noqa: E402
+    CONTRADICTED_ABSENCE_REFUSALS_KEY,
     CRITERION_CONCEPT_SET_REFS_KEY,
     DEFAULT_WINDOW_SOURCE_DOMAIN_TABLE,
     DEFAULT_WINDOW_SOURCE_UNLISTED_DOMAIN,
@@ -796,6 +797,13 @@ def reconcile_dropped_rules(
     channels = [
         (DROPPED_CRITERIA_KEY, expression.get(DROPPED_CRITERIA_KEY)),
         (RESTATED_ABSENCE_REMOVALS_KEY, expression.get(RESTATED_ABSENCE_REMOVALS_KEY)),
+        # A third: an absence refused because it forbade a concept a mandatory presence
+        # names. Replayed the same way; booked as LOSS by `contradicted_absence_refusal_loss`
+        # and re-judged by `contradicted_absence_refusal_violations`.
+        (
+            CONTRADICTED_ABSENCE_REFUSALS_KEY,
+            expression.get(CONTRADICTED_ABSENCE_REFUSALS_KEY),
+        ),
     ]
     if not any(isinstance(records, list) and records for _key, records in channels):
         return list(store_names), []
@@ -942,6 +950,78 @@ def restated_absence_removal_violations(expression: dict[str, Any]) -> list[str]
             )
 
     return violations
+
+
+def contradicted_absence_refusal_violations(expression: dict[str, Any]) -> list[str]:
+    """Re-judge every ``_contradictedAbsenceRefusals`` record against the delivered file.
+
+    Integrity only -- the loss verdict is :func:`contradicted_absence_refusal_loss`. The
+    record moves check (b)'s store side forward, so a record naming a rule the file still
+    carries, or a presence the file does not carry, would explain a mismatch it does not
+    describe: the refused rule must be gone, and the presence it contradicted must remain.
+
+    :param expression: the delivered CIRCE expression.
+    :returns: one line per record whose claim the file does not bear out; empty otherwise.
+    """
+    records = expression.get(CONTRADICTED_ABSENCE_REFUSALS_KEY)
+    if not isinstance(records, list) or not records:
+        return []
+    names = {
+        str(rule.get("name") or "")
+        for rule in expression.get("InclusionRules") or []
+        if isinstance(rule, Mapping)
+    }
+    key = CONTRADICTED_ABSENCE_REFUSALS_KEY
+    violations: list[str] = []
+    for record in records:
+        if not isinstance(record, dict):
+            violations.append(f"{key} carries a non-record entry")
+            continue
+        refused = str(record.get("rule") or "")
+        presence = str(record.get("presenceRule") or "")
+        if record.get("outcome") != DROP_OUTCOME_RULE_REMOVED:
+            violations.append(
+                f"{key} records rule {refused!r} with outcome {record.get('outcome')!r}; "
+                f"this channel replays {DROP_OUTCOME_RULE_REMOVED!r} only"
+            )
+        elif refused in names:
+            violations.append(
+                f"{key} says rule {refused!r} was refused, but the delivered file still carries it"
+            )
+        elif presence not in names:
+            violations.append(
+                f"{key} refuses rule {refused!r} because rule {presence!r} names what it "
+                f"forbade, but the delivered file does not carry {presence!r}"
+            )
+    return violations
+
+
+def contradicted_absence_refusal_loss(expression: dict[str, Any]) -> list[str]:
+    """The criterion-loss reason for the ``_contradictedAbsenceRefusals`` records.
+
+    Never permitted. The refusal keeps a self-contradicting cohort from shipping, but the
+    protocol stated an exclusion and the file no longer carries one: the loss is reducible
+    -- a correct mapping of the exclusion would not forbid the presence's own concepts --
+    which is the axis :data:`PERMITTED_REFUSAL_CODES` permits on.
+
+    :param expression: the delivered CIRCE expression.
+    :returns: one reason line naming every record; empty when the key is absent or empty.
+    """
+    records = expression.get(CONTRADICTED_ABSENCE_REFUSALS_KEY)
+    if not isinstance(records, list):
+        return []
+    details = [
+        str(record.get("summary") or record.get("rule"))
+        for record in records
+        if isinstance(record, dict)
+    ]
+    if not details:
+        return []
+    return [
+        f"absence refused as contradicting a mandatory presence ({len(details)}): "
+        f"{'; '.join(details)} -- criterion loss recorded under "
+        f"{CONTRADICTED_ABSENCE_REFUSALS_KEY}"
+    ]
 
 
 def restated_rule_collapse_violations(expression: dict[str, Any]) -> list[str]:
@@ -1797,6 +1877,13 @@ def criterion_accounting(
     ledger_violations, ledger_summary = repair_ledger_violations(study)
     drop_violations = drop_violations + ledger_violations
     ledger_clause = f", {ledger_summary}"
+    # A refused absence is loss on every path below, for the reason the ledger is: the
+    # rule left the file and the exclusion it stated is not represented anywhere.
+    refusal_loss = contradicted_absence_refusal_loss(expression)
+    drop_violations = drop_violations + refusal_loss
+    refused = expression.get(CONTRADICTED_ABSENCE_REFUSALS_KEY)
+    if isinstance(refused, list) and refused:
+        ledger_clause += f", {len(refused)} refused as contradicting a mandatory presence"
     if dropped is None:
         drop_clause = ""
     elif isinstance(dropped, list) and dropped:
@@ -2456,6 +2543,7 @@ def main(argv: list[str] | None = None) -> int:
         # it: it re-judges against `unreadable_value_attributes`, and a rule removed
         # because another rule forbade its whole range names no unreadable attribute.
         reasons.extend(restated_absence_removal_violations(expression))
+        reasons.extend(contradicted_absence_refusal_violations(expression))
         # (w)'s permit: a rule the producer removed as redundant must still be redundant in
         # the file -- re-derived, never read off the record.
         collapse_violations = restated_rule_collapse_violations(expression)
