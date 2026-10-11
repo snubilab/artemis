@@ -397,9 +397,9 @@ ischemia'가 들어가 precision이 0.86에서 0.57이 됐고, CAROLINA CABG는 
 | 8 | ChromaDB 사본의 md5가 매번 다름 | Chroma가 열기만 해도 sqlite를 고쳐 씀 | 사본 동일성은 컬렉션 개수로 판정 | `output/site_gap/2026-10-10_final_t1dfix/PREDICTIONS.md` |
 | 9 | CAROLINA T2DM 머리 규칙이 ANY | planner가 group_type을 logic_type만으로 정함 | 설계안 RFC-014, 사용자 결정 대기 | `2bfdec8` |
 | 10 | 예정된 시술이 과거 기간으로 나감(6개 시험 9건) | Agent 1 스키마에 시점 표현 없음 | 설계안 RFC-014, 사용자 결정 대기 | `2bfdec8` |
-| 11 | TIA에 'Cerebral ischemia' 포함 | 질의와 다른 시드의 부모를 거친 후보를 critic이 선택 | 범위 밖 상위 개념 제거(수정 D) 진행 중 | 브랜치 `fix/mapper-d-row3` |
+| 11 | TIA에 'Cerebral ischemia' 포함 | 질의와 다른 시드의 부모를 거친 후보를 critic이 선택 | 범위 밖 상위 개념 제거(수정 D). 로그 5개의 최종 결과 688개 중 8개만 바뀜, TIA precision 0.571→0.857(세 시험) | `a5f0b1b` |
 | 12 | CAROLINA CABG precision 하락 | 넓은 시드·옆 시드를 거친 형제를 critic이 선택 | 보류, critic 실험 뒤 결정 | 매핑 진단 산출물 |
-| 13 | ARISTOTLE 'Reversible cause AF'에 AF 포함 | 기준 이름만으로 검색해 원인 질환 대신 AF가 잡힘(09-23 이전부터) | 매핑 단계에서 (y) 조건으로 거절(Row 3) 진행 중 | 브랜치 `fix/mapper-d-row3` |
+| 13 | ARISTOTLE 'Reversible cause AF'에 AF 포함 | 기준 이름만으로 검색해 원인 질환 대신 AF가 잡힘(09-23 이전부터) | 내보내기 단계에서 (y) 조건에 걸리는 배제 규칙을 거절하고 기준 누락으로 기록(Row 3). 현재 파일 12개 중 ARISTOTLE 2개에서 1건씩 | `45c266f` |
 | 14 | PLATO anticoagulants precision 하락 | 10-07 성분 예외로 heparin·warfarin이 남음. 원문은 멈출 수 없는 항응고제 | 고치지 않음. 약물 precision이 제품 수에 좌우되는 평가 한계 | 매핑 진단 산출물 |
 | 15 | LEADER CRRT가 gold 짝을 잃음 | KG 필터가 Hemodialysis 경유 후보를 빼 CRRT만 남음 | 프로토콜 문장에 맞으므로 유지, gold 차이는 한계 | `output/site_gap/2026-10-11_alltrials/PROVENANCE.md` |
 | 16 | critic 프롬프트에 예시·개념 이름 포함 | 기존 프롬프트가 예시 3개를 담음 | 고정 입력으로 진화, 예시·이름 없는 F2 | 브랜치 `exp/critic-prompt-evo` `2befcbc`, 6개 시험 검증 진행 중 |
