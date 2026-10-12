@@ -963,6 +963,110 @@
    "mappable": true
   }
  ],
+ "aristotle_exclusion_1": [
+  {
+   "id": 1,
+   "description": "Liver enzyme elevation",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": null,
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 2,
+   "description": "ALT > 2X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 2.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Alanine aminotransferase",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 9,
+   "conceptSetName": "Alanine aminotransferase",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 3,
+   "description": "AST > 2X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 2.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Aspartate aminotransferase",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 10,
+   "conceptSetName": "Aspartate aminotransferase",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 4,
+   "description": "Total Bilirubin ≥ 1.5X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 1.5,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Total bilirubin",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 11,
+   "conceptSetName": "Total bilirubin",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
  "aristotle_exclusion_21": [
   {
    "id": 21,

@@ -66,8 +66,9 @@ Checks per file:
     whose threshold strands no member and at least one of whose members emitted, a
     ``demographic-no-rule`` row must be demographic-domain and carry no bound, a
     restated-* row must have a collapse record naming a survivor that emitted, and a
-    ``conditional-on-existing-record`` row must carry a span that is a substring of the
-    deciding row's ``protocolLine`` (``src.services.criterion_annotation``). An
+    ``conditional-on-existing-record`` or ``prospective-not-observable-at-index`` row must
+    carry a span that is a substring of the deciding row's ``protocolLine``
+    (``src.services.criterion_annotation``). An
     ``_unmappedCriteria`` row is permitted only when its ``refusalCode`` says the loss
     is IRREDUCIBLE — see ``PERMITTED_REFUSAL_CODES`` for the axis and for why the
     reason prose cannot carry it — and one carrying no reason, no code, or an unknown
@@ -145,17 +146,14 @@ Checks per file:
     is why the check reads structure rather than names. See
     ``src.utils.circe_lint.contradictory_presence_absence_criteria``.
 
-(o) no rule is emitted as a conjunction over alternatives its protocol line states
-    as a disjunction. Reads the emitted ``Type`` and the store group's own
-    ``protocolLine``; no database, no vocabulary. The connective alone is NOT the
-    signal -- 33 of the 82 groups in the six-trial store declare ``ALL`` under a line
-    stating a disjunction and 31 of those are correct all-ABSENCE exclusions, where
-    ``ALL`` IS the De Morgan reading -- so the check fires only when the rule's
-    criteria are not all absences. Measured on the twelve delivered files: LEADER
-    ``InclusionRules[2]``, both arms, and nothing else. Check (n) catches that rule
-    too, but only because codesets 10 and 11 happen to be byte-identical; a conjoined
-    disjunction over sets that merely differ is invisible to every other check here.
-    See ``src.utils.circe_lint.conjoined_disjunction_rules``.
+(z) no criterion the annotation places after entry is emitted as an occurrence. A row whose
+    verified annotation says ``timing: prospective`` is recorded by the builder as a
+    ``prospective-not-observable-at-index`` skip; one that reached a rule anyway reads from
+    the patient's past an event the protocol places after entry (CAROLINA's delivered rule
+    14 excluded every past PCI/CABG under "Pre-planned coronary artery re-vascularisation
+    ... within next 6 months"). See ``src.utils.circe_lint.prospective_occurrence_criteria``.
+    The former check (o), which read "or" in a group's protocol line, is removed with the
+    rule it checked (RFC-016 step 2, inventory A18).
 
 (q) no criterion bounds a value numerically while naming no unit, on any CDM table
     that would read one — ``Measurement`` and ``Observation``, derived as the types
@@ -342,6 +340,7 @@ from src.services.conceptset_closure import (  # noqa: E402
 )
 from src.services.criterion_annotation import (  # noqa: E402
     CONDITIONAL_REASON,
+    PROSPECTIVE_REASON,
     group_descendants,
     span_in_line,
 )
@@ -388,7 +387,6 @@ from src.utils.circe_lint import (  # noqa: E402
     closure_subsumed_presence_criteria,
     closure_subsumption_codesets,
     confusable_concept_sets,
-    conjoined_disjunction_rules,
     contradictory_absence_rules,
     contradictory_presence_absence_criteria,
     domain_mismatched_criteria,
@@ -400,6 +398,7 @@ from src.utils.circe_lint import (  # noqa: E402
     missing_arm_roles,
     noop_exclusion_rules,
     presence_unit_axes_ids,
+    prospective_occurrence_criteria,
     rule_names,
     specimen_mismatched_measurement_criteria,
     unfiltered_measurement_absence_criteria,
@@ -503,7 +502,9 @@ ACCOUNTING_KEYS = ("_generationCensus", "_unmappedCriteria", "_skippedCriteria")
 #: ``demographic-no-rule`` as: the store row is demographic-domain and carries no
 #: numeric bound. The two restated-* reasons as: the file carries a collapse record
 #: naming the criterion as dropped, whose survivor exists in the store and was not
-#: itself lost. ``CONDITIONAL_REASON`` as: the record's ``conditionalSpan`` is a substring
+#: itself lost. ``CONDITIONAL_REASON`` (and ``PROSPECTIVE_REASON``, RFC-016 step 2: a rule
+#: its line places after entry, recorded with ``windowSpan`` / ``timingDecidedBy``) as: the
+#: record's ``conditionalSpan`` is a substring
 #: of the ``protocolLine`` of the row that decided it (the criterion itself, or a group
 #: label whose group contains it) -- the one text check the annotation design permits,
 #: so the reason cannot carry a criterion out on a span its own line does not hold.
@@ -532,6 +533,7 @@ ALLOWED_SKIP_REASONS = frozenset(
         RESTATED_DEMOGRAPHICS_REASON,
         RESTATED_DISTINCTNESS_REASON,
         CONDITIONAL_REASON,
+        PROSPECTIVE_REASON,
     }
 )
 
@@ -1631,7 +1633,21 @@ def skipped_criteria_violations(
                 )
         elif reason == CONDITIONAL_REASON:
             violations.extend(
-                _conditional_skip_violations(where, record, role, criterion_id, criterion, index)
+                _annotation_skip_violations(
+                    where, record, role, criterion_id, criterion, index,
+                    reason=CONDITIONAL_REASON,
+                    span_key="conditionalSpan",
+                    decided_by_key="conditionalDecidedBy",
+                )
+            )
+        elif reason == PROSPECTIVE_REASON:
+            violations.extend(
+                _annotation_skip_violations(
+                    where, record, role, criterion_id, criterion, index,
+                    reason=PROSPECTIVE_REASON,
+                    span_key="windowSpan",
+                    decided_by_key="timingDecidedBy",
+                )
             )
         else:
             violations.extend(
@@ -1649,34 +1665,39 @@ def skipped_criteria_violations(
     return violations
 
 
-def _conditional_skip_violations(
+def _annotation_skip_violations(
     where: str,
     record: dict[str, Any],
     role: Any,
     criterion_id: str,
     criterion: dict[str, Any],
     index: dict[tuple[str, str], dict[str, Any]],
+    *,
+    reason: str,
+    span_key: str,
+    decided_by_key: str,
 ) -> list[str]:
-    """Re-judge one ``conditional-on-existing-record`` permit from the store.
+    """Re-judge one permit the annotation decided (conditional or prospective) from the store.
 
     The decision was the annotation model's, so the gate does not re-decide it. What it
     checks is the evidence the decision rests on: the recorded span is a substring of the
     ``protocolLine`` of the row that decided it, and that row is the criterion itself or a
     group label whose group (nested groups included) contains it. A record with no span --
-    Agent 1's ``conditional`` flag alone, never confirmed by a quoted fragment -- fails.
+    for the conditional reason, Agent 1's ``conditional`` flag alone, never confirmed by a
+    quoted fragment -- fails.
     """
-    decided_by = str(record.get("conditionalDecidedBy") or criterion_id).strip()
+    decided_by = str(record.get(decided_by_key) or criterion_id).strip()
     decider = index.get((role, decided_by))
     if decider is None:
         return [
-            f"{where} is recorded as {CONDITIONAL_REASON}, decided by #{decided_by}, which "
+            f"{where} is recorded as {reason}, decided by #{decided_by}, which "
             "the store study does not carry, so the permit cannot be re-judged"
         ]
-    span = record.get("conditionalSpan")
+    span = record.get(span_key)
     line = decider.get("protocolLine")
     if not span_in_line(span, line):
         return [
-            f"{where} is recorded as {CONDITIONAL_REASON} but its span {span!r} is not a "
+            f"{where} is recorded as {reason} but its span {span!r} is not a "
             f"substring of the deciding row #{decided_by}'s protocolLine {line!r}: no "
             "fragment of the protocol supports the skip, so this is a criterion lost under "
             "a permit that does not cover it"
@@ -1691,7 +1712,7 @@ def _conditional_skip_violations(
         )
         if not inside:
             return [
-                f"{where} is recorded as {CONDITIONAL_REASON} on the decision of #{decided_by}, "
+                f"{where} is recorded as {reason} on the decision of #{decided_by}, "
                 "which is not a group label whose group contains it"
             ]
     return []
@@ -2940,16 +2961,14 @@ def main(argv: list[str] | None = None) -> int:
                     f"specimen refinement declined (WARN, {len(declined)}): {'; '.join(declined)}"
                 )
 
-        # (o) a rule emitted as a conjunction over a stated disjunction. Check (n)
-        # reaches LEADER's rule 2 only because codesets 10 and 11 are byte-identical;
-        # the same inversion over sets that merely differ contradicts nothing a
-        # structural check can see, and this is the only one that reads the protocol
-        # line the alternatives were written on.
-        conjoined_disjunctions = conjoined_disjunction_rules(expression, study)
-        if conjoined_disjunctions:
+        # (z) a criterion the annotation places after entry, emitted as an occurrence. The
+        # builder records such a row as a prospective skip; one that reached a rule anyway
+        # selects on the patient's past for an event the protocol places in the future.
+        prospective_emitted = prospective_occurrence_criteria(expression, study)
+        if prospective_emitted:
             reasons.append(
-                f"conjoined disjunction ({len(conjoined_disjunctions)}): "
-                f"{'; '.join(conjoined_disjunctions)}"
+                f"prospective criterion emitted ({len(prospective_emitted)}): "
+                f"{'; '.join(prospective_emitted)}"
             )
 
         # (i) the file's own drop records: recorded criterion loss, and whether the

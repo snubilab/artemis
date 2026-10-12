@@ -1159,3 +1159,91 @@ class TestAConditionalSkipIsReDerivedFromTheStore:
         rc, out = gate(records, study)
         assert rc == 1, out
         assert "not a group label whose group contains it" in out
+
+
+#: The real rows for RFC-016 step 2 (2026-10-12 prompt_f2 candidate store), verbatim.
+_RFC016_STEP2 = json.loads(
+    (Path(__file__).resolve().parent / "fixtures" / "rfc016_relation_timing_rows.json").read_text()
+)
+
+
+class TestAProspectiveSkipIsReDerivedFromTheStore:
+    """`prospective-not-observable-at-index` is a permit like the conditional one: the
+    recorded span must be a substring of the deciding row's `protocolLine`, and the
+    deciding row must be the criterion or a group label containing it. CAROLINA exclusion
+    25 ("Pre-planned coronary artery re-vascularisation ... within next 6 months after V1a")
+    and its two members are the rows it exists for."""
+
+    SPAN = "Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months after V1a"
+
+    @staticmethod
+    def _reason() -> str:
+        from src.services.criterion_annotation import PROSPECTIVE_REASON
+
+        return PROSPECTIVE_REASON
+
+    def _prospective_skip(
+        self, row: dict[str, Any], span: Any, *, decided_by: str
+    ) -> dict[str, Any]:
+        record = _skip(
+            str(row["id"]),
+            row["description"],
+            self._reason(),
+            domain=row["domain"],
+            is_group_label=bool(row.get("isGroupLabel")),
+        )
+        record.update(windowSpan=span, timingDecidedBy=decided_by)
+        return record
+
+    def _carolina(self) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        rows = _RFC016_STEP2["carolina_exclusion_25"]
+        return rows, _study(exclusion=rows)
+
+    def test_should_pass_when_the_span_is_in_the_deciding_labels_line(self, gate):
+        rows, study = self._carolina()
+        records = _records(
+            skipped=[self._prospective_skip(row, self.SPAN, decided_by="25") for row in rows],
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 0, out
+
+    def test_should_fail_when_the_span_is_not_in_the_deciding_labels_line(self, gate):
+        rows, study = self._carolina()
+        records = _records(
+            skipped=[
+                self._prospective_skip(row, "planned within the next 6 months", decided_by="25")
+                for row in rows
+            ],
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert f"recorded as {self._reason()} but its span" in out
+
+    def test_should_fail_when_no_span_supports_the_skip(self, gate):
+        rows, study = self._carolina()
+        records = _records(
+            skipped=[self._prospective_skip(row, None, decided_by="25") for row in rows],
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert f"recorded as {self._reason()} but its span None" in out
+
+    def test_should_fail_when_the_deciding_row_is_not_the_members_group_label(self, gate):
+        label, member, other = _RFC016_STEP2["carolina_exclusion_25"]
+        ablation = _RFC016_STEP2["aristotle_exclusion_21"][0]
+        study = _study(exclusion=[label, member, other, ablation])
+        records = _records(
+            skipped=[
+                self._prospective_skip(label, self.SPAN, decided_by="25"),
+                self._prospective_skip(member, self.SPAN, decided_by="25"),
+                self._prospective_skip(other, self.SPAN, decided_by="25"),
+                self._prospective_skip(ablation, self.SPAN, decided_by="25"),
+            ],
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert "not a group label whose group contains it" in out

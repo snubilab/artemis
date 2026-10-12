@@ -80,11 +80,20 @@ from src.services.criterion_annotation import (
     CONDITIONAL_EXPLANATION,
     CONDITIONAL_REASON,
     EXTRACTED_CONDITIONAL_KEY,
+    GROUP_ALL,
+    GROUP_ANY,
+    LOGIC_ABSENCE,
     PLANNER_EXCEPTED_KEY,
+    PROSPECTIVE_EXPLANATION,
+    PROSPECTIVE_REASON,
+    StatedRelation,
     annotate_eligibility,
     conditional_skips,
+    prospective_skips,
+    relation_group_type,
     stated_exceptions,
     stated_exceptions_by_codeset,
+    stated_relation,
 )
 from src.services.entry_exclusion_repair import (
     iter_repair_candidates,
@@ -150,12 +159,9 @@ from src.utils.circe_lint import (
     end_entry_colliding_washouts_before_index,
     entry_concept_ids,
     entry_concept_set,
-    group_protocol_line,
-    list_cardinality,
     partially_readable_criteria,
     refuse_domain_contradiction,
     refuse_unreadable_value_filter,
-    states_flat_disjunction,
     value_range_conversion_candidate_ids,
 )
 from src.utils.criterion_refusal import (
@@ -435,147 +441,84 @@ def _rewrite_with_collapsed_rules(
 
 
 def _effective_group_type(group_type: str, member_criteria: list[dict[str, Any]]) -> str:
-    """Return the CIRCE group Type to emit for a criterion group.
+    """Return the CIRCE group Type to emit for a criterion group that states no relation.
 
-    Two corrections, in opposite directions, and the De Morgan one is checked first so
-    no group it owns can be reached by the other.
-
-    **ANY -> ALL (SPEC-INFRA-003 REQ-004).** An exclusion criterion is emitted with
-    `Occurrence {Type: 0, Count: 0}` -- "exactly zero occurrences" -- and CIRCE
-    AND-combines top-level InclusionRules, so N separate ABSENCE rules mean *absent
-    from A and absent from B*, which by De Morgan is absence from the **union**. That
-    is what a protocol sentence listing OR'd exclusion conditions asks for.
-
-    Passing the declared `ANY` through for such a group means "at least one is absent"
-    -- absence from the **intersection**, strictly looser, so a person matching only
-    one member's concept set is retained by a rule meant to exclude them. `ALL` is what
-    reproduces the equivalent separate top-level rules, which is the bar REQ-004 sets.
-
-    The same holds for demographic members even though they invert the operator rather
-    than the Occurrence axis: separate top-level rules AND-combine either way.
-
-    **ALL -> ANY (the 2026-09-11 conversion audit's largest logical-defect class:
-    AND/OR inverted, 7 instances across 4 trials).** The declared type can also be a
-    conjunction over alternatives the protocol wrote as a disjunction. LEADER store
-    group `4a712697` declares `ALL` under the line "Anti-diabetic drug naive **or**
-    treated with one or more oral anti-diabetic drugs **or** treated with human NPH
-    insulin ...", and reaches the delivery as `InclusionRules[2]`: zero exposures to
-    codeset 10 AND at least one to codeset 11, two byte-identical sets, satisfiable
-    only by a patient whose sole exposure falls on the index day.
-
-    Two guards make that correction safe, and neither is decoration:
-
-    * The all-ABSENCE branch returns first, so a group De Morgan owns is never
-      widened. Measured on the delivered corpus, 47 of the 51 `ALL` groups are
-      all-ABSENCE and 31 of those 47 sit under a line that states a flat disjunction;
-      widening on the connective alone would invert 31 working exclusions.
-    * `circe_lint.states_flat_disjunction` declines a line stating a cardinality over
-      a list ("Age >=60 y and >=1 of the following criteria"), where the conjunction
-      is half right and a flat flip would admit a patient on the age bound alone.
-
-    This runs on every build from the store, which is why the correction lives here
-    rather than in the extractor: the wrong value is already recorded for all six
-    delivered trials, and a repair at extraction time cannot reach a study that has
-    already been extracted.
-
-    Args:
-        group_type: The group type agent1 declared, "ALL" or "ANY".
-        member_criteria: The criteria that actually contribute to the group expression.
-
-    Returns:
-        "ALL" for a non-empty all-ABSENCE group that declared "ANY"; "ANY" for a
-        declared-"ALL" group of two or more members that are not all absences and
-        whose one protocol line states a flat disjunction; otherwise `group_type`
-        unchanged. A missing `logicType` is not read as ABSENCE, and a group whose
-        members carry no single protocol line states nothing -- an unestablished
-        group keeps the behavior it already had.
+    See :func:`_group_expression_type`, of which this is the no-relation case.
     """
-    return _effective_group_expression_type(group_type, member_criteria)[0]
+    return _group_expression_type(group_type, member_criteria)[0]
 
 
-def _effective_group_expression_type(
-    group_type: str, member_criteria: list[dict[str, Any]]
+def _group_expression_type(
+    group_type: str,
+    member_criteria: list[dict[str, Any]],
+    relation: StatedRelation | None = None,
+    logic: str | None = None,
 ) -> tuple[str, int | None]:
     """`(Type, Count)` for a criterion group's CIRCE expression.
 
-    The third correction, after the two :func:`_effective_group_type` documents:
-    **ALL -> AT_LEAST/N**, where the protocol line states a cardinality over a list
-    ("two or more of the following risk factors", ">=2 of the following"). CIRCE has
-    carried `Type: "AT_LEAST"` with a `Count` all along and Atlas's own `CriteriaGroup`
-    reads both, but nothing under `src/` had ever emitted one -- `rg -c AT_LEAST src/`
-    exited 1 -- so the number in the line had nowhere to go and the group was emitted
-    as a conjunction over every alternative. `states_flat_disjunction` declines such a
-    line on purpose and says why: "CIRCE can express it, as a nested Group carrying a
-    Count, and until something builds that nesting the honest answer is to decline the
-    line rather than half-fix it."
+    **A stated relation decides** (RFC-016 step 2, RFC-014 §2-1). When the group's label
+    carries a relation verified against its own protocol line -- the planner's, else the
+    annotation's (:func:`src.services.criterion_annotation.stated_relation`) -- the Type is
+    :func:`~src.services.criterion_annotation.relation_group_type` of that relation, the
+    group's logic and the members that actually emit. Nothing rewrites it afterwards:
+    LEADER's "Chronic heart failure (NYHA class IV)" states ``all`` under ``ABSENCE``,
+    which is ``ANY`` (exclude only the patient with both), and the De Morgan rewrite below
+    would otherwise turn it back into "exclude every heart-failure patient".
 
-    **It corrects a declared `ANY` as well as a declared `ALL`, and on this corpus that
-    is the whole of it.** Every one of the 22 cardinality groups the six trials' cached
-    IR carries with N >= 2 is declared `ANY` -- CAROLINA's "At least two of the
-    following CV risk factors", PLATO's ">=2 of the following" -- and `ANY` means *at
-    least one*. That is strictly looser than the protocol: a patient meeting a single
-    risk factor is admitted by a rule demanding two. Restricted to the `ALL` side this
-    correction would fire zero times here, which is how it was measured before being
-    widened. The all-ABSENCE branch still returns first, so no group De Morgan owns is
-    reached by this.
+    **Otherwise the declared type stands**, with one structural correction that reads no
+    text (SPEC-INFRA-003 REQ-004): a declared ``ANY`` over members that are all ABSENCE is
+    emitted as ``ALL``. CIRCE AND-combines top-level InclusionRules and an exclusion member
+    is ``Occurrence {Type: 0, Count: 0}``, so separate exclusions mean absence from the
+    union; ``ANY`` would mean absence from the intersection, which keeps a patient matching
+    one member's set.
 
-    Gold agrees on the shape as well as the direction: `AT_LEAST` is the second most
-    common group type across the TROY files (ALL 153, AT_LEAST 27, ANY 18), and gold's
-    CAROLINA `InclusionRules[1].Groups[3]` is AT_LEAST/2 under that same risk-factor
-    line.
-
-    Three guards, each of which fires on this corpus rather than defending a
-    hypothetical:
-
-    * **N is read from the line, never defaulted.** `circe_lint.list_cardinality` owns
-      the reading, and it is the same pattern `states_flat_disjunction` declines on, so
-      the two cannot drift apart. A line stating no number returns None and the group
-      keeps the type it had.
-    * **N >= 2 only.** `AT_LEAST` with `Count: 1` is `ANY` spelled differently, and
-      rewriting a group that is already correct costs a diff on every delivered study
-      and buys nothing. 61 of the 83 cardinality groups in the six trials' cached IR
-      state 1 and are left exactly as they are.
-    * **N must not exceed the members that survived mapping.** `member_criteria` holds
-      what actually became `Groups[]` entries, so a group that lost members to mapping
-      failures can be asked for more than it has -- and `AT_LEAST 3` over two members
-      is unsatisfiable, which empties a cohort exactly as quietly as a dropped
-      criterion does. The group keeps its declared type instead, which is the
-      strictest satisfiable reading and the behaviour it already had.
+    What this no longer does (A18, removed): read "or" / "either" / "N of the following" in
+    the group's protocol line to flip ALL to ANY or to invent an AT_LEAST count. Those
+    decisions now come only from the stated relation.
 
     Args:
-        group_type: The group type agent1 declared, "ALL" or "ANY".
+        group_type: The group type the IR declared, "ALL" or "ANY".
         member_criteria: The criteria that actually contribute to the group expression.
+        relation: The group's verified relation, or None.
+        logic: The group's logic type (the label's), read only with ``relation``.
 
     Returns:
         `(type, count)`. `count` is None for every type except "AT_LEAST".
     """
     if not member_criteria:
         return group_type, None
+    if relation is not None:
+        applied = relation_group_type(
+            logic, relation.relation, relation.cardinality, len(member_criteria)
+        )
+        if applied is not None:
+            return applied
     declared = (group_type or "").strip().upper()
     all_absence = all(
-        (crit.get("logicType") or "").strip().upper() == "ABSENCE"
+        (crit.get("logicType") or "").strip().upper() == LOGIC_ABSENCE
         for crit in member_criteria
     )
-    line = group_protocol_line(member_criteria, CRITERION_PROTOCOL_LINE_KEY)
-    count = list_cardinality(line)
-    cardinality_applies = (
-        not all_absence
-        and len(member_criteria) >= 2
-        and count is not None
-        and 2 <= count <= len(member_criteria)
-    )
-    if declared == "ANY":
-        if all_absence:
-            return "ALL", None
-        if cardinality_applies:
-            return "AT_LEAST", count
-        return group_type, None
-    if declared == "ALL" and not all_absence and len(member_criteria) >= 2:
-        if cardinality_applies:
-            return "AT_LEAST", count
-        if states_flat_disjunction(line):
-            return "ANY", None
+    if declared == GROUP_ANY and all_absence:
+        return GROUP_ALL, None
     return group_type, None
+
+
+def _group_relation(
+    labelled: tuple[str, dict[str, Any]] | None,
+) -> tuple[StatedRelation | None, str | None]:
+    """The verified relation a group's label states, and the group's logic for it.
+
+    An exclusion group is emitted as absences whatever its rows say (the builder's
+    exclusion branch), so its logic is ABSENCE; an inclusion group takes its label's.
+
+    :param labelled: ``(role, label row)``, or None when the group has no label row.
+    :returns: ``(relation or None, logic or None)``.
+    """
+    if labelled is None:
+        return None, None
+    role, label = labelled
+    logic = LOGIC_ABSENCE if role == "exclusion" else label.get("logicType")
+    return stated_relation(label), logic
 
 
 def _group_ancestry_is_cyclic(
@@ -5366,12 +5309,14 @@ class TTEService:
         rule_name: str,
         non_demo_members: list,
         demo_members: list,
+        relation: StatedRelation | None = None,
+        logic: str | None = None,
     ) -> dict[str, Any]:
         """Build a single CIRCE InclusionRule from grouped criteria.
 
-        The emitted `Type` is `_effective_group_type` of the declared one, so an
-        all-ABSENCE group means absence from the *union* of its members' concept sets
-        rather than from their intersection (SPEC-INFRA-003 REQ-004).
+        The emitted `Type` is `_group_expression_type`: the group label's verified relation
+        when it states one (RFC-016 step 2), else the declared type with the all-ABSENCE
+        De Morgan correction (SPEC-INFRA-003 REQ-004).
 
         Args:
             group_type: CIRCE group type string as agent1 declared it, "ALL" or "ANY".
@@ -5380,6 +5325,8 @@ class TTEService:
             demo_members: List of (criterion, demo_rule, role) tuples for demographic criteria,
                 role being "inclusion" or "exclusion" (unused for Groups[] geometry -- the
                 DemographicCriteriaList entry already carries the possibly-inverted Op).
+            relation: The group label's verified relation, or None.
+            logic: The group's logic type, read only with `relation`.
 
         Returns:
             A CIRCE InclusionRule dict ready to append to InclusionRules.
@@ -5409,7 +5356,9 @@ class TTEService:
         member_criteria = [crit for crit, _result in non_demo_members]
         member_criteria += [crit for crit, _demo_rule, _role in demo_members]
 
-        effective_type, count = _effective_group_expression_type(group_type, member_criteria)
+        effective_type, count = _group_expression_type(
+            group_type, member_criteria, relation, logic
+        )
         expression: dict[str, Any] = {
             "Type": effective_type,
             "CriteriaList": [],
@@ -5516,6 +5465,12 @@ class TTEService:
                 },
             )
 
+        def _record_prospective_skip(criterion: dict[str, Any], role: str, decision: Any) -> None:
+            _record_skip(
+                criterion, role, PROSPECTIVE_REASON, PROSPECTIVE_EXPLANATION,
+                extra={"windowSpan": decision.span, "timingDecidedBy": decision.decided_by},
+            )
+
         # SPEC-INFRA-003 REQ-001 / REQ-007. Decided once, up front, over the criteria as
         # they arrived: the collapse is a cardinality invariant over a structurally
         # defined class, so it has to see the whole role at once rather than one
@@ -5553,6 +5508,13 @@ class TTEService:
         conditional_inclusions = conditional_skips(inc_criteria)
         conditional_exclusions = conditional_skips(exc_criteria)
 
+        # RFC-016 step 2. A rule its line places after entry ("pre-planned ... within next
+        # 6 months") is not observable at index: emitted as an occurrence it is read from
+        # the patient's past. Decided by the row's annotation (`timing: prospective`, span
+        # checked against its line); a prospective group label takes its members, as above.
+        prospective_inclusions = prospective_skips(inc_criteria)
+        prospective_exclusions = prospective_skips(exc_criteria)
+
         # Same shape and placement as the two drop sets above: decided over the
         # criteria as they arrived, consumed by the group-label branch in each loop.
         stranded_constraint_labels = _stranded_group_constraint_labels(
@@ -5565,6 +5527,15 @@ class TTEService:
         # hand, rather than re-derived per criterion inside the mapping threads.
         group_label_constraints = {
             (role, str(criterion.get("groupId"))): criterion.get("valueConstraint")
+            for role, criteria in (("inclusion", inc_criteria), ("exclusion", exc_criteria))
+            for criterion in criteria
+            if criterion.get("isGroupLabel") and criterion.get("groupId")
+        }
+
+        # `groupId` -> its label row, read for the relation the label states (RFC-016
+        # step 2). A group id is a fresh uuid per group, unique across both roles.
+        group_labels = {
+            str(criterion.get("groupId")): (role, criterion)
             for role, criteria in (("inclusion", inc_criteria), ("exclusion", exc_criteria))
             for criterion in criteria
             if criterion.get("isGroupLabel") and criterion.get("groupId")
@@ -5598,6 +5569,11 @@ class TTEService:
             decision = conditional_inclusions.get(str(criterion.get("id", "")))
             if decision is not None:
                 _record_conditional_skip(criterion, "inclusion", decision)
+                order += 1
+                continue
+            timing = prospective_inclusions.get(str(criterion.get("id", "")))
+            if timing is not None:
+                _record_prospective_skip(criterion, "inclusion", timing)
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
@@ -5649,6 +5625,11 @@ class TTEService:
             decision = conditional_exclusions.get(str(criterion.get("id", "")))
             if decision is not None:
                 _record_conditional_skip(criterion, "exclusion", decision)
+                order += 1
+                continue
+            timing = prospective_exclusions.get(str(criterion.get("id", "")))
+            if timing is not None:
+                _record_prospective_skip(criterion, "exclusion", timing)
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
@@ -6012,8 +5993,9 @@ class TTEService:
             group_label = all_descriptions[0] if len(all_descriptions) == 1 else " + ".join(all_descriptions)
             successful_pairs = [(c, r) for c, r, _role in successful]
 
+            relation, logic = _group_relation(group_labels.get(str(gid)))
             group_rules[str(gid)] = self._build_grouped_inclusion_rule(
-                group_type, group_label, successful_pairs, demo_members
+                group_type, group_label, successful_pairs, demo_members, relation, logic
             )
             parent_group_of[str(gid)] = (
                 members[0][0].get(CRITERION_PARENT_GROUP_KEY)
@@ -6037,8 +6019,9 @@ class TTEService:
             descriptions = [c.get("description", "") for c, _r, _role in demo_members if c.get("description")]
             group_label = descriptions[0] if len(descriptions) == 1 else " + ".join(descriptions)
 
+            relation, logic = _group_relation(group_labels.get(str(gid)))
             group_rules[str(gid)] = self._build_grouped_inclusion_rule(
-                group_type, group_label, [], demo_members
+                group_type, group_label, [], demo_members, relation, logic
             )
             parent_group_of[str(gid)] = demo_members[0][0].get(CRITERION_PARENT_GROUP_KEY)
             group_rule_keys[str(gid)] = [
