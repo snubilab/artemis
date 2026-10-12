@@ -3197,41 +3197,6 @@ class TTEService:
             "CensorWindow": {},
         }
 
-    def _build_leader_target_compatibility_circe(
-        self,
-        circe: dict[str, Any],
-    ) -> dict[str, Any]:
-        adjusted = deepcopy(circe)
-        concept_sets = adjusted.get("ConceptSets") or []
-        preferred_names = {
-            "myocardial infarction",
-            "unstable angina",
-            "stable angina pectoris",
-            "coronary artery bypass grafting",
-            "percutaneous coronary intervention",
-            "chronic heart failure nyha class ii-iii",
-            "chronic renal failure",
-            "hypertension",
-            "left ventricular hypertrophy",
-        }
-        selected_ids = [
-            concept_set.get("id")
-            for concept_set in concept_sets
-            if isinstance(concept_set, dict)
-            and " ".join(str(concept_set.get("name") or "").lower().split()) in preferred_names
-        ]
-        if selected_ids:
-            adjusted["PrimaryCriteria"] = {
-                "CriteriaList": [
-                    {"ConditionOccurrence": {"CodesetId": int(codeset_id)}}
-                    for codeset_id in selected_ids
-                ],
-                "ObservationWindow": {"PriorDays": 365, "PostDays": 0},
-                "PrimaryCriteriaLimit": {"Type": "First"},
-            }
-            adjusted["InclusionRules"] = []
-        return adjusted
-
     def _build_leader_treatment_only_circe(
         self,
         arm_name: str,
