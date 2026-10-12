@@ -32,13 +32,14 @@ The producer half has NOT landed (`tte_service.py` is frozen while a regeneratio
 so today every row carries `refusalCode: None` or `no-concept-mapping` and every one of
 them still blocks. `TestTheGateHalfChangesNoVerdictUntilTheProducerSplits` pins that.
 
-The second module here is the laundering guard's stale premise. `997da1b` gave
-`resolve_group_member_constraint` a `member_analyte` keyword, so an absolute group bound
-now reaches the members measured in its unit. The gate still asked the pre-997da1b
-question — `resolve_group_member_constraint(label_constraint, None)` — whose answer is
-"strands everything" for any absolute bound. On CAROLINA 44 and EMPA-REG 56 that gave the
-right verdict by accident (HbA1c genuinely is stranded), but a group whose members are
-ALL unit-compatible was reported as a loss the build never incurred.
+The second module here is the laundering guard's stale premise. An absolute group bound
+reaches the members whose own concepts are measured in its unit (the LOINC property of the
+member's mapped concepts since RFC-016 §4 A20; an analyte-name table before it). Asking
+the resolver with nothing known about the member answers "strands everything" for any
+absolute bound, so a group whose members are ALL unit-compatible was reported as a loss
+the build never incurred. The gate now reads which members EMITTED
+(``_criterionConceptSetRefs``): the builder emits a bare member under an absolute label
+only when the bound was handed down, so an emitted member was not stranded.
 """
 
 from __future__ import annotations
@@ -387,16 +388,16 @@ class TestTheGateHalfChangesNoVerdictUntilTheProducerSplits:
 
 
 class TestAnAbsoluteGroupBoundIsJudgedPerMember:
-    def test_should_confirm_the_probe_analytes_split_the_way_the_resolver_says(self):
-        """The two fixtures below rest on this, so it is called rather than assumed."""
-        for analyte in ("Fasting Plasma Glucose", "Random Plasma Glucose"):
-            resolution = resolve_group_member_constraint(
-                ABSOLUTE_GLUCOSE_BOUND, None, member_analyte=analyte
-            )
-            assert resolution.refusal_reason is None
+    def test_should_confirm_the_probe_members_split_the_way_the_resolver_says(self):
+        """The two fixtures below rest on this, so it is called rather than assumed.
+        Glucose 3019474 and HbA1c 3004410 with their synthea23m 'Has property'."""
+        resolution = resolve_group_member_constraint(
+            ABSOLUTE_GLUCOSE_BOUND, None, member_properties={3019474: "Mass Concentration"}
+        )
+        assert resolution.refusal_reason is None
         assert (
             resolve_group_member_constraint(
-                ABSOLUTE_GLUCOSE_BOUND, None, member_analyte="Hemoglobin A1c"
+                ABSOLUTE_GLUCOSE_BOUND, None, member_properties={3004410: "Mass fraction"}
             ).refusal_reason
             == STRANDED_GROUP_CONSTRAINT_REASON
         )
@@ -435,6 +436,9 @@ class TestAnAbsoluteGroupBoundIsJudgedPerMember:
             ],
             store_criteria=len(study["eligibility"]["exclusionCriteria"]),
         )
+        # Both members emitted, each with the label's bound -- what the builder does when
+        # their concepts are measured in mg/dL.
+        records["_criterionConceptSetRefs"] = {"exclusion:45": 2, "exclusion:46": 3}
         rc, out = gate(records, study)
         assert rc == 0, out
         assert STRANDED_GROUP_CONSTRAINT_REASON not in out
@@ -473,6 +477,9 @@ class TestAnAbsoluteGroupBoundIsJudgedPerMember:
             ],
             store_criteria=len(study["eligibility"]["exclusionCriteria"]),
         )
+        # The two glucoses emitted; HbA1c did not, and the file books no other loss for
+        # it -- the producer laundered the stranding as a plain group label.
+        records["_criterionConceptSetRefs"] = {"exclusion:46": 2, "exclusion:47": 3}
         rc, out = gate(records, study)
         assert rc == 1, out
         assert STRANDED_GROUP_CONSTRAINT_REASON in out

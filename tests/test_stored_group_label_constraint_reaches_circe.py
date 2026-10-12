@@ -27,10 +27,17 @@ being evidence of loss once an absolute bound could reach some members and not
 others. A label is flagged only when a member actually ended up refused.
 ``TestTheCensusStillDistinguishesTheTwoRefusals`` pins all three directions --
 reference-relative, absolute-and-lossy, absolute-and-complete.
+
+Whether an absolute bound fits a member is read off the LOINC ``Has property`` of the
+member's own mapped concepts (RFC-016 §4, A20). The mapper stub returns each glucose /
+HbA1c member's real concept set and the vocabulary stub the synthea23m properties, from
+``tests/fixtures/p3_structural_rows.json``.
 """
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -105,9 +112,41 @@ GLUCOSE_ROWS = [
 ]
 
 
+_FIXTURE = json.loads(
+    (Path(__file__).resolve().parent / "fixtures" / "p3_structural_rows.json").read_text()
+)
+_GROUP = _FIXTURE["a20_carolina_glucose_group"]
+_FPG, _RPG = (
+    [item["concept"]["CONCEPT_ID"] for item in concept_set["expression"]["items"]]
+    for concept_set in sorted(_GROUP["fpg_rpg_sets"], key=lambda c: c["id"])
+)
+_HBA1C = [item["concept"]["CONCEPT_ID"] for item in _GROUP["hba1c_set"]["set"]["expression"]["items"]]
+#: Each member seed in this file -> the concept ids of the real set it maps to; any other
+#: seed (the liver enzymes, the cohort's entry) keeps the stub's old answer, ALT 3006923.
+_MEMBER_SETS = {
+    "Elevated HbA1c": _HBA1C,
+    "Elevated Fasting Glucose": _FPG,
+    "Fasting Plasma Glucose": _FPG,
+    "Random Plasma Glucose": _RPG,
+}
+_PROPERTIES = {
+    row[0]: row[6]
+    for row in _FIXTURE["vocabulary_loinc_axes"]["rows"]
+    if row[4] == "Has property"
+}
+
+
+class _LabVocabulary:
+    def properties(self, ids):
+        return {cid: _PROPERTIES[cid] for cid in ids if cid in _PROPERTIES}
+
+    def close(self):
+        pass
+
+
 @pytest.fixture
 def service():
-    """A TTEService with only the vector-search / Agent2 hop stubbed out."""
+    """A TTEService with the vector-search / Agent2 hop and the vocabulary stubbed out."""
     from src.services.tte_service import TTEService
 
     svc = TTEService.__new__(TTEService)
@@ -116,10 +155,14 @@ def service():
             "name": name,
             "domain": "Measurement",
             "expression": {
-                "items": [{"concept": {"CONCEPT_ID": 3006923, "DOMAIN_ID": "Measurement"}}]
+                "items": [
+                    {"concept": {"CONCEPT_ID": cid, "DOMAIN_ID": "Measurement"}}
+                    for cid in _MEMBER_SETS.get(name, [3006923])
+                ]
             },
         }
     )
+    svc._lab_test_vocabulary = _LabVocabulary
     return svc
 
 
@@ -198,7 +241,7 @@ class TestStoreRowsInheritTheLabelThresholdAtBuildTime:
             if record.get("refusalCode") == "stranded-group-threshold"
         ]
         assert [record["label"] for record in refused] == ["Elevated HbA1c"]
-        assert "% (percent)" in refused[0]["reason"]
+        assert "Mass fraction" in refused[0]["reason"]
         assert "mg/dL" in refused[0]["reason"]
 
     def test_should_not_overwrite_a_member_that_carries_its_own_threshold(self, service):

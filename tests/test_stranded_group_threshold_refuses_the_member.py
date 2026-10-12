@@ -34,11 +34,19 @@ distributed by analyte and #45 alone refuses -- the protocol's exclusion keeps t
 its three arms instead of leaving the cohort entirely.
 
 The rows below are transcribed verbatim from that store.
+
+Which member the bound fits is read off the LOINC ``Has property`` of the member's own
+mapped concepts (RFC-016 §4, A20), not its text. The mapper stub returns each member's
+real concept set -- FPG and RPG from the 2026-09-09 store's sets 64/65, HbA1c from the
+2026-10-12 candidate's EMPA-REG codeset 3 -- and the vocabulary stub answers with the
+synthea23m properties, all from ``tests/fixtures/p3_structural_rows.json``.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -145,9 +153,42 @@ GLUCOSE_MEMBERS = [
 ]
 
 
+_FIXTURE = json.loads(
+    (Path(__file__).resolve().parent / "fixtures" / "p3_structural_rows.json").read_text()
+)
+_GROUP = _FIXTURE["a20_carolina_glucose_group"]
+#: Each member's seed -> the concept ids of the real set it maps to.
+_MEMBER_SETS = {
+    "Hemoglobin A1c": [
+        item["concept"]["CONCEPT_ID"] for item in _GROUP["hba1c_set"]["set"]["expression"]["items"]
+    ],
+    **{
+        seed: [item["concept"]["CONCEPT_ID"] for item in concept_set["expression"]["items"]]
+        for seed, concept_set in zip(
+            ("Fasting Plasma Glucose", "Random Plasma Glucose"),
+            sorted(_GROUP["fpg_rpg_sets"], key=lambda c: c["id"]),
+        )
+    },
+}
+#: LOINC concept id -> 'Has property' name (synthea23m).
+_PROPERTIES = {
+    row[0]: row[6]
+    for row in _FIXTURE["vocabulary_loinc_axes"]["rows"]
+    if row[4] == "Has property"
+}
+
+
+class _LabVocabulary:
+    def properties(self, ids):
+        return {cid: _PROPERTIES[cid] for cid in ids if cid in _PROPERTIES}
+
+    def close(self):
+        pass
+
+
 @pytest.fixture
 def service():
-    """A TTEService with only the vector-search / Agent2 hop stubbed out."""
+    """A TTEService with the vector-search / Agent2 hop and the vocabulary stubbed out."""
     from src.services.tte_service import TTEService
 
     svc = TTEService.__new__(TTEService)
@@ -155,13 +196,18 @@ def service():
         side_effect=lambda name, expected_domain=None, workflow=None, **kw: {
             "name": name,
             "domain": "Measurement",
-            # A real LOINC HbA1c concept, so the domain check upstream of the refusal
-            # passes and the refusal under test is the one that fires.
+            # The member's real concept set, so the domain check upstream of the refusal
+            # passes and the unit check reads what the member actually measures.
             "expression": {
-                "items": [{"concept": {"CONCEPT_ID": 3004410, "DOMAIN_ID": "Measurement"}}]
+                "items": [
+                    {"concept": {"CONCEPT_ID": cid, "DOMAIN_ID": "Measurement"}}
+                    # Any other seed (the cohort's own entry) keeps the stub's old answer.
+                    for cid in _MEMBER_SETS.get(name, [3004410])
+                ]
             },
         }
     )
+    svc._lab_test_vocabulary = _LabVocabulary
     return svc
 
 
@@ -205,9 +251,9 @@ class TestTheRealCarolinaGroupRefusesInsteadOfEmittingUnfiltered:
             f"over every HbA1c measurement on record"
         )
         assert excinfo.value.detail == STRANDED_GROUP_CONSTRAINT_REASON
-        assert "% (percent)" in str(excinfo.value), (
-            "a refusal that does not name the analyte, its unit and the label's unit "
-            "leaves a human no way to tell a table gap from a protocol that really "
+        assert "Mass fraction" in str(excinfo.value) and "mg/dL" in str(excinfo.value), (
+            "a refusal that does not name what the member measures and the label's unit "
+            "leaves a human no way to tell a mapping gap from a protocol that really "
             "wrote an incompatible threshold"
         )
 
@@ -406,6 +452,9 @@ class TestTheAssemblerDropsTheMemberRatherThanEmittingItUnfiltered:
     the threshold can be re-grounded per sub-criterion at extraction."""
 
     def test_should_not_emit_a_member_whose_group_threshold_was_refused(self):
+        """This legacy path holds no member concepts, so whether an absolute bound fits
+        a member cannot be read (RFC-016 §4, A20): every bare member refuses rather than
+        emitting unfiltered."""
         from src.agents.agent3.assembler import CohortAssembler
 
         rule = CohortAssembler()._build_inclusion_rule(
@@ -430,15 +479,10 @@ class TestTheAssemblerDropsTheMemberRatherThanEmittingItUnfiltered:
         )
 
         emitted = rule["expression"]["CriteriaList"]
-        assert len(emitted) == 2, (
+        assert emitted == [], (
             f"each member emitted {{'CodesetId': N}} with no value filter, so the "
-            f"ABSENCE rule matched every glucose measurement on record; expected the "
-            f"two glucose members filtered and HbA1c dropped, got {len(emitted)}"
+            f"ABSENCE rule matched every glucose measurement on record; got {emitted}"
         )
-        for entry in emitted:
-            body = entry["Criteria"]["Measurement"]
-            assert body["ValueAsNumber"] == {"Value": 240.0, "Op": "gt"}
-            assert [unit["CONCEPT_ID"] for unit in body["Unit"]] == [8840]
 
     def test_should_still_emit_members_of_a_reference_relative_group(self):
         """The propagating direction must survive here too."""

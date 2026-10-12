@@ -411,6 +411,7 @@ from src.utils.circe_lint import (  # noqa: E402
 )
 from src.utils.criterion_refusal import (  # noqa: E402
     REFUSAL_CODES,
+    REFUSAL_STRANDED_GROUP_THRESHOLD,
     REFUSAL_UNMAPPABLE_PLACEHOLDER,
 )
 from src.utils.criterion_seed import MISSING_ENTITY_CRITERIA_KEY  # noqa: E402
@@ -1404,30 +1405,32 @@ def _group_label_violations(
     # cannot slip the loss past this permit, because the decision is re-made rather
     # than read off the record.
     #
-    # Asked PER MEMBER, with that member's own analyte text. `997da1b` gave the
-    # resolver a `member_analyte` keyword and an absolute bound now reaches the members
-    # measured in its unit, so the question "does this threshold strand anything" no
-    # longer has one answer for a whole group. Passing None asked the pre-997da1b
-    # question -- "would this bound reach a member we know nothing about" -- whose
-    # answer is always "no" for an absolute bound. On CAROLINA 44 and EMPA-REG 56 that
-    # happened to give the right verdict (HbA1c genuinely is stranded by "> 240
-    # mg/dL"), so nothing failed; but a group whose members are ALL unit-compatible
-    # would have been reported as a loss the build never incurred.
-    #
-    # The analyte is read the way `TTEService._stranded_group_constraint_labels` reads
-    # it -- `sourceText` then `description` -- because the two must answer alike or the
-    # gate and the producer disagree about the same group.
+    # Asked PER MEMBER. Whether an absolute bound fits a member is read off the
+    # member's mapped concepts' LOINC properties (RFC-016 §4, A20), which this gate does
+    # not re-derive; what it does see is whether the member EMITTED. The builder emits a
+    # member without a threshold of its own under an absolute label only when the bound
+    # was handed down to it, and refuses it otherwise -- so a member that emitted was not
+    # stranded, and one that did not is re-judged by the resolver with nothing known
+    # about its concepts, whose answer for an absolute bound is "stranded". Without the
+    # file's concept-set refs (`emitted` None) every such member is re-judged that way. A
+    # member the file already books as lost for ANOTHER reason (a skip record, or a
+    # refusal under a different code) is that loss, not this one.
     label_constraint = label.get("valueConstraint")
     if label_constraint:
+        refusal_codes = {
+            (record.get("role"), str(record.get("criterionId") or "")): record.get("refusalCode")
+            for record in expression.get("_unmappedCriteria") or []
+            if isinstance(record, dict)
+        }
         stranded = [
             criterion
-            for _key, criterion in members
+            for key, criterion in members
             if criterion.get("valueConstraint") is None
-            and resolve_group_member_constraint(
-                label_constraint,
-                None,
-                member_analyte=criterion.get("sourceText") or criterion.get("description"),
-            ).refusal_reason
+            and (emitted is None or key not in emitted)
+            and key not in skipped_by_key
+            and refusal_codes.get(key, REFUSAL_STRANDED_GROUP_THRESHOLD)
+            == REFUSAL_STRANDED_GROUP_THRESHOLD
+            and resolve_group_member_constraint(label_constraint, None).refusal_reason
             == STRANDED_GROUP_CONSTRAINT_REASON
         ]
         if stranded:

@@ -605,55 +605,44 @@ def _group_ancestry_is_cyclic(
 
 
 def _stranded_group_constraint_labels(
-    criteria: list[dict[str, Any]], role: str
+    criteria: list[dict[str, Any]], role: str, stranded_members: set[tuple[str, str]]
 ) -> set[tuple[str, str]]:
     """``(role, id)`` of group labels whose threshold failed to reach some member.
 
     A group label is refused unconditionally (``isGroupLabel``), so when it is the
     only row carrying a ``valueConstraint`` the number leaves the cohort entirely.
     ``resolve_group_member_constraint`` hands it down when it is unit-free, and hands
-    an absolute bound down to the members whose analyte is reported in ITS unit --
+    an absolute bound down to the members whose own concepts are measured in ITS unit --
     "> 240 mg/dL" reaches Fasting and Random Plasma Glucose and stops at HbA1c, which
     is reported in %. A refusal is correct and must not also be silent, so a label
     that lost a member is skipped under its own reason instead of the generic
     ``group-label`` and the census counts it.
 
-    Recomputed here from the criteria as they arrive rather than recorded upstream,
-    so stores generated before this fix surface the loss too.
+    Read off the members' own build outcome, ``stranded_members`` -- the ``(role, id)``
+    of every member the build refused with ``REFUSAL_STRANDED_GROUP_THRESHOLD``. It used
+    to be predicted before mapping from the member's text; whether the bound fits is now
+    read off the member's mapped concepts (RFC-016 §4, A20), which exist only after
+    mapping. A label with no members, or none refused, is not flagged.
 
-    The question is asked of the resolver itself, once per member, never re-derived:
-    "is the member's ``valueConstraint`` null" was the right proxy only while an
-    absolute bound reached nobody. Now that it can reach some members, a null store
-    row is no longer evidence of loss, and a census keyed on it would flag a label
-    whose threshold in fact arrived. A label with no members at all emits no rule to
-    under-filter and is not flagged.
+    :param criteria: one role's stored criterion rows.
+    :param role: ``"inclusion"`` or ``"exclusion"``.
+    :param stranded_members: ``(role, criterionId)`` of the members refused as stranded.
+    :returns: the labels to record under ``STRANDED_GROUP_CONSTRAINT_REASON``.
     """
-    by_group: dict[str, list[dict[str, Any]]] = {}
-    for criterion in criteria:
-        group_id = criterion.get("groupId")
-        if group_id:
-            by_group.setdefault(str(group_id), []).append(criterion)
-
-    stranded: set[tuple[str, str]] = set()
-    for members in by_group.values():
-        for label in members:
-            if not label.get("isGroupLabel"):
-                continue
-            constraint = label.get("valueConstraint")
-            if not constraint:
-                continue
-            for member in members:
-                if member.get("isGroupLabel"):
-                    continue
-                resolution = resolve_group_member_constraint(
-                    constraint,
-                    member.get("valueConstraint"),
-                    member_analyte=member.get("sourceText") or member.get("description"),
-                )
-                if resolution.refusal_reason:
-                    stranded.add((role, str(label.get("id", ""))))
-                    break
-    return stranded
+    stranded_groups = {
+        str(criterion.get("groupId"))
+        for criterion in criteria
+        if criterion.get("groupId")
+        and not criterion.get("isGroupLabel")
+        and (role, str(criterion.get("id", ""))) in stranded_members
+    }
+    return {
+        (role, str(label.get("id", "")))
+        for label in criteria
+        if label.get("isGroupLabel")
+        and label.get("valueConstraint")
+        and str(label.get("groupId")) in stranded_groups
+    }
 
 
 #: Stems that name nothing on their own, so a trailing ordinal after one is an index
@@ -5583,11 +5572,8 @@ class TTEService:
         conditional_inclusions = conditional_skips(inc_criteria)
         conditional_exclusions = conditional_skips(exc_criteria)
 
-        # Same shape and placement as the two drop sets above: decided over the
-        # criteria as they arrived, consumed by the group-label branch in each loop.
-        stranded_constraint_labels = _stranded_group_constraint_labels(
-            inc_criteria, "inclusion"
-        ) | _stranded_group_constraint_labels(exc_criteria, "exclusion")
+        # Group labels, recorded once mapping is done (see after the mapping pool).
+        deferred_labels: list[tuple[dict[str, Any], str]] = []
 
         # `(role, groupId)` -> the group label's own threshold, for the members to
         # inherit through `resolve_group_member_constraint`. Keyed by role because a
@@ -5634,14 +5620,9 @@ class TTEService:
             # whatever its domain. Checked after it, a Demographics label carrying the
             # group's `gte 18` built an Age rule from the label (ARISTOTLE inclusion 16).
             if criterion.get("isGroupLabel"):
-                key = ("inclusion", str(criterion.get("id", "")))
-                _record_skip(
-                    criterion,
-                    "inclusion",
-                    STRANDED_GROUP_CONSTRAINT_REASON
-                    if key in stranded_constraint_labels
-                    else "group-label",
-                )
+                # Recorded after mapping: whether its threshold was stranded is the
+                # members' own build outcome (see `_stranded_group_constraint_labels`).
+                deferred_labels.append((criterion, "inclusion"))
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
@@ -5687,14 +5668,9 @@ class TTEService:
             # Ahead of the demographic branch, as in the inclusion loop: a group label
             # emits no rule of its own, whatever its domain.
             if criterion.get("isGroupLabel"):
-                key = ("exclusion", str(criterion.get("id", "")))
-                _record_skip(
-                    criterion,
-                    "exclusion",
-                    STRANDED_GROUP_CONSTRAINT_REASON
-                    if key in stranded_constraint_labels
-                    else "group-label",
-                )
+                # Recorded after mapping: whether its threshold was stranded is the
+                # members' own build outcome (see `_stranded_group_constraint_labels`).
+                deferred_labels.append((criterion, "exclusion"))
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
@@ -5880,6 +5856,28 @@ class TTEService:
             }
             for future in as_completed(futures):
                 mapped_results.append(future.result())
+
+        # A label whose threshold this build refused to hand to one of its members is
+        # recorded under the stranded reason, so the census counts the loss; every other
+        # label is a plain container. Decided from the members' own refusals rather than
+        # predicted before mapping: whether an absolute bound reaches a member is read off
+        # the member's mapped concepts (RFC-016 §4, A20), which exist only now.
+        stranded_members = {
+            (record["role"], record["criterionId"])
+            for record in unmapped_criteria
+            if record.get("refusalCode") == REFUSAL_STRANDED_GROUP_THRESHOLD
+        }
+        stranded_constraint_labels = _stranded_group_constraint_labels(
+            inc_criteria, "inclusion", stranded_members
+        ) | _stranded_group_constraint_labels(exc_criteria, "exclusion", stranded_members)
+        for label_row, label_role in deferred_labels:
+            _record_skip(
+                label_row,
+                label_role,
+                STRANDED_GROUP_CONSTRAINT_REASON
+                if (label_role, str(label_row.get("id", ""))) in stranded_constraint_labels
+                else "group-label",
+            )
 
         # Sort by original order and assign sequential codeset_ids
         mapped_results.sort(key=lambda x: x[0])
@@ -7460,11 +7458,17 @@ class TTEService:
         # ABSENCE rule, which excluded every patient inclusion rule 5 required (the two
         # codesets overlap on 4 of 6 presence concepts). The loss WAS recorded -- against
         # the group label, which never emitted -- and the members that actually shipped
-        # carried no record at all. `member_analyte` is what lets the resolver tell the
-        # two Plasma Glucose members (which mg/dL fits) from the HbA1c member (which it
-        # does not), so only the third refuses.
+        # carried no record at all. The LOINC properties of the member's own mapped
+        # concepts are what let the resolver tell the two Plasma Glucose members (Mass
+        # Concentration, which mg/dL measures) from the HbA1c member (Mass fraction), so
+        # only the third refuses (RFC-016 §4, A20: the member's text is not read). Read
+        # lazily: the vocabulary is consulted only for an absolute inherited bound.
         resolution = resolve_group_member_constraint(
-            parent_value_constraint, criterion.get("valueConstraint"), member_analyte=label
+            parent_value_constraint,
+            criterion.get("valueConstraint"),
+            member_properties=lambda: self._concept_set_lab_properties(
+                mapped_criterion.get("expression") or {}
+            ),
         )
         # Refuse rather than emit, the same choice `refuse_domain_contradiction` above
         # and `refuse_unreadable_value_filter` below both make: the caller records the
@@ -7620,6 +7624,30 @@ class TTEService:
         from src.settings import settings
 
         return PostgresLabTestVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA)
+
+    def _concept_set_lab_properties(self, expression: Mapping[str, Any]) -> dict[int, str | None]:
+        """Concept id -> LOINC ``Has property`` of a concept set's included items.
+
+        What `resolve_group_member_constraint` checks an inherited absolute bound's unit
+        against (RFC-016 §4, A20). A non-LOINC item maps to None.
+        """
+        ids = [
+            int(concept["CONCEPT_ID"])
+            for item in expression.get("items") or []
+            if isinstance(item, Mapping) and not item.get("isExcluded")
+            for concept in [item.get("concept") or {}]
+            if concept.get("CONCEPT_ID") is not None
+        ]
+        if not ids:
+            return {}
+        vocabulary = self._lab_test_vocabulary()
+        try:
+            properties = vocabulary.properties(ids)
+        finally:
+            close = getattr(vocabulary, "close", None)
+            if callable(close):
+                close()
+        return {cid: properties.get(cid) for cid in ids}
 
     def _refine_measurement_specimen(
         self,
@@ -12400,7 +12428,6 @@ class TTEService:
         parent_group_id: str | None = None,
     ) -> dict[str, Any]:
         domain = (getattr(item, "domain", None) or "").strip()
-        name = (getattr(item, "name", None) or "").strip()
         entity_text = (getattr(item, "entity_text", None) or "").strip()
         source_text = entity_text
         # The protocol's OWN line, kept separate from `source_text` above. The two
@@ -12442,9 +12469,10 @@ class TTEService:
         # honestly measure -- `resolve_group_member_constraint` is the one place that
         # decides, shared with `agent3/assembler.py`. Passing the label's own
         # constraint here (rather than reading only `item.value_constraint`) is what
-        # stops "> 3x ULN" from dying on the refused `isGroupLabel` row; passing the
-        # member's own analyte text is what lets an absolute "> 240 mg/dL" reach the
-        # plasma-glucose sub-items and stop at the HbA1c one.
+        # stops "> 3x ULN" from dying on the refused `isGroupLabel` row. An ABSOLUTE
+        # bound is not copied onto the store row here: whether it fits the member is
+        # read off the member's mapped concepts (RFC-016 §4, A20), which do not exist
+        # yet, so the build re-asks with them (`_build_seeded_eligibility_rule`).
         #
         # `.constraint` alone is CORRECT here and must stay that way, unlike the
         # identical-looking read in `_build_seeded_eligibility_rule`, which now raises
@@ -12458,7 +12486,6 @@ class TTEService:
         vc = resolve_group_member_constraint(
             parent_value_constraint,
             getattr(item, "value_constraint", None),
-            member_analyte=source_text or name or description,
         ).constraint
         value_constraint = None
         if vc is not None:
