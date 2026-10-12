@@ -1450,15 +1450,12 @@ class TTEService:
         )
 
     def generate_draft(self, description: str, model_name: str | None = None) -> GenerateResponse:
-        generation_mode = "heuristic"
+        # The trial agent is the only drafter. A failure surfaces: there is no draft
+        # parsed out of the sentence by "X vs Y for Z in W" to fall back on (RFC-016 §5, A24).
+        generation_mode = "trial_agent"
         fallback_reason: str | None = None
         capability_signal = self._get_capability_signal("generate_draft")
-        try:
-            study = self._generate_with_trial_agent(description, model_name=model_name)
-            generation_mode = "trial_agent"
-        except Exception as exc:
-            study = self._heuristic_draft(description)
-            fallback_reason = str(exc)
+        study = self._generate_with_trial_agent(description, model_name=model_name)
 
         study_payload = TTEStudy.model_validate(study).model_dump()
         suggestions = self._build_suggestions(description, study_payload, generation_mode)
@@ -1500,21 +1497,16 @@ class TTEService:
             }
         )
 
-        generation_mode = "heuristic"
+        generation_mode = "trial_agent"
         fallback_reason: str | None = None
         try:
             generated_study = self._generate_with_trial_agent(description, model_name=model_name)
-            generation_mode = "trial_agent"
         except Exception as exc:
-            # _heuristic_draft refuses a description it could not read anything from,
-            # so this can now raise. Close the job before the raise leaves, or it sits
-            # at "running" forever and the failure reads as a hang.
-            try:
-                generated_study = self._heuristic_draft(description)
-            except ValueError as refusal:
-                self._fail_job(job, f"{exc} | {refusal}")
-                raise
-            fallback_reason = str(exc)
+            # The trial agent is the only drafter (RFC-016 §5, A24). Close the job before
+            # the raise leaves, or it sits at "running" forever and the failure reads as
+            # a hang.
+            self._fail_job(job, str(exc))
+            raise
 
         generated_payload = TTEStudy.model_validate(generated_study).model_dump()
         proposed_changes = {
@@ -4536,39 +4528,11 @@ class TTEService:
             eligibility=eligibility,
             prebuilt_circe=prebuilt_treatment_circe,
         )
-        # Retrieve criterionMappingMetadata from the latest eligibility_processing artifact
-        _criterion_mapping_meta: dict[str, Any] = {}
-        try:
-            all_artifacts = self.store.list_artifacts(study_id)
-            eligibility_artifacts = [
-                a for a in all_artifacts
-                if (a.get("kind") if isinstance(a, dict) else getattr(a, "kind", None))
-                == "eligibility_processing"
-            ]
-            if eligibility_artifacts:
-                latest_elig = eligibility_artifacts[-1]
-                _elig_artifact_id = (
-                    latest_elig.get("id")
-                    if isinstance(latest_elig, dict)
-                    else latest_elig.id
-                )
-                _elig_artifact = self.store.get_artifact(_elig_artifact_id)
-                _elig_payload = (
-                    _elig_artifact.get("payload")
-                    if isinstance(_elig_artifact, dict)
-                    else _elig_artifact.payload
-                ) or {}
-                _criterion_mapping_meta = _elig_payload.get("criterionMappingMetadata") or {}
-        except Exception:
-            logging.debug("Could not retrieve criterionMappingMetadata from eligibility artifact")
-
         outcomes_diag = self._materialize_seeded_outcome_cohorts(
             client=client,
             study_id=study_id,
             study_name=study_name,
             outcomes=outcomes,
-            eligibility=eligibility,
-            criterion_mapping_metadata=_criterion_mapping_meta,
             study=study,
         )
 
@@ -4806,10 +4770,14 @@ class TTEService:
         study_id: int,
         study_name: str,
         outcomes: dict[str, Any],
-        eligibility: dict[str, Any] | None = None,
-        criterion_mapping_metadata: dict[str, Any] | None = None,
         study: dict[str, Any] | None = None,
     ) -> SeededCohortSectionDiagnostic:
+        """Each outcome cohort is mapped from its own label alone.
+
+        No eligibility criterion's concepts are handed to the outcome mapper: the outcome
+        label used to be split on "or" / "and" / "," / ";" and matched against criterion
+        descriptions to prefetch them (RFC-016 §5, A23).
+        """
         items: list[SeededCohortGenerationItem] = []
         if not outcomes.get("primary"):
             outcomes["primary"] = {}
@@ -4818,16 +4786,6 @@ class TTEService:
             primary.get("cohortName") or primary.get("description") or "Primary outcome"
         ).strip()
 
-        # Extract pre-mapped concept IDs from eligibility criteria matching this outcome
-        all_criteria = (
-            list((eligibility or {}).get("inclusionCriteria", []))
-            + list((eligibility or {}).get("exclusionCriteria", []))
-        )
-        primary_pre_fetched = self._extract_eligibility_concept_ids_for_outcome(
-            outcome_label=primary_label,
-            criteria=all_criteria,
-            criterion_mapping_metadata=criterion_mapping_metadata or {},
-        ) or None
         primary_domain = (primary.get("domain") or "").strip() or None
 
         primary_item = self._materialize_seeded_cohort_item(
@@ -4848,7 +4806,6 @@ class TTEService:
             expression_builder=lambda: self._build_seeded_condition_circe(
                 primary_label,
                 expected_domain=primary_domain,
-                pre_fetched_candidates=primary_pre_fetched,
                 capture_all_events=True,
             ),
         )
@@ -4861,11 +4818,6 @@ class TTEService:
         secondary = outcomes["secondary"]
         for index, outcome in enumerate(secondary):
             outcome_label = (outcome.get("cohortName") or outcome.get("description") or "").strip()
-            outcome_pre_fetched = self._extract_eligibility_concept_ids_for_outcome(
-                outcome_label=outcome_label,
-                criteria=all_criteria,
-                criterion_mapping_metadata=criterion_mapping_metadata or {},
-            ) or None
             outcome_domain = (outcome.get("domain") or "").strip() or None
             item = self._materialize_seeded_cohort_item(
                 client=client,
@@ -4877,8 +4829,8 @@ class TTEService:
                 label=outcome_label or f"Secondary outcome {index + 1}",
                 seed_text=outcome_label,
                 existing_cohort_id=outcome.get("cohortId"),
-                expression_builder=lambda ol=outcome_label, od=outcome_domain, opf=outcome_pre_fetched: self._build_seeded_condition_circe(
-                    ol, expected_domain=od, pre_fetched_candidates=opf, capture_all_events=True,
+                expression_builder=lambda ol=outcome_label, od=outcome_domain: self._build_seeded_condition_circe(
+                    ol, expected_domain=od, capture_all_events=True,
                 ),
             )
             if item.status == "created" and item.cohortDefinitionId is not None:
@@ -5162,47 +5114,6 @@ class TTEService:
         # If still too long, use minimal format and hard-truncate.
         minimal = self._sanitize_cohort_name(f"TTE {study_id} {role_title} - {compact_label}")
         return minimal[:_MAX_RULE_NAME_LENGTH]
-
-    @staticmethod
-    def _extract_eligibility_concept_ids_for_outcome(
-        outcome_label: str,
-        criteria: list[dict[str, Any]],
-        criterion_mapping_metadata: dict[str, Any],
-    ) -> list[int]:
-        """Extract mapped concept IDs from eligibility criteria matching the outcome label.
-
-        Splits the outcome label by common separators (or, and, comma, semicolon)
-        and matches each sub-term against criterion descriptions via substring
-        containment. Returns a deduplicated list of concept IDs from matching
-        criteria.
-        """
-        if not outcome_label or not criteria:
-            return []
-
-        sub_terms = [
-            t.strip().lower()
-            for t in re.split(r"\s+or\s+|\s+and\s+|[,;]", outcome_label)
-            if t.strip()
-        ]
-        if not sub_terms:
-            return []
-
-        matched_ids: set[int] = set()
-        for criterion in criteria:
-            crit_desc = (criterion.get("description") or "").strip().lower()
-            if not crit_desc:
-                continue
-            for term in sub_terms:
-                if term in crit_desc or crit_desc in term:
-                    crit_id = str(criterion.get("id", ""))
-                    meta = criterion_mapping_metadata.get(crit_id)
-                    if meta and isinstance(meta, dict):
-                        for cid in meta.get("selectedConceptIds", []):
-                            if isinstance(cid, int):
-                                matched_ids.add(cid)
-                    break
-
-        return list(matched_ids)
 
     def _build_seeded_condition_circe(
         self,
@@ -11110,11 +11021,6 @@ class TTEService:
         description = " ".join((study.get("description") or "").split())
         title = " ".join((study.get("name") or "").split())
         fallback_text = description or title
-        parsed = (
-            self._parse_description(fallback_text)
-            if fallback_text
-            else {"treatment": "", "comparator": "", "outcome": "", "population": ""}
-        )
 
         eligibility = study.get("eligibility") or {}
         treatment_arms = study.get("treatmentArms") or []
@@ -11143,30 +11049,22 @@ class TTEService:
             ],
         ]
 
-        if not any(fragment.strip() for fragment in eligibility_fragments) and parsed["population"]:
-            eligibility_fragments.append(parsed["population"])
-        if not any(fragment.strip() for fragment in treatment_fragments):
-            if parsed["treatment"]:
-                treatment_fragments.append(parsed["treatment"])
-            if parsed["comparator"]:
-                treatment_fragments.append(parsed["comparator"])
-        if not any(fragment.strip() for fragment in outcome_fragments) and parsed["outcome"]:
-            outcome_fragments.append(parsed["outcome"])
-
+        # An empty section falls back to the description or title verbatim in
+        # `_build_provisional_section_source`; nothing is parsed out of either (A24).
         return ProvisionalStudyIR(
             study_type=study.get("studyType") or "comparative",
             title=title,
             description=description,
             source_text=fallback_text,
-            target_text=canonical_target or parsed["population"],
+            target_text=canonical_target or "",
             comparator_text=(
                 treatment_arms[1].get("name")
                 if len(treatment_arms) > 1 and treatment_arms[1].get("name")
-                else parsed["comparator"]
+                else ""
             ),
             primary_outcome_text=primary_outcome.get("cohortName")
             or primary_outcome.get("description")
-            or parsed["outcome"],
+            or "",
             eligibility=self._build_provisional_section_source(
                 "eligibility", eligibility_fragments, description, title
             ),
@@ -11443,28 +11341,12 @@ class TTEService:
         self, study: dict[str, Any], provisional_ir: ProvisionalStudyIR
     ) -> dict[str, Any]:
         eligibility = deepcopy(study.get("eligibility") or {})
-        parsed = (
-            self._parse_description(provisional_ir.source_text)
-            if provisional_ir.source_text
-            else {"population": ""}
-        )
-
         inclusion = deepcopy(eligibility.get("inclusionCriteria") or [])
-        if not inclusion and parsed.get("population"):
-            inclusion = [
-                {
-                    "id": 1,
-                    "description": parsed["population"],
-                    "conceptSetId": None,
-                    "conceptSetName": "",
-                }
-            ]
 
         return {
             "targetCohortId": eligibility.get("targetCohortId"),
             "targetCohortName": self._get_target_display_label(eligibility)
             or provisional_ir.target_text
-            or parsed.get("population")
             or "Target population to be specified",
             "inclusionCriteria": inclusion,
             "exclusionCriteria": deepcopy(eligibility.get("exclusionCriteria") or []),
@@ -11480,11 +11362,6 @@ class TTEService:
         self, study: dict[str, Any], provisional_ir: ProvisionalStudyIR
     ) -> list[dict[str, Any]]:
         existing = deepcopy(study.get("treatmentArms") or [])
-        parsed = (
-            self._parse_description(provisional_ir.source_text)
-            if provisional_ir.source_text
-            else {"treatment": "", "comparator": ""}
-        )
         existing_treatment_name = (existing[0].get("name") if existing else "") or ""
         existing_comparator_name = (existing[1].get("name") if len(existing) > 1 else "") or ""
         provisional_comparator_name = (
@@ -11492,14 +11369,9 @@ class TTEService:
             if provisional_ir.comparator_text not in {"", "Comparator"}
             else ""
         )
-        treatment_name = (
-            parsed.get("treatment")
-            or existing_treatment_name
-            or "Treatment"
-        )
+        treatment_name = existing_treatment_name or "Treatment"
         comparator_name = (
             provisional_comparator_name
-            or parsed.get("comparator")
             or existing_comparator_name
             or "Comparator"
         )
@@ -11535,16 +11407,10 @@ class TTEService:
     ) -> dict[str, Any]:
         outcomes = deepcopy(study.get("outcomes") or {})
         primary = deepcopy(outcomes.get("primary") or {})
-        parsed = (
-            self._parse_description(provisional_ir.source_text)
-            if provisional_ir.source_text
-            else {"outcome": ""}
-        )
         primary_text = (
             primary.get("cohortName")
             or primary.get("description")
             or provisional_ir.primary_outcome_text
-            or parsed.get("outcome")
             or "Primary outcome to be defined"
         )
         primary["cohortId"] = primary.get("cohortId")
@@ -12189,135 +12055,8 @@ class TTEService:
             **planner_excepted_field,
         }
 
-    def _heuristic_draft(self, description: str) -> dict[str, Any]:
-        """Build a draft study from a natural-language question.
-
-        Refuses when the parse recovered no structure. ``_parse_description`` only
-        finds a comparator, an outcome, or a population when the sentence actually
-        contains one; ``treatment`` is its catch-all and falls back to the whole input,
-        so a non-empty treatment is never evidence that anything was understood. With
-        all three empty, every field of the returned study is either a constant default
-        or the input echoed into an arm name -- zero eligibility criteria, a target of
-        "Target population to be specified", an undefined outcome.
-
-        That shell is what a failed NCT extraction used to become: the caller hands
-        this method ``f"Target trial emulation from {nct_id}"``, which contains no
-        comparator, outcome, or population, and the result was recorded as a completed
-        draft proposal. Refusing here means an extraction failure stays a failure.
-
-        The path is kept, not removed: ``generate_draft`` and ``run_generate_draft``
-        pass a real question ("compare X vs Y for Z in P") and get a real draft back.
-
-        :param description: the natural-language study description.
-        :returns: a draft study payload.
-        :raises ValueError: nothing was recovered from ``description``.
-        """
-        normalized = " ".join(description.strip().split())
-        parsed = self._parse_description(normalized)
-        if not (parsed["comparator"] or parsed["outcome"] or parsed["population"]):
-            raise ValueError(
-                f"Heuristic draft refused for {normalized!r}: no comparator, outcome, or "
-                f"population could be read from it, so the draft would be a shell with "
-                f"zero eligibility criteria and an unspecified target. A shell recorded "
-                f"as a completed proposal is a failed generation wearing a success."
-            )
-        study_type = "comparative" if parsed["comparator"] else "single_arm"
-        study_name = self._build_study_name(parsed)
-        eligibility_name = parsed["population"] or "Target population to be specified"
-
-        inclusion_criteria = []
-        if parsed["population"]:
-            inclusion_criteria.append({"id": 1, "description": parsed["population"]})
-        if "new user" in normalized.lower():
-            inclusion_criteria.append({"id": len(inclusion_criteria) + 1, "description": "New-user design"})
-
-        treatment_arms = [{"id": 1, "name": parsed["treatment"], "cohortId": None, "cohortName": ""}]
-        if parsed["comparator"]:
-            treatment_arms.append(
-                {"id": 2, "name": parsed["comparator"], "cohortId": None, "cohortName": ""}
-            )
-
-        return {
-            "id": None,
-            "name": study_name,
-            "description": normalized,
-            "studyType": study_type,
-            "comparisonMode": "explicit_comparator" if parsed["comparator"] else "target_minus_treatment",
-            "status": "draft",
-            "eligibility": {
-                "targetCohortId": None,
-                "targetCohortName": eligibility_name,
-                "inclusionCriteria": inclusion_criteria,
-                "exclusionCriteria": [],
-            },
-            "treatmentArms": treatment_arms,
-            "outcomes": {
-                "primary": {
-                    "cohortId": None,
-                    "cohortName": parsed["outcome"] or "Primary outcome to be defined",
-                    "description": parsed["outcome"] or "",
-                },
-                "secondary": [],
-            },
-            "timeParams": {
-                "followUpDuration": 30,
-                "followUpUnit": "days",
-                "washoutPeriod": 180,
-                "gracePeriod": 30,
-                "minDaysAtRisk": 1,
-            },
-            "analysisSettings": {
-                "outcomeModel": "cox",
-                "adjustForCovariates": True,
-                "psMethod": "matching",
-                "psCaliper": 0.2,
-                "trimByPs": True,
-                "trimFraction": 0.05,
-            },
-            "executions": [],
-            "results": None,
-        }
-
-    def _parse_description(self, description: str) -> dict[str, str]:
-        text = description.strip()
-        pattern = re.compile(
-            r"^(?:compare\s+)?(?P<treatment>.+?)\s+"
-            r"(?:(?:vs\.?)|versus|compared with|compared to|against)\s+"
-            r"(?P<comparator>.+?)"
-            r"(?:\s+for\s+(?P<outcome>.+?))?"
-            r"(?:\s+(?:in|among)\s+(?P<population>.+))?$",
-            re.IGNORECASE,
-        )
-        match = pattern.match(text)
-        if match:
-            return {
-                "treatment": self._clean_phrase(match.group("treatment")),
-                "comparator": self._clean_phrase(match.group("comparator")),
-                "outcome": self._clean_phrase(match.group("outcome") or ""),
-                "population": self._clean_phrase(match.group("population") or ""),
-            }
-
-        population_match = re.search(r"\b(?:in|among)\s+(.+)$", text, re.IGNORECASE)
-        outcome_match = re.search(r"\bfor\s+(.+?)(?:\s+(?:in|among)\s+.+)?$", text, re.IGNORECASE)
-
-        return {
-            "treatment": self._clean_phrase(text),
-            "comparator": "",
-            "outcome": self._clean_phrase(outcome_match.group(1) if outcome_match else ""),
-            "population": self._clean_phrase(population_match.group(1) if population_match else ""),
-        }
-
     def _clean_phrase(self, value: str) -> str:
         return re.sub(r"\s+", " ", value.strip(" ,.;:")).strip()
-
-    def _build_study_name(self, parsed: dict[str, str]) -> str:
-        if parsed["comparator"]:
-            base = f'{parsed["treatment"]} vs {parsed["comparator"]}'
-        else:
-            base = parsed["treatment"]
-        if parsed["outcome"]:
-            return f"{base} for {parsed['outcome']}"
-        return base
 
     def _build_suggestions(
         self, description: str, study_payload: dict[str, Any], generation_mode: str

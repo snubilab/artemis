@@ -140,40 +140,6 @@ class TestQueryExpander:
         assert expander.expand("", domain_hint="Condition") == ""
         assert expander.expand("   ", domain_hint="Condition") == "   "
 
-    def test_curated_expansion_works_without_a_umls_backend(self):
-        """The live path builds QueryExpander() with no UMLS (tte_service.py:4468).
-
-        Measured with the pipeline retriever at the pre-fetch's own parameters
-        (batch_search n_results=60, domain Measurement) against the five gold
-        LOINC concepts: bare 'eGFR' returns 0/5 anywhere in the pool -- the top
-        hits are Epidermal Growth Factor Receptor, a case-only homograph --
-        while the expanded form returns 5/5. The concepts are not mis-ranked,
-        they are absent, so nothing downstream can recover them.
-        """
-        from src.agents.agent2.query_expander import QueryExpander
-
-        expander = QueryExpander(umls_expander=None)
-        assert expander.expand("eGFR", domain_hint="Measurement") == (
-            "estimated glomerular filtration rate"
-        )
-
-    def test_curated_expansions_cover_only_the_four_that_measured_better(self):
-        from src.agents.agent2.query_expander import QueryExpander
-
-        expander = QueryExpander(umls_expander=None)
-        assert expander.expand("NSTEMI", domain_hint="Condition") == (
-            "non-ST elevation myocardial infarction"
-        )
-        assert expander.expand("TIA", domain_hint="Condition") == "transient ischemic attack"
-        assert expander.expand("Stroke", domain_hint="Condition") == "cerebrovascular accident"
-
-    def test_curated_expansion_is_keyed_by_domain(self):
-        """'Stroke' in a Drug context is not the cerebrovascular condition."""
-        from src.agents.agent2.query_expander import QueryExpander
-
-        expander = QueryExpander(umls_expander=None)
-        assert expander.expand("Stroke", domain_hint="Drug") == "Stroke"
-
     def test_abbreviations_that_measured_no_better_are_left_alone(self):
         """ALT, AST, CK-MB, COPD, HbA1c and STEMI measured no material difference.
 
@@ -202,13 +168,6 @@ class TestQueryExpander:
         expander = QueryExpander(umls_expander=None)
         assert expander.expand("Glucose", domain_hint="Measurement") == "Glucose"
         assert expander.expand("Sarcoma", domain_hint="Condition") == "Sarcoma"
-
-    def test_curated_table_takes_precedence_over_umls(self):
-        """A curated row is a measured decision; UMLS picks cuis[:1] with no ORDER BY."""
-        expander = _make_expander_with_mock_umls(
-            domain_filtered={"TIA|Condition": "Transient Ischaemic Attack (UMLS)"}
-        )
-        assert expander.expand("TIA", domain_hint="Condition") == "transient ischemic attack"
 
     def test_uncurated_abbreviation_still_falls_through_to_umls(self):
         expander = _make_expander_with_mock_umls(

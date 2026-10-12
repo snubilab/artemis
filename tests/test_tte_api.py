@@ -704,31 +704,30 @@ def test_study_crud_round_trip_preserves_eligibility_structured_expression(monke
     assert fetch_response.json()["eligibility"]["structuredExpression"] == structured_expression
 
 
-def test_generate_returns_structured_draft(monkeypatch, tmp_path):
+class _TrialAgentDown(RuntimeError):
+    pass
+
+
+def _trial_agent_down(self, description, model_name=None):
+    raise _TrialAgentDown("trial agent unavailable")
+
+
+def test_should_surface_the_trial_agent_failure_when_generating_a_draft(monkeypatch, tmp_path):
+    """No draft is read out of "X vs Y for Z in W" any more (RFC-016 §5, A24)."""
+    monkeypatch.setattr(
+        "src.services.tte_service.TTEService._generate_with_trial_agent", _trial_agent_down
+    )
     client = build_client(monkeypatch, tmp_path)
 
-    response = client.post(
-        "/tte/generate",
-        json={
-            "naturalLanguageDescription": (
-                "Compare dapagliflozin vs DPP4 inhibitors for MACE in adults with T2DM"
-            )
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["study"]["studyType"] == "comparative"
-    assert payload["study"]["treatmentArms"][0]["name"].lower() == "dapagliflozin"
-    assert payload["study"]["treatmentArms"][1]["name"].lower() == "dpp4 inhibitors"
-    primary_outcome_name = payload["study"]["outcomes"]["primary"]["cohortName"].lower()
-    assert primary_outcome_name in {"mace", "major adverse cardiovascular events"}
-    assert payload["suggestions"]
-    assert payload["meta"]["generationMode"] in {"heuristic", "trial_agent"}
-    if payload["meta"]["generationMode"] == "heuristic":
-        assert payload["meta"]["fallbackReason"]
-    else:
-        assert payload["meta"]["fallbackReason"] is None
+    with pytest.raises(_TrialAgentDown):
+        client.post(
+            "/tte/generate",
+            json={
+                "naturalLanguageDescription": (
+                    "Compare dapagliflozin vs DPP4 inhibitors for MACE in adults with T2DM"
+                )
+            },
+        )
 
 
 def test_generate_rejects_non_local_model_override(monkeypatch, tmp_path):
@@ -756,6 +755,16 @@ def test_generate_rejects_non_local_model_override(monkeypatch, tmp_path):
 
 def test_generate_accepts_local_vllm_model_override(monkeypatch, tmp_path):
     """The legitimate escape hatch (an explicit local vLLM model) still works."""
+    seen: list[str | None] = []
+
+    def trial_agent(self, description, model_name=None):
+        seen.append(model_name)
+        return {"name": "draft", "description": description, "studyType": "comparative",
+                "status": "draft"}
+
+    monkeypatch.setattr(
+        "src.services.tte_service.TTEService._generate_with_trial_agent", trial_agent
+    )
     client = build_client(monkeypatch, tmp_path)
 
     response = client.post(
@@ -769,6 +778,7 @@ def test_generate_accepts_local_vllm_model_override(monkeypatch, tmp_path):
     )
 
     assert response.status_code == 200
+    assert seen == ["vllm/google/gemma-4-E4B-it"]
 
 
 def test_generate_from_nct_rejects_non_local_model_override(monkeypatch, tmp_path):
@@ -2846,8 +2856,10 @@ def test_suggest_treatment_creates_section_specific_artifact(monkeypatch, tmp_pa
     artifact = client.get(f'/tte/artifacts/{payload["artifactId"]}').json()
     assert artifact["kind"] == "treatment_suggestion"
     assert set(artifact["payload"]["proposedChanges"].keys()) == {"treatmentArms"}
-    assert artifact["payload"]["proposedChanges"]["treatmentArms"][0]["name"] == "dapagliflozin"
-    assert artifact["payload"]["proposedChanges"]["treatmentArms"][1]["name"] == "DPP4 inhibitors"
+    # Arm names are not read out of the description (RFC-016 §5, A24): a study with no
+    # arms gets the placeholders.
+    assert artifact["payload"]["proposedChanges"]["treatmentArms"][0]["name"] == "Treatment"
+    assert artifact["payload"]["proposedChanges"]["treatmentArms"][1]["name"] == "Comparator"
     assert artifact["payload"]["meta"]["mappingQuality"]["status"] == "ok"
     assert artifact["payload"]["meta"]["mappingQuality"]["seedCount"] == 4
     assert_capability_signal(
