@@ -3,6 +3,18 @@
 Every line here cost something to learn in a real session. Read this instead of
 rediscovering it; cite it in a brief rather than retyping it.
 
+## Two rules the user set — every brief repeats them, every change obeys them
+
+- **No examples in any LLM prompt** — real or invented protocol lines, sample JSON,
+  input→output pairs, WRONG/RIGHT pairs, trigger-word lists, measurement-history prose.
+- **No regex / word list / substring test that decides what natural-language text means**
+  — generic English words count. Meaning goes into an extraction-schema field whose
+  source span the code checks against `protocolLine`, and nothing else.
+
+Both were broken repeatedly while the user had already said no: generic patterns were
+defended as "not case-specific", and this repo's own guide once told agents to
+"synthesise" invented examples. Full text: `AGENTS.md` § PROMPTS AND TEXT RULES.
+
 ## The project's question
 
 Does the system turn natural-language eligibility criteria into CIRCE JSON
@@ -126,7 +138,8 @@ and gold disagree, **the protocol line decides**.
 
 ## The prompts quoted the corpus they are evaluated on
 
-Fixed in 623e663; **every score recorded before it is suspect.** All six evaluated
+623e663 replaced the corpus quotes with invented examples — itself a violation of the
+rule above, now being removed. **Every score recorded before 623e663 is suspect.** All six evaluated
 trials had text of their own in the few-shot examples — CAROLINA 10 spans, ARISTOTLE 9,
 CARMELINA 8, EMPA-REG 6, PLATO 4, LEADER 2. Full list of affected criteria and the
 reasoning in `AGENTS.md` § EVALUATION; do not restate it elsewhere.

@@ -27,6 +27,31 @@
 | Tests | `tests/` | Unit tests plus Docker-backed integration tests |
 | Docs | `docs/` | ADRs, daily notes, debugging logs, benchmark history |
 
+## PROMPTS AND TEXT RULES (the user's standing rules — read before touching any prompt or parser)
+
+1. **No examples in any prompt that reaches an LLM.** Not real protocol text, not invented
+   or "synthesised" lines, not filled-in sample JSON, input→output pairs, counterexamples
+   ("WRONG/RIGHT"), lists of trigger words to recognise, or prose recounting past
+   measurements. A prompt states field definitions and the decision to make, nothing else.
+   This includes text a library appends (LangChain `get_format_instructions()` carries a
+   foo/bar/baz example): write the schema description yourself.
+2. **No rules that read natural language to decide meaning.** No regex, word list,
+   keyword set or substring test over protocol / criterion / description / entity text /
+   LLM free text that changes a criterion's logic, window, grouping, exception, domain,
+   value, unit, route, skip or concept choice — **generic English words count**, not only
+   trial- or concept-specific ones. The same holds for reading OMOP concept names as text;
+   use vocabulary relationships (`concept_relationship`, `concept_ancestor`, LOINC parts,
+   ATC codes) instead.
+3. **Where meaning is needed, the extraction model decides it in a schema field and quotes
+   its source span; code only checks that the span is a substring of `protocolLine`.**
+   RFC-014 and RFC-015 are the pattern.
+4. Parsing machine formats is not covered by rule 2: UCUM unit strings, JSON from LLM
+   output, ids, CIRCE / OMOP field names, LOINC structured attributes, numbers.
+
+Inventory of what violated these on 2026-10-12 and the removal plan:
+`docs/inventory/2026-10-12_prompt_examples.{md,json}`,
+`docs/inventory/2026-10-12_text_rules.{md,json}`.
+
 ## CONVENTIONS
 
 - Use `src/services/tte_service.py` as the orchestration boundary before adding new API route logic.
@@ -175,8 +200,10 @@ that reaches an LLM shares a threshold-bearing span (Gate A) or a 30+ character
 connective-bearing span (Gate B) with any trial in `EVALUATED_TRIALS`. Adding a trial
 there re-arms the gate against that trial's text. **Substituting one analyte for another
 moves the defect rather than removing it** — 4aa1f08 rewrote a bilirubin example to GGT,
-and both ARISTOTLE's clause opening and GGT itself were still in the corpus. Synthesise
-the line instead; an invented protocol sentence cannot be in the corpus by construction.
+and both ARISTOTLE's clause opening and GGT itself were still in the corpus. **Do not
+replace it with an invented line either** — prompts carry no examples at all (see PROMPTS
+AND TEXT RULES). An earlier version of this paragraph said "synthesise the line instead";
+that instruction is how 54 of the 106 production examples got in (623e663).
 
 **The falsifiable test of 623e663.** The contamination is not only a measurement
 problem; it reached the output. CARMELINA's delivered Circe carries a bilirubin leaf at

@@ -502,11 +502,11 @@ def _report(findings: list[dict], gate: str) -> str:
         ]
     lines += [
         "",
-        "Replace the borrowed text with a synthesised line that teaches the same",
-        "shape -- an invented protocol sentence cannot be in the corpus by",
-        "construction. Substituting one analyte for another moves the defect; it",
-        "does not remove it. If the span is genuinely ordinary clinical or",
-        "statistical English, add it to ALLOWED_SPANS with the reason written out.",
+        "Remove the borrowed text. Do not replace it with an invented example:",
+        "prompts carry no examples at all (AGENTS.md, PROMPTS AND TEXT RULES).",
+        "State the field definition or the decision instead. If the span is",
+        "genuinely ordinary clinical or statistical English, add it to",
+        "ALLOWED_SPANS with the reason written out.",
     ]
     return "\n".join(lines)
 
