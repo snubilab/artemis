@@ -18,11 +18,11 @@
 | 5절 문서 구간 나누기 (S1–S8, A6) | `fe7839e`(분할 단계 도입), `9cf4669`(검증된 fragment가 끝내지 않는 마지막 criterion을 내보내지 않음), `ac638dc`(PDF에서 구간이 나오면 그것을 사용) |
 | 4절 구조적 대체 | `d77d544`부터 `37bd1d8`까지(group label이 자체 Demographic 규칙을 내지 않음, 4634f12 A28, 90313fe A20, 406ab78, 37bd1d8 C8), `10847ec`(A26/A27 repair 모듈에 남은 CIRCE enum 위치를 가드에서 허용) |
 | 5절 교체 없는 삭제 (P5) | `fa7c41a`, `5fbade3`, `266971e`, `54ce6ca` |
-| 병합 | `06862b7`(p5-dead), `67981aa`(p3-structural) |
+| 2단계 `relation`, `timing` | `8575878`(필드 추가, A4/E3 window 재근거 제거), `8c652cd`(group Type을 stated relation에서, prospective 기준 skip, 검사 (z), A18·gate (o) 제거), `34fc910`(planner 분할의 group type을 relation이 결정, A9 gate 2 제거), `3023d50`(A2, A10, A14 제거), `72924ee`(검사 (z)를 게이트 진입점에서 확인), `6fb9ecf`(`entity_text`가 빈 기준은 `description`을 그대로 seed로 쓰고 행에 표시, 게이트 WARN) |
+| 병합 | `06862b7`(p5-dead), `67981aa`(p3-structural), `1e6b452`(p3-relation) |
 
 **진행 중 (병합되지 않음)**
 
-- 2단계 `relation`, `timing`. 브랜치 `p3-relation`에 `8575878`(필드 추가, A4/E3 window 재근거 제거), `8c652cd`(group Type을 stated relation에서, A18 제거), `34fc910`(planner 분할의 group type을 relation이 결정, A9 gate 2 제거), `3023d50`(A2, A10, A14 제거), `72924ee`(게이트 검사 (z)) 가 있고, `67981aa`에는 들어 있지 않다.
 - 3단계 `quantity_kind`, `reference_bound`, `threshold_span`. 브랜치 `p3-quantity`가 있으나 `67981aa` 위에 커밋이 없다.
 - 4단계의 `route`, `specimen`, `no_entity`. 브랜치 `p3-route`가 있으나 `67981aa` 위에 커밋이 없다.
 
