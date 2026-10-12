@@ -100,8 +100,6 @@ RULE_MODULES = frozenset(
         "src/utils/criterion_seed.py",
         "src/utils/naming_words.py",
         "src/agents/agent1/eligibility_section.py",
-        "src/services/range_disjunction_repair.py",
-        "src/services/restated_absence_repair.py",
         "src/services/dose_form_route.py",
         "src/utils/disease_anchor.py",
         "src/agents/agent2/complexity_router.py",

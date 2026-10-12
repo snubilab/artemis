@@ -612,9 +612,9 @@ def refuse_unstated_unit_bound(vc: Any, label: str) -> None:
 
     Converting to the CDM's conventional unit is the alternative, and it was rejected on
     both halves. It needs a per-analyte conversion table -- a clinical decision with
-    nowhere auditable to live, and one this module already refuses to grow for the
-    related question (see :data:`_ANALYTE_CONVENTIONAL_UNITS`, which records units and
-    deliberately records no factors). And on the motivating criterion it buys nothing:
+    nowhere auditable to live, and the related question already needs no table here
+    (:func:`check_analyte_unit` reads a unit's fit off the member concepts' LOINC
+    property and converts nothing). And on the motivating criterion it buys nothing:
     ``/mm3`` resolves to 8785, and ``Unit [8785]`` matches 0 of the same 41,114
     ``synthea_cdm`` platelet rows, because that CDM writes 8848 ``10*3/uL``.
 
