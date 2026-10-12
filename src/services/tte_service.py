@@ -176,7 +176,11 @@ from src.utils.criterion_seed import (
     criterion_mapper_seed,
     missing_entity_record,
 )
-from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
+from src.utils.disease_anchor import (
+    DISEASE_ANCHOR_KEY,
+    anchor_candidates,
+    select_disease_anchor,
+)
 from src.utils.exceptions import DBConnectionError, DBQueryError, LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
 
@@ -6401,9 +6405,10 @@ class TTEService:
         # rule is `LV systolic or diastolic dysfunction`, one of several ALTERNATIVE
         # cardiovascular-risk qualifiers, so its comparator entered on a fraction of the
         # trial population, and CARMELINA and EMPA-REG were right only because their
-        # diabetes rule happened to be written first. `select_disease_anchor` scores the
-        # study's own presence-rule Condition sets against what the trial registered and
-        # refuses rather than guess -- see `src/utils/disease_anchor.py` for the rule.
+        # diabetes rule happened to be written first. `select_disease_anchor` matches the
+        # study's own presence-rule Condition sets against the concept ids the trial's
+        # registered conditions map to (RFC-016 §4, C8: no name is compared) and refuses
+        # rather than guess -- see `src/utils/disease_anchor.py` for the rule.
         #
         # The pre-existing "nothing to anchor on at all" branch is preserved verbatim,
         # including its warning and its return: a study whose rules read no Condition
@@ -6419,7 +6424,15 @@ class TTEService:
             )
             return base
         registered_conditions = ((study or {}).get("trialMetadata") or {}).get("conditions")
-        disease_cs_id = select_disease_anchor(base, registered_conditions)
+        registered_ids = self._registered_condition_concept_ids(registered_conditions)
+        disease_cs_id = select_disease_anchor(base, registered_ids)
+        # The gate re-derives the choice from the store expression with these ids, so
+        # the mapper's answer travels with the file rather than being re-asked.
+        base[DISEASE_ANCHOR_KEY] = {
+            "registeredConditions": list(registered_conditions or []),
+            "registeredConceptIds": registered_ids,
+            "codesetId": disease_cs_id,
+        }
 
         # Swap PrimaryCriteria to ConditionOccurrence.
         base["PrimaryCriteria"] = {
@@ -6433,6 +6446,41 @@ class TTEService:
             disease_cs_id,
         )
         return base
+
+    def _registered_condition_concept_ids(
+        self, registered_conditions: Sequence[str] | None
+    ) -> list[int] | None:
+        """The concept ids the trial's registered conditions map to, through Agent 2.
+
+        RFC-016 §4 (C8): the disease anchor compares concept ids, never names, so each
+        ``conditionsModule.conditions`` string goes through the same mapper the criteria
+        do, as a Condition. A string the mapper refuses contributes nothing and is said
+        out loud; the anchor then refuses if nothing is left.
+
+        :param registered_conditions: ``trialMetadata.conditions``.
+        :returns: the included concept ids of every mapped condition, sorted; None when
+            the trial registers no condition.
+        """
+        if not registered_conditions:
+            return None
+        found: set[int] = set()
+        for condition in registered_conditions:
+            try:
+                mapped = self._recommend_seeded_concept_set(
+                    str(condition), expected_domain="Condition"
+                )
+            except CriterionRefused as refused:
+                logging.warning(
+                    "[TTE] registered condition %r maps to no concept set (%s); it does "
+                    "not take part in choosing the disease anchor",
+                    condition, refused,
+                )
+                continue
+            for item in (mapped.get("expression") or {}).get("items") or []:
+                concept_id = ((item or {}).get("concept") or {}).get("CONCEPT_ID")
+                if concept_id is not None and not (item or {}).get("isExcluded"):
+                    found.add(int(concept_id))
+        return sorted(found)
 
     @staticmethod
     def _intervention_alias_candidates(study: dict[str, Any] | None) -> list[str] | None:

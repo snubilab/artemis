@@ -11,6 +11,13 @@ be written first.
 The trial publishes what it is about: `protocolSection.conditionsModule.conditions`
 on ClinicalTrials.gov, e.g. `["Diabetes", "Diabetes Mellitus, Type 2"]` for
 NCT01179048. That is the fact the anchor is chosen against here.
+
+RFC-016 §4 (C8): each registered string goes through the Agent 2 mapper and the anchor
+is the candidate set HOLDING one of the concept ids it maps to; no name is compared. The
+mapper is stubbed with the standard SNOMED concept of each string (synthea23m:
+201820 'Diabetes mellitus', 201826 'Type 2 diabetes mellitus', 4215140 'Acute coronary
+syndrome'). The CONCEPT_NAMEs in the sets below are display text only -- nothing reads
+them now.
 """
 from __future__ import annotations
 
@@ -25,6 +32,26 @@ T2DM = 201826
 T1DM = 201254
 LIRAGLUTIDE = 40170911
 LEADER_CONDITIONS = ["Diabetes", "Diabetes Mellitus, Type 2"]
+#: What the stubbed mapper answers for each registered string.
+MAPPED = {
+    "Diabetes": [201820],
+    "Diabetes Mellitus, Type 2": [T2DM],
+    "Acute Coronary Syndrome": [4215140],
+}
+
+
+def _stub_recommend(seed_text: str, *, expected_domain: str | None = None, **_: Any) -> dict:
+    if seed_text not in MAPPED:
+        from src.utils.criterion_refusal import REFUSAL_NO_CONCEPT_MAPPING, CriterionRefused
+
+        raise CriterionRefused(
+            f"No concept mapping found for {seed_text!r}", code=REFUSAL_NO_CONCEPT_MAPPING
+        )
+    return {
+        "name": seed_text,
+        "domain": expected_domain or "Condition",
+        "expression": {"items": [_concept(cid, seed_text) for cid in MAPPED[seed_text]]},
+    }
 
 
 def _concept(concept_id: int, name: str, domain: str = "Condition") -> dict[str, Any]:
@@ -113,6 +140,7 @@ def _entry_codeset(swapped: dict[str, Any]) -> int:
 @pytest.fixture
 def service(monkeypatch) -> TTEService:
     svc = TTEService.__new__(TTEService)
+    svc._recommend_seeded_concept_set = _stub_recommend
     monkeypatch.delenv("TTE_DRUG_ANCHORED_ENTRY", raising=False)
     return svc
 
@@ -124,6 +152,17 @@ class TestTheAnchorIsTheTrialsRegisteredCondition:
             _leader_base(), {}, study=_study(LEADER_CONDITIONS)
         )
         assert _entry_codeset(swapped) == 21
+
+    def test_should_record_the_concept_ids_the_registered_conditions_map_to(self, service):
+        """The gate re-derives the anchor from these, so they travel with the file."""
+        swapped = service._swap_primary_to_disease(
+            _leader_base(), {}, study=_study(LEADER_CONDITIONS)
+        )
+        assert swapped["_diseaseAnchor"] == {
+            "registeredConditions": LEADER_CONDITIONS,
+            "registeredConceptIds": [201820, T2DM],
+            "codesetId": 21,
+        }
 
     def test_should_keep_every_rule_when_the_anchor_is_chosen(self, service):
         swapped = service._swap_primary_to_disease(
@@ -157,7 +196,7 @@ class TestTheAnchorIsTheTrialsRegisteredCondition:
     def test_should_refuse_when_two_rules_name_the_condition_over_different_concepts(
         self, service
     ):
-        """Two sets both entitled to the anchor, holding different concepts: a real
+        """Two sets both holding the mapped concept, with different members: a real
         ambiguity, so the entry would be an arbitrary pick either way."""
         base = _leader_base()
         base["ConceptSets"].append(
@@ -165,7 +204,10 @@ class TestTheAnchorIsTheTrialsRegisteredCondition:
                 "id": 22,
                 "name": "Diabetes Mellitus, Type 2",
                 "expression": {
-                    "items": [_concept(443767, "Disorder due to type 2 diabetes mellitus")]
+                    "items": [
+                        _concept(T2DM, "Type 2 diabetes mellitus"),
+                        _concept(443767, "Disorder of eye due to diabetes mellitus"),
+                    ]
                 },
             }
         )
@@ -216,8 +258,8 @@ class TestResemblanceIsNotCorrespondence:
     A first version of the matcher took the best partial token overlap above zero and
     anchored them on `Symptomatic coronary heart disease`, which scored 0.444 against
     `"Diabetes Mellitus, Type 2"` because one of its members is named `Coronary artery
-    disease due to type 2 diabetes mellitus`. A comorbidity qualifier inside a concept
-    name is not the trial's indication, so the anchor must refuse rather than take it.
+    disease due to type 2 diabetes mellitus`. A set that does not HOLD the concept the
+    registered condition maps to is not the trial's indication, so the anchor refuses.
     """
 
     def test_should_refuse_when_only_a_comorbidity_qualifier_mentions_the_condition(
@@ -243,7 +285,7 @@ class TestResemblanceIsNotCorrespondence:
             _condition_rule("LV systolic or diastolic dysfunction", 19),
             _condition_rule("Symptomatic coronary heart disease", 6),
         ]
-        with pytest.raises(ValueError, match="names the trial's registered condition"):
+        with pytest.raises(ValueError, match="registered condition maps to"):
             service._swap_primary_to_disease(base, {}, study=_study(LEADER_CONDITIONS))
 
     def test_should_anchor_when_two_matching_rules_hold_the_same_concepts(self, service):

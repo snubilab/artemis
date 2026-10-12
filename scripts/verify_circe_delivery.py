@@ -33,8 +33,11 @@ Checks per file:
     cardiovascular-risk qualifiers) instead of type 2 diabetes, which is a fraction of
     the trial population. The expected anchor comes from
     ``src.utils.disease_anchor.expected_anchor_concept_ids``, the same function the
-    generator chooses with, against ``trialMetadata.conditions``. A study with no
-    registered condition FAILS rather than passing unchecked -- backfill it with
+    generator chooses with, against the concept ids ``trialMetadata.conditions`` were
+    mapped to -- read from the file's ``_diseaseAnchor`` record, since the match is by
+    concept id and never by name (RFC-016 §4, C8). A file without that record, or a
+    study with no registered condition and competing candidates, FAILS rather than
+    passing unchecked -- backfill the conditions with
     ``scripts/backfill_registered_conditions.py``.
 
 (g) every criterion's concept set shares at least one OMOP domain with the CDM
@@ -419,7 +422,11 @@ from src.utils.delivery_mode import (  # noqa: E402
     DeliveryModeConflictError,
     resolve_drug_anchored_entry,
 )
-from src.utils.disease_anchor import DiseaseAnchorError, expected_anchor_concept_ids
+from src.utils.disease_anchor import (
+    DISEASE_ANCHOR_KEY,
+    DiseaseAnchorError,
+    expected_anchor_concept_ids,
+)
 from src.utils.presence_unit_allowlist import lab_test_axes  # noqa: E402
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
@@ -2669,8 +2676,19 @@ def main(argv: list[str] | None = None) -> int:
             (file_domain, file_concept_ids) != (store_domain, store_concept_ids)
         ):
             registered = (study.get("trialMetadata") or {}).get("conditions")
+            # The concept ids the registered conditions were mapped to travel with the
+            # file (RFC-016 §4, C8: matched by concept id, never by name); the choice is
+            # re-derived here from the STORE expression with them.
+            anchor_record = expression.get(DISEASE_ANCHOR_KEY)
             try:
-                expected_anchor = expected_anchor_concept_ids(store_structured, registered)
+                if not isinstance(anchor_record, dict):
+                    raise DiseaseAnchorError(
+                        f"the file carries no {DISEASE_ANCHOR_KEY} record of the concept ids "
+                        "the trial's registered conditions map to"
+                    )
+                expected_anchor = expected_anchor_concept_ids(
+                    store_structured, anchor_record.get("registeredConceptIds")
+                )
             except DiseaseAnchorError as exc:
                 reasons.append(f"disease anchor unverifiable: {exc}")
             else:

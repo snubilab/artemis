@@ -9,7 +9,11 @@ qualifiers -- rather than on type 2 diabetes [201826]. Measured on the real file
     leader_comparator.circe.json   PASS   entry: disease-anchored comparator swap
 
 Check (h) closes that by asking the same function the generator chooses with
-(`src.utils.disease_anchor`) what the anchor should have been.
+(`src.utils.disease_anchor`) what the anchor should have been. The match is by concept id
+(RFC-016 §4, C8): the comparator file carries the producer's `_diseaseAnchor` record of the
+ids the registered conditions were mapped to -- here 201820 'Diabetes mellitus' and
+201826 'Type 2 diabetes mellitus' -- and the gate re-derives the choice from the store
+expression with them.
 """
 from __future__ import annotations
 
@@ -21,6 +25,9 @@ import pytest
 T2DM = 201826
 LV_DYSFUNCTION = 4323898
 LIRAGLUTIDE = 40170911
+LEADER_CONDITIONS = ["Diabetes", "Diabetes Mellitus, Type 2"]
+#: What the producer's mapper gave LEADER_CONDITIONS, as its `_diseaseAnchor` records it.
+LEADER_CONDITION_IDS = [201820, T2DM]
 
 
 def _concept(concept_id: int, name: str, domain: str = "Condition") -> dict[str, Any]:
@@ -98,7 +105,10 @@ def _leader_store_study(conditions: list[str] | None) -> dict[str, Any]:
     }
 
 
-def _write_arms(tmp_path, study, comparator_anchor_codeset: int) -> None:
+_NOT_RECORDED = object()
+
+
+def _write_arms(tmp_path, study, comparator_anchor_codeset: int, registered_ids) -> None:
     """Treatment on the store's drug entry; comparator disease-anchored as given."""
     core = study["eligibility"]["structuredExpression"]
     (tmp_path / "leader_treatment.circe.json").write_text(json.dumps(core))
@@ -106,14 +116,20 @@ def _write_arms(tmp_path, study, comparator_anchor_codeset: int) -> None:
     comparator["PrimaryCriteria"] = {
         "CriteriaList": [{"ConditionOccurrence": {"CodesetId": comparator_anchor_codeset}}]
     }
+    if registered_ids is not _NOT_RECORDED:
+        comparator["_diseaseAnchor"] = {
+            "registeredConditions": (study.get("trialMetadata") or {}).get("conditions") or [],
+            "registeredConceptIds": registered_ids,
+            "codesetId": comparator_anchor_codeset,
+        }
     (tmp_path / "leader_comparator.circe.json").write_text(json.dumps(comparator))
 
 
 @pytest.fixture
 def gate(monkeypatch, tmp_path, capsys):
-    def _run(study, comparator_anchor_codeset: int) -> tuple[int, str]:
+    def _run(study, comparator_anchor_codeset: int, registered_ids=LEADER_CONDITION_IDS):
         monkeypatch.delenv("TTE_STORE_PATH", raising=False)
-        _write_arms(tmp_path, study, comparator_anchor_codeset)
+        _write_arms(tmp_path, study, comparator_anchor_codeset, registered_ids)
         store = tmp_path / "studies.json"
         store.write_text(json.dumps([study]))
 
@@ -128,18 +144,25 @@ def gate(monkeypatch, tmp_path, capsys):
 class TestTheGateChecksWhichConditionTheComparatorEntersOn:
     def test_should_fail_when_the_comparator_enters_on_a_non_indication_condition(self, gate):
         """The measured LEADER file: a legitimate swap onto the wrong condition."""
-        rc, out = gate(_leader_store_study(["Diabetes", "Diabetes Mellitus, Type 2"]), 19)
+        rc, out = gate(_leader_store_study(LEADER_CONDITIONS), 19)
         assert rc == 1, out
         assert "disease anchor mismatch" in out
         assert "4323898" in out
 
     def test_should_pass_when_the_comparator_enters_on_the_registered_condition(self, gate):
-        rc, out = gate(_leader_store_study(["Diabetes", "Diabetes Mellitus, Type 2"]), 21)
+        rc, out = gate(_leader_store_study(LEADER_CONDITIONS), 21)
         assert rc == 0, out
         assert "disease anchor" not in out
 
     def test_should_fail_when_the_store_carries_no_registered_condition(self, gate):
         """Unverifiable is a gap, not a pass: an un-backfilled store must not ship."""
-        rc, out = gate(_leader_store_study(None), 21)
+        rc, out = gate(_leader_store_study(None), 21, registered_ids=None)
         assert rc == 1, out
         assert "disease anchor unverifiable" in out
+
+    def test_should_fail_when_the_file_records_no_mapped_condition_ids(self, gate):
+        """Without the producer's record there is nothing to re-derive the anchor from."""
+        rc, out = gate(_leader_store_study(LEADER_CONDITIONS), 21, registered_ids=_NOT_RECORDED)
+        assert rc == 1, out
+        assert "disease anchor unverifiable" in out
+        assert "_diseaseAnchor" in out
