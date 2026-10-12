@@ -74,12 +74,23 @@ CLASSES: list[dict[str, Any]] = [
         "summary_ko": "환자에게서 측정된 양. 단위가 시간이든 무차원이든 상관없이 head가 검사·활력징후·체격이면 여기.",
         "definition": (
             "The number is the result of a measurement or observation made on the "
-            "patient: a laboratory analyte, a vital sign, an imaging or ECG "
-            "measurement, or a body metric such as weight or BMI. Decide by the head "
-            "-- what the number modifies -- never by the unit. A time unit (msec, "
-            "years) or a dimensionless index (INR) does not move a number out of this "
-            "class."
+            "patient: a laboratory result, a vital sign, an imaging or electrophysiology "
+            "measurement, or a body metric. Decide by the head -- what the number "
+            "modifies -- never by the unit. A time unit or a dimensionless index does not "
+            "move a number out of this class. A bound stated against the upper or lower "
+            "limit of normal belongs here: only measurements have laboratory reference "
+            "ranges."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "The head is a graded clinical scale -> SCORE_GRADE.",
+            "The head is a drug and the number is how much of it is given -> DRUG_DOSE.",
+            "The head is the patient's age, or the only head is a bare time unit -> AGE.",
+            "The number counts events, or is an amount that belongs to an event rather than to a specimen -> EVENT_QUANTITY.",
+            "The number is the distance in time from an anchor event -> TEMPORAL_WINDOW.",
+        ],
         "circe_destination": (
             "Measurement criterion. reference_bound=absolute -> ValueAsNumber with a "
             "sibling Unit array; uln -> RangeHighRatio; lln -> RangeLowRatio."
@@ -115,12 +126,20 @@ CLASSES: list[dict[str, Any]] = [
         "label_ko": "나이",
         "summary_ko": "환자 나이. 시간 단위를 달고 있어도 측정값이 아니라 인구통계 조건이다.",
         "definition": (
-            "The number is the patient's age. This is the case Chia settles against "
-            "the unit: 'Men with age >= 18 years' is a Value, not a Temporal, because "
-            "the head is 'age'. Criteria2Query 3.0 definition 8 adds the elided-head "
-            "rule -- when a bare time unit appears with no other head ('patients who "
-            "are at least 18 years old'), supply 'age' as the head."
+            "The number is the patient's age. Decide by the head, not the unit: a time "
+            "unit whose head is the patient's age is an AGE span, not a temporal one. When "
+            "a bare time unit appears with no other head anywhere in the criterion, the "
+            "head is the patient's age. An anchor phrase may still be present; the head "
+            "test runs first and wins."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "A time unit whose head is a measurement -> MEASUREMENT_VALUE.",
+            "A time unit measuring the distance to an anchor event -> TEMPORAL_WINDOW.",
+            "A time unit measuring how long a state has held -> STATE_DURATION.",
+        ],
         "circe_destination": (
             "DemographicCriteria.Age inside a DemographicCriteriaList. Not a "
             "Measurement, so no ValueAsNumber and no Unit."
@@ -155,10 +174,18 @@ CLASSES: list[dict[str, Any]] = [
         "definition": (
             "The number measures the distance in time between a qualifying event and "
             "the index date or another anchor. Something happened, and the criterion "
-            "constrains when. Chia's Temporal requires a Reference_point linked by "
-            "has_index; in eligibility text that anchor is often elided in exclusion "
-            "criteria, so absence of an explicit anchor does not rule this class out."
+            "constrains when; the head is an event, not a quantity. The anchor is often "
+            "elided in exclusion criteria, so absence of an explicit anchor does not rule "
+            "this class out."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "The criterion requires a state to have persisted for N units -> STATE_DURATION.",
+            "The time expression is an attributive modifier of a procedure name -> NON_CRITERION / protocol_or_procedure_name.",
+            "The head is the patient's age -> AGE.",
+        ],
         "circe_destination": (
             "StartWindow / EndWindow on the correlated criterion, expressed in days. "
             "Never ValueAsNumber."
@@ -194,8 +221,17 @@ CLASSES: list[dict[str, Any]] = [
             "The number measures how long a state has persisted -- a disease's duration "
             "since onset, or how long a treatment has been unchanged. Unlike "
             "TEMPORAL_WINDOW there is no event being placed on the timeline; a "
-            "condition or exposure is required to have held continuously for N units."
+            "condition or exposure is required to have held continuously for N units, "
+            "and the criterion is satisfied by a span of time, not by an event occurring "
+            "inside one."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "A discrete event is being located in time -> TEMPORAL_WINDOW.",
+            "The head is a measured quantity -> MEASUREMENT_VALUE.",
+        ],
         # Settled by ADR-031-A against synthea_cdm and the four site CDMs. Do not
         # revert this to era length: ConditionEra.EraLength measures how densely the
         # condition was *recorded*, not how long it was *held*, so the same JSON gives
@@ -245,8 +281,16 @@ CLASSES: list[dict[str, Any]] = [
         "summary_ko": "투여되는 약의 양. 측정값 경로로 보내면 Measurement에서 아무와도 안 맞는다.",
         "definition": (
             "The number is an amount of drug administered, permitted or prohibited, and "
-            "its head is a drug name or drug class."
+            "its head is a drug name or drug class. The unit, when there is one, is a "
+            "dose attached to the drug, not a concentration in a specimen."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "The unit is a concentration in a specimen -> MEASUREMENT_VALUE.",
+            "The number is how long the dose has been stable -> STATE_DURATION.",
+        ],
         "circe_destination": (
             "DrugExposure criterion: EffectiveDrugDose + DoseUnit, or Quantity. Not a "
             "Measurement value filter."
@@ -276,11 +320,18 @@ CLASSES: list[dict[str, Any]] = [
         "label_ko": "점수·등급",
         "summary_ko": "명명된 임상 척도 위의 눈금. 단위를 붙이면 안 되고, 서열 등급은 숫자로도 안 된다.",
         "definition": (
-            "The number is a point on a named clinical scale or grading system (ECOG, "
-            "dipstick protein, Child-Pugh, NYHA). It is ordinal, not a physical "
-            "quantity, and it carries no unit even when a scale word follows it "
-            "('points', '+')."
+            "The number is a point on a named clinical scale or grading system. It is "
+            "ordinal, not a physical quantity, and it carries no unit even when a scale "
+            "word stands where a unit would be. The scale's range is small and bounded, "
+            "unlike a laboratory range."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "The head is an analyte with a real unit -> MEASUREMENT_VALUE.",
+            "The grade is referenced by letter or class with no number at all -> NON_CRITERION / non_numeric_grade.",
+        ],
         "circe_destination": (
             "Observation or Measurement criterion. Numeric scales -> ValueAsNumber with "
             "no Unit. Ordinal labels ('2+ on dipstick', Child-Pugh B/C) are stored in "
@@ -317,8 +368,16 @@ CLASSES: list[dict[str, Any]] = [
             "The number says how much of something happened or how many times, attached "
             "to a procedure, treatment episode or exposure event rather than to a "
             "measured biological quantity. Nothing was measured on the patient; "
-            "something was counted or dispensed."
+            "something was counted or dispensed. A volume or amount belongs here when it "
+            "belongs to the event, not to a specimen."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "The volume is a specimen measurement -> MEASUREMENT_VALUE.",
+            "The amount is a drug dose -> DRUG_DOSE.",
+        ],
         "circe_destination": (
             "Amounts -> ProcedureOccurrence/Observation Quantity or ValueAsNumber. "
             "Counts of episodes -> a nested criteria group with an Occurrence count, "
@@ -351,9 +410,17 @@ CLASSES: list[dict[str, Any]] = [
         "summary_ko": "진짜 임계값이지만 대상 CDM에 갈 곳이 없다. 기본값으로 밀어넣지 말 것.",
         "definition": (
             "The span is a genuine eligibility threshold but has no representable "
-            "destination in the target CDM, or the class cannot be decided from the "
-            "text available. Emit REVIEW rather than guessing."
+            "destination in the target CDM -- a self-reported or lifestyle quantity with "
+            "no coded representation -- or the class cannot be decided from the text "
+            "available: the head stayed in another span after decomposition, or two "
+            "classes are equally defensible. Emit REVIEW rather than guessing."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "A class is decidable -- do not use REVIEW as a low-confidence default for a resolvable head.",
+        ],
         "circe_destination": "none -- human review queue",
         "stage3": "n/a",
         "signals": {
@@ -382,6 +449,12 @@ CLASSES: list[dict[str, Any]] = [
             "Eight families sit here and they are recognised differently, so treat the "
             "family as part of the answer."
         ),
+        # Rendered into the classifier prompt with the definition; example-free by rule
+        # (AGENTS.md § PROMPTS AND TEXT RULES, rule 1). `signals` keep the instances for
+        # the dashboard and never reach the model.
+        "boundaries": [
+            "The span constrains a patient property that a CDM row can hold -> one of the positive classes.",
+        ],
         "circe_destination": "none -- drop the span",
         "stage3": "n/a",
         "signals": {
@@ -413,7 +486,7 @@ NON_CRITERION_FAMILIES: list[dict[str, Any]] = [
     {
         "id": "statistical_decision_rule",
         "label_ko": "통계적 판정 규칙",
-        "what": "A confidence-interval bound, a noninferiority margin, an alpha level or a hazard-ratio threshold from the trial's analysis plan.",
+        "what": "A number from the trial's statistical analysis plan or reported results, compared against a study conclusion rather than against a property of the patient.",
         "signals": [
             "confidence interval, CI, upper/lower boundary, margin, noninferiority, alpha level, two-sided, one-sided, hazard ratio",
             "The number is compared against a study conclusion, not against a patient property.",
@@ -440,7 +513,7 @@ NON_CRITERION_FAMILIES: list[dict[str, Any]] = [
     {
         "id": "unit_conversion_restatement",
         "label_ko": "단위 환산 반복",
-        "what": "A parenthetical restatement of a threshold already captured, in a different unit.",
+        "what": "A parenthetical restatement, in a different unit, of a threshold already captured on the same analyte immediately beside it.",
         "signals": [
             "Parenthesised, immediately adjacent to a threshold on the same analyte, different unit.",
             "Requires sibling context: in isolation the span is indistinguishable from a real threshold.",
@@ -970,33 +1043,40 @@ def build() -> dict[str, Any]:
                 "renderer": "scripts/build_value_taxonomy.py --prompt",
                 "invariant": "The prompt is a pure function of this file. Do not hand-edit a prompt alongside it.",
                 "sections": [
-                    {"id": "task", "source": "meta.pipeline + meta.why_llm"},
+                    {"id": "task", "source": "meta.pipeline"},
                     {"id": "output_schema", "source": "meta.output_schema"},
-                    {"id": "classes", "source": "classes[].{id,definition,circe_destination,signals,hazard}"},
-                    {"id": "non_criterion_families", "source": "classes[id=NON_CRITERION].families[].{id,what,signals}"},
-                    {"id": "operators", "source": "op_table[].{surface,circe_op,ambiguous,note}"},
-                    {"id": "notation", "source": "notation[].{label_ko,what,rule}"},
-                    {"id": "worked_examples", "source": "classes[].examples[].{threshold_phrase,source_text}"},
                     {"id": "hard_rules", "source": "meta.hard_rules"},
+                    {"id": "classes", "source": "classes[].{id,definition,boundaries}"},
+                    {"id": "non_criterion_families", "source": "classes[id=NON_CRITERION].families[].{id,what}"},
                 ],
+                "not_rendered": (
+                    "why_llm, circe_destination, signals, hazard, examples, corpus counts, op_table "
+                    "and notation stay in this file for the dashboard. They are instances, trigger "
+                    "words and measurement history, and none of them may reach the model "
+                    "(AGENTS.md, PROMPTS AND TEXT RULES, rule 1)."
+                ),
             },
             "output_schema": {
                 "spans": [
                     {
-                        "threshold_phrase": "verbatim substring of the criterion",
-                        "head": "the noun the number modifies, verbatim, or null when elided",
-                        "class": "one of classes[].id",
-                        "family": "one of classes[id=NON_CRITERION].families[].id, only when class is NON_CRITERION",
-                        "confidence": "high | low",
+                        "threshold_phrase": "<verbatim substring of the criterion>",
+                        "head": "<the noun the number modifies, verbatim, or null when elided>",
+                        "class": "<one of classes[].id>",
+                        "family": "<one of classes[id=NON_CRITERION].families[].id, only when class is NON_CRITERION>",
+                        "confidence": "<high|low>",
                     }
                 ]
             },
             "hard_rules": [
-                "Return a list of spans per criterion, never one span per line. 12 corpus lines carry more than one threshold.",
+                "Return a list of spans per criterion, never one span per line.",
                 "Decide by the head, not by the unit. A time unit does not make a span temporal.",
                 "Never default to a class to avoid REVIEW. Every wrong class fails silently as a zero-patient cohort.",
                 "Do not normalise, convert or compute. Emit the verbatim phrase; stage 3 owns op, value, bound and unit.",
                 "A parenthetical restating a threshold already emitted in another unit is not a second span.",
+                # The two classifier decisions the NOTATION block carried; the rest of it is
+                # stage 3's parsing and stays out of the prompt.
+                "A reference bound stated with no numeral is still a threshold: emit its span, do not skip it.",
+                "When a span's comparator sits outside it, in a sibling disjunction or a parenthetical, widen the threshold_phrase to a verbatim substring that includes the comparator.",
             ],
         },
         "dimensions": {
@@ -1014,15 +1094,21 @@ def build() -> dict[str, Any]:
 
 
 def render_prompt(taxonomy: dict[str, Any]) -> str:
-    """Render the stage-2 classifier prompt from the artifact, so neither can drift."""
+    """Render the stage-2 classifier prompt from the artifact, so neither can drift.
+
+    Only definitions and decisions are rendered: the task, the output schema, the rules,
+    each class's definition and boundaries, and the NON_CRITERION families. The
+    artifact's examples, signals, hazards, Circe destinations, corpus counts, operator
+    table and notation tallies stay in the JSON for the dashboard; they are instances,
+    trigger words and measurement history, which no prompt may carry (AGENTS.md
+    § PROMPTS AND TEXT RULES, rule 1; tests/test_prompt_no_examples.py).
+    """
     meta = taxonomy["meta"]
     out: list[str] = [
         "You classify numeric thresholds in clinical trial eligibility criteria.",
         "",
         "PIPELINE",
         *(f"  {step}" for step in meta["pipeline"]),
-        "",
-        meta["why_llm"],
         "",
         "OUTPUT",
         json.dumps(meta["output_schema"], indent=2, ensure_ascii=False),
@@ -1035,29 +1121,13 @@ def render_prompt(taxonomy: dict[str, Any]) -> str:
     for block in taxonomy["classes"]:
         out += [
             "",
-            f"### {block['id']}  (corpus n={block['corpus_count']})",
+            f"### {block['id']}",
             block["definition"],
-            f"Circe destination: {block['circe_destination']}",
-            "Choose it when:",
-            *(f"  + {s}" for s in block["signals"]["positive"]),
-            "Do not choose it when:",
-            *(f"  - {s}" for s in block["signals"]["negative"]),
-            f"Hazard: {block['hazard']}",
+            "Not this class when:",
+            *(f"  - {b}" for b in block["boundaries"]),
         ]
         for family in block.get("families", []):
-            out += [
-                f"  [{family['id']}] {family['what']}",
-                *(f"      + {s}" for s in family["signals"]),
-            ]
-        for example in block["examples"]:
-            out.append(f"  e.g. {example['threshold_phrase']!r}  in  {example['source_text'][:150]!r}")
-    out += ["", "COMPARATOR SPELLINGS (stage 3 reads these; you only copy the phrase verbatim)"]
-    for row in taxonomy["op_table"]:
-        flag = "  [AMBIGUOUS]" if row["ambiguous"] else ""
-        out.append(f"  {row['surface']!r:22} -> {row['circe_op']:4} n={row['corpus_count']:<3}{flag} {row['note']}")
-    out += ["", "NOTATION"]
-    for section in taxonomy["notation"]:
-        out.append(f"  {section['id']} (n={section['count']}): {section['what']} -- {section['rule']}")
+            out.append(f"  [{family['id']}] {family['what']}")
     return "\n".join(out)
 
 

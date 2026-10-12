@@ -9783,24 +9783,25 @@ class TTEService:
             f"- In the Target Trial Specification table, use operational strategies (not just drug names).\n"
             f"- Time zero for BOTH arms must be defined in Section 2.\n"
             "- If total outcome events <= 10, the primary conclusion MUST be "
-            '"insufficient events for reliable estimation". '
-            'Do NOT use words like "trend", "promising", or "suggests benefit".\n'
-            "- If p-value >= 0.05, do NOT say \"trend toward\". Say \"not statistically significant\" "
-            "and \"estimate is imprecise\".\n"
+            '"insufficient events for reliable estimation", '
+            "and the report must not describe any direction or size of effect.\n"
+            "- If p-value >= 0.05, call the result non-significant and the estimate imprecise, "
+            "and do not describe it as moving in any direction.\n"
             "- When comparing to the original RCT, ALWAYS note differences in follow-up duration, "
             "sample size, and treatment definition BEFORE any directional comparison.\n"
             '- If data source is "Unknown", flag this as a major limitation.\n'
-            '- Do NOT use causal language ("caused", "prevents", "leads to") — '
-            'use "associated with", "estimated effect".\n'
-            "- IPTW/PSM alone does NOT make the analysis \"robust\". "
+            "- Do NOT use language that asserts the treatment caused or prevented the outcome; "
+            "report the hazard ratio as an estimated effect.\n"
+            "- IPTW/PSM alone does NOT make the analysis robust to confounding. "
             "Mention unmeasured confounding as a limitation.\n"
             f"- If max SMD after weighting > 0.25, state 'weighting FAILED to achieve adequate balance' — "
             "this is a validity failure signal, not just a limitation.\n"
-            "- Do NOT write 'assumed similar' for outcome — write 'not verified' or give the exact definition.\n"
+            "- For the outcome, give the exact definition, or state that the outcome definition was not "
+            "verified; never present it as assumed to match the original trial.\n"
             "- Mismatch risk in Target Trial Specification table: treatment strategy and causal contrast "
             "should be at LEAST Moderate (never Low) for observational emulations.\n"
-            "- TTE targets a causal estimand, so do NOT write 'associations, not causal effects'. "
-            "Instead write: 'causal interpretation is not supported because [specific reasons]'.\n"
+            "- TTE targets a causal estimand, so do NOT dismiss the result as merely associational; "
+            "when causal interpretation is not supported, say so and give the specific reasons.\n"
             "- In Section 8, provide a 4-line assessment: Operational feasibility, "
             "Effect estimation reliability, Clinical interpretability, Causal interpretability.\n"
             "- Output valid HTML using only: h2, h3, p, ul, li, strong, em, table, thead, tbody, tr, th, td, div.\n"
@@ -9825,7 +9826,8 @@ class TTEService:
             "<h2>1. Clinical Question</h2>\n"
             "- State the target question in PICO format (Population, Intervention, Comparator, Outcome).\n"
             "- State the estimand (ITT analogue or per-protocol).\n"
-            "- Include an emulation scope statement (e.g., 'short-horizon emulation, not full replication').\n\n"
+            "- Include an emulation scope statement: whether this is a full replication of the target "
+            "trial or a partial emulation, and in what respect it is partial.\n\n"
 
             "<h2>2. Target Trial Specification</h2>\n"
             "Produce an HTML table with columns: Component | Original Trial | Emulation | Mismatch Risk.\n"
@@ -9897,7 +9899,7 @@ class TTEService:
             "  * <strong>Causal interpretability:</strong> not supported/limited/supported\n"
             f"  Hint: total_events={total_events}, max_smd={max_smd_after:.2f}, "
             f"interpretation_level={interpretation_level}.\n"
-            "- Then recommend next analyses (longer follow-up, sensitivity analyses, etc.).\n"
+            "- Then recommend next analyses that would address the limitations listed in Section 7.\n"
             "- Final statement: clearly state what this analysis IS (pipeline feasibility / exploratory) "
             "and IS NOT (causal evidence / clinical recommendation).\n\n"
 

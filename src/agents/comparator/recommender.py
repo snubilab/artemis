@@ -64,7 +64,7 @@ _CLASSIFY_PROMPT = """You are a cardiovascular pharmacoepidemiologist selecting 
 Classify the effect of the drug class "{drug_class}" on the outcome "{outcome}" in {indication}, versus placebo/standard care, based ONLY on the PubMed findings below.
 
 Return ONLY a JSON object (keep it short):
-{{"verdict": "beneficial|neutral|harmful|unknown", "confidence": 0.0-1.0, "caveat": "<=12 words, e.g. a heart-failure signal"}}
+{{"verdict": "<beneficial|neutral|harmful|unknown>", "confidence": <number from 0.0 to 1.0>, "caveat": "<the main reservation about this class as a comparator, at most 12 words>"}}
 
 "neutral" means no meaningful increase or decrease in the outcome vs placebo (the desired property for an active comparator). Use "unknown" if the findings are insufficient.
 
@@ -214,12 +214,12 @@ def recommend_comparator(
 
 _LIT_EXTRACT_PROMPT = """You are a cardiovascular pharmacoepidemiologist designing an ACTIVE-COMPARATOR NEW-USER study to emulate a PLACEBO-controlled trial of {treatment} ({treatment_class}) for {indication}, primary outcome {outcome}.
 
-There is no real-world placebo cohort, so choose a CV-NEUTRAL ACTIVE COMPARATOR: a drug used at the SAME treatment line, route, and setting as the treatment that has NO meaningful effect on {outcome} (behaves like placebo). REJECT drugs that reduce or increase {outcome}; REJECT wrong-modality drugs (e.g. an acute parenteral drug standing in for a chronic oral one); REJECT the treatment's own class and background standard-of-care that both arms already take.
+There is no real-world placebo cohort, so choose a CV-NEUTRAL ACTIVE COMPARATOR: a drug used at the SAME treatment line, route, and setting as the treatment that has NO meaningful effect on {outcome} (behaves like placebo). REJECT drugs that reduce or increase {outcome}; REJECT wrong-modality drugs, whose route or duration of use differs from the treatment's; REJECT the treatment's own class and background standard-of-care that both arms already take.
 
 Using ONLY the literature below (prior emulations, comparative-effectiveness studies, methods papers), list the recommended active-comparator DRUG CLASSES, BEST FIRST. Prefer classes that prior real-world emulations of this drug/class actually used. Give member ingredient drugs so each can be found in a database.
 
 Return ONLY JSON:
-{{"candidates":[{{"drug_class":"...","ingredients":["ingredient1","ingredient2"],"verdict":"neutral|beneficial|harmful","same_setting":true,"rationale":"one line with PMIDs"}}]}}
+{{"candidates":[{{"drug_class":"<drug class name>","ingredients":["<ingredient name>", ...],"verdict":"<neutral|beneficial|harmful>","same_setting":<true|false>,"rationale":"<one line citing the supporting PMIDs>"}}]}}
 
 Literature:
 {lit}

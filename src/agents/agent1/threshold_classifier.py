@@ -83,16 +83,18 @@ class ThresholdSpan(BaseModel):
 # ---------------------------------------------------------------------------
 
 # The only hand-written part of the prompt; everything above it is the renderer's
-# output verbatim. Kept byte-identical to ADR-032 D3 and scripts/probe_criterion_classifier.py
-# so the probe's measurements describe this module and not a variant of it.
+# output verbatim. Kept byte-identical to scripts/probe_criterion_classifier.py so the
+# probe's measurements describe this module and not a variant of it. ADR-032 D3 records
+# the earlier wording, whose AGE sentence listed the words to look for; a word list is an
+# example and no prompt may carry one (AGENTS.md § PROMPTS AND TEXT RULES, rule 1).
 _HEAD_RULES = """
 HEAD IS REQUIRED
   head must be a verbatim substring of the CRITERION below -- copy it, never paraphrase
   and never supply a word the text does not contain.
   If the criterion does not name what the number measures, set head to null and class to
   "REVIEW". A parent bullet you cannot see is not a licence to guess.
-  Do NOT supply "age" as a head for a bare unit. If the text does not say age/aged/years
-  old, it is not an AGE span.
+  Never supply a head for a bare unit. A span is an AGE span only when the criterion's own
+  words say the number is the patient's age.
 """
 
 _EVERY_NUMERAL = """

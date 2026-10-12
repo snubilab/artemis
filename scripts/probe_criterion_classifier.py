@@ -49,8 +49,8 @@ HEAD IS REQUIRED
   and never supply a word the text does not contain.
   If the criterion does not name what the number measures, set head to null and class to
   "REVIEW". A parent bullet you cannot see is not a licence to guess.
-  Do NOT supply "age" as a head for a bare unit. If the text does not say age/aged/years
-  old, it is not an AGE span.
+  Never supply a head for a bare unit. A span is an AGE span only when the criterion's own
+  words say the number is the patient's age.
 
 Answer with one JSON object and nothing else:
 {"spans": [{"threshold_phrase": "...", "head": "..." or null, "class": "...", "family": null}]}

@@ -88,7 +88,8 @@ class _Recorder:
         self.reply = reply
 
     def _record(self, prompt_input: Any, **_kwargs: Any) -> AIMessage:
-        messages = prompt_input.to_messages() if hasattr(prompt_input, "to_messages") else prompt_input
+        to_messages = getattr(prompt_input, "to_messages", None)
+        messages = to_messages() if to_messages else prompt_input
         self.calls.append("\n\n".join(str(m.content) for m in messages))
         return AIMessage(content=self.reply)
 
@@ -178,7 +179,8 @@ def _render_planner() -> str:
     with patch.object(decomposer_mod, "get_llm", recorder.factory):
         planner = decomposer_mod.CriteriaPlanner(model_name="stub-model")
         planner._decompose_criterion(Criteria(
-            name=STUB, domain="Condition", entity_text=STUB, source_text=STUB, logic_type="PRESENCE",
+            name=STUB, domain="Condition", entity_text=STUB, source_text=STUB,
+            logic_type="PRESENCE",
         ))
     return _joined(recorder.calls)
 
@@ -241,7 +243,8 @@ def _render_clinical_reranker() -> str:
     recorder = _Recorder(reply='{"selected_id": null}')
     with patch.object(llm_mod, "get_llm", recorder.factory):
         reranker = ClinicalReranker(use_cross_encoder=False)
-        reranker._rerank_with_llm(STUB, [ConceptCandidate(concept_id=1, concept_name=STUB)], top_k=1)
+        candidates = [ConceptCandidate(concept_id=1, concept_name=STUB)]
+        reranker._rerank_with_llm(STUB, candidates, top_k=1)
     return _joined(recorder.calls)
 
 
@@ -299,11 +302,14 @@ def _render_tte_report_narrative() -> str:
                   total_events=2, max_smd_after=0.5, imbalanced_covariates=[STUB])
     ample = dict(nct_id="", brief_title="", followup_days="900", source_key=STUB, trial_metadata={},
                  total_events=200, max_smd_after=0.05, imbalanced_covariates=[])
-    middle = dict(nct_id="", brief_title="", followup_days="900", source_key=STUB, trial_metadata={},
+    middle = dict(nct_id="", brief_title="", followup_days="900", source_key=STUB,
+                  trial_metadata={},
                   total_events=15, max_smd_after=0.2, imbalanced_covariates=[STUB])
     with patch.object(tte_service, "get_llm", recorder.factory):
         for variant in (sparse, ample, middle):
-            tte_service.TTEService._generate_report_narrative(SimpleNamespace(), **common, **variant)
+            tte_service.TTEService._generate_report_narrative(
+                SimpleNamespace(), **common, **variant,
+            )
     return _joined(recorder.calls)
 
 
@@ -370,7 +376,9 @@ def _default_window_blocks() -> tuple[str, ...]:
     from src.utils.circe_lint import render_default_window_prompt_line
 
     return (
-        render_default_window_prompt_line([["Condition"], ["Drug"], ["Measurement"], ["Procedure"]]),
+        render_default_window_prompt_line(
+            [["Condition"], ["Drug"], ["Measurement"], ["Procedure"]]
+        ),
         render_default_window_prompt_line([["Condition", "Procedure"], ["Drug"], ["Measurement"]]),
     )
 
@@ -673,12 +681,11 @@ def lint(text: str, spec: PromptSpec) -> list[Finding]:
         if not _allowed_scalar(span, allowed):
             findings.append(Finding("quoted", span))
 
-    for pattern in _EXAMPLE_MARKERS:
-        for match in pattern.finditer(text):
-            findings.append(Finding("example-marker", text[max(0, match.start() - 40):match.end() + 40]))
-    for pattern in _HISTORY_MARKERS:
-        for match in pattern.finditer(text):
-            findings.append(Finding("history", text[max(0, match.start() - 40):match.end() + 40]))
+    for kind, patterns in (("example-marker", _EXAMPLE_MARKERS), ("history", _HISTORY_MARKERS)):
+        for pattern in patterns:
+            for match in pattern.finditer(text):
+                context = text[max(0, match.start() - 40):match.end() + 40]
+                findings.append(Finding(kind, context))
     return findings
 
 
@@ -697,27 +704,6 @@ def rendered(prompt_id: str) -> str:
 
 _INVENTORY: list[dict[str, Any]] = json.loads(INVENTORY_PATH.read_text())
 
-#: Prompts P1 of todolist/20261012_095201_remove_examples_and_text_rules.md has not cleaned
-#: yet. Each milestone commit removes its share; ``strict=True`` turns a cleaned prompt that
-#: is still listed into a failure, so an entry cannot outlive its fix. Empty when P1 is done.
-_NOT_YET_CLEANED_FILES: frozenset[str] = frozenset({
-    "src/agents/comparator/recommender.py",
-    "src/services/tte_service.py",
-    "src/agents/agent1/threshold_classifier.py",
-    "docs/daily_notes/tte_value_taxonomy.prompt.txt",
-})
-_NOT_YET_CLEANED_PROMPTS: frozenset[str] = frozenset({
-    "comparator.classify", "comparator.literature",
-    "tte.report_narrative", "agent1.threshold_classifier",
-})
-_PENDING = pytest.mark.xfail(
-    strict=True, reason="P1 of todolist/20261012_095201_remove_examples_and_text_rules.md: not yet cleaned",
-)
-
-
-def _pending_if(condition: bool) -> tuple[pytest.MarkDecorator, ...]:
-    return (_PENDING,) if condition else ()
-
 #: Where a ``rendered_only`` row's text arrives: the call site's prompt.
 _RENDERED_ONLY_PROMPT = {
     "src/agents/agent2/critic.py": "agent2.critic",
@@ -731,10 +717,7 @@ def test_should_read_all_205_inventory_rows() -> None:
     assert len({row["id"] for row in _INVENTORY}) == 205
 
 
-@pytest.mark.parametrize("row", [
-    pytest.param(row, id=row["id"], marks=_pending_if(row["file"] in _NOT_YET_CLEANED_FILES))
-    for row in _INVENTORY
-])
+@pytest.mark.parametrize("row", _INVENTORY, ids=[row["id"] for row in _INVENTORY])
 def test_should_leave_no_inventoried_example_in_its_prompt(row: dict[str, Any]) -> None:
     if row.get("rendered_only"):
         haystack = rendered(_RENDERED_ONLY_PROMPT[row["file"]])
@@ -756,9 +739,7 @@ def test_should_leave_no_inventoried_example_in_its_prompt(row: dict[str, Any]) 
 # (ii) No prompt carries an example shape
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("prompt_id", [
-    pytest.param(p, id=p, marks=_pending_if(p in _NOT_YET_CLEANED_PROMPTS)) for p in sorted(PROMPTS)
-])
+@pytest.mark.parametrize("prompt_id", sorted(PROMPTS))
 def test_should_render_no_example_shape(prompt_id: str) -> None:
     findings = lint(rendered(prompt_id), PROMPTS[prompt_id])
     counts = Counter(f.kind for f in findings)
@@ -809,7 +790,8 @@ def test_should_describe_every_output_field_where_the_library_schema_was_dropped
 #: A file whose calls carry no prompt of their own says why instead.
 CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/agent1/parser.py": (
-        9, ("agent1.parse", "agent1.parse_nct", "agent1.threshold_review", "agent1.threshold_match"),
+        9, ("agent1.parse", "agent1.parse_nct", "agent1.threshold_review",
+            "agent1.threshold_match"),
     ),
     "src/agents/agent1/pubmed_fetcher.py": (2, ("agent1.pubmed_criteria_split",)),
     "src/agents/agent1/criteria_dedup_judge.py": (2, ("agent1.dedup_judge",)),
@@ -837,8 +819,8 @@ def _is_llm_call(node: ast.Call) -> bool:
             return True
         if func.attr == "from_messages" and isinstance(func.value, ast.Name):
             return func.value.id == "ChatPromptTemplate"
-        if func.attr == "create" and isinstance(func.value, ast.Attribute) and func.value.attr == "completions":
-            return True
+        if func.attr == "create" and isinstance(func.value, ast.Attribute):
+            return func.value.attr == "completions"
     return False
 
 

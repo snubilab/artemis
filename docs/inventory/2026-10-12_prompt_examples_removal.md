@@ -181,7 +181,7 @@ rendered prompt contains one.
 Lint-required wording outside the inventory: `"composite"` unquoted; the output schema's `"decompose": true/false`
 and `"reasoning": "brief explanation"` became `<true|false>` / `"<brief explanation>"`.
 
-## Agent 2 and the ConceptSet NLU router (11 rows)
+## Agent 2 and the ConceptSet NLU router (10 rows)
 
 The three LangChain-rendered rows (K1, U3, R6) are removed by no longer passing
 `get_format_instructions()`; each prompt now carries a hand-written output contract naming every field of the
@@ -206,3 +206,134 @@ Lint-required wording outside the inventory: TOPN_SYSTEM_PROMPT's JSON template,
 (`true`, `false`), now describes the two keys in prose — its first two lines, which the code comment pins as
 measured, are unchanged. `_CRITIC_PROMPT_VERSION` is bumped to `2026-10-12-no-library-format-instructions`, so
 both critic caches re-key.
+
+## Side tools (76 rows)
+
+### Comparator — `src/agents/comparator/recommender.py`
+
+| ID | Prompt | Class | Outcome |
+|---|---|---|---|
+| CM1 | `_CLASSIFY_PROMPT` | CE | decision kept as: "<the main reservation about this class as a comparator, at most 12 words>" |
+| CM2 | `_LIT_EXTRACT_PROMPT` | CE | decision kept as: "REJECT wrong-modality drugs, whose route or duration of use differs from the treatment's" |
+
+Lint-required wording outside the inventory: `"confidence": 0.0-1.0` → `<number from 0.0 to 1.0>`; the literature
+template's `"ingredient1","ingredient2"`, `"same_setting":true` and `"one line with PMIDs"` → placeholders.
+
+### TTE report narrative — `src/services/tte_service.py` (`_generate_report_narrative`)
+
+| ID | Prompt | Class | Outcome |
+|---|---|---|---|
+| TS1 | `system_prompt` | CX | decision kept as: "and the report must not describe any direction or size of effect." |
+| TS2 | `system_prompt` | CX | decision kept as: "If p-value >= 0.05, call the result non-significant and the estimate imprecise, and do not describe it as moving in any direction." |
+| TS3 | `system_prompt` | CX | decision kept as: "Do NOT use language that asserts the treatment caused or prevented the outcome; report the hazard ratio as an estimated effect." |
+| TS4 | `system_prompt` | CX | decision kept as: "For the outcome, give the exact definition, or state that the outcome definition was not verified; never present it as assumed to match the original trial." |
+| TS5 | `system_prompt` | CX | decision kept as: "TTE targets a causal estimand, so do NOT dismiss the result as merely associational; when causal interpretation is not supported, say so and give the specific reasons." |
+| TS6 | `prompt` | CE | decision kept as: "Include an emulation scope statement: whether this is a full replication of the target trial or a partial emulation, and in what respect it is partial." |
+| TS7 | `prompt` | CE | decision kept as: "Then recommend next analyses that would address the limitations listed in Section 7." |
+
+Lint-required wording outside the inventory: `"robust"` unquoted ("robust to confounding"). The required output
+phrases the report must state verbatim ("insufficient events for reliable estimation", "weighting FAILED to achieve
+adequate balance", and three others) are kept; the guard declares them as output tokens of this prompt. TS2's first
+rewording ("the result is not statistically significant") shared a 32-character span with CAROLINA's JAMA paper
+and failed the contamination gate's Gate B; it was reworded again.
+
+### Threshold classifier — `src/agents/agent1/threshold_classifier.py` `_HEAD_RULES` and the taxonomy prompt
+
+The taxonomy prompt (`docs/daily_notes/tte_value_taxonomy.prompt.txt`) is a pure function of
+`scripts/build_value_taxonomy.py`; it was changed there and regenerated, together with
+`docs/daily_notes/tte_value_taxonomy.json` (the checked-in JSON was confirmed equal to the HEAD script's `build()`
+output first, so the regeneration carries only this change). `render_prompt` now renders the task, the output
+schema (placeholders), the rules, each class's `definition` and a new `boundaries` list, and the NON_CRITERION
+families' `what`. Corpus counts, `why_llm`, Circe destinations, signals, hazards, worked examples, the comparator
+spelling table and the notation block stay in the JSON for the dashboard and no longer reach the model. Class
+definitions and two family `what` lines were rewritten without instances; the dashboard shows those same strings.
+`scripts/probe_criterion_classifier.py`'s `INSTRUCTION_TAIL` was kept byte-identical to the classifier's tail
+(checked: equal).
+
+| ID | Class | Outcome |
+|---|---|---|
+| TC1 | TW | decision kept as: "Never supply a head for a bare unit. A span is an AGE span only when the criterion's own words say the number is the patient's age." |
+| TX1 | CE (HP) | deleted |
+| TX2 | HP | deleted |
+| TX3 | HP | deleted |
+| TX4 | CE | decision kept as: "A time unit or a dimensionless index does not move a number out of this class." |
+| TX5 | CE | decision kept as: "The number is the result of a measurement or observation made on the patient: a laboratory result, a vital sign, an imaging or electrophysiology measurement, or a body metric." |
+| TX6 | CE | decision kept as: the same sentence as TX5 |
+| TX7 | CE | decision kept as: the same sentence as TX5 |
+| TX8 | TW | decision kept as: "A bound stated against the upper or lower limit of normal belongs here: only measurements have laboratory reference ranges." |
+| TX9 | TW | deleted |
+| TX10 | CX | decision kept as: "The head is a graded clinical scale -> SCORE_GRADE." |
+| TX11 | HP | deleted |
+| TX12 | CE | deleted |
+| TX13 | CE | deleted |
+| TX14 | CE | deleted |
+| TX15 | CE (HP) | decision kept as: "a time unit whose head is the patient's age is an AGE span, not a temporal one." |
+| TX16 | TW | decision kept as: the same sentence as TX15 |
+| TX17 | CE | decision kept as: "An anchor phrase may still be present; the head test runs first and wins." |
+| TX18 | CX | decision kept as: "A time unit whose head is a measurement -> MEASUREMENT_VALUE." |
+| TX19 | HP | deleted |
+| TX20 | CE | deleted |
+| TX21 | CE | deleted |
+| TX22 | TW | decision kept as: "The number measures the distance in time between a qualifying event and the index date or another anchor." |
+| TX23 | TW | decision kept as: "The anchor is often elided in exclusion criteria, so absence of an explicit anchor does not rule this class out." |
+| TX24 | CE | decision kept as: "the head is an event, not a quantity." |
+| TX25 | CX | decision kept as: "The time expression is an attributive modifier of a procedure name -> NON_CRITERION / protocol_or_procedure_name." |
+| TX26 | HP (CE) | deleted |
+| TX27 | CE | deleted |
+| TX28 | CE | deleted |
+| TX29 | HP | deleted |
+| TX30 | TW | decision kept as: "a condition or exposure is required to have held continuously for N units, and the criterion is satisfied by a span of time, not by an event occurring inside one." |
+| TX31 | HP | deleted |
+| TX32 | CE | deleted |
+| TX33 | CE | deleted |
+| TX34 | CE | decision kept as: "its head is a drug name or drug class." |
+| TX35 | TW | decision kept as: "The unit, when there is one, is a dose attached to the drug, not a concentration in a specimen." |
+| TX36 | TW | decision kept as: "The number is an amount of drug administered, permitted or prohibited" |
+| TX37 | CX | decision kept as: "The unit is a concentration in a specimen -> MEASUREMENT_VALUE." |
+| TX38 | HP | deleted |
+| TX39 | CE | deleted |
+| TX40 | CE | decision kept as: "The number is a point on a named clinical scale or grading system. It is ordinal, not a physical quantity" |
+| TX41 | CE | deleted |
+| TX42 | CE | decision kept as: the same sentence as TX40 |
+| TX43 | TW | decision kept as: "it carries no unit even when a scale word stands where a unit would be." |
+| TX44 | CE | decision kept as: "The scale's range is small and bounded, unlike a laboratory range." |
+| TX45 | CE | deleted |
+| TX46 | CE | deleted |
+| TX47 | CE | decision kept as: "The number says how much of something happened or how many times, attached to a procedure, treatment episode or exposure event rather than to a measured biological quantity." |
+| TX48 | TW | decision kept as: "Nothing was measured on the patient; something was counted or dispensed." |
+| TX49 | CE | decision kept as: "A volume or amount belongs here when it belongs to the event, not to a specimen." |
+| TX50 | HP (CE) | deleted |
+| TX51 | CE | deleted |
+| TX52 | CE | deleted |
+| TX53 | CE | decision kept as: "a self-reported or lifestyle quantity with no coded representation" |
+| TX54 | CE | deleted |
+| TX55 | CX | decision kept as: "[statistical_decision_rule] A number from the trial's statistical analysis plan or reported results, compared against a study conclusion rather than against a property of the patient." |
+| TX56 | TW | decision kept as: the same sentence as TX55 |
+| TX57 | TW | deleted |
+| TX58 | CE | deleted |
+| TX59 | TW | deleted |
+| TX60 | TW | deleted |
+| TX61 | CE | deleted |
+| TX62 | CE | deleted |
+| TX63 | CE | deleted |
+| TX64 | TW (HP) | deleted |
+| TX65 | CE | deleted |
+| TX66 | HP (CE) | decision kept as two RULES: "A reference bound stated with no numeral is still a threshold: emit its span, do not skip it. … When a span's comparator sits outside it, in a sibling disjunction or a parenthetical, widen the threshold_phrase to a verbatim substring that includes the comparator." |
+
+Lint-required wording outside the inventory: the OUTPUT schema's description values became `<...>` placeholders,
+including `"confidence": "<high|low>"`.
+
+Contradiction found, left as it was: the taxonomy's AGE definition keeps the elided-head rule ("When a bare time
+unit appears with no other head anywhere in the criterion, the head is the patient's age"), while `_HEAD_RULES`
+(TC1) tells the model never to supply a head for a bare unit. The tail was written to override the taxonomy, and
+both predate this change.
+
+## Gaps
+
+- `scripts/prompt_ab.py`, `example_value_ab.py` and `planner_example_ab.py` send whatever prompt file is named on
+  the command line; those files are not in the tree and were not checked (inventory §4).
+- The guard renders prompts under `src/` only. `scripts/` prompts other than the classifier probe's tail were not
+  linted.
+- The dashboard built by `scripts/build_diagnosis_dashboard.py` reads the regenerated taxonomy JSON; the dashboard
+  HTML was not rebuilt here.
+- ADR-032 D3 still quotes the earlier `_HEAD_RULES` wording; it is a decision record and was not edited.
