@@ -24,7 +24,6 @@ from src.agents.agent1.criteria_dedup import (
 from src.agents.agent1.enricher import (
     _merge_criteria,
     _pick_richer,
-    _supplement_priority_merge,
 )
 
 
@@ -96,10 +95,12 @@ def groups_in(result):
             if or_group_alternatives(item)]
 
 
+# supplement_priority is not here: it no longer reconciles two lists. A section the
+# PDF yields comes from the PDF alone, so two groups never meet inside it
+# (tests/test_eligibility_segmentation.py pins that on the six trials).
 MERGERS = {
     # (name, callable taking (first_list, second_list) in that argument order)
     "merge": _merge_criteria,
-    "supplement_priority": _supplement_priority_merge,
     "replace": _pick_richer,
 }
 
@@ -107,12 +108,7 @@ MERGERS = {
 @pytest.mark.parametrize("caller", sorted(MERGERS))
 @pytest.mark.parametrize("order", ["poor_first", "rich_first"])
 def test_should_keep_the_richer_group_when_two_groups_meet(caller, order):
-    """Direction must not decide which group survives.
-
-    ARISTOTLE really does take this path: parser._enrich_from_pdf runs once per
-    discovered PDF and NCT00412984 has two, so the second PDF's group meets the
-    first PDF's group inside _supplement_priority_merge.
-    """
+    """Direction must not decide which group survives."""
     first, second = (POOR, RICH) if order == "poor_first" else (RICH, POOR)
 
     result = MERGERS[caller]([first], [second])
@@ -192,4 +188,3 @@ def test_should_reproduce_the_pre_fix_behaviour_when_the_ablation_is_enabled(mon
     monkeypatch.setenv(_ABLATION_ENV, "1")
 
     assert _merge_criteria([POOR], [RICH]) == [POOR]
-    assert _supplement_priority_merge([POOR], [RICH]) == [POOR]

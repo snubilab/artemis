@@ -6,6 +6,11 @@ clause standing alongside the OR group that already offers it turns "any one of
 these five risk factors" into "all five at once". Measured on ARISTOTLE before
 the fix: four violations under supplement_priority and four under merge.
 
+supplement_priority now takes a section from the PDF alone whenever the PDF yields
+it, so it adds no registry item and cannot violate the invariant by construction;
+it stays in STRATEGIES as a regression check. The guard on the guard below runs on
+the merge path, the one strategy that still decides duplicates.
+
 The criteria are copied literally rather than re-parsed from the PDF, so this
 test stays a fixed invariant check and cannot drift with the extractor.
 """
@@ -144,7 +149,7 @@ def test_the_invariant_fails_when_the_predicate_is_disabled(monkeypatch):
     reproduces the pre-fix behaviour rather than being a second code path.
     """
     monkeypatch.setenv(criteria_dedup._ABLATION_ENV, "1")
-    result = _supplement_priority_merge(PDF_INCLUSION, NCT_INCLUSION)
+    result = _merge_criteria(NCT_INCLUSION, PDF_INCLUSION)
 
     # The oracle is the same predicate, so it must be re-enabled before the
     # count is taken. Measuring inside the ablation reports zero violations for

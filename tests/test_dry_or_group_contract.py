@@ -123,9 +123,10 @@ def test_the_shared_names_are_actually_owned_by_the_module():
 
 # pubmed_fetcher._merge_parsed_items was the fourth site; it went with the section
 # union it served when the segmentation step replaced S1-S8 (RFC-016 §5).
+# _supplement_priority_merge left the list too: it chooses one source per section
+# and compares no criteria, so there is no duplicate decision in it to route.
 MERGE_SITES = {
-    "agents/agent1/enricher.py": ["_merge_criteria", "_supplement_priority_merge",
-                                  "_pick_richer"],
+    "agents/agent1/enricher.py": ["_merge_criteria", "_pick_richer"],
 }
 
 

@@ -653,3 +653,87 @@ def test_should_not_emit_a_last_criterion_that_no_verified_fragment_ends():
     reasons = {(r.field, r.reason) for r in result.rejected}
     assert ("items.end", REASON_NOT_FOUND) in reasons and ("end", REASON_NOT_FOUND) in reasons
     assert ("items.start", segmentation.REASON_UNBOUNDED) in reasons
+
+
+# --------------------------------------------------------------------------- #
+# Which source a section comes from (enricher, supplement_priority)
+# --------------------------------------------------------------------------- #
+
+TRIAL_SOURCES = {
+    "ARISTOTLE": ("NCT00412984", ["ARISTOTLE.nct", "ARISTOTLE.protocol", "ARISTOTLE.appendix"]),
+    "PLATO": ("NCT00391872", ["PLATO.nct", "PLATO.main", "PLATO.supplement", "PLATO.design"]),
+    "LEADER": ("NCT01179048", ["LEADER.nct", "LEADER.appendix"]),
+    "CAROLINA": ("NCT01243424", ["CAROLINA.nct", "CAROLINA.supplement"]),
+    "EMPA-REG": ("NCT01131676", ["EMPA-REG.nct", "EMPA-REG.appendix"]),
+    "CARMELINA": ("NCT01897532", ["CARMELINA.nct", "CARMELINA.supplement"]),
+}
+
+
+class _Dispatch:
+    """One oracle per source; a part is answered by the source it was cut from."""
+
+    def __init__(self, source_ids: list[str]) -> None:
+        self.oracles = [TruthOracle(source_id) for source_id in source_ids]
+
+    def __call__(self, chunk: Chunk) -> dict[str, Any]:
+        for oracle in self.oracles:
+            if oracle.text[chunk.offset : chunk.offset + len(chunk.text)] == chunk.text:
+                return oracle(chunk)
+        raise AssertionError("a part of a text no fixture source produced reached the model")
+
+
+class _Enriched(Exception):
+    def __init__(self, trial_data: Any) -> None:
+        self.trial_data = trial_data
+
+
+def enriched_trial(monkeypatch, trial: str) -> Any:
+    """``parse_nct`` up to the end of enrichment: registry record, then every PDF it
+    discovers under ``data/papers/<NCT>`` with the role and strategy it assigns. Stopped
+    where the Agent 1 prompt would be built, so no model is reached."""
+    from src.agents.agent1 import parser as parser_module
+    from src.agents.agent1.parser import LogicDecomposer
+
+    nct_id, source_ids = TRIAL_SOURCES[trial]
+    dispatch = _Dispatch(source_ids)
+    monkeypatch.setattr(segmentation, "_responder", lambda model=None: dispatch)
+
+    def stop(trial_data):
+        raise _Enriched(trial_data)
+
+    monkeypatch.setattr(parser_module, "_normalize_trial_data_for_stable_hash", stop)
+    decomposer = LogicDecomposer.__new__(LogicDecomposer)
+    with pytest.raises(_Enriched) as reached:
+        decomposer.parse_nct(nct_id, enrich_from_pubmed=False)
+    return reached.value.trial_data
+
+
+@pytest.mark.parametrize(
+    ("trial", "inclusion_source", "exclusion_source"),
+    [
+        ("ARISTOTLE", "ARISTOTLE.protocol", "ARISTOTLE.protocol"),
+        ("LEADER", "LEADER.appendix", "LEADER.appendix"),
+        ("CAROLINA", "CAROLINA.supplement", "CAROLINA.supplement"),
+        ("EMPA-REG", "EMPA-REG.nct", "EMPA-REG.appendix"),
+        ("CARMELINA", "CARMELINA.supplement", "CARMELINA.supplement"),
+    ],
+)
+def test_should_take_a_section_from_the_trials_own_document_when_it_yields_one(
+    monkeypatch, trial, inclusion_source, exclusion_source
+):
+    """A protocol or supplement PDF that yields a section supplies all of it; the
+    registry fills a section only when no such PDF yields it. Before this, the registry's
+    bullets were appended to the PDF's section wherever a string comparison found them
+    dissimilar -- on ARISTOTLE all five, restating the members of the PDF's risk-factor
+    list as five further AND-ed inclusion criteria. EMPA-REG's appendix states no
+    inclusion criteria, so its inclusion still comes from the registry."""
+    trial_data = enriched_trial(monkeypatch, trial)
+    assert trial_data.inclusion_criteria == expected_items(inclusion_source, "inclusion")
+    assert trial_data.exclusion_criteria == expected_items(exclusion_source, "exclusion")
+
+
+def test_should_keep_unioning_main_papers_on_the_merge_path(monkeypatch):
+    """PLATO has no protocol or supplement PDF: its three papers are role ``main`` and
+    take the merge strategy, which this change does not touch."""
+    trial_data = enriched_trial(monkeypatch, "PLATO")
+    assert (len(trial_data.inclusion_criteria), len(trial_data.exclusion_criteria)) == (8, 23)

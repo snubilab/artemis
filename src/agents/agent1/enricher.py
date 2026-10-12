@@ -5,7 +5,8 @@ Enriches TrialData from NCT API with criteria from PubMed design papers.
 Three strategies:
 - "replace": Use PubMed criteria if richer than NCT (default)
 - "merge": Combine unique criteria from both sources
-- "supplement_priority": Use PDF criteria as base, only add clearly missing NCT items
+- "supplement_priority": per section, the PDF's criteria when it yields that section,
+  else the criteria already held (the registry's)
 """
 import logging
 from typing import Dict, List, Literal
@@ -37,7 +38,8 @@ def enrich_trial_data(
         pubmed_criteria: Dict with "inclusion" and "exclusion" lists
                          extracted from PubMed paper
         strategy: "replace" (use richer source), "merge" (combine unique),
-                  or "supplement_priority" (PDF as base, add missing NCT items)
+                  or "supplement_priority" (per section: the PDF's criteria when it
+                  yields that section, else the criteria already held)
 
     Returns:
         Enriched TrialData (new instance, original preserved)
@@ -152,69 +154,36 @@ def _merge_criteria(
 
 def _supplement_priority_merge(
     pdf_criteria: List[str],
-    nct_criteria: List[str],
-    similarity_threshold: float = 0.5,
+    held_criteria: List[str],
 ) -> List[str]:
+    """One section of the trial, from the trial's own document when it yields one.
+
+    Called once per section (inclusion, exclusion) for a PDF whose role is protocol or
+    supplement (``LogicDecomposer._strategy_for_role``). When the segmentation step found
+    that section in the PDF, the section is the PDF's criteria and nothing else. When
+    the PDF yields no criteria for it, the criteria already held stand: the registry's,
+    or those of an authoritative PDF processed earlier. ``_discover_pdfs`` orders
+    protocol before supplement, so a supplement that yields a section supplies it.
+
+    The registry is not merged into a section the PDF supplies. Its bullets summarise
+    the same criteria, and deciding which of them a PDF criterion already covers took a
+    string-similarity gate and OR-GROUP containment; on ARISTOTLE every registry bullet
+    passed the gate, so the five members of the protocol's risk-factor list came back as
+    five further AND-ed inclusion criteria. Choosing the source per section needs no
+    comparison of criteria at all.
+
+    :param pdf_criteria: this section's criteria from the PDF.
+    :param held_criteria: this section's criteria before the PDF was read.
+    :returns: ``pdf_criteria`` when it is non-empty, else ``held_criteria``.
     """
-    Use PDF (supplement) criteria as the authoritative base.
-
-    Only adds NCT items that are clearly missing from the PDF source
-    (similarity < threshold to all PDF items). This preserves the richer,
-    more structured supplement criteria while filling genuine gaps.
-
-    Args:
-        pdf_criteria: Criteria from supplement PDF (authoritative source)
-        nct_criteria: Criteria from NCT API (gap-fill source)
-        similarity_threshold: Max similarity to consider an NCT item as missing
-
-    Returns:
-        PDF criteria + clearly missing NCT items
-    """
-    if not pdf_criteria:
-        logger.info("[Enricher] supplement_priority: no PDF criteria, falling back to NCT")
-        return list(nct_criteria)
-
-    merged = list(pdf_criteria)
-    added_count = 0
-
-    for nct_item in nct_criteria:
-        # Checked against the GROWING list, not pdf_criteria: an NCT item that
-        # restates an alternative of a PDF-side OR-GROUP is not a gap to fill.
-        # This is ARISTOTLE's actual path (role 'protocol' -> supplement_priority),
-        # and parser._enrich_from_pdf runs once per discovered PDF, so on a trial
-        # with two PDFs the second PDF's group arrives here as `merged` already
-        # holding the first PDF's group. KEEP is what stops the gap-fill gate
-        # below discarding whichever of the two is richer.
-        verdict = structural_verdict(nct_item, merged)
-        if verdict == DROP:
-            continue
-        if verdict == KEEP:
-            merged.append(nct_item)
-            added_count += 1
-            continue
-        max_similarity = 0.0
-        for pdf_item in pdf_criteria:
-            similarity = SequenceMatcher(
-                None, nct_item.lower(), pdf_item.lower()
-            ).ratio()
-            if similarity > max_similarity:
-                max_similarity = similarity
-        if max_similarity < similarity_threshold:
-            merged.append(nct_item)
-            added_count += 1
-
-    # This sweep is new here, and it is the one change that can remove an item
-    # from the authoritative PDF source: a base item is now re-checked against
-    # groups appended after it. Without it, a poorer group arriving from the NCT
-    # side survives alongside the richer PDF group, and two ANY nodes AND-ed
-    # silently over-restrict the cohort. Measured on the seven-study corpus: no
-    # item changes.
-    merged = prune_superseded(merged)
-
-    if added_count > 0:
-        logger.info(
-            "[Enricher] supplement_priority: %d PDF base + %d NCT gap-fill = %d total",
-            len(pdf_criteria), added_count, len(merged),
-        )
-
-    return merged
+    if pdf_criteria:
+        if held_criteria:
+            logger.info(
+                "[Enricher] supplement_priority: section from the PDF (%d criteria); "
+                "%d held criteria not used",
+                len(pdf_criteria), len(held_criteria),
+            )
+        return list(pdf_criteria)
+    logger.info("[Enricher] supplement_priority: the PDF yields no criteria for this section; "
+                "keeping the %d held", len(held_criteria))
+    return list(held_criteria)
