@@ -3802,19 +3802,21 @@ def specimen_mismatched_measurement_criteria(
 
     Two shapes, both from ``deliveries/2026-09-23`` and both invisible to every other check:
 
-    * a LOINC lab test whose System the criterion never named -- 3004676 'Glucose [Mass/volume]
-      in Vitreous fluid' and 3004378 'Glucose in CSF/Glucose plas' in EMPA-REG codeset 10 and
-      CAROLINA codesets 41/42, beside red-cell, dried-blood-spot and amniotic ALT/AST codes;
+    * a LOINC lab test in a specimen the criterion does not state -- 3004676 'Glucose
+      [Mass/volume] in Vitreous fluid' and 3004378 'Glucose in CSF/Glucose plas' in EMPA-REG
+      codeset 10 and CAROLINA codesets 41/42, beside red-cell, dried-blood-spot and amniotic
+      ALT/AST codes;
     * a lab test whose Property contradicts the criterion's own ``Unit``. CAROLINA codeset 42
       is read by ``> 13.3`` in 8753 mmol/L over Mass-Concentration codes only, so the filter
       matches no row on any CDM.
 
-    Severity is ``src.services.loinc_specimen.specimen_verdict``: FAIL when the builder would
-    repair the set, WARN -- with the builder's own decline reason -- when it declines (no analyte
-    majority, a unit contradicting every member, no member in a serum, plasma, blood or named
-    specimen). What the criterion "names" is read from the rule name and the concept set name,
-    the only text a Circe file carries; the unit's property from the ``Unit``'s first, standard,
-    CONCEPT_CODE.
+    The property is machine format (the ``Unit``'s first, standard, CONCEPT_CODE, against each
+    member's LOINC ``Has property``). The specimen is NOT re-decided here: it is the specimen
+    critic's decision, which the builder recorded under :data:`SPECIMEN_DECISIONS_KEY` for the
+    codeset, and a codeset with no record is judged on its property alone (RFC-016 step 4 --
+    the rule name and concept set name are not read). Severity is
+    ``src.services.loinc_specimen.specimen_verdict``: FAIL when the builder would repair the
+    set, WARN -- with the builder's own decline reason -- when it declines.
 
     :param expression: a CIRCE cohort expression.
     :param lab_tests: concept id -> ``LabTest`` for every id :func:`measurement_lab_test_ids`
@@ -3824,23 +3826,27 @@ def specimen_mismatched_measurement_criteria(
     """
     from src.services.loinc_specimen import (
         carries_numeric_bound,
-        criterion_words,
+        recorded_judge,
         specimen_verdict,
         value_filter_unit_property,
     )
 
+    decisions: dict[Any, Mapping[str, Any]] = {}
+    for record in expression.get(SPECIMEN_DECISIONS_KEY) or []:
+        if isinstance(record, Mapping) and record.get("judged"):
+            decisions[record.get("codesetId")] = record
+
     fail: list[str] = []
     warn: list[str] = []
     for where, payload, concept_set, members, _claimed in _measurement_lab_test_reads(expression):
-        words = criterion_words(where, concept_set.get("name"))
+        record = decisions.get(payload["CodesetId"])
         verdict = specimen_verdict(
             member_ids=members,
             lab_tests=lab_tests,
-            words=words,
-            description_words=words,
             unit_prop=value_filter_unit_property(payload),
             numeric_bound=carries_numeric_bound(payload),
             analyte_lab_tests=analyte_lab_tests,
+            judge=recorded_judge(record.get("accepted") if record is not None else None),
         )
         if verdict.severity is None:
             continue
@@ -3863,6 +3869,11 @@ def specimen_mismatched_measurement_criteria(
 #: Expression key: one record per value-range inclusion the builder converted or declined. Check
 #: (q) reads the stated unit from it, because a converted absence no longer carries its ``Unit``.
 VALUE_RANGE_CONVERSIONS_KEY = "_valueRangeConversions"
+
+#: Expression key: the specimen critic's decision per refined Measurement codeset
+#: (``codesetId``, ``accepted`` options, ``judged``, ``declined``, what it was told). Check (u)
+#: judges specimen and challenge from it and from nothing else (RFC-016 step 4).
+SPECIMEN_DECISIONS_KEY = "_specimenDecisions"
 
 _VALUE_RANGE_OPS = frozenset({"lt", "lte", "gt", "gte", "bt"})
 

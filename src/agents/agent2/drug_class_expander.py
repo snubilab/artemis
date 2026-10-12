@@ -277,13 +277,6 @@ def atc_parent(cur, schema: str, class_id: int) -> Optional[Tuple[int, str, str,
     return tuple(row) if row else None
 
 
-def _states_route(text: str) -> bool:
-    """True when the phrase names a route or a systemic/local intent."""
-    from src.services.route_qualifier import detect_route_qualifiers
-    found = detect_route_qualifiers(text)
-    return bool(found.qualifiers) or found.systemic_intent is not None
-
-
 def expand_drug_class_via_umls(
     text: str,
     db_conn,
@@ -526,7 +519,10 @@ def expand_drug_class_via_vocab(
     logger.info(f"[DrugClass] ATC match '{text}' → '{chosen.name}' "
                 f"(code={chosen.code}, dist={chosen.distance:.3f}; {ranking})")
 
-    keep_route = _states_route(text)
+    # The phrase is not read for a route (RFC-016 step 4, A12). A route the protocol line
+    # states is applied after mapping, from the vocabulary's dose-form routes
+    # (`route_subtraction`), so a too-small route-specific class climbs like any other and
+    # the stated route then excludes the parent's other-route forms.
     class_id, code, name = chosen.concept_id, chosen.code, chosen.name
     climbed = {class_id}
     while True:
@@ -534,14 +530,6 @@ def expand_drug_class_via_vocab(
         if len(ingredient_ids) >= _MIN_CLASS_SIZE:
             logger.info(f"[DrugClass] ATC '{code}' → {len(ingredient_ids)} RxNorm Ingredients")
             return name, ingredient_ids
-        if keep_route:
-            # The phrase names a route and this class is that route's ("Insulins and
-            # analogues for inhalation"); its parent would drop the route.
-            if ingredient_ids:
-                logger.info(f"[DrugClass] ATC '{code}' → {len(ingredient_ids)} RxNorm "
-                            f"Ingredients (route-specific class, not climbed)")
-                return name, ingredient_ids
-            return None, []
         parent = atc_parent(cur, schema, class_id)
         if parent is None or parent[3] == "ATC 1st" or parent[0] in climbed:
             logger.info(f"[DrugClass] ATC '{code}' rejected: {len(ingredient_ids)} "

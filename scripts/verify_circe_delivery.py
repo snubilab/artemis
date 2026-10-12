@@ -553,8 +553,11 @@ ALLOWED_SKIP_REASONS = frozenset(
 #: loss in the batch. The axis is **"is this loss irreducible given a correct
 #: pipeline?"**, and on that axis the codes split cleanly except for one:
 #:
-#: * ``unmappable-placeholder`` — irreducible. The seed names no clinical entity, so no
-#:   vocabulary can hold it and no better mapper can find it. Verbatim from the
+#: * ``unmappable-placeholder`` — irreducible. The protocol line names no clinical entity,
+#:   so no vocabulary can hold it and no better mapper can find it. Decided by the
+#:   annotation step's ``no_entity`` field (RFC-016 step 4) and permitted only when its
+#:   fragment (``refusalDetail``) is a substring of the store row's ``protocolLine`` --
+#:   see :func:`unmapped_refusal_block_reason`. Verbatim from the
 #:   2026-09-08 batch: LEADER inclusion 27 "Risk factor 1" (a numbered placeholder whose
 #:   content is elsewhere in the protocol), PLATO inclusion 21 "Table II criteria" (a
 #:   pointer into the source document), PLATO inclusion 29 "Preexisting Conditions
@@ -1145,15 +1148,25 @@ def criteria_index(study: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any
     }
 
 
-def unmapped_refusal_block_reason(record: dict[str, Any]) -> str | None:
+def unmapped_refusal_block_reason(
+    record: dict[str, Any], criterion: dict[str, Any] | None = None
+) -> str | None:
     """Why this ``_unmappedCriteria`` row is criterion loss, or ``None`` when it is not.
 
-    The single place the permit policy is applied. It reads ``refusalCode`` and nothing
-    else — never the reason prose, which is written for a human and is byte-for-byte
-    identical for an irreducible placeholder and for a mappable criterion the search
-    stopped short of.
+    The single place the permit policy is applied. It reads ``refusalCode`` and, for the
+    permitted code, the evidence it rests on -- never the reason prose, which is written for
+    a human and is byte-for-byte identical for an irreducible placeholder and for a
+    mappable criterion the search stopped short of.
+
+    ``unmappable-placeholder`` is decided by the annotation step's ``no_entity`` field
+    (RFC-016 step 4), whose fragment of the protocol line travels as ``refusalDetail``. The
+    gate does not re-decide it; it checks that the fragment is a substring of the store
+    row's ``protocolLine``, the same check ``conditional-on-existing-record`` gets. A
+    refusal earned any other way -- the word lists it replaced wrote a domain list there --
+    carries nothing the line supports and blocks.
 
     :param record: one ``_unmappedCriteria`` row.
+    :param criterion: the store row the record names; None when it cannot be found.
     :returns: a phrase naming why the row blocks the delivery, or ``None`` when
         :data:`PERMITTED_REFUSAL_CODES` covers it.
     """
@@ -1170,6 +1183,14 @@ def unmapped_refusal_block_reason(record: dict[str, Any]) -> str | None:
         )
     if code not in PERMITTED_REFUSAL_CODES:
         return f"refused as {code!r}, which is criterion loss a correct pipeline would not incur"
+    span = record.get("refusalDetail")
+    line = (criterion or {}).get("protocolLine")
+    if not span_in_line(span, line):
+        return (
+            f"refused as {code!r} but its span {span!r} is not a substring of the store row's "
+            f"protocolLine {line!r}: no fragment of the protocol supports the claim that the "
+            "line names no entity"
+        )
     return None
 
 
@@ -2354,7 +2375,9 @@ def criterion_accounting(
     for record in unmapped:
         if not isinstance(record, dict):
             continue
-        block = unmapped_refusal_block_reason(record)
+        block = unmapped_refusal_block_reason(
+            record, index.get((record.get("role"), str(record.get("criterionId") or "").strip()))
+        )
         if block is None:
             permitted_unmapped.append(record)
         else:

@@ -45,6 +45,7 @@ only when the bound was handed down, so an emitted member was not stranded.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -60,6 +61,16 @@ from src.utils.criterion_refusal import (
     REFUSAL_NO_CONCEPT_MAPPING,
     REFUSAL_UNMAPPABLE_PLACEHOLDER,
 )
+
+_STEP4 = json.loads(
+    (Path(__file__).resolve().parent / "fixtures" / "rfc016_step4_rows.json").read_text()
+)
+#: ARISTOTLE exclusion 32 as the 2026-10-12 prompt_f2 store holds it, and the
+#: ``_unmappedCriteria`` record that run wrote for it.
+ARISTOTLE_32 = {
+    k: v for k, v in _STEP4["aristotle_exclusion_32"].items() if k not in ("studyId", "role")
+}
+ARISTOTLE_32_CANDIDATE_RECORD = _STEP4["aristotle_exclusion_32_unmapped_record"]
 
 #: The real CAROLINA exclusion-44 / EMPA-REG exclusion-56 label threshold: "> 240 mg/dL"
 #: written once on a group of glucose analytes. Absolute and unit-bearing.
@@ -233,24 +244,56 @@ def gate(monkeypatch, tmp_path, capsys):
 
 
 class TestTheOnlyPermittedLossIsAnIrreducibleOne:
-    def test_should_permit_a_row_refused_as_an_unmappable_placeholder(self, gate):
-        """"Table II criteria" is a pointer into the PLATO protocol. No vocabulary entry
-        can ever exist for it, so no better mapper recovers it and the delivery is not
-        made worse by shipping without it."""
+    def test_should_permit_a_placeholder_refusal_whose_span_is_in_the_protocol_line(self, gate):
+        """ARISTOTLE exclusion 32, real row: the annotation's ``no_entity`` fragment travels
+        as ``refusalDetail`` and is a substring of the store row's ``protocolLine``
+        (RFC-016 step 4, A16). No vocabulary entry exists for a product known only by its
+        role in a study, so shipping without the row is no worse."""
         rc, out = gate(
             _records(
                 unmapped=[
                     _unmapped(
-                        "21",
-                        "Table II criteria",
-                        reason="No concept mapping found for 'Table II criteria'",
+                        "32",
+                        "Investigational drug use",
+                        reason="CriterionRefused: the protocol line names no clinical entity",
                         refusalCode=REFUSAL_UNMAPPABLE_PLACEHOLDER,
+                        refusalDetail="investigational drug",
                     )
-                ]
-            )
+                ],
+                store_criteria=1,
+            ),
+            study=_study(exclusion=[ARISTOTLE_32]),
         )
         assert rc == 0, out
         assert "1 unmapped (all permitted)" in out
+
+    def test_should_block_the_candidate_runs_word_list_permit(self, gate):
+        """The real record the 2026-10-12 candidate shipped for ARISTOTLE 32: the code was
+        earned on the seed's words, and its ``refusalDetail`` is the domain list, not a
+        fragment of the protocol line. Nothing in the line supports it, so it blocks."""
+        rc, out = gate(
+            _records(unmapped=[ARISTOTLE_32_CANDIDATE_RECORD], store_criteria=1),
+            study=_study(exclusion=[ARISTOTLE_32]),
+        )
+        assert rc == 1, out
+        assert "is not a substring" in out
+
+    def test_should_block_a_placeholder_refusal_carrying_no_span(self, gate):
+        rc, out = gate(
+            _records(
+                unmapped=[
+                    _unmapped(
+                        "32",
+                        "Investigational drug use",
+                        refusalCode=REFUSAL_UNMAPPABLE_PLACEHOLDER,
+                    )
+                ],
+                store_criteria=1,
+            ),
+            study=_study(exclusion=[ARISTOTLE_32]),
+        )
+        assert rc == 1, out
+        assert "is not a substring" in out
 
     def test_should_block_the_same_row_when_it_is_refused_as_no_concept_mapping(self, gate):
         """The code that shipped, and the reason the split had to be made upstream: it

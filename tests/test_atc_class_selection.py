@@ -10,8 +10,9 @@ produced it:
 - identical names in one subtree: B01 and B01A are both "ANTITHROMBOTIC AGENTS".
 - a too-small class rejected without looking at its parent: "Anti-obesity drug" ->
   A08AX "Other antiobesity drugs" (1 ingredient), while A08A holds the class.
-- a route-specific small class that climbing would destroy: "Inhaled insulin" ->
-  A10AF "Insulins and analogues for inhalation" (1 ingredient).
+- a route-specific small class: "Inhaled insulin" -> A10AF "Insulins and analogues for
+  inhalation" (1 ingredient). The phrase is not read for a route (RFC-016 step 4): it climbs
+  like any other, and the route its protocol line states is applied after mapping.
 - combination codes leaking partners: A08AA62 bupropion+naltrexone puts bupropion
   under A08; A08AA56 ephedrine combinations put ephedrine there.
 
@@ -226,21 +227,15 @@ def test_should_climb_to_the_parent_when_the_class_is_too_small(expander):
     assert ids == [1, 2, 3, 4]
 
 
-def test_should_not_climb_when_the_seed_states_a_route(expander):
+def test_should_climb_whether_or_not_the_seed_names_a_route(expander):
+    """The route is the protocol line's, applied after mapping (`route_subtraction`); the
+    expander gives a route-worded phrase and a bare one the same class."""
     conn = expander([A10AF])
 
-    name, ids = dce.expand_drug_class_via_vocab("Inhaled insulin", conn, schema="cdm")
+    worded = dce.expand_drug_class_via_vocab("Inhaled insulin", conn, schema="cdm")
+    bare = dce.expand_drug_class_via_vocab("insulin", conn, schema="cdm")
 
-    assert name == "Insulins and analogues for inhalation", (
-        "climbing to A10A would replace 'inhaled insulin' with every insulin"
-    )
-    assert ids == [7]
-
-
-def test_should_give_up_when_a_route_qualified_class_has_no_ingredients(expander):
-    conn = expander([A10AF], ingredients={**INGREDIENTS, 21600742: []})
-
-    assert dce.expand_drug_class_via_vocab("Inhaled insulin", conn, schema="cdm") == (None, [])
+    assert worded == bare == ("INSULINS AND ANALOGUES", [7, 8, 9, 10])
 
 
 def test_should_not_climb_into_the_anatomical_main_group(expander):

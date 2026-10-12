@@ -7,9 +7,10 @@ Dong-A or Keimyung, which record glucose as 3004501 (serum or plasma) or 3037110
 exclusion excluded nobody. Codeset 42 is also in mmol/L over Mass-Concentration codes only, so its
 unit filter can never match.
 
-Every attribute below is the real vocabulary row (synthea23m, verified 2026-10-07): the logic under
-test must reach its answer from component / system / property / scale and the criterion's own
-words, so the fixtures carry nothing a production rule could key on except those.
+Every attribute below is the real vocabulary row (synthea23m, verified 2026-10-07). The logic under
+test reaches its answer from component / property / scale / time and from the judge's answer --
+which specimen and challenge the criterion states is the specimen critic's decision in production
+(RFC-016 step 4) and a stub judge here. No criterion text is passed to the plan at all.
 """
 
 from __future__ import annotations
@@ -21,11 +22,8 @@ from src.services.loinc_specimen import (
 )
 from src.services.loinc_specimen import (
     LabTest,
-    challenge_stated,
-    criterion_words,
     plan_specimen_refinement,
     refine_measurement_concept_set,
-    system_allowed,
     unit_property,
 )
 
@@ -198,16 +196,37 @@ class FakeVocabulary:
         return [t for t in self.by_id.values() if t.component.split("^")[0] == analyte]
 
 
-def _plan(members, *, text, description, unit_code=None, numeric=True, vocab=None):
+BLOOD = ("Serum or Plasma", "Blood", "Serum, Plasma or Blood")
+FAST = "post CFst"
+
+
+def accepting(*systems, challenges=(None,)):
+    """A stub judge standing in for the specimen critic: accepts the options in these LOINC
+    Systems under these challenges, and records what it was shown."""
+
+    def judge(analyte, options):
+        judge.calls.append((analyte, list(options)))
+        return frozenset(
+            o.key for o in options if o.system in systems and o.challenge in challenges
+        )
+
+    judge.calls = []
+    return judge
+
+
+def no_answer(_analyte, _options):
+    return None
+
+
+def _plan(members, *, judge, unit_code=None, numeric=True, vocab=None):
     vocab = vocab or FakeVocabulary(*GLUCOSE_FAMILY, *members)
     return plan_specimen_refinement(
         member_ids=[m.concept_id for m in members],
         lab_tests=vocab.lab_tests([m.concept_id for m in members]),
-        words=criterion_words(text, description),
-        description_words=criterion_words(description),
         unit_prop=unit_property(unit_code) if unit_code else None,
         numeric_bound=numeric,
         analyte_lab_tests=vocab.analyte_lab_tests,
+        judge=judge,
     )
 
 
@@ -232,36 +251,38 @@ class TestUnitProperty:
         assert unit_property("%") is None
 
 
-class TestSpecimenNaming:
-    def test_should_allow_serum_plasma_and_blood_when_the_criterion_names_no_specimen(self):
-        words = criterion_words("glucose", "Uncontrolled hyperglycemia")
-        assert all(
-            system_allowed(s, words) for s in ("Serum or Plasma", "Blood", "Serum, Plasma or Blood")
+class TestTheJudgeDecides:
+    def test_should_show_the_judge_the_analyte_and_every_member_and_candidate_option(self):
+        judge = accepting(*BLOOD)
+        _plan(DELIVERED_GLUCOSE, judge=judge, unit_code="mg/dL")
+        [(analyte, options)] = judge.calls
+        assert analyte == "Glucose"
+        assert {(o.system, o.challenge) for o in options} == {
+            ("Blood", None),
+            ("Plasma and CSF", None),
+            ("Vitreous fluid", None),
+            ("Serum, Plasma or Blood", None),
+            ("Serum or Plasma", None),
+            ("Serum or Plasma", FAST),
+            ("Serum or Plasma", "2H post 75 g glucose PO"),
+        }
+
+    def test_should_decide_no_specimen_when_the_judge_gives_no_answer(self):
+        """The critic failed: only the unit's property removes, nothing is added, and the plan
+        says so instead of guessing a specimen."""
+        plan = _plan(DELIVERED_GLUCOSE, judge=no_answer, unit_code="mg/dL")
+        assert plan.judged is False
+        assert plan.added == ()
+        assert {cid for cid, _ in plan.removed} == {3004378}  # Relative Mass Concentration
+
+    def test_should_keep_a_challenge_variant_only_when_the_judge_accepts_its_condition(self):
+        fasting = _plan(
+            DELIVERED_GLUCOSE, judge=accepting(*BLOOD, challenges=(None, FAST)), unit_code="mg/dL"
         )
-
-    def test_should_refuse_vitreous_and_red_cells_when_the_criterion_does_not_name_them(self):
-        words = criterion_words("glucose", "Uncontrolled hyperglycemia")
-        assert not system_allowed("Vitreous fluid", words)
-        assert not system_allowed("Red Blood Cells", words)
-        assert not system_allowed("Plasma and CSF", words)
-
-    def test_should_allow_urine_when_the_criterion_says_urinary(self):
-        assert system_allowed("Urine", criterion_words("Urinary albumin creatinine ratio", None))
-
-
-class TestChallengeAxis:
-    def test_should_admit_a_post_fast_variant_when_the_description_states_a_fast(self):
-        assert challenge_stated(
-            "post CFst", criterion_words("Glucose level >240 mg/dl after overnight fast")
-        )
-
-    def test_should_not_admit_a_post_fast_variant_when_the_description_states_no_fast(self):
-        assert not challenge_stated("post CFst", criterion_words("Uncontrolled hyperglycemia"))
-
-    def test_should_not_admit_a_glucose_load_when_the_description_states_only_a_fast(self):
-        assert not challenge_stated(
-            "2H post 75 g glucose PO", criterion_words("after overnight fast")
-        )
+        plain = _plan(DELIVERED_GLUCOSE, judge=accepting(*BLOOD), unit_code="mg/dL")
+        assert 3037110 in {t.concept_id for t in fasting.added}
+        assert 3037110 not in {t.concept_id for t in plain.added}
+        assert 3025673 not in {t.concept_id for t in fasting.added}
 
 
 class TestPlan:
@@ -289,102 +310,66 @@ class TestPlan:
         ]
         plan = _plan(
             members,
-            text="glucose",
-            description="Uncontrolled hyperglycemia",
+            judge=accepting(*BLOOD),
             unit_code="mg/dL",
             vocab=FakeVocabulary(*members, *candidates),
         )
         assert {t.concept_id for t in plan.added} == {3004501}, glucagon_glucose
 
-    def test_should_add_the_serum_code_and_drop_other_specimens_when_no_fast_is_stated(self):
-        plan = _plan(
-            DELIVERED_GLUCOSE,
-            text="glucose",
-            description="Uncontrolled hyperglycemia",
-            unit_code="mg/dL",
-        )
+    def test_should_add_the_serum_code_and_drop_other_specimens_when_no_fast_is_accepted(self):
+        plan = _plan(DELIVERED_GLUCOSE, judge=accepting(*BLOOD), unit_code="mg/dL")
         assert plan.declined is None
         assert {t.concept_id for t in plan.added} == {3004501}
         assert {cid for cid, _ in plan.removed} == {3004378, 3004676}
 
-    def test_should_add_the_fasting_code_when_the_description_states_an_overnight_fast(self):
+    def test_should_add_the_fasting_code_when_the_judge_accepts_the_fast(self):
         plan = _plan(
-            DELIVERED_GLUCOSE,
-            text="Glucose",
-            description="Glucose level >240 mg/dl after overnight fast",
-            unit_code="mg/dL",
+            DELIVERED_GLUCOSE, judge=accepting(*BLOOD, challenges=(None, FAST)), unit_code="mg/dL"
         )
         assert {t.concept_id for t in plan.added} == {3004501, 3037110}
 
     def test_should_swap_to_substance_codes_when_the_unit_is_mmol_per_litre(self):
         plan = _plan(
-            DELIVERED_GLUCOSE,
-            text="Glucose",
-            description="Glucose level >13.3 mmol/L after overnight fast",
-            unit_code="mmol/L",
+            DELIVERED_GLUCOSE, judge=accepting(*BLOOD, challenges=(None, FAST)), unit_code="mmol/L"
         )
         assert {t.concept_id for t in plan.added} == {3013826, 3018251}
         assert {cid for cid, _ in plan.removed} == {3000483, 3004378, 3004676, 44816672}
 
     def test_should_leave_the_set_unchanged_when_the_component_is_ambiguous(self):
         plan = _plan(
-            [HBA1C, HBA1],
-            text="HbA1c",
-            description="HbA1c",
-            unit_code="%",
-            vocab=FakeVocabulary(HBA1C, HBA1),
+            [HBA1C, HBA1], judge=accepting(*BLOOD), unit_code="%", vocab=FakeVocabulary(HBA1C, HBA1)
         )
         assert plan.declined and "majority" in plan.declined
         assert plan.added == () and plan.removed == ()
 
-    def test_should_keep_urine_members_when_the_criterion_names_urine(self):
-        plan = _plan(
-            [UACR],
-            text="Urine Albumin Creatinine Ratio",
-            description="Impaired renal function (UACR)",
-            numeric=False,
-            vocab=FakeVocabulary(UACR),
-        )
+    def test_should_keep_urine_members_when_the_judge_accepts_urine(self):
+        plan = _plan([UACR], judge=accepting("Urine"), numeric=False, vocab=FakeVocabulary(UACR))
         assert plan.removed == ()
 
-    def test_should_leave_an_all_urine_set_unchanged_when_urine_is_not_named(self):
-        plan = _plan(
-            [UACR],
-            text="Microalbuminuria or proteinuria",
-            description=None,
-            numeric=False,
-            vocab=FakeVocabulary(UACR),
-        )
+    def test_should_leave_an_all_urine_set_unchanged_when_urine_is_not_accepted(self):
+        plan = _plan([UACR], judge=accepting(*BLOOD), numeric=False, vocab=FakeVocabulary(UACR))
         assert plan.declined and plan.removed == () and plan.added == ()
 
     def test_should_leave_the_set_unchanged_when_it_holds_no_loinc_lab_test(self):
         plan = plan_specimen_refinement(
             member_ids=[4213628],
             lab_tests={},
-            words=criterion_words("eGFR"),
-            description_words=frozenset(),
             unit_prop=None,
             numeric_bound=True,
             analyte_lab_tests=lambda _a: pytest.fail("must not query"),
+            judge=lambda _a, _o: pytest.fail("must not judge"),
         )
         assert plan.declined and plan.added == () and plan.removed == ()
 
     def test_should_decline_when_the_unit_contradicts_every_member(self):
         plan = _plan(
-            [EGFR],
-            text="Glomerular Filtration Rate",
-            description="eGFR < 30 ml/min",
-            unit_code="mL/min",
-            vocab=FakeVocabulary(EGFR),
+            [EGFR], judge=accepting(*BLOOD), unit_code="mL/min", vocab=FakeVocabulary(EGFR)
         )
         assert plan.declined and plan.removed == () and plan.added == ()
 
     def test_should_drop_red_cell_members_and_keep_the_serum_code_when_the_bound_is_relative(self):
         plan = _plan(
-            [ALT_SP, ALT_RBC],
-            text="ALT",
-            description="ALT elevation",
-            vocab=FakeVocabulary(ALT_SP, ALT_RBC),
+            [ALT_SP, ALT_RBC], judge=accepting(*BLOOD), vocab=FakeVocabulary(ALT_SP, ALT_RBC)
         )
         assert {cid for cid, _ in plan.removed} == {3015912}
         assert plan.added == ()
@@ -428,8 +413,7 @@ class TestTimeAspect:
     def test_should_not_add_a_24_hour_collection_when_the_criterion_states_a_spot_ratio(self):
         plan = _plan(
             [UACR],
-            text="Urinary albumin creatinine ratio",
-            description="UACR >= 30 ug/mg",
+            judge=accepting("Urine"),
             unit_code="ug/mg",
             vocab=FakeVocabulary(UACR, UACR_SPOT, UACR_24H),
         )
@@ -438,8 +422,7 @@ class TestTimeAspect:
     def test_should_not_add_a_study_mean_when_the_criterion_bounds_glucose(self):
         plan = _plan(
             DELIVERED_GLUCOSE,
-            text="glucose",
-            description="Uncontrolled hyperglycemia",
+            judge=accepting(*BLOOD),
             unit_code="mg/dL",
             vocab=FakeVocabulary(*GLUCOSE_FAMILY, GLU_MEAN, *DELIVERED_GLUCOSE),
         )
@@ -450,8 +433,7 @@ class TestTimeAspect:
         """Negative control: the time axis governs additions only; removal is specimen/property."""
         plan = _plan(
             [UACR, UACR_24H],
-            text="Urinary albumin creatinine ratio",
-            description=None,
+            judge=accepting("Urine"),
             unit_code="ug/mg",
             vocab=FakeVocabulary(UACR, UACR_SPOT, UACR_24H),
         )
@@ -463,21 +445,17 @@ class TestBoundGate:
 
     def test_should_add_nothing_when_the_criterion_carries_no_bound(self):
         """CAROLINA cs3 'Glycaemic control insufficient' shape: one blood glucose, no threshold."""
-        plan = _plan(
-            [GLU_BLD], text="Glycaemic control insufficient", description=None, numeric=False
-        )
+        plan = _plan([GLU_BLD], judge=accepting(*BLOOD), numeric=False)
         assert plan.added == ()
 
     def test_should_still_drop_vitreous_when_the_criterion_carries_no_bound(self):
-        plan = _plan(DELIVERED_GLUCOSE, text="glucose", description="hyperglycemia", numeric=False)
+        plan = _plan(DELIVERED_GLUCOSE, judge=accepting(*BLOOD), numeric=False)
         assert plan.added == ()
         assert {cid for cid, _ in plan.removed} == {3004378, 3004676}
 
     def test_should_add_when_the_same_criterion_carries_a_bound(self):
         """Negative control for the gate above: the same set under a bound gains the serum code."""
-        plan = _plan(
-            [GLU_BLD], text="Glycaemic control insufficient", description=None, unit_code="mg/dL"
-        )
+        plan = _plan([GLU_BLD], judge=accepting(*BLOOD), unit_code="mg/dL")
         assert 3004501 in {t.concept_id for t in plan.added}
 
 
@@ -513,8 +491,7 @@ class TestRefineExpression:
         expression = {"items": [_circe_item(t) for t in DELIVERED_GLUCOSE] + [snomed]}
         refined, plan = refine_measurement_concept_set(
             expression,
-            seed="glucose",
-            description="Uncontrolled hyperglycemia",
+            judge=accepting(*BLOOD),
             value_filter={
                 "ValueAsNumber": {"Value": 240.0, "Op": "gt"},
                 "Unit": [{"CONCEPT_ID": 8840, "CONCEPT_CODE": "mg/dL"}],
@@ -544,8 +521,7 @@ class TestRefineExpression:
         expression = {"items": [{"concept": {"CONCEPT_ID": 3006923}}]}
         refined, plan = refine_measurement_concept_set(
             expression,
-            seed="ALT",
-            description=None,
+            judge=lambda _a, _o: pytest.fail("must not judge"),
             value_filter={},
             vocabulary=Unreachable(),
         )
@@ -556,7 +532,7 @@ class TestTheEligibilityBuilderApplies:
     """A refinement no production path calls is indistinguishable from one that does nothing."""
 
     @staticmethod
-    def _build(domain, *, vocabulary, description="Uncontrolled hyperglycemia"):
+    def _build(domain, *, vocabulary, criterion=None, judge=None):
         from unittest.mock import MagicMock
 
         from src.services.tte_service import TTEService
@@ -576,38 +552,177 @@ class TestTheEligibilityBuilderApplies:
             },
         }
         service._lab_test_vocabulary = lambda: vocabulary
-        return service._build_seeded_eligibility_rule(
-            criterion={
-                "sourceText": "glucose",
-                "description": description,
-                "domain": domain,
-                "valueConstraint": {
-                    "op": "gt",
-                    "value": 240.0,
-                    "unitText": "mg/dL",
-                    "unitConceptId": 8840,
-                },
-                "window": {"start": -180, "end": 0},
-                "logicType": "ABSENCE",
+        if judge is not None:
+            service._specimen_judge = lambda _criterion: judge
+        criterion = criterion or {
+            "sourceText": "glucose",
+            "description": "Uncontrolled hyperglycemia",
+            "domain": domain,
+            "valueConstraint": {
+                "op": "gt",
+                "value": 240.0,
+                "unitText": "mg/dL",
+                "unitConceptId": 8840,
             },
-            codeset_id=10,
-            exclusion=True,
+            "window": {"start": -180, "end": 0},
+            "logicType": "ABSENCE",
+        }
+        return service._build_seeded_eligibility_rule(
+            criterion=criterion, codeset_id=10, exclusion=True
         )
 
     def test_should_ship_the_serum_code_not_the_vitreous_code_when_the_criterion_is_a_measurement(
         self,
     ):
         built = self._build(
-            "Measurement", vocabulary=FakeVocabulary(*GLUCOSE_FAMILY, *DELIVERED_GLUCOSE)
+            "Measurement",
+            vocabulary=FakeVocabulary(*GLUCOSE_FAMILY, *DELIVERED_GLUCOSE),
+            judge=accepting(*BLOOD),
         )
         ids = {i["concept"]["CONCEPT_ID"] for i in built["conceptSet"]["expression"]["items"]}
         assert ids == {3000483, 44816672, 3004501}
+
+    def test_should_record_the_decision_gate_u_re_reads(self):
+        built = self._build(
+            "Measurement",
+            vocabulary=FakeVocabulary(*GLUCOSE_FAMILY, *DELIVERED_GLUCOSE),
+            judge=accepting(*BLOOD),
+        )
+        record = built["_specimen_decision"]
+        assert record["judged"] is True and record["analyte"] == "Glucose"
+        assert {a["system"] for a in record["accepted"]} == set(BLOOD)
+        assert {cid for cid, _ in record["removed"]} == {3004378, 3004676}
+        assert record["added"] == [3004501]
+
+    def test_should_tell_the_critic_the_rows_line_and_its_annotated_specimen(self, monkeypatch):
+        """EMPA-REG exclusion 1, real row (``tests/fixtures/rfc016_step4_rows.json``): its line
+        names no body material, so the annotation records ``any``. The critic is told that,
+        and the line; the seed and description reach it nowhere."""
+        import json
+        from copy import deepcopy
+        from pathlib import Path
+
+        from src.agents.agent2 import specimen_critic
+        from src.services.criterion_annotation import ANNOTATION_KEY, validate_annotation
+
+        rows = json.loads(
+            (Path(__file__).resolve().parent / "fixtures" / "rfc016_step4_rows.json").read_text()
+        )
+        row = deepcopy(rows["empareg_exclusion_1"])
+        fields, rejected = validate_annotation(
+            {"record_requirement": "forbidden", "excepted_entities": [], "specimen": "any"},
+            row["protocolLine"],
+        )
+        assert rejected == []
+        row[ANNOTATION_KEY] = {"promptVersion": "test", "model": "stub", **fields}
+        told = []
+
+        def fake(**kwargs):
+            told.append(kwargs)
+            return frozenset(o.key for o in kwargs["options"] if o.system in BLOOD)
+
+        monkeypatch.setattr(specimen_critic, "judge_specimen_options", fake)
+        built = self._build(
+            "Measurement",
+            vocabulary=FakeVocabulary(*GLUCOSE_FAMILY, *DELIVERED_GLUCOSE),
+            criterion=row,
+        )
+        [call] = told
+        assert call["protocol_line"] == row["protocolLine"]
+        assert (call["specimen"], call["specimen_span"]) == ("any", None)
+        assert call["analyte"] == "Glucose"
+        assert built["_specimen_decision"]["specimen"] == "any"
 
     def test_should_not_consult_the_vocabulary_when_the_criterion_is_not_a_measurement(self):
         class Unreachable:
             def lab_tests(self, _ids):
                 raise AssertionError("vocabulary must not be queried")
 
-        built = self._build("Observation", vocabulary=Unreachable())
+        built = self._build(
+            "Observation", vocabulary=Unreachable(), judge=lambda _a, _o: pytest.fail("no judge")
+        )
         ids = [i["concept"]["CONCEPT_ID"] for i in built["conceptSet"]["expression"]["items"]]
         assert ids == [3000483, 3004378, 3004676, 44816672]
+        assert built["_specimen_decision"] is None
+
+
+def test_should_record_the_decision_under_the_codeset_the_emitted_rule_reads(monkeypatch):
+    """Through ``_build_seeded_target_circe``: the record is keyed by the FINAL codeset id, the
+    one gate (u) finds on the delivered Measurement criterion."""
+    from src.services.tte_service import TTEService
+    from src.utils.circe_lint import SPECIMEN_DECISIONS_KEY
+
+    def recommend(seed, **_kwargs):
+        if seed.strip() == "glucose":
+            items = [
+                {
+                    **_circe_item(t),
+                    "concept": {**_circe_item(t)["concept"], "DOMAIN_ID": "Measurement"},
+                }
+                for t in DELIVERED_GLUCOSE
+            ]
+            return {"name": "glucose", "domain": "Measurement", "expression": {"items": items}}
+        return {
+            "name": seed,
+            "domain": "Drug",
+            "expression": {
+                "items": [
+                    {
+                        "concept": {
+                            "CONCEPT_ID": 1594973,
+                            "CONCEPT_NAME": seed,
+                            "CONCEPT_CODE": "1",
+                            "DOMAIN_ID": "Drug",
+                            "VOCABULARY_ID": "RxNorm",
+                            "CONCEPT_CLASS_ID": "Ingredient",
+                        },
+                        "includeDescendants": True,
+                        "isExcluded": False,
+                    }
+                ]
+            },
+        }
+
+    from src.agents.agent2 import workflow as agent2_workflow
+
+    def no_workflow(*_args, **_kwargs):
+        raise RuntimeError("Agent 2 is not built in this test")
+
+    monkeypatch.setattr(agent2_workflow, "Agent2Workflow", no_workflow)
+    svc = TTEService.__new__(TTEService)
+    monkeypatch.setattr(svc, "_recommend_seeded_concept_set", recommend)
+    monkeypatch.setattr(
+        svc, "_lab_test_vocabulary", lambda: FakeVocabulary(*GLUCOSE_FAMILY, *DELIVERED_GLUCOSE)
+    )
+    monkeypatch.setattr(svc, "_specimen_judge", lambda _criterion: accepting(*BLOOD))
+    circe = svc._build_seeded_target_circe(
+        {
+            "targetCohortName": "empagliflozin",
+            "inclusionCriteria": [],
+            "exclusionCriteria": [
+                {
+                    "id": 1,
+                    "domain": "Measurement",
+                    "sourceText": "glucose",
+                    "valueConstraint": {
+                        "op": "gt",
+                        "value": 240.0,
+                        "unitText": "mg/dL",
+                        "unitConceptId": 8840,
+                    },
+                    "window": {"start": -180, "end": 0},
+                    "logicType": "ABSENCE",
+                }
+            ],
+        }
+    )
+    [record] = circe[SPECIMEN_DECISIONS_KEY]
+    reads = [
+        body["CodesetId"]
+        for rule in circe["InclusionRules"]
+        for entry in rule["expression"]["CriteriaList"]
+        for kind, body in entry["Criteria"].items()
+        if kind == "Measurement"
+    ]
+    assert reads == [record["codesetId"]]
+    assert (record["role"], record["criterionId"], record["judged"]) == ("exclusion", "1", True)

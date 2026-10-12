@@ -64,10 +64,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from src.services.route_subtraction import AdministrationRoute
+
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever either prompt below changes meaning; part of the cache key.
-ANNOTATION_PROMPT_VERSION = "rfc016-step2-v1"
+ANNOTATION_PROMPT_VERSION = "rfc016-step2-step4-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -98,6 +100,15 @@ PLANNER_RELATION_KEY = "plannerRelation"
 #: Where :func:`window_disagreement` records a verified ``window_span`` whose own duration
 #: is not the extracted window. A report: nothing reads it to change a rule.
 WINDOW_DISAGREEMENT_KEY = "_windowDisagreement"
+
+FIELD_ROUTE = "route"
+FIELD_ROUTE_SPAN = "route_span"
+FIELD_SPECIMEN = "specimen"
+FIELD_SPECIMEN_SPAN = "specimen_span"
+FIELD_NO_ENTITY = "no_entity"
+FIELD_NO_ENTITY_SPAN = "no_entity_span"
+#: The one ``route`` entry that states no restriction; it stands alone in the list.
+ROUTE_ANY = "any"
 
 #: Store row keys the inputs are read from.
 _LINE = "protocolLine"
@@ -164,6 +175,32 @@ class Timing(str, Enum):
 _REQUIREMENT_VALUES = frozenset(member.value for member in RecordRequirement)
 _RELATION_VALUES = frozenset(member.value for member in Relation)
 _TIMING_VALUES = frozenset(member.value for member in Timing)
+
+
+class Specimen(str, Enum):
+    """The body material the line says the measured quantity is taken from (RFC-016 §3)."""
+
+    BLOOD = "blood"
+    URINE = "urine"
+    OTHER = "other"
+    ANY = "any"
+
+
+class NoEntity(str, Enum):
+    """Whether the line names a clinical entity a vocabulary could hold (RFC-016 §3)."""
+
+    NONE = "none"
+    REFERS_ELSEWHERE = "refers_elsewhere"
+    INVESTIGATOR_JUDGEMENT = "investigator_judgement"
+
+
+_ROUTE_VALUES = frozenset(route.value for route in AdministrationRoute)
+_SPECIMEN_VALUES = frozenset(member.value for member in Specimen)
+_NO_ENTITY_VALUES = frozenset(member.value for member in NoEntity)
+
+
+def _quoted(values: Iterable[str]) -> str:
+    return ", ".join(f"`{value}`" for value in values)
 
 
 ANNOTATION_SYSTEM_PROMPT = """You annotate one eligibility criterion of a clinical trial protocol.
@@ -237,6 +274,39 @@ places what this criterion describes. One of:
 required when `timing` is `prospective`; otherwise it is that fragment when the line states \
 one, and null when the line does not.
 
+`route` lists the routes of administration the protocol line restricts this criterion's drug \
+to. Each entry is one of the route values a clinical vocabulary attaches to drug dose forms: \
+{route_values}. A value covers the routes the vocabulary files under it: `topical` covers \
+`transdermal`, and `respiratory_tract` covers `nasal`. When the line restricts the drug by \
+where in the body it acts rather than by naming a route, list every route value by which a \
+drug of that kind acts there. The list holds the single value `any` when the line places no \
+restriction on route, and when the criterion's entity is not a drug.
+
+`route_span` is the fragment of the protocol line that states the route restriction. It is \
+required when `route` is not `any` and null otherwise.
+
+`specimen` states the body material in which the protocol line says the quantity this \
+criterion measures is taken. One of:
+- `blood`: blood, or a fraction separated from blood.
+- `urine`: urine.
+- `other`: a body material that is neither blood nor urine.
+- `any`: the line names no body material, or the criterion measures no quantity.
+
+`specimen_span` is the fragment of the protocol line that names the body material. It is \
+required when `specimen` is not `any` and null otherwise.
+
+`no_entity` states whether the protocol line names, for this criterion, a clinical entity \
+that a clinical vocabulary could hold. One of:
+- `none`: the line names such an entity.
+- `refers_elsewhere`: the line names no such entity and identifies what the criterion is \
+about only by pointing elsewhere: to an item, list, table or appendix of the protocol, or to \
+a product known only by its role in a study.
+- `investigator_judgement`: the line names no such entity and leaves the criterion to the \
+investigator's assessment.
+
+`no_entity_span` is the fragment of the protocol line that points elsewhere or states the \
+assessment. It is required when `no_entity` is not `none` and null otherwise.
+
 Output JSON:
 {{"record_requirement": "<required|forbidden|conditional>", \
 "conditional_span": "<fragment of the protocol line, or null>", \
@@ -246,7 +316,13 @@ Output JSON:
 "relation_span": "<fragment of the protocol line, or null>", \
 "cardinality": "<integer, or null>", \
 "timing": "<prior|at_index|prospective>", \
-"window_span": "<fragment of the protocol line, or null>"}}"""
+"window_span": "<fragment of the protocol line, or null>", \
+"route": ["<route value or any>"], \
+"route_span": "<fragment of the protocol line, or null>", \
+"specimen": "<blood|urine|other|any>", \
+"specimen_span": "<fragment of the protocol line, or null>", \
+"no_entity": "<none|refers_elsewhere|investigator_judgement>", \
+"no_entity_span": "<fragment of the protocol line, or null>"}}"""
 
 
 # --------------------------------------------------------------------------- #
@@ -397,6 +473,12 @@ def validate_annotation(
         FIELD_CARDINALITY: None,
         FIELD_TIMING: None,
         FIELD_WINDOW_SPAN: None,
+        FIELD_ROUTE: None,
+        FIELD_ROUTE_SPAN: None,
+        FIELD_SPECIMEN: None,
+        FIELD_SPECIMEN_SPAN: None,
+        FIELD_NO_ENTITY: None,
+        FIELD_NO_ENTITY_SPAN: None,
     }
     rejected: list[dict[str, Any]] = []
     if not isinstance(payload, Mapping):
@@ -465,7 +547,101 @@ def validate_annotation(
         fields.update(checked)
         if rejection is not None:
             rejected.append(rejection)
+    _validate_route(payload, protocol_line, fields, rejected)
+    _validate_choice(
+        payload,
+        protocol_line,
+        fields,
+        rejected,
+        field=FIELD_SPECIMEN,
+        span_field=FIELD_SPECIMEN_SPAN,
+        values=_SPECIMEN_VALUES,
+        spanless=Specimen.ANY.value,
+    )
+    _validate_choice(
+        payload,
+        protocol_line,
+        fields,
+        rejected,
+        field=FIELD_NO_ENTITY,
+        span_field=FIELD_NO_ENTITY_SPAN,
+        values=_NO_ENTITY_VALUES,
+        spanless=NoEntity.NONE.value,
+    )
     return fields, rejected
+
+
+def _validate_choice(
+    payload: Mapping[str, Any],
+    protocol_line: Any,
+    fields: dict[str, Any],
+    rejected: list[dict[str, Any]],
+    *,
+    field: str,
+    span_field: str,
+    values: frozenset[str],
+    spanless: str,
+) -> None:
+    """One enum field and its fragment: kept when the value is defined and, unless it is the
+    value that needs no fragment, the fragment is in the line. Absent stays absent."""
+    raw = payload.get(field)
+    if raw is None:
+        return
+    value = _enum_value(raw)
+    span = payload.get(span_field)
+    if value not in values:
+        rejected.append(_rejection(field, raw, f"not one of {sorted(values)}"))
+    elif value == spanless:
+        fields[field] = value
+    elif not span_in_line(span, protocol_line):
+        rejected.append(
+            _rejection(
+                field,
+                {field: raw, span_field: span},
+                f"{span_field} is not a substring of protocolLine",
+            )
+        )
+    else:
+        fields[field] = value
+        fields[span_field] = span
+
+
+def _validate_route(
+    payload: Mapping[str, Any],
+    protocol_line: Any,
+    fields: dict[str, Any],
+    rejected: list[dict[str, Any]],
+) -> None:
+    """``route``: a list of route values, or the single value ``any``; a route list needs its
+    fragment in the line. A bare string is read as a one-entry list."""
+    raw = payload.get(FIELD_ROUTE)
+    if raw is None:
+        return
+    entries = [raw] if isinstance(raw, str) else raw
+    if not isinstance(entries, list) or not entries:
+        rejected.append(_rejection(FIELD_ROUTE, raw, "not a non-empty list"))
+        return
+    tokens = list(dict.fromkeys(_enum_value(entry) for entry in entries))
+    span = payload.get(FIELD_ROUTE_SPAN)
+    if tokens == [ROUTE_ANY]:
+        fields[FIELD_ROUTE] = [ROUTE_ANY]
+    elif any(token not in _ROUTE_VALUES for token in tokens):
+        rejected.append(
+            _rejection(
+                FIELD_ROUTE, raw, f"not {ROUTE_ANY!r} alone nor a list of {sorted(_ROUTE_VALUES)}"
+            )
+        )
+    elif not span_in_line(span, protocol_line):
+        rejected.append(
+            _rejection(
+                FIELD_ROUTE,
+                {FIELD_ROUTE: raw, FIELD_ROUTE_SPAN: span},
+                f"{FIELD_ROUTE_SPAN} is not a substring of protocolLine",
+            )
+        )
+    else:
+        fields[FIELD_ROUTE] = tokens
+        fields[FIELD_ROUTE_SPAN] = span
 
 
 # --------------------------------------------------------------------------- #
@@ -525,6 +701,7 @@ def render_prompt(row: Mapping[str, Any], members: Sequence[Mapping[str, Any]], 
         value_constraint=_value_constraint_text(row.get("valueConstraint")),
         group_label="yes" if row.get(_IS_LABEL) else "no",
         members=_members_text(members),
+        route_values=_quoted(route.value for route in AdministrationRoute),
     )
 
 
@@ -1092,3 +1269,81 @@ def stated_exceptions_by_codeset(eligibility: Mapping[str, Any]) -> dict[int, li
             names = found.setdefault(codeset_id, [])
             names += [e[FIELD_TEXT] for e in excepted if e[FIELD_TEXT] not in names]
     return found
+
+
+@dataclass(frozen=True)
+class RouteStatement:
+    """The routes a row's protocol line restricts its drug to, and the fragment saying so."""
+
+    routes: tuple[AdministrationRoute, ...]
+    span: str
+
+
+@dataclass(frozen=True)
+class SpecimenStatement:
+    """The body material a row's line names for its measured quantity (``span`` None for any)."""
+
+    specimen: Specimen
+    span: str | None
+
+
+@dataclass(frozen=True)
+class NoEntityStatement:
+    """A row whose line names no clinical entity, and the fragment that shows it."""
+
+    kind: NoEntity
+    span: str
+
+
+def stated_route(row: Mapping[str, Any]) -> RouteStatement | None:
+    """The route restriction to apply to this row's drug concept set, verified.
+
+    The span is checked against the row's own line again here, so a stale or hand-edited
+    row cannot carry an unchecked route into a concept set.
+
+    :param row: the store criterion row.
+    :returns: the routes and span, or None when the row states no route (``any``, absent,
+        rejected, or a span no longer in the line).
+    """
+    annotation = _annotation(row)
+    tokens = annotation.get(FIELD_ROUTE)
+    span = annotation.get(FIELD_ROUTE_SPAN)
+    if not isinstance(tokens, list) or not tokens or not span_in_line(span, row.get(_LINE)):
+        return None
+    if any(token not in _ROUTE_VALUES for token in tokens):
+        return None
+    return RouteStatement(routes=tuple(AdministrationRoute(t) for t in tokens), span=span)
+
+
+def stated_specimen(row: Mapping[str, Any]) -> SpecimenStatement | None:
+    """The specimen the row's line names, verified; ``any`` comes back with no span.
+
+    :param row: the store criterion row.
+    :returns: the statement, or None when the annotation carries no accepted specimen.
+    """
+    annotation = _annotation(row)
+    value = annotation.get(FIELD_SPECIMEN)
+    if value not in _SPECIMEN_VALUES:
+        return None
+    if value == Specimen.ANY.value:
+        return SpecimenStatement(specimen=Specimen.ANY, span=None)
+    span = annotation.get(FIELD_SPECIMEN_SPAN)
+    if not span_in_line(span, row.get(_LINE)):
+        return None
+    return SpecimenStatement(specimen=Specimen(value), span=span)
+
+
+def stated_no_entity(row: Mapping[str, Any]) -> NoEntityStatement | None:
+    """Whether the row's line names no clinical entity, verified against the line.
+
+    :param row: the store criterion row.
+    :returns: the kind and span, or None when the line names an entity or nothing verified.
+    """
+    annotation = _annotation(row)
+    value = annotation.get(FIELD_NO_ENTITY)
+    span = annotation.get(FIELD_NO_ENTITY_SPAN)
+    if value not in _NO_ENTITY_VALUES or value == NoEntity.NONE.value:
+        return None
+    if not span_in_line(span, row.get(_LINE)):
+        return None
+    return NoEntityStatement(kind=NoEntity(value), span=span)

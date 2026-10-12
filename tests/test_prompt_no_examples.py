@@ -333,6 +333,25 @@ def _render_criterion_annotation() -> str:
     return _joined(recorder.calls)
 
 
+def _render_specimen_critic() -> str:
+    """Through ``judge_specimen_options`` with the model replaced; the cache is off."""
+    from src.agents.agent2 import specimen_critic
+    from src.services.loinc_specimen import SpecimenOption
+
+    recorder = _Recorder(reply='{"accepted": []}')
+    options = [
+        SpecimenOption(1, f"{STUB} system", None),
+        SpecimenOption(2, f"{STUB} system two", f"{STUB} condition"),
+    ]
+    with patch.object(specimen_critic, "_build_llm", lambda _model: recorder.runnable()), \
+            patch.dict(os.environ, {"ARTEMIS_SPECIMEN_CRITIC_CACHE": "0"}):
+        specimen_critic.judge_specimen_options(
+            protocol_line=f"{STUB} line", analyte=STUB, specimen="any", specimen_span=None,
+            options=options, model="stub-model",
+        )
+    return _joined(recorder.calls)
+
+
 # ---------------------------------------------------------------------------
 # Declarations: what each prompt may quote
 # ---------------------------------------------------------------------------
@@ -476,6 +495,9 @@ PROMPTS: dict[str, PromptSpec] = {
                           "distinct", "verdict", "matched_alternatives", "reason"}),
         placeholders=frozenset({"one short sentence"}),
     ),
+    "agent2.specimen_critic": PromptSpec(
+        _render_specimen_critic, tokens=frozenset({"accepted", "any"}),
+    ),
     "criterion_annotation": PromptSpec(
         _render_criterion_annotation,
         tokens=frozenset({
@@ -484,6 +506,13 @@ PROMPTS: dict[str, PromptSpec] = {
             # RFC-016 step 2: relation and timing, their spans and their enum values.
             "relation", "relation_span", "cardinality", "timing", "window_span",
             "all", "any", "at_least", "prior", "at_index", "prospective",
+            # RFC-016 step 4: route (the OMOP route concepts RxNorm dose forms carry,
+            # `route_subtraction.AdministrationRoute`), specimen and no_entity, with their values.
+            "route", "route_span", "oral", "injectable", "topical", "transdermal",
+            "respiratory_tract", "nasal", "ophthalmic", "otic", "rectal", "vaginal", "buccal",
+            "sublingual", "implant",
+            "specimen", "specimen_span", "blood", "urine", "other",
+            "no_entity", "no_entity_span", "none", "refers_elsewhere", "investigator_judgement",
         }),
     ),
 }
@@ -805,6 +834,7 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/planner/decomposer.py": (3, ("planner",)),
     "src/agents/agent2/reranker.py": (3, ("agent2.reranker_single_select", "agent2.reranker_topn")),
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),
+    "src/agents/agent2/specimen_critic.py": (3, ("agent2.specimen_critic",)),
     "src/agents/conceptset/nlu_router.py": (2, ("conceptset.nlu_router",)),
     "src/agents/conceptset/clinical_reranker.py": (2, ("conceptset.clinical_reranker",)),
     "src/agents/comparator/recommender.py": (2, ("comparator.literature",)),

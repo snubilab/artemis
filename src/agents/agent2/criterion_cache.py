@@ -5,7 +5,7 @@ Caches the full output of Agent2 mapping per criterion text so re-runs of
 process_eligibility can skip Agent2 for unchanged criteria.
 
 Cache key: SHA256(normalize(text) | domain | embedding model | LLM_MODEL
-                  | critic_signature() | mapping_signature())
+                  | critic_signature() | mapping_signature() | ENTRY_SHAPE)
 
 The last two parts exist because the first four did not describe the run. Eight
 environment variables change what Agent 2 emits and appeared in no key part, so
@@ -44,6 +44,12 @@ from src.utils.mapping_flags import canonical_embedding_model, mapping_signature
 
 logger = logging.getLogger(__name__)
 
+#: What a cached entry holds, beyond the inputs above. Bumped when the mapping stops or
+#: starts carrying something, so entries of the old shape are not served as the new one.
+#: ``route-free-v1`` (RFC-016 step 4): an entry no longer holds route exclusions read off
+#: the seed, nor an ATC class the seed's route words stopped from climbing; the route a
+#: protocol line states is applied after the cache, per criterion row.
+ENTRY_SHAPE = "route-free-v1"
 
 
 def _critic_signature() -> str:
@@ -176,7 +182,7 @@ class CriterionResultCache:
         normalized = _normalize(text)
         raw = (
             f"{normalized}|{domain or ''}|{canonical_embedding_model(embedding_model)}"
-            f"|{llm_model}|{_critic_signature()}|{mapping_signature()}"
+            f"|{llm_model}|{_critic_signature()}|{mapping_signature()}|{ENTRY_SHAPE}"
         )
         return hashlib.sha256(raw.encode()).hexdigest()
 

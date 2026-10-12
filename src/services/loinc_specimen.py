@@ -16,25 +16,25 @@ Concentration codes, so its ``Unit`` could never match. The same shape sits in t
 bilirubin and CK-MB sets: the right serum code plus red-cell, dried-blood-spot, amniotic, urine,
 synovial and CSF siblings.
 
-Everything is read off the LOINC axes in the vocabulary (``Has component``, ``Has system``,
-``Has property``, ``Has scale type``) and off the criterion's own words. No concept id, analyte
-name or trial appears in the logic. Three small tables are written down, each because the
-vocabulary does not carry the fact:
+Everything structural is read off the LOINC axes in the vocabulary (``Has component``, ``Has
+system``, ``Has property``, ``Has scale type``, ``Has time aspect``). No concept id, analyte name
+or trial appears in the logic, and no text is read to decide meaning (RFC-016 step 4, A17 + C3):
 
-* :data:`CIRCULATING_BLOOD_SYSTEM_WORDS`. The 1,045 ``Is a`` edges among ``LOINC System``
-  concepts are radiology anatomy only ("Finger fifth - left" -> "Finger fifth"); no edge says
-  that "Serum or Plasma" is a blood specimen or that "Red Blood Cells" is a fraction of one. The
-  allowlist is six words, matched per token of the system name, so "Serum, Plasma or Blood" and
-  "Blood arterial" qualify while "Red Blood Cells", "DBS", "Platelet poor plasma", "Blood^Fetus"
-  and "Urine and Serum or Plasma" do not.
+* Which specimen and which challenge the criterion means is NOT a vocabulary fact. The 1,045
+  ``Is a`` edges among ``LOINC System`` concepts are radiology anatomy only, and the one other
+  structural path -- a lab test's ``Is a`` SNOMED procedure, its ``Has specimen``, and the
+  SNOMED specimen hierarchy -- reaches 30 of the 196 LOINC lab tests in the 2026-10-12 candidate
+  store's concept sets, and files ``Red Blood Cells`` and ``DBS`` under blood. So it is judged:
+  a :data:`SpecimenJudge` is handed the analyte and the (System, challenge) options of the set's
+  members and candidates and answers which ones the criterion states. The builder's judge is the
+  specimen critic (``src.agents.agent2.specimen_critic``), told the annotation's ``specimen``
+  field and the protocol line; the gate's judge is that decision as the builder recorded it
+  (:func:`recorded_judge`).
 * :data:`_UNIT_DIMENSION` / :data:`_PROPERTY_BY_DIMENSIONS`. OMOP holds no edge from a UCUM unit
   to a LOINC property, so the property is derived from the UCUM code's grammar: the dimension of
   each '/'-separated atom (mass, substance, catalytic, count, volume, time, area). Unit ids are
   never consulted. Only concentrations and volume rates are named; see the table for why ratios
   are not.
-* :data:`_STATED_CHALLENGES`. LOINC writes a challenge as the component's second part
-  ("Glucose^post CFst") in its own abbreviations; the one mapping from a criterion's words onto
-  that axis is "fast..." -> ``CFst`` (calorie fast).
 
 ``LabTest`` and the functions over it are pure. :class:`PostgresLabTestVocabulary` is the only
 I/O, and imports its driver lazily so importing this module needs no database.
@@ -56,17 +56,6 @@ QUANTITATIVE_SCALE = "Qn"
 #: The LOINC Time part LP6960-1 ("Pt"): one specimen at one moment. Its siblings are timed
 #: collections ("24 hours", "12 hours") and study summaries ("Stdy^mean", "Stdy^max").
 POINT_IN_TIME = "Point in time (spot)"
-
-#: Tokens of a LOINC System name that denote a serum, plasma or whole-blood specimen.
-#: See the module docstring for why this cannot be derived from the vocabulary.
-CIRCULATING_BLOOD_SYSTEM_WORDS = frozenset(
-    {"serum", "plasma", "blood", "arterial", "venous", "capillary"}
-)
-_SYSTEM_CONNECTIVES = frozenset({"and", "or"})
-#: A criterion names a system token when one of its words shares this many leading letters
-#: with it ("urinary" names "Urine"). Shorter tokens must match whole.
-_NAMING_PREFIX = 4
-_WORD = re.compile(r"[a-z0-9]+")
 
 # UCUM atom -> physical dimension. Prefixes are UCUM's; the atoms are the base units LOINC
 # properties are defined over.
@@ -107,11 +96,21 @@ _PROPERTY_FAMILIES_BY_DIMENSIONS: dict[tuple[str, ...], frozenset[str]] = {
 #: properties in it -- 'Mass fraction' (LP6831-4, HbA1c 4548-4), 'Number Fraction' (LP6838-9),
 #: 'Volume Fraction' (LP6891-8) ... -- and gives the unit-1 forms their own 'Decimal ...'
 #: properties ('Decimal mass fraction' LP150070-3, HbA1c 71875-9), which '%' does not name.
-PERCENT_FRACTION_PROPERTIES = frozenset({
-    "Mass fraction", "Substance Fraction", "Volume Fraction", "Number Fraction",
-    "Arbitrary fraction", "Catalytic Fraction", "Length fraction", "Saturation Fraction",
-    "Area Fraction", "Time Fraction", "Circumference Fraction",
-})
+PERCENT_FRACTION_PROPERTIES = frozenset(
+    {
+        "Mass fraction",
+        "Substance Fraction",
+        "Volume Fraction",
+        "Number Fraction",
+        "Arbitrary fraction",
+        "Catalytic Fraction",
+        "Length fraction",
+        "Saturation Fraction",
+        "Area Fraction",
+        "Time Fraction",
+        "Circumference Fraction",
+    }
+)
 #: Single-atom units: '%' above; mm[Hg] is a pressure, which LOINC files as 'Pressure'
 #: (LP6847-0, systolic blood pressure 8480-6) or 'Partial pressure' (LP6845-4, pO2/pCO2).
 _PROPERTY_FAMILIES_BY_ATOM: dict[str, frozenset[str]] = {
@@ -122,11 +121,6 @@ _PROPERTY_FAMILIES_BY_ATOM: dict[str, frozenset[str]] = {
 # albumin/creatinine quotient under both 'Mass Ratio' (14959-1) and 'Ratio' (32294-1), both
 # reported in mg/g, and TROY's CAROLINA UACR set holds both; measured on the 2026-10-07 run,
 # reading ug/mg as 'Mass Ratio' dropped CAROLINA codeset 25's gold recall from 1.0 to 0.667.
-
-#: Criterion word prefix -> the LOINC challenge token it states.
-_STATED_CHALLENGES = {"fast": "cfst"}
-#: Challenge tokens that time a state rather than name one ("post", "12H", "45M").
-_CHALLENGE_TIMING = re.compile(r"^(post|\d+(\.\d+)?[hmd])$")
 
 
 @dataclass(frozen=True)
@@ -147,6 +141,8 @@ class LabTest:
     component_id: int | None = None
     #: The ``Has time aspect`` concept name.
     time_aspect: str | None = None
+    #: The ``Has system`` concept.
+    system_id: int | None = None
 
     @property
     def analyte(self) -> str:
@@ -166,13 +162,68 @@ class LabTestVocabulary(Protocol):
 
 
 @dataclass(frozen=True)
+class SpecimenOption:
+    """The specimen a LOINC lab test is performed on, and the challenge it is taken under.
+
+    :param system_id: the ``Has system`` concept, None when the row did not carry it.
+    :param system: that concept's name -- shown to the judge, never read by code.
+    :param challenge: the component's part after '^' (LOINC's own syntax), None for none.
+    """
+
+    system_id: int | None
+    system: str | None
+    challenge: str | None
+
+    @property
+    def key(self) -> tuple[int | None, str | None, str | None]:
+        return (self.system_id, self.system, self.challenge)
+
+
+def option_of(test: LabTest) -> SpecimenOption:
+    """The (System, challenge) option a lab test is one instance of."""
+    return SpecimenOption(test.system_id, test.system, test.challenge)
+
+
+#: ``(analyte, options) -> accepted option keys``, or None when no judgement could be made.
+#: The builder's judge is the specimen critic; the gate's is :func:`recorded_judge`.
+SpecimenJudge = Callable[
+    [str, Sequence[SpecimenOption]], "frozenset[tuple[int | None, str | None, str | None]] | None"
+]
+
+
+def recorded_judge(accepted: Iterable[Mapping[str, Any]] | None) -> SpecimenJudge:
+    """A judge that answers with a decision recorded earlier, whatever it is offered.
+
+    :param accepted: the ``accepted`` options of a builder record (``systemId``, ``system``,
+        ``challenge``); None when no decision was recorded, which judges nothing.
+    """
+    if accepted is None:
+        return lambda _analyte, _options: None
+    keys = frozenset(
+        (entry.get("systemId"), entry.get("system"), entry.get("challenge"))
+        for entry in accepted
+        if isinstance(entry, Mapping)
+    )
+    return lambda _analyte, _options: keys
+
+
+@dataclass(frozen=True)
 class SpecimenPlan:
-    """What :func:`plan_specimen_refinement` decided, and why when it decided nothing."""
+    """What :func:`plan_specimen_refinement` decided, and why when it decided nothing.
+
+    ``violations`` are the lab-test members the plan finds wrong whether or not it acts;
+    ``removed`` is what it acts on (empty when it declines). ``judged`` is None when the judge
+    was not asked (no LOINC lab test), False when it gave no answer -- the specimen was then
+    not decided and only the unit's property removed anything -- and True when it answered.
+    """
 
     analyte: str | None = None
     removed: tuple[tuple[int, tuple[str, ...]], ...] = ()
     added: tuple[LabTest, ...] = ()
     declined: str | None = None
+    violations: tuple[tuple[int, tuple[str, ...]], ...] = ()
+    judged: bool | None = None
+    accepted: tuple[SpecimenOption, ...] = ()
 
     @property
     def changed(self) -> bool:
@@ -193,29 +244,6 @@ def challenge_of(component: str) -> str | None:
     """The challenge part of a LOINC component, or None for a non-challenge test."""
     _, sep, challenge = component.partition("^")
     return challenge if sep else None
-
-
-def criterion_words(*texts: str | None) -> frozenset[str]:
-    """Lower-case alphanumeric words of the criterion's own text."""
-    return frozenset(w for text in texts if text for w in _WORD.findall(text.lower()))
-
-
-def _names(token: str, words: frozenset[str]) -> bool:
-    k = min(_NAMING_PREFIX, len(token))
-    return any(len(word) >= k and word[:k] == token[:k] for word in words)
-
-
-def system_allowed(system: str | None, words: frozenset[str]) -> bool:
-    """Whether a lab test in ``system`` measures the specimen the criterion means.
-
-    A serum, plasma or whole-blood system always qualifies; any other token of the system name
-    must be named by the criterion's words, so "Urine" stands under "Urinary albumin creatinine
-    ratio" and a combined "Urine and Serum or Plasma" needs the urine named too.
-    """
-    tokens = [t for t in _WORD.findall((system or "").lower()) if t not in _SYSTEM_CONNECTIVES]
-    return bool(tokens) and all(
-        t in CIRCULATING_BLOOD_SYSTEM_WORDS or _names(t, words) for t in tokens
-    )
 
 
 def unit_properties(ucum_code: str | None) -> frozenset[str]:
@@ -320,33 +348,20 @@ def value_filter_unit_property(criteria_attributes: Mapping[str, Any]) -> str | 
     return unit_property(first.get("CONCEPT_CODE"))
 
 
-def challenge_stated(challenge: str, description_words: frozenset[str]) -> bool:
-    """Whether the criterion's description states the condition a challenge test is taken under.
-
-    Every token of the challenge must be either timing ("post", "12H") or a condition the
-    description names. "post CFst" stands under "after overnight fast"; "2H post 75 g glucose
-    PO" does not, because nothing stated the glucose load.
-    """
-    stated = {
-        token
-        for prefix, token in _STATED_CHALLENGES.items()
-        if any(word.startswith(prefix) for word in description_words)
-    }
-    residual = [t for t in challenge.lower().split() if not _CHALLENGE_TIMING.match(t)]
-    return bool(residual) and all(t in stated for t in residual)
-
-
 # --------------------------------------------------------------------------------------
 # The decisions
 # --------------------------------------------------------------------------------------
 
 
 def _member_violations(
-    test: LabTest, words: frozenset[str], unit_prop: str | None
+    test: LabTest,
+    accepted: frozenset[tuple[int | None, str | None, str | None]] | None,
+    unit_prop: str | None,
 ) -> tuple[str, ...]:
     reasons = []
-    if not system_allowed(test.system, words):
-        reasons.append(f"system {test.system!r} is not one the criterion names")
+    if accepted is not None and option_of(test).key not in accepted:
+        challenge = f" under {test.challenge!r}" if test.challenge else ""
+        reasons.append(f"specimen {test.system!r}{challenge} is not one the criterion states")
     if unit_prop and test.property != unit_prop:
         reasons.append(f"property {test.property!r} contradicts the unit's {unit_prop!r}")
     return tuple(reasons)
@@ -384,115 +399,134 @@ def specimen_verdict(
     *,
     member_ids: Sequence[int],
     lab_tests: Mapping[int, LabTest],
-    words: frozenset[str],
-    description_words: frozenset[str],
     unit_prop: str | None,
     numeric_bound: bool,
     analyte_lab_tests: Callable[[str], Sequence[LabTest]],
+    judge: SpecimenJudge,
 ) -> SpecimenVerdict:
     """The lab tests a criterion holds in a specimen or property it did not state, and whether
     the builder would repair them. Takes exactly :func:`plan_specimen_refinement`'s arguments.
 
     A set with no LOINC lab test has nothing this rule reads and returns no violation at all.
     """
-    lab = [lab_tests[cid] for cid in dict.fromkeys(member_ids) if cid in lab_tests]
-    violations = tuple((t, r) for t in lab if (r := _member_violations(t, words, unit_prop)))
-    if not violations:
-        return SpecimenVerdict()
     plan = plan_specimen_refinement(
         member_ids=member_ids,
         lab_tests=lab_tests,
-        words=words,
-        description_words=description_words,
         unit_prop=unit_prop,
         numeric_bound=numeric_bound,
         analyte_lab_tests=analyte_lab_tests,
+        judge=judge,
     )
-    return SpecimenVerdict(violations=violations, declined=plan.declined)
+    violations = tuple((lab_tests[cid], reasons) for cid, reasons in plan.violations)
+    return SpecimenVerdict(violations=violations, declined=plan.declined if violations else None)
+
+
+def _candidates(
+    analyte: str,
+    voters: Sequence[LabTest],
+    unit_prop: str | None,
+    have: set[int],
+    analyte_lab_tests: Callable[[str], Sequence[LabTest]],
+) -> list[LabTest]:
+    """Standard, point-in-time, quantitative lab tests of ``analyte`` the set could gain.
+
+    In the unit's property, or the voters' properties when the unit names none. The analyte is
+    the component concept the set's own non-challenge members carry; a challenge variant is a
+    different component by definition and is matched by its prefix.
+    """
+    properties = {unit_prop} if unit_prop else {t.property for t in voters if t.analyte == analyte}
+    component_ids = {t.component_id for t in voters if t.analyte == analyte and t.challenge is None}
+    found = []
+    for test in sorted(analyte_lab_tests(analyte), key=lambda t: t.concept_id):
+        if test.concept_id in have or test.analyte != analyte:
+            continue
+        if test.challenge is None and component_ids and test.component_id not in component_ids:
+            continue
+        if test.domain_id != MEASUREMENT_DOMAIN:
+            continue
+        if test.scale != QUANTITATIVE_SCALE or test.time_aspect != POINT_IN_TIME:
+            continue
+        if test.property not in properties:
+            continue
+        found.append(test)
+    return found
 
 
 def plan_specimen_refinement(
     *,
     member_ids: Sequence[int],
     lab_tests: Mapping[int, LabTest],
-    words: frozenset[str],
-    description_words: frozenset[str],
     unit_prop: str | None,
     numeric_bound: bool,
     analyte_lab_tests: Callable[[str], Sequence[LabTest]],
+    judge: SpecimenJudge,
 ) -> SpecimenPlan:
     """Decide which LOINC lab tests to drop from a criterion's concept set and which to add.
 
-    1. The analyte is the component (challenge stripped) held by a strict majority of the lab
-       tests in an acceptable specimen -- those whose property matches the unit when any do.
-       No majority: decline, set unchanged.
-    2. Drop a lab test in a specimen the criterion did not name, one whose property contradicts
-       the unit, and a challenge variant of the analyte whose challenge the description does
-       not state.
-    3. Only when the criterion carries a numeric bound: add every standard, point-in-time,
-       quantitative lab test of the analyte in an acceptable specimen, in the unit's property
-       (or the majority's properties when the unit names none), challenge variants only where
-       stated. A bound-less criterion ("Glycaemic control insufficient") states no quantity to
-       widen toward, and a timed collection or study summary is not the measurement a
-       threshold is written against. Removal (2) does not depend on either.
-    4. Decline rather than leave the set without a single lab test: the unit then contradicts
+    1. Candidates, only when the criterion carries a numeric bound: for each analyte (component,
+       challenge stripped) among the members, every standard, point-in-time, quantitative lab
+       test of it in the unit's property (or the members' properties when the unit names none).
+       A bound-less criterion states no quantity to widen toward, and a timed collection or
+       study summary is not the measurement a threshold is written against.
+    2. The judge is shown the members' plurality analyte and every (System, challenge) option
+       among the members and candidates, once, and answers which options the criterion states.
+       Specimen and challenge are its decision; code reads no System name and no criterion text.
+    3. The analyte is the one held by a strict majority of the members in an accepted option --
+       those whose property matches the unit when any do. No majority: decline, set unchanged.
+       No member accepted: decline.
+    4. Drop a member whose option was not accepted, or whose property contradicts the unit; add a
+       candidate of the analyte whose option was accepted. When the judge gives no answer the
+       specimen is not decided: every member votes, only the unit's property removes, and
+       nothing is added.
+    5. Decline rather than leave the set without a single lab test: the unit then contradicts
        every member, which is an extraction defect the gate reports, not a specimen choice.
 
+    A declined plan still carries its ``violations``, so the gate can report them as a WARN.
     Non-LOINC members are never touched.
     """
     have = set(member_ids)
     lab = [lab_tests[cid] for cid in dict.fromkeys(member_ids) if cid in lab_tests]
     if not lab:
         return SpecimenPlan(declined="no LOINC lab-test member")
-    in_specimen = [t for t in lab if system_allowed(t.system, words)]
+
+    in_unit = [t for t in lab if unit_prop is None or t.property == unit_prop] or lab
+    candidates: dict[str, list[LabTest]] = {}
+    if numeric_bound:
+        for analyte in dict.fromkeys(t.analyte for t in in_unit):
+            candidates[analyte] = _candidates(analyte, in_unit, unit_prop, have, analyte_lab_tests)
+    every_candidate = [t for found in candidates.values() for t in found]
+    options = list({option_of(t).key: option_of(t) for t in [*lab, *every_candidate]}.values())
+    plurality = Counter(t.analyte for t in in_unit).most_common(1)[0][0]
+    accepted = judge(plurality, options)
+    judged = accepted is not None
+
+    violations = tuple(
+        (test.concept_id, reasons)
+        for test in lab
+        if (reasons := _member_violations(test, accepted, unit_prop))
+    )
+    common = dict(
+        violations=violations,
+        judged=judged,
+        accepted=tuple(o for o in options if judged and o.key in accepted),
+    )
+
+    in_specimen = [t for t in lab if not judged or option_of(t).key in accepted]
     if not in_specimen:
         return SpecimenPlan(
-            declined="no LOINC lab-test member in a serum, plasma, blood or named system"
+            declined="no LOINC lab-test member in a specimen the criterion states", **common
         )
     voters = [t for t in in_specimen if unit_prop is None or t.property == unit_prop] or in_specimen
     votes = Counter(t.analyte for t in voters)
     analyte, count = votes.most_common(1)[0]
     if count * 2 <= len(voters):
         return SpecimenPlan(
-            declined=f"no analyte majority among {len(voters)} lab tests: {dict(votes)}"
+            declined=f"no analyte majority among {len(voters)} lab tests: {dict(votes)}", **common
         )
 
-    removed = []
-    for test in lab:
-        reasons = list(_member_violations(test, words, unit_prop))
-        if (
-            test.analyte == analyte
-            and test.challenge is not None
-            and not challenge_stated(test.challenge, description_words)
-        ):
-            reasons.append(f"challenge {test.challenge!r} is not stated by the description")
-        if reasons:
-            removed.append((test.concept_id, tuple(reasons)))
-
-    properties = {unit_prop} if unit_prop else {t.property for t in voters if t.analyte == analyte}
-    # The analyte is the component concept the set's own non-challenge members carry; a
-    # challenge variant is a different component by definition and is matched by its prefix.
-    component_ids = {t.component_id for t in voters if t.analyte == analyte and t.challenge is None}
-    added = []
-    candidates = analyte_lab_tests(analyte) if numeric_bound else []
-    for test in sorted(candidates, key=lambda t: t.concept_id):
-        if test.concept_id in have or test.analyte != analyte:
-            continue
-        if test.challenge is None and component_ids and test.component_id not in component_ids:
-            continue
-        if test.domain_id != MEASUREMENT_DOMAIN or not system_allowed(test.system, words):
-            continue
-        if test.scale != QUANTITATIVE_SCALE or test.time_aspect != POINT_IN_TIME:
-            continue
-        if test.property not in properties:
-            continue
-        if test.challenge is not None and not challenge_stated(test.challenge, description_words):
-            continue
-        have.add(test.concept_id)
-        added.append(test)
-
-    if len(removed) == len(lab) and not added:
-        if unit_prop and all(any("contradicts" in r for r in rs) for _, rs in removed):
+    added = tuple(t for t in candidates.get(analyte, []) if judged and option_of(t).key in accepted)
+    if len(violations) == len(lab) and not added:
+        if unit_prop and all(any("contradicts" in r for r in rs) for _, rs in violations):
             why = (
                 f"the unit's property {unit_prop!r} contradicts every LOINC lab test in the set "
                 f"and the vocabulary offers no {analyte!r} test in it, so the extracted unit is "
@@ -500,11 +534,11 @@ def plan_specimen_refinement(
             )
         else:
             why = (
-                f"refinement would leave no LOINC lab-test member ({len(removed)} removed, none "
+                f"refinement would leave no LOINC lab-test member ({len(violations)} removed, none "
                 f"added{'' if numeric_bound else ': no additions without a numeric bound'})"
             )
-        return SpecimenPlan(analyte=analyte, declined=why)
-    return SpecimenPlan(analyte=analyte, removed=tuple(removed), added=tuple(added))
+        return SpecimenPlan(analyte=analyte, declined=why, **common)
+    return SpecimenPlan(analyte=analyte, removed=violations, added=added, **common)
 
 
 def claims_lab_test(item: Mapping[str, Any]) -> bool:
@@ -539,15 +573,15 @@ def _circe_item(test: LabTest) -> dict[str, Any]:
 def refine_measurement_concept_set(
     expression: Mapping[str, Any],
     *,
-    seed: str,
-    description: str | None,
     value_filter: Mapping[str, Any],
     vocabulary: LabTestVocabulary,
+    judge: SpecimenJudge,
 ) -> tuple[dict[str, Any], SpecimenPlan]:
     """Apply :func:`plan_specimen_refinement` to a Circe concept-set expression.
 
     ``value_filter`` is the fragment the criterion emits (``build_measurement_value_filter``):
     its ``Unit`` sets the property, and its presence means the criterion carries a bound.
+    ``judge`` decides specimen and challenge (the builder passes the specimen critic).
     Returns a new expression; the input is not modified. The vocabulary is consulted only when
     an item's own metadata claims a LOINC lab test.
     """
@@ -563,11 +597,10 @@ def refine_measurement_concept_set(
     plan = plan_specimen_refinement(
         member_ids=member_ids,
         lab_tests=vocabulary.lab_tests(claimed),
-        words=criterion_words(seed, description),
-        description_words=criterion_words(description),
         unit_prop=value_filter_unit_property(value_filter),
         numeric_bound=carries_numeric_bound(value_filter),
         analyte_lab_tests=vocabulary.analyte_lab_tests,
+        judge=judge,
     )
     if not plan.changed:
         return dict(expression), plan
@@ -582,6 +615,24 @@ def refine_measurement_concept_set(
     return {**expression, "items": kept + added}, plan
 
 
+def decision_record(plan: SpecimenPlan) -> dict[str, Any]:
+    """The builder's specimen decision, in the shape gate (u) re-reads with :func:`recorded_judge`.
+
+    The caller adds where it applies (``codesetId``) and what the judge was told.
+    """
+    return {
+        "analyte": plan.analyte,
+        "judged": plan.judged,
+        "accepted": [
+            {"systemId": o.system_id, "system": o.system, "challenge": o.challenge}
+            for o in plan.accepted
+        ],
+        "removed": [[cid, list(reasons)] for cid, reasons in plan.removed],
+        "added": [t.concept_id for t in plan.added],
+        "declined": plan.declined,
+    }
+
+
 # --------------------------------------------------------------------------------------
 # The vocabulary
 # --------------------------------------------------------------------------------------
@@ -593,7 +644,8 @@ SELECT c.concept_id, c.concept_name, c.concept_code, c.domain_id,
        MAX(CASE WHEN r.relationship_id = 'Has system' THEN x.concept_name END),
        MAX(CASE WHEN r.relationship_id = 'Has property' THEN x.concept_name END),
        MAX(CASE WHEN r.relationship_id = 'Has scale type' THEN x.concept_name END),
-       MAX(CASE WHEN r.relationship_id = 'Has time aspect' THEN x.concept_name END)
+       MAX(CASE WHEN r.relationship_id = 'Has time aspect' THEN x.concept_name END),
+       MAX(CASE WHEN r.relationship_id = 'Has system' THEN x.concept_id END)
   FROM {schema}.concept c
   JOIN {schema}.concept_relationship r
     ON r.concept_id_1 = c.concept_id AND r.invalid_reason IS NULL
@@ -685,6 +737,7 @@ class PostgresLabTestVocabulary:
                 property=row[7],
                 scale=row[8],
                 time_aspect=row[9],
+                system_id=row[10],
             )
             for row in rows
         }

@@ -4,8 +4,12 @@
 whose ``Unit`` is 8753 mmol/L, over {3000483, 3004378, 3004676, 44816672}: three Mass-Concentration
 codes, a CSF/plasma ratio and a vitreous-fluid code. The unit matches none of them and the vitreous
 and CSF codes are not the specimen the protocol means. Every existing check passed it. The rule this
-gate reads is ``src.services.loinc_specimen.specimen_violations`` -- the same one the builder
+gate reads is ``src.services.loinc_specimen.plan_specimen_refinement`` -- the same one the builder
 repairs with -- so the two cannot disagree about which sets are in scope.
+
+Since RFC-016 step 4 the specimen is not re-decided here and the rule name is not read: the gate
+judges specimen and challenge from the specimen critic's decision the builder recorded under
+``_specimenDecisions`` for the codeset, and a codeset with no record on its unit's property alone.
 """
 
 from __future__ import annotations
@@ -15,7 +19,11 @@ from typing import Any
 
 from src.services.loinc_specimen import POINT_IN_TIME as PT
 from src.services.loinc_specimen import LabTest
-from src.utils.circe_lint import measurement_lab_test_ids, specimen_mismatched_measurement_criteria
+from src.utils.circe_lint import (
+    SPECIMEN_DECISIONS_KEY,
+    measurement_lab_test_ids,
+    specimen_mismatched_measurement_criteria,
+)
 
 
 def _findings(cohort, lookup=None):
@@ -91,6 +99,17 @@ LOOKUP = {t.concept_id: t for t in (GLU_BLD, GLU_SPB, GLU_VIT, GLU_CSF, GLU_SP, 
 MG_DL = [{"CONCEPT_ID": 8840, "CONCEPT_CODE": "mg/dL", "CONCEPT_NAME": "milligram per deciliter"}]
 MMOL_L = [{"CONCEPT_ID": 8753, "CONCEPT_CODE": "mmol/L", "CONCEPT_NAME": "millimole per liter"}]
 
+BLOOD = ("Serum or Plasma", "Blood", "Serum, Plasma or Blood")
+
+
+def decided(*systems: str, challenges=(None,)) -> list[dict[str, Any]]:
+    """The ``accepted`` options of a recorded specimen-critic decision."""
+    return [
+        {"systemId": None, "system": system, "challenge": challenge}
+        for system in systems
+        for challenge in challenges
+    ]
+
 
 def _lab(test: LabTest) -> dict[str, Any]:
     return {
@@ -130,11 +149,16 @@ def _cohort(
     name: str = "Glucose",
     unit=MG_DL,
     criteria_type: str = "Measurement",
+    accepted: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     attrs: dict[str, Any] = {"CodesetId": 42, "ValueAsNumber": {"Value": 240.0, "Op": "gt"}}
     if unit is not None:
         attrs["Unit"] = unit
+    decisions = (
+        [{"codesetId": 42, "judged": True, "accepted": accepted}] if accepted is not None else []
+    )
     return {
+        SPECIMEN_DECISIONS_KEY: decisions,
         "ConceptSets": [
             {
                 "id": 1,
@@ -242,16 +266,25 @@ ML_MIN = [{"CONCEPT_ID": 8795, "CONCEPT_CODE": "mL/min", "CONCEPT_NAME": "millil
 
 
 class TestTheDeliveredShapeFails:
-    def test_should_fail_the_vitreous_and_csf_members_when_the_criterion_names_no_specimen(self):
-        fail, warn = _findings(_cohort(DELIVERED))
+    def test_should_fail_the_vitreous_and_csf_members_when_the_critic_accepted_only_blood(self):
+        fail, warn = _findings(_cohort(DELIVERED, accepted=decided(*BLOOD)))
         assert len(fail) == 1 and warn == [], (fail, warn)
         assert "3004676" in fail[0] and "3004378" in fail[0]
         assert "3000483" not in fail[0] and "44816672" not in fail[0]
 
+    def test_should_judge_only_the_property_when_no_specimen_decision_was_recorded(self):
+        """The rule name ("Glucose") and the concept set name are not read for a specimen: with
+        no recorded decision the vitreous member is not judged, and only the CSF/plasma ratio,
+        whose property contradicts mg/dL, is reported."""
+        fail, warn = _findings(_cohort(DELIVERED))
+        assert len(fail) == 1 and warn == [], (fail, warn)
+        assert "3004378" in fail[0] and "3004676" not in fail[0]
+
     def test_should_fail_every_mass_member_when_the_unit_is_mmol_per_litre(self):
         """The builder repairs this one (Substance codes exist), so it is a FAIL, not a WARN."""
         fail, warn = _findings(
-            _cohort(DELIVERED, unit=MMOL_L), {**LOOKUP, GLU_SP_MOL.concept_id: GLU_SP_MOL}
+            _cohort(DELIVERED, unit=MMOL_L, accepted=decided(*BLOOD)),
+            {**LOOKUP, GLU_SP_MOL.concept_id: GLU_SP_MOL},
         )
         assert len(fail) == 1 and warn == [], (fail, warn)
         assert all(str(cid) in fail[0] for cid in (3000483, 3004378, 3004676, 44816672))
@@ -268,7 +301,12 @@ class TestTheDeclinedSetsWarn:
     def test_should_warn_with_the_reason_when_no_analyte_holds_a_majority(self):
         lookup = {t.concept_id: t for t in (ALT_SP, AST_SP, AST_RBC)}
         fail, warn = _findings(
-            _cohort([_lab(ALT_SP), _lab(AST_SP), _lab(AST_RBC)], name="Liver enzymes", unit=None),
+            _cohort(
+                [_lab(ALT_SP), _lab(AST_SP), _lab(AST_RBC)],
+                name="Liver enzymes",
+                unit=None,
+                accepted=decided(*BLOOD),
+            ),
             lookup,
         )
         assert fail == [] and len(warn) == 1, (fail, warn)
@@ -283,19 +321,31 @@ class TestTheDeclinedSetsWarn:
         assert fail == [] and len(warn) == 1, (fail, warn)
         assert "contradicts" in warn[0] and "declined" in warn[0]
 
-    def test_should_warn_when_an_all_urine_set_names_no_specimen(self):
-        cohort = _cohort([_lab(UACR)], name="Microalbuminuria or proteinuria", unit=None)
+    def test_should_warn_when_the_critic_rejected_the_only_specimen_the_set_holds(self):
+        cohort = _cohort(
+            [_lab(UACR)],
+            name="Microalbuminuria or proteinuria",
+            unit=None,
+            accepted=decided(*BLOOD),
+        )
         fail, warn = _findings(cohort)
-        assert fail == [] and len(warn) == 1 and "serum, plasma, blood or named" in warn[0], warn
+        assert fail == [] and len(warn) == 1, warn
+        assert "no LOINC lab-test member in a specimen the criterion states" in warn[0], warn
 
 
 class TestTheSoundShapesStaySilent:
     def test_should_stay_silent_when_every_lab_test_is_serum_in_the_units_property(self):
-        assert _findings(_cohort([_lab(GLU_SP), _lab(GLU_BLD)])) == ([], [])
+        assert _findings(_cohort([_lab(GLU_SP), _lab(GLU_BLD)], accepted=decided(*BLOOD))) == (
+            [],
+            [],
+        )
 
-    def test_should_stay_silent_when_the_criterion_names_the_urine_it_reads(self):
+    def test_should_stay_silent_when_the_critic_accepted_the_urine_it_reads(self):
         cohort = _cohort(
-            [_lab(UACR), _lab(GLU_SP)], name="Urine albumin creatinine ratio", unit=None
+            [_lab(UACR), _lab(GLU_SP)],
+            name="Urine albumin creatinine ratio",
+            unit=None,
+            accepted=decided("Urine", *BLOOD),
         )
         assert _findings(cohort) == ([], [])
 
@@ -351,7 +401,9 @@ class TestTheDeliveryGateRunsTheCheck:
     def test_should_fail_the_delivery_when_a_glucose_set_holds_vitreous_fluid(
         self, monkeypatch, tmp_path, capsys
     ):
-        rc, out, _err = self._run(monkeypatch, tmp_path, capsys, _cohort(DELIVERED))
+        rc, out, _err = self._run(
+            monkeypatch, tmp_path, capsys, _cohort(DELIVERED, accepted=decided(*BLOOD))
+        )
         assert rc == 1, out
         assert "specimen-mismatched measurement (1)" in out, out
 
@@ -364,7 +416,12 @@ class TestTheDeliveryGateRunsTheCheck:
     def test_should_print_a_warn_and_not_fail_on_this_check_when_the_builder_declines(
         self, monkeypatch, tmp_path, capsys
     ):
-        cohort = _cohort([_lab(UACR)], name="Microalbuminuria or proteinuria", unit=None)
+        cohort = _cohort(
+            [_lab(UACR)],
+            name="Microalbuminuria or proteinuria",
+            unit=None,
+            accepted=decided(*BLOOD),
+        )
         _rc, out, _err = self._run(monkeypatch, tmp_path, capsys, cohort)
         assert "specimen-mismatched measurement (" not in out, out
         assert "specimen refinement declined (WARN, 1)" in out, out

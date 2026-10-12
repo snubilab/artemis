@@ -43,7 +43,7 @@ import pytest
 from src.services.tte_service import TTEService
 from src.utils.criterion_refusal import (
     REFUSAL_DOMAIN_CONTRADICTION,
-    REFUSAL_UNMAPPABLE_PLACEHOLDER,
+    REFUSAL_MISSING_ENTITY_TEXT,
     CriterionRefused,
 )
 
@@ -178,12 +178,9 @@ def _multi_domain_mapping(domains: list[str], name: str) -> dict[str, Any]:
     }
 
 
-#: Both rows verbatim from ``output/site_gap/2026-09-10/store/studies.json``. Note that
-#: they disagree about which field carries the seed: #31 has an empty ``sourceText`` and
-#: is seeded from its ``description``, #41 is seeded from its ``sourceText`` while its
-#: ``description`` says "Prior investigational drug trial" -- which is a trial, names a
-#: mappable entity, and must NOT be permitted. The classifier reads the SEED, so the
-#: two answers come out right for opposite reasons.
+#: Both rows verbatim from ``output/site_gap/2026-09-10/store/studies.json``: #31 has an
+#: empty ``sourceText`` and is seeded from its ``description``, #41 from its ``sourceText``.
+#: Neither carries an annotation (that store predates it).
 ARISTOTLE_EXCLUSION_31 = {
     "id": 31,
     "description": "Investigational drug use",
@@ -200,31 +197,29 @@ EMPA_REG_EXCLUSION_41 = {
 }
 
 
-class TestADrugCategoryNamingNoIngredientIsIrreducible:
+class TestADrugCategorySeedIsNotRead:
     """The two rows the 2026-09-10 delivery blocked on, at the raise site itself.
 
     ``domain-contradiction`` describes the MECHANISM -- the vocabulary answered from the
-    wrong domain -- and the delivery gate does not permit it, correctly: a wrong-domain
-    answer usually means a better seed or a better mapper would find the right one.
-    These two are the case where it does not. "Investigational drug" names a role in the
-    study, not a substance, so there is no RxNorm ingredient to find and the off-domain
-    concepts are the vocabulary reaching for the nearest thing it has. The loss is
-    IRREDUCIBLE, which is the axis ``PERMITTED_REFUSAL_CODES`` permits on.
-
-    The message and ``detail`` are kept verbatim, so the mechanism stays legible in the
-    delivered artifact; only the classification key moves.
+    wrong domain -- and the delivery gate does not permit it. Until RFC-016 step 4 a word
+    list over the seed re-coded these two to ``unmappable-placeholder``; now whether a line
+    names no clinical entity is the annotation step's ``no_entity`` field, refused before
+    mapping (``tests/test_no_entity_refusal.py``). Without that field the seed is not read,
+    and a wrong-domain answer stays the contradiction it is.
     """
 
     @pytest.mark.parametrize(
-        ("criterion", "seed"),
+        ("criterion", "seed", "code"),
         [
-            (ARISTOTLE_EXCLUSION_31, "Investigational drug use"),
-            (EMPA_REG_EXCLUSION_41, "Investigational Drug"),
+            # Empty `sourceText`: the contradiction is booked against extraction, as for
+            # any substituted seed (`_recode_refusal_for_missing_entity`).
+            (ARISTOTLE_EXCLUSION_31, "Investigational drug use", REFUSAL_MISSING_ENTITY_TEXT),
+            (EMPA_REG_EXCLUSION_41, "Investigational Drug", REFUSAL_DOMAIN_CONTRADICTION),
         ],
         ids=["aristotle-exclusion-31", "empa-reg-exclusion-41"],
     )
-    def test_should_carry_the_irreducible_code_when_the_seed_is_a_drug_category(
-        self, monkeypatch, criterion, seed
+    def test_should_keep_a_blocking_code_when_no_annotation_says_no_entity(
+        self, monkeypatch, criterion, seed, code
     ):
         service = _service(
             monkeypatch, _multi_domain_mapping(WRONG_DOMAIN_ANSWER_DOMAINS, seed)
@@ -236,12 +231,10 @@ class TestADrugCategoryNamingNoIngredientIsIrreducible:
             )
 
         refused = excinfo.value
-        assert refused.code == REFUSAL_UNMAPPABLE_PLACEHOLDER
-        # The mechanism survives the re-coding: a reader of the delivered record can
-        # still see WHICH domains came back and which table could not read them.
-        assert "criterion domain contradiction: DrugExposure reads Drug" in str(refused)
-        assert f"mapped for {seed!r}" in str(refused)
-        assert refused.detail == "DrugExposure vs Meas Value, Measurement, Observation, Procedure"
+        assert refused.code == code
+        mechanism = refused if code == REFUSAL_DOMAIN_CONTRADICTION else refused.__cause__
+        assert mechanism.code == REFUSAL_DOMAIN_CONTRADICTION
+        assert "criterion domain contradiction: DrugExposure reads Drug" in str(mechanism)
 
     def test_should_keep_the_contradiction_code_when_the_seed_names_a_substance(
         self, monkeypatch
