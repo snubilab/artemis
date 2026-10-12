@@ -5600,6 +5600,20 @@ class TTEService:
                 _record_conditional_skip(criterion, "inclusion", decision)
                 order += 1
                 continue
+            # Ahead of the demographic branch: a group label emits no rule of its own,
+            # whatever its domain. Checked after it, a Demographics label carrying the
+            # group's `gte 18` built an Age rule from the label (ARISTOTLE inclusion 16).
+            if criterion.get("isGroupLabel"):
+                key = ("inclusion", str(criterion.get("id", "")))
+                _record_skip(
+                    criterion,
+                    "inclusion",
+                    STRANDED_GROUP_CONSTRAINT_REASON
+                    if key in stranded_constraint_labels
+                    else "group-label",
+                )
+                order += 1
+                continue
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
                 demo = self._build_demographic_rule(criterion)
@@ -5611,17 +5625,6 @@ class TTEService:
                         grouped_demographics.append((order, criterion, demo, "inclusion"))
                 else:
                     _record_skip(criterion, "inclusion", "demographic-no-rule")
-                order += 1
-                continue
-            if criterion.get("isGroupLabel"):
-                key = ("inclusion", str(criterion.get("id", "")))
-                _record_skip(
-                    criterion,
-                    "inclusion",
-                    STRANDED_GROUP_CONSTRAINT_REASON
-                    if key in stranded_constraint_labels
-                    else "group-label",
-                )
                 order += 1
                 continue
             mappable_items.append((criterion, False))
@@ -5651,6 +5654,19 @@ class TTEService:
                 _record_conditional_skip(criterion, "exclusion", decision)
                 order += 1
                 continue
+            # Ahead of the demographic branch, as in the inclusion loop: a group label
+            # emits no rule of its own, whatever its domain.
+            if criterion.get("isGroupLabel"):
+                key = ("exclusion", str(criterion.get("id", "")))
+                _record_skip(
+                    criterion,
+                    "exclusion",
+                    STRANDED_GROUP_CONSTRAINT_REASON
+                    if key in stranded_constraint_labels
+                    else "group-label",
+                )
+                order += 1
+                continue
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
                 # Give `_build_demographic_rule` the same chance the inclusion loop
@@ -5675,22 +5691,10 @@ class TTEService:
                     continue
                 # `demo` is None: the domain is demographic but no CIRCE
                 # DemographicCriteriaList rule could be built (no usable
-                # valueConstraint). Group labels are still never directly
-                # mappable, so that carve-out is checked first, below; anything
-                # else falls through to ordinary concept-set mapping exactly
+                # valueConstraint). Group labels were already set aside above;
+                # anything else falls through to ordinary concept-set mapping exactly
                 # like a non-demographic exclusion criterion would, instead of
                 # being unconditionally discarded as "demographic-no-rule".
-            if criterion.get("isGroupLabel"):
-                key = ("exclusion", str(criterion.get("id", "")))
-                _record_skip(
-                    criterion,
-                    "exclusion",
-                    STRANDED_GROUP_CONSTRAINT_REASON
-                    if key in stranded_constraint_labels
-                    else "group-label",
-                )
-                order += 1
-                continue
             mappable_items.append((criterion, True))
             order += 1
 

@@ -1,0 +1,2678 @@
+{
+ "about": "Real rows for the RFC-016 section 4 structural replacements (worktree p3-structural), copied verbatim from read-only sources; each section names its source key. vocabulary_* sections are rows a read-only SELECT against synthea23m returned on 2026-10-12, with the query.",
+ "sources": {
+  "candidate_store": {
+   "path": "output/site_gap/2026-10-12_prompt_f2/store/studies.json",
+   "sha256": "07db37f85d13003dbe72d0c9b07bcab1784baf9c37aeb2af6b1b0c46dfc41917"
+  },
+  "p2_new_store": {
+   "path": "output/site_gap/2026-10-12_p2_new/store/studies.json",
+   "sha256": "19aed268b485b5e10752c6b5d77ad050de878695ed8c4cfc013264500847bd55"
+  },
+  "verify_0918_store": {
+   "path": "output/site_gap/2026-09-18_verify/store/studies.json",
+   "sha256": "49e525889fc5f6537f370499cf3013901c226d702056a2eedb6585a113eda28f"
+  },
+  "verify_0918_carmelina_comparator": {
+   "path": "output/site_gap/2026-09-18_verify/DELIVERY/carmelina_comparator.circe.json",
+   "sha256": "ae5bdc0ad655c8f7e41d114bb96aaa3b68a1883e058d564d180f222b6494283d"
+  },
+  "store_0909": {
+   "path": "output/site_gap/2026-09-09/store/studies.json",
+   "sha256": "015a64f1ee2c7edb322db6c1ef0c87a6ff90122869492664608e9532e8e1fd22"
+  },
+  "NCT01179048": {
+   "path": "data/nct_cache/NCT01179048.json",
+   "sha256": "6d6f88c79d901e6345a4e55cb93ba43ed9f86bc86759452e73401ce0a82f5ece"
+  },
+  "NCT00391872": {
+   "path": "data/nct_cache/NCT00391872.json",
+   "sha256": "d7ac08c6bfce646b1b9dfe5d5d613a2264250f3ac03eabed45e449be51687c93"
+  },
+  "NCT00412984": {
+   "path": "data/nct_cache/NCT00412984.json",
+   "sha256": "d1453a2c09a54f297b09a52ad51301bbc06ba5cb147ed34f52cdbd7f33d05059"
+  },
+  "NCT01131676": {
+   "path": "data/nct_cache/NCT01131676.json",
+   "sha256": "61d003bcde5e9f63f9c1b5fd33da0dfbb40508e930cffb4adfbec9cc449fe5ab"
+  },
+  "NCT01897532": {
+   "path": "data/nct_cache/NCT01897532.json",
+   "sha256": "831077bcfab735a7ca59f6f24603d2d656e9e4646542ffb22432882ca9f68f3a"
+  },
+  "NCT01243424": {
+   "path": "data/nct_cache/NCT01243424.json",
+   "sha256": "a302c008de0d8cbae7b92b773a385ba7e236c45bf8496b732fc3b3ac44ef979c"
+  }
+ },
+ "m1_aristotle_af_group": {
+  "source": "p2_new_store",
+  "study": 3,
+  "role": "inclusionCriteria",
+  "rows": [
+   {
+    "id": 16,
+    "description": "AF/Risk Factor Check",
+    "domain": "Demographics",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 18.0,
+     "valueHigh": null,
+     "unitText": "yrs",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "Age",
+    "protocolLine": "9. * Males and females ≥ 18 yrs with atrial fibrillation (AF) and one or more of the following risk factors for stroke:",
+    "protocolSpan": "",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "5bb86d27-2cba-4934-bcbc-65a9be193568",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   {
+    "id": 17,
+    "description": "Age >= 18 years",
+    "domain": "Demographics",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 18.0,
+     "valueHigh": null,
+     "unitText": "yrs",
+     "referenceBound": "absolute",
+     "unitConceptId": 9448
+    },
+    "sourceText": "Age",
+    "protocolLine": "9. * Males and females ≥ 18 yrs with atrial fibrillation (AF) and one or more of the following risk factors for stroke:",
+    "protocolSpan": "≥ 18 yrs",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "5bb86d27-2cba-4934-bcbc-65a9be193568",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": false
+   },
+   {
+    "id": 18,
+    "description": "Atrial Fibrillation",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "atrial fibrillation (AF)",
+    "protocolLine": "9. * Males and females ≥ 18 yrs with atrial fibrillation (AF) and one or more of the following risk factors for stroke:",
+    "protocolSpan": "atrial fibrillation (AF)",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "5bb86d27-2cba-4934-bcbc-65a9be193568",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 19,
+    "description": "Stroke Risk Factor (General)",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Risk factors for stroke",
+    "protocolLine": "9. * Males and females ≥ 18 yrs with atrial fibrillation (AF) and one or more of the following risk factors for stroke:",
+    "protocolSpan": "risk factors for stroke",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "5bb86d27-2cba-4934-bcbc-65a9be193568",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   }
+  ]
+ },
+ "m1_carmelina_age_group": {
+  "source": "candidate_store",
+  "study": 9,
+  "role": "inclusionCriteria",
+  "rows": [
+   {
+    "id": 11,
+    "description": "Age >= 18 years",
+    "domain": "Demographics",
+    "valueConstraint": null,
+    "sourceText": "",
+    "protocolLine": "Age ≥ 18 years at Visit 1(screening). For Japan only: Age ≥ 20 years at Visit 1",
+    "protocolSpan": "",
+    "window": null,
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "e4614cc5-fe7e-48cc-9978-f0b7389c2fb4",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   {
+    "id": 12,
+    "description": "Age (general)",
+    "domain": "Demographics",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 18.0,
+     "valueHigh": null,
+     "unitText": "years",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "",
+    "protocolLine": "Age ≥ 18 years at Visit 1(screening). For Japan only: Age ≥ 20 years at Visit 1",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "e4614cc5-fe7e-48cc-9978-f0b7389c2fb4",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": false
+   },
+   {
+    "id": 13,
+    "description": "Age (Japan)",
+    "domain": "Demographics",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 20.0,
+     "valueHigh": null,
+     "unitText": "years",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "",
+    "protocolLine": "Age ≥ 18 years at Visit 1(screening). For Japan only: Age ≥ 20 years at Visit 1",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "e4614cc5-fe7e-48cc-9978-f0b7389c2fb4",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": false
+   }
+  ]
+ },
+ "a26_a27_carmelina": {
+  "store_source": "verify_0918_store",
+  "study": 9,
+  "role": "inclusionCriteria",
+  "store_rows": [
+   {
+    "id": 10,
+    "description": "HbA1c within target range",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 6.5,
+     "valueHigh": null,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "HbA1c",
+    "protocolLine": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "0e4765ea-a5f3-408d-8218-c190b7bfb9b3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   {
+    "id": 11,
+    "description": "HbA1c at least 6.5%",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 6.5,
+     "valueHigh": null,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": 8554
+    },
+    "sourceText": "HbA1c",
+    "protocolLine": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "protocolSpan": "HbA1c",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 8,
+    "conceptSetName": "HbA1c",
+    "logicType": "PRESENCE",
+    "groupId": "0e4765ea-a5f3-408d-8218-c190b7bfb9b3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 12,
+    "description": "HbA1c at most 10.0%",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "lte",
+     "value": 10.0,
+     "valueHigh": null,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": 8554
+    },
+    "sourceText": "HbA1c",
+    "protocolLine": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "protocolSpan": "HbA1c",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 9,
+    "conceptSetName": "HbA1c",
+    "logicType": "PRESENCE",
+    "groupId": "0e4765ea-a5f3-408d-8218-c190b7bfb9b3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 13,
+    "description": "HbA1c upper limit check",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "lte",
+     "value": 10.0,
+     "valueHigh": null,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "HbA1c",
+    "protocolLine": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "a1a4effc-a045-4415-b1cc-6f15e35bf5b6",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   {
+    "id": 14,
+    "description": "HbA1c below lower limit",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 6.5,
+     "valueHigh": null,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": 8554
+    },
+    "sourceText": "HbA1c",
+    "protocolLine": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "protocolSpan": "HbA1c",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 10,
+    "conceptSetName": "HbA1c",
+    "logicType": "ABSENCE",
+    "groupId": "a1a4effc-a045-4415-b1cc-6f15e35bf5b6",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 15,
+    "description": "HbA1c above upper limit",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "lte",
+     "value": 10.0,
+     "valueHigh": null,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": 8554
+    },
+    "sourceText": "HbA1c",
+    "protocolLine": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "protocolSpan": "HbA1c",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 11,
+    "conceptSetName": "HbA1c",
+    "logicType": "ABSENCE",
+    "groupId": "a1a4effc-a045-4415-b1cc-6f15e35bf5b6",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   }
+  ],
+  "delivery_source": "verify_0918_carmelina_comparator",
+  "rule_12": {
+   "name": "HbA1c at least 6.5% + HbA1c at most 10.0%",
+   "expression": {
+    "Type": "ANY",
+    "CriteriaList": [],
+    "DemographicCriteriaList": [],
+    "Groups": [
+     {
+      "Type": "ALL",
+      "CriteriaList": [
+       {
+        "Criteria": {
+         "Measurement": {
+          "CodesetId": 8,
+          "ValueAsNumber": {
+           "Value": 6.5,
+           "Op": "gte"
+          },
+          "Unit": [
+           {
+            "CONCEPT_CODE": "%",
+            "CONCEPT_ID": 8554,
+            "CONCEPT_NAME": "percent",
+            "DOMAIN_ID": "Unit",
+            "INVALID_REASON_CAPTION": "Unknown",
+            "STANDARD_CONCEPT_CAPTION": "Unknown",
+            "VOCABULARY_ID": "UCUM"
+           }
+          ]
+         }
+        },
+        "StartWindow": {
+         "Start": {
+          "Days": 180,
+          "Coeff": -1
+         },
+         "End": {
+          "Days": 0,
+          "Coeff": 1
+         }
+        },
+        "RestrictVisit": false,
+        "IgnoreObservationPeriod": false,
+        "Occurrence": {
+         "Type": 2,
+         "Count": 1
+        }
+       }
+      ],
+      "DemographicCriteriaList": [],
+      "Groups": []
+     },
+     {
+      "Type": "ALL",
+      "CriteriaList": [
+       {
+        "Criteria": {
+         "Measurement": {
+          "CodesetId": 9,
+          "ValueAsNumber": {
+           "Value": 10.0,
+           "Op": "lte"
+          },
+          "Unit": [
+           {
+            "CONCEPT_CODE": "%",
+            "CONCEPT_ID": 8554,
+            "CONCEPT_NAME": "percent",
+            "DOMAIN_ID": "Unit",
+            "INVALID_REASON_CAPTION": "Unknown",
+            "STANDARD_CONCEPT_CAPTION": "Unknown",
+            "VOCABULARY_ID": "UCUM"
+           }
+          ]
+         }
+        },
+        "StartWindow": {
+         "Start": {
+          "Days": 180,
+          "Coeff": -1
+         },
+         "End": {
+          "Days": 0,
+          "Coeff": 1
+         }
+        },
+        "RestrictVisit": false,
+        "IgnoreObservationPeriod": false,
+        "Occurrence": {
+         "Type": 2,
+         "Count": 1
+        }
+       }
+      ],
+      "DemographicCriteriaList": [],
+      "Groups": []
+     }
+    ]
+   }
+  },
+  "rule_13": {
+   "name": "HbA1c below lower limit + HbA1c above upper limit",
+   "expression": {
+    "Type": "ALL",
+    "CriteriaList": [],
+    "DemographicCriteriaList": [],
+    "Groups": [
+     {
+      "Type": "ALL",
+      "CriteriaList": [
+       {
+        "Criteria": {
+         "Measurement": {
+          "CodesetId": 10,
+          "ValueAsNumber": {
+           "Value": 6.5,
+           "Op": "gte"
+          },
+          "Unit": [
+           {
+            "CONCEPT_CODE": "%",
+            "CONCEPT_ID": 8554,
+            "CONCEPT_NAME": "percent",
+            "DOMAIN_ID": "Unit",
+            "INVALID_REASON_CAPTION": "Unknown",
+            "STANDARD_CONCEPT_CAPTION": "Unknown",
+            "VOCABULARY_ID": "UCUM"
+           }
+          ]
+         }
+        },
+        "StartWindow": {
+         "Start": {
+          "Days": 180,
+          "Coeff": -1
+         },
+         "End": {
+          "Days": 0,
+          "Coeff": 1
+         }
+        },
+        "RestrictVisit": false,
+        "IgnoreObservationPeriod": false,
+        "Occurrence": {
+         "Type": 0,
+         "Count": 0
+        }
+       }
+      ],
+      "DemographicCriteriaList": [],
+      "Groups": []
+     },
+     {
+      "Type": "ALL",
+      "CriteriaList": [
+       {
+        "Criteria": {
+         "Measurement": {
+          "CodesetId": 11,
+          "ValueAsNumber": {
+           "Value": 10.0,
+           "Op": "lte"
+          },
+          "Unit": [
+           {
+            "CONCEPT_CODE": "%",
+            "CONCEPT_ID": 8554,
+            "CONCEPT_NAME": "percent",
+            "DOMAIN_ID": "Unit",
+            "INVALID_REASON_CAPTION": "Unknown",
+            "STANDARD_CONCEPT_CAPTION": "Unknown",
+            "VOCABULARY_ID": "UCUM"
+           }
+          ]
+         }
+        },
+        "StartWindow": {
+         "Start": {
+          "Days": 180,
+          "Coeff": -1
+         },
+         "End": {
+          "Days": 0,
+          "Coeff": 1
+         }
+        },
+        "RestrictVisit": false,
+        "IgnoreObservationPeriod": false,
+        "Occurrence": {
+         "Type": 0,
+         "Count": 0
+        }
+       }
+      ],
+      "DemographicCriteriaList": [],
+      "Groups": []
+     }
+    ]
+   }
+  },
+  "concept_sets": [
+   {
+    "id": 8,
+    "name": "HbA1c",
+    "expression": {
+     "items": [
+      {
+       "concept": {
+        "CONCEPT_ID": 3004410,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3007263,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3034639,
+        "CONCEPT_NAME": "Hemoglobin A1c [Mass/volume] in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 4197971,
+        "CONCEPT_NAME": "HbA1c measurement (DCCT aligned)",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "SNOMED",
+        "CONCEPT_CLASS_ID": "Procedure",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 44793001,
+        "CONCEPT_NAME": "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "SNOMED",
+        "CONCEPT_CLASS_ID": "Procedure",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      }
+     ]
+    }
+   },
+   {
+    "id": 9,
+    "name": "HbA1c",
+    "expression": {
+     "items": [
+      {
+       "concept": {
+        "CONCEPT_ID": 3004410,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3007263,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3034639,
+        "CONCEPT_NAME": "Hemoglobin A1c [Mass/volume] in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 4197971,
+        "CONCEPT_NAME": "HbA1c measurement (DCCT aligned)",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "SNOMED",
+        "CONCEPT_CLASS_ID": "Procedure",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 44793001,
+        "CONCEPT_NAME": "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "SNOMED",
+        "CONCEPT_CLASS_ID": "Procedure",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      }
+     ]
+    }
+   },
+   {
+    "id": 10,
+    "name": "HbA1c",
+    "expression": {
+     "items": [
+      {
+       "concept": {
+        "CONCEPT_ID": 3004410,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3007263,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3034639,
+        "CONCEPT_NAME": "Hemoglobin A1c [Mass/volume] in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 4197971,
+        "CONCEPT_NAME": "HbA1c measurement (DCCT aligned)",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "SNOMED",
+        "CONCEPT_CLASS_ID": "Procedure",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 44793001,
+        "CONCEPT_NAME": "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "SNOMED",
+        "CONCEPT_CLASS_ID": "Procedure",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      }
+     ]
+    }
+   },
+   {
+    "id": 11,
+    "name": "HbA1c",
+    "expression": {
+     "items": [
+      {
+       "concept": {
+        "CONCEPT_ID": 3004410,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3007263,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3034639,
+        "CONCEPT_NAME": "Hemoglobin A1c [Mass/volume] in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 4197971,
+        "CONCEPT_NAME": "HbA1c measurement (DCCT aligned)",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "SNOMED",
+        "CONCEPT_CLASS_ID": "Procedure",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 44793001,
+        "CONCEPT_NAME": "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "SNOMED",
+        "CONCEPT_CLASS_ID": "Procedure",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "a26_empareg_disjunction": {
+  "source": "candidate_store",
+  "study": 8,
+  "role": "inclusionCriteria",
+  "rows": [
+   {
+    "id": 2,
+    "description": "Glycosylated haemoglobin (HbA1c) band (OR group)",
+    "domain": "Measurement",
+    "valueConstraint": null,
+    "sourceText": "",
+    "protocolLine": "Glycosylated haemoglobin (HbA1c) of >= 7.0% and <=10% for patients on background therapy or HbA1c >= 7.0% and <= 9.0% for drug naive patients",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "f0cf6a7d-0bf7-4fde-9bfe-d3cbf8c0f074",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   {
+    "id": 3,
+    "description": "HbA1c for patients on background therapy (>=7.0% and <=10%)",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "bt",
+     "value": 7.0,
+     "valueHigh": 10.0,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "Glycosylated haemoglobin (HbA1c)",
+    "protocolLine": "Glycosylated haemoglobin (HbA1c) of >= 7.0% and <=10% for patients on background therapy or HbA1c >= 7.0% and <= 9.0% for drug naive patients",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 3,
+    "conceptSetName": "Glycosylated haemoglobin (HbA1c)",
+    "logicType": "PRESENCE",
+    "groupId": "f0cf6a7d-0bf7-4fde-9bfe-d3cbf8c0f074",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 4,
+    "description": "HbA1c for drug naive patients (>=7.0% and <=9.0%)",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "bt",
+     "value": 7.0,
+     "valueHigh": 9.0,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "Glycosylated haemoglobin (HbA1c)",
+    "protocolLine": "Glycosylated haemoglobin (HbA1c) of >= 7.0% and <=10% for patients on background therapy or HbA1c >= 7.0% and <= 9.0% for drug naive patients",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 4,
+    "conceptSetName": "Glycosylated haemoglobin (HbA1c)",
+    "logicType": "PRESENCE",
+    "groupId": "f0cf6a7d-0bf7-4fde-9bfe-d3cbf8c0f074",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   }
+  ]
+ },
+ "a22_arms": {
+  "store_source": "candidate_store",
+  "studies": [
+   {
+    "id": 1,
+    "nctId": "NCT01179048",
+    "comparisonMode": "target_minus_treatment",
+    "treatmentArms": [
+     {
+      "id": 1,
+      "name": "liraglutide",
+      "cohortId": 1468,
+      "cohortName": ""
+     },
+     {
+      "id": 2,
+      "name": "placebo",
+      "cohortId": 1469,
+      "cohortName": ""
+     }
+    ]
+   },
+   {
+    "id": 2,
+    "nctId": "NCT00391872",
+    "comparisonMode": "target_minus_treatment",
+    "treatmentArms": [
+     {
+      "id": 1,
+      "name": "ticagrelor",
+      "cohortId": 1460,
+      "cohortName": ""
+     },
+     {
+      "id": 2,
+      "name": "clopidogrel",
+      "cohortId": 1461,
+      "cohortName": ""
+     }
+    ]
+   },
+   {
+    "id": 3,
+    "nctId": "NCT00412984",
+    "comparisonMode": "target_minus_treatment",
+    "treatmentArms": [
+     {
+      "id": 1,
+      "name": "apixaban",
+      "cohortId": 1464,
+      "cohortName": ""
+     },
+     {
+      "id": 2,
+      "name": "warfarin",
+      "cohortId": 1465,
+      "cohortName": ""
+     }
+    ]
+   },
+   {
+    "id": 8,
+    "nctId": "NCT01131676",
+    "comparisonMode": "target_minus_treatment",
+    "treatmentArms": [
+     {
+      "id": 1,
+      "name": "BI 10773",
+      "cohortId": 3379,
+      "cohortName": ""
+     },
+     {
+      "id": 2,
+      "name": "Placebo",
+      "cohortId": 3380,
+      "cohortName": ""
+     }
+    ]
+   },
+   {
+    "id": 9,
+    "nctId": "NCT01897532",
+    "comparisonMode": "target_minus_treatment",
+    "treatmentArms": [
+     {
+      "id": 1,
+      "name": "linagliptin",
+      "cohortId": 3383,
+      "cohortName": ""
+     },
+     {
+      "id": 2,
+      "name": "placebo",
+      "cohortId": 3384,
+      "cohortName": ""
+     }
+    ]
+   },
+   {
+    "id": 10,
+    "nctId": "NCT01243424",
+    "comparisonMode": "target_minus_treatment",
+    "treatmentArms": [
+     {
+      "id": 1,
+      "name": "linagliptin",
+      "cohortId": 3387,
+      "cohortName": ""
+     },
+     {
+      "id": 2,
+      "name": "glimepiride",
+      "cohortId": 3388,
+      "cohortName": ""
+     }
+    ]
+   }
+  ],
+  "arm_groups": {
+   "NCT01179048": [
+    {
+     "label": "Liraglutide",
+     "type": "EXPERIMENTAL",
+     "interventionNames": [
+      "Drug: liraglutide"
+     ]
+    },
+    {
+     "label": "Placebo",
+     "type": "PLACEBO_COMPARATOR",
+     "interventionNames": [
+      "Drug: placebo"
+     ]
+    }
+   ],
+   "NCT00391872": [
+    {
+     "label": "Clopidogrel",
+     "type": "ACTIVE_COMPARATOR",
+     "description": "Oral treatment",
+     "interventionNames": [
+      "Drug: Clopidogrel"
+     ]
+    },
+    {
+     "label": "Ticagrelor",
+     "type": "EXPERIMENTAL",
+     "description": "Oral treatment",
+     "interventionNames": [
+      "Drug: Ticagrelor"
+     ]
+    }
+   ],
+   "NCT00412984": [
+    {
+     "label": "1",
+     "type": "ACTIVE_COMPARATOR",
+     "interventionNames": [
+      "Drug: warfarin"
+     ]
+    },
+    {
+     "label": "2",
+     "type": "EXPERIMENTAL",
+     "interventionNames": [
+      "Drug: apixaban"
+     ]
+    }
+   ],
+   "NCT01131676": [
+    {
+     "label": "BI 10773 low dose",
+     "type": "EXPERIMENTAL",
+     "description": "BI 10773 tablets once daily",
+     "interventionNames": [
+      "Drug: BI 10773 low dose",
+      "Drug: Placebo BI 10773 high dose"
+     ]
+    },
+    {
+     "label": "BI 10773 high dose",
+     "type": "EXPERIMENTAL",
+     "description": "BI 10773 tablets once daily",
+     "interventionNames": [
+      "Drug: BI 10773 high dose",
+      "Drug: Placebo BI 10773 low dose"
+     ]
+    },
+    {
+     "label": "Placebo",
+     "type": "PLACEBO_COMPARATOR",
+     "description": "Placebo tablets matching BI 10773",
+     "interventionNames": [
+      "Drug: Placebo BI 10773 high dose",
+      "Drug: Placebo BI 10773 low dose"
+     ]
+    }
+   ],
+   "NCT01897532": [
+    {
+     "label": "Linagliptin",
+     "type": "EXPERIMENTAL",
+     "interventionNames": [
+      "Drug: Linagliptin"
+     ]
+    },
+    {
+     "label": "Placebo",
+     "type": "PLACEBO_COMPARATOR",
+     "interventionNames": [
+      "Drug: Placebo"
+     ]
+    }
+   ],
+   "NCT01243424": [
+    {
+     "label": "linagliptin",
+     "type": "EXPERIMENTAL",
+     "description": "patient to receive linagliptin or glimepiride placebo over encapsulated tablet Quaque die (QD)",
+     "interventionNames": [
+      "Drug: linagliptin",
+      "Drug: glimepiride placebo"
+     ]
+    },
+    {
+     "label": "glimepiride 1-4 mg QD",
+     "type": "ACTIVE_COMPARATOR",
+     "description": "patient to receive glimepiride 1-4 mg or linagliptin placebo tablet Quaque die (QD)",
+     "interventionNames": [
+      "Drug: glimepiride",
+      "Drug: linagliptin placebo"
+     ]
+    }
+   ]
+  }
+ },
+ "a28_sets": {
+  "source": "candidate_store",
+  "by_study": {
+   "1": [
+    {
+     "id": 17,
+     "name": "Glycated hemoglobin",
+     "expression": {
+      "items": [
+       {
+        "concept": {
+         "CONCEPT_ID": 3004410,
+         "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3005446,
+         "CONCEPT_NAME": "Hemoglobin A1/Hemoglobin.total in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3007263,
+         "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3034639,
+         "CONCEPT_NAME": "Hemoglobin A1c [Mass/volume] in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 4197971,
+         "CONCEPT_NAME": "HbA1c measurement (DCCT aligned)",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "SNOMED",
+         "CONCEPT_CLASS_ID": "Procedure",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 44793001,
+         "CONCEPT_NAME": "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "SNOMED",
+         "CONCEPT_CLASS_ID": "Procedure",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       }
+      ]
+     }
+    },
+    {
+     "id": 18,
+     "name": "Hemoglobin A1c",
+     "expression": {
+      "items": [
+       {
+        "concept": {
+         "CONCEPT_ID": 3004410,
+         "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3005446,
+         "CONCEPT_NAME": "Hemoglobin A1/Hemoglobin.total in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3034639,
+         "CONCEPT_NAME": "Hemoglobin A1c [Mass/volume] in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 4197971,
+         "CONCEPT_NAME": "HbA1c measurement (DCCT aligned)",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "SNOMED",
+         "CONCEPT_CLASS_ID": "Procedure",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 44793001,
+         "CONCEPT_NAME": "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "SNOMED",
+         "CONCEPT_CLASS_ID": "Procedure",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       }
+      ]
+     }
+    }
+   ],
+   "3": [
+    {
+     "id": 21,
+     "name": "Systolic blood pressure",
+     "expression": {
+      "items": [
+       {
+        "concept": {
+         "CONCEPT_ID": 3004249,
+         "CONCEPT_NAME": "Systolic blood pressure",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Clinical Observation",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3035856,
+         "CONCEPT_NAME": "Systolic blood pressure--standing",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Clinical Observation",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 40758413,
+         "CONCEPT_NAME": "Blood pressure systolic and diastolic",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Clinical Observation",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       }
+      ]
+     }
+    }
+   ],
+   "8": [
+    {
+     "id": 3,
+     "name": "Glycosylated haemoglobin (HbA1c)",
+     "expression": {
+      "items": [
+       {
+        "concept": {
+         "CONCEPT_ID": 3004410,
+         "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3005446,
+         "CONCEPT_NAME": "Hemoglobin A1/Hemoglobin.total in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3007263,
+         "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       }
+      ]
+     }
+    },
+    {
+     "id": 4,
+     "name": "Glycosylated haemoglobin (HbA1c)",
+     "expression": {
+      "items": [
+       {
+        "concept": {
+         "CONCEPT_ID": 3004410,
+         "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3005446,
+         "CONCEPT_NAME": "Hemoglobin A1/Hemoglobin.total in Blood",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3007263,
+         "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       }
+      ]
+     }
+    }
+   ],
+   "10": [
+    {
+     "id": 28,
+     "name": "Systolic blood pressure",
+     "expression": {
+      "items": [
+       {
+        "concept": {
+         "CONCEPT_ID": 3004249,
+         "CONCEPT_NAME": "Systolic blood pressure",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Clinical Observation",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3035856,
+         "CONCEPT_NAME": "Systolic blood pressure--standing",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Clinical Observation",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 40758413,
+         "CONCEPT_NAME": "Blood pressure systolic and diastolic",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Clinical Observation",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       }
+      ]
+     }
+    },
+    {
+     "id": 30,
+     "name": "LDL cholesterol",
+     "expression": {
+      "items": [
+       {
+        "concept": {
+         "CONCEPT_ID": 3007070,
+         "CONCEPT_NAME": "Cholesterol in HDL [Mass/volume] in Serum or Plasma",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3009966,
+         "CONCEPT_NAME": "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3028288,
+         "CONCEPT_NAME": "Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3028437,
+         "CONCEPT_NAME": "Cholesterol in LDL [Mass/volume] in Serum or Plasma",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 3053341,
+         "CONCEPT_NAME": "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Electrophoresis",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 4041556,
+         "CONCEPT_NAME": "Serum LDL cholesterol measurement",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "SNOMED",
+         "CONCEPT_CLASS_ID": "Procedure",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 36031404,
+         "CONCEPT_NAME": "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Calculated by Martin-Hopkins",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       },
+       {
+        "concept": {
+         "CONCEPT_ID": 40758569,
+         "CONCEPT_NAME": "Cholesterol.in LDL (real) [Mass/volume] in Serum or Plasma by VAP",
+         "DOMAIN_ID": "Measurement",
+         "VOCABULARY_ID": "LOINC",
+         "CONCEPT_CLASS_ID": "Lab Test",
+         "STANDARD_CONCEPT": "S",
+         "STANDARD_CONCEPT_CAPTION": "Standard",
+         "CONCEPT_CODE": "",
+         "INVALID_REASON": null,
+         "INVALID_REASON_CAPTION": null
+        },
+        "includeDescendants": true,
+        "includeMapped": false,
+        "isExcluded": false
+       }
+      ]
+     }
+    }
+   ]
+  }
+ },
+ "a20_carolina_glucose_group": {
+  "source": "store_0909",
+  "study": 10,
+  "role": "exclusionCriteria",
+  "rows": [
+   {
+    "id": 44,
+    "description": "Uncontrolled hyperglycaemia",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "gt",
+     "value": 240.0,
+     "unitText": "mg/dl",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "Glucose",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "a0c65a7e-0cb2-4498-99d4-f7de0a9779cd",
+    "groupType": "ALL",
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   {
+    "id": 45,
+    "description": "Elevated HbA1c",
+    "domain": "Measurement",
+    "valueConstraint": null,
+    "sourceText": "Hemoglobin A1c",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 66,
+    "conceptSetName": "Hemoglobin A1c",
+    "logicType": "ABSENCE",
+    "groupId": "a0c65a7e-0cb2-4498-99d4-f7de0a9779cd",
+    "groupType": "ALL",
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 46,
+    "description": "Elevated Fasting Glucose",
+    "domain": "Measurement",
+    "valueConstraint": null,
+    "sourceText": "Fasting Plasma Glucose",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 67,
+    "conceptSetName": "Fasting Plasma Glucose",
+    "logicType": "ABSENCE",
+    "groupId": "a0c65a7e-0cb2-4498-99d4-f7de0a9779cd",
+    "groupType": "ALL",
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 47,
+    "description": "Elevated Random Glucose",
+    "domain": "Measurement",
+    "valueConstraint": null,
+    "sourceText": "Random Plasma Glucose",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 68,
+    "conceptSetName": "Random Plasma Glucose",
+    "logicType": "ABSENCE",
+    "groupId": "a0c65a7e-0cb2-4498-99d4-f7de0a9779cd",
+    "groupType": "ALL",
+    "isGroupLabel": false,
+    "mappable": true
+   }
+  ],
+  "fpg_rpg_sets": [
+   {
+    "id": 64,
+    "name": "Fasting Plasma Glucose",
+    "expression": {
+     "items": [
+      {
+       "concept": {
+        "CONCEPT_ID": 3006669,
+        "CONCEPT_NAME": "Glucose [Moles/volume] in Serum or Plasma --pre 12 hour fast",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3019474,
+        "CONCEPT_NAME": "Glucose [Mass/volume] in Serum or Plasma --pre 12 hour fast",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3040820,
+        "CONCEPT_NAME": "Glucose [Mass/volume] in Serum or Plasma --pre-meal",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 46236950,
+        "CONCEPT_NAME": "Fasting glucose [Moles/volume] in Serum, Plasma or Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      }
+     ]
+    }
+   },
+   {
+    "id": 65,
+    "name": "Random Plasma Glucose",
+    "expression": {
+     "items": [
+      {
+       "concept": {
+        "CONCEPT_ID": 3002666,
+        "CONCEPT_NAME": "Glucose [Mass/volume] in Serum or Plasma --baseline",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3004501,
+        "CONCEPT_NAME": "Glucose [Mass/volume] in Serum or Plasma",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 44816672,
+        "CONCEPT_NAME": "Glucose [Mass/volume] in Serum, Plasma or Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 46236950,
+        "CONCEPT_NAME": "Fasting glucose [Moles/volume] in Serum, Plasma or Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      }
+     ]
+    }
+   }
+  ],
+  "hba1c_set": {
+   "source": "candidate_store",
+   "study": 8,
+   "set": {
+    "id": 3,
+    "name": "Glycosylated haemoglobin (HbA1c)",
+    "expression": {
+     "items": [
+      {
+       "concept": {
+        "CONCEPT_ID": 3004410,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3005446,
+        "CONCEPT_NAME": "Hemoglobin A1/Hemoglobin.total in Blood",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      },
+      {
+       "concept": {
+        "CONCEPT_ID": 3007263,
+        "CONCEPT_NAME": "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+        "DOMAIN_ID": "Measurement",
+        "VOCABULARY_ID": "LOINC",
+        "CONCEPT_CLASS_ID": "Lab Test",
+        "STANDARD_CONCEPT": "S",
+        "STANDARD_CONCEPT_CAPTION": "Standard",
+        "CONCEPT_CODE": "",
+        "INVALID_REASON": null,
+        "INVALID_REASON_CAPTION": null
+       },
+       "includeDescendants": true,
+       "includeMapped": false,
+       "isExcluded": false
+      }
+     ]
+    }
+   }
+  }
+ },
+ "vocabulary_loinc_axes": {
+  "query": "SELECT c.concept_id, c.concept_name, c.vocabulary_id, c.concept_class_id, r.relationship_id, x.concept_id, x.concept_name FROM synthea23m.concept c JOIN synthea23m.concept_relationship r ON r.concept_id_1 = c.concept_id AND r.invalid_reason IS NULL AND r.relationship_id IN ('Has component', 'Has property') JOIN synthea23m.concept x ON x.concept_id = r.concept_id_2 WHERE c.concept_id = ANY(%s) ORDER BY 1, 5, 6",
+  "params": [
+   [
+    3002666,
+    3004249,
+    3004410,
+    3004501,
+    3005446,
+    3006669,
+    3007070,
+    3007263,
+    3009966,
+    3019474,
+    3028288,
+    3028437,
+    3034639,
+    3035856,
+    3040820,
+    3053341,
+    4041556,
+    4197971,
+    36031404,
+    40758413,
+    40758569,
+    44793001,
+    44816672,
+    46236950
+   ]
+  ],
+  "schema": "synthea23m",
+  "rows": [
+   [
+    3002666,
+    "Glucose [Mass/volume] in Serum or Plasma --baseline",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    1021838,
+    "Glucose^baseline"
+   ],
+   [
+    3002666,
+    "Glucose [Mass/volume] in Serum or Plasma --baseline",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3004249,
+    "Systolic blood pressure",
+    "LOINC",
+    "Clinical Observation",
+    "Has component",
+    1030724,
+    "Intravascular systolic"
+   ],
+   [
+    3004249,
+    "Systolic blood pressure",
+    "LOINC",
+    "Clinical Observation",
+    "Has property",
+    1029716,
+    "Pressure"
+   ],
+   [
+    3004410,
+    "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    37056065,
+    "Hemoglobin A1c/Hemoglobin.total"
+   ],
+   [
+    3004410,
+    "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029654,
+    "Mass fraction"
+   ],
+   [
+    3004501,
+    "Glucose [Mass/volume] in Serum or Plasma",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40795740,
+    "Glucose"
+   ],
+   [
+    3004501,
+    "Glucose [Mass/volume] in Serum or Plasma",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3005446,
+    "Hemoglobin A1/Hemoglobin.total in Blood",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    37024125,
+    "Hemoglobin A1/Hemoglobin.total"
+   ],
+   [
+    3005446,
+    "Hemoglobin A1/Hemoglobin.total in Blood",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029654,
+    "Mass fraction"
+   ],
+   [
+    3006669,
+    "Glucose [Moles/volume] in Serum or Plasma --pre 12 hour fast",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    1021850,
+    "Glucose^pre 12H CFst"
+   ],
+   [
+    3006669,
+    "Glucose [Moles/volume] in Serum or Plasma --pre 12 hour fast",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029726,
+    "Substance Concentration"
+   ],
+   [
+    3007070,
+    "Cholesterol in HDL [Mass/volume] in Serum or Plasma",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40782589,
+    "Cholesterol in HDL"
+   ],
+   [
+    3007070,
+    "Cholesterol in HDL [Mass/volume] in Serum or Plasma",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3007263,
+    "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    37056065,
+    "Hemoglobin A1c/Hemoglobin.total"
+   ],
+   [
+    3007263,
+    "Hemoglobin A1c/Hemoglobin.total in Blood by calculation",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029654,
+    "Mass fraction"
+   ],
+   [
+    3009966,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40795800,
+    "Cholesterol in LDL"
+   ],
+   [
+    3009966,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3019474,
+    "Glucose [Mass/volume] in Serum or Plasma --pre 12 hour fast",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    1021850,
+    "Glucose^pre 12H CFst"
+   ],
+   [
+    3019474,
+    "Glucose [Mass/volume] in Serum or Plasma --pre 12 hour fast",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3028288,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40795800,
+    "Cholesterol in LDL"
+   ],
+   [
+    3028288,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3028437,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40795800,
+    "Cholesterol in LDL"
+   ],
+   [
+    3028437,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3034639,
+    "Hemoglobin A1c [Mass/volume] in Blood",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40789263,
+    "Hemoglobin A1c"
+   ],
+   [
+    3034639,
+    "Hemoglobin A1c [Mass/volume] in Blood",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3035856,
+    "Systolic blood pressure--standing",
+    "LOINC",
+    "Clinical Observation",
+    "Has component",
+    1020244,
+    "Intravascular systolic^standing"
+   ],
+   [
+    3035856,
+    "Systolic blood pressure--standing",
+    "LOINC",
+    "Clinical Observation",
+    "Has property",
+    1029716,
+    "Pressure"
+   ],
+   [
+    3040820,
+    "Glucose [Mass/volume] in Serum or Plasma --pre-meal",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    1021869,
+    "Glucose^pre-meal"
+   ],
+   [
+    3040820,
+    "Glucose [Mass/volume] in Serum or Plasma --pre-meal",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    3053341,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Electrophoresis",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40795800,
+    "Cholesterol in LDL"
+   ],
+   [
+    3053341,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Electrophoresis",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    4041556,
+    "Serum LDL cholesterol measurement",
+    "SNOMED",
+    "Procedure",
+    "Has component",
+    4009426,
+    "LDL cholesterol"
+   ],
+   [
+    4197971,
+    "HbA1c measurement (DCCT aligned)",
+    "SNOMED",
+    "Procedure",
+    "Has component",
+    4143304,
+    "Glycosylated hemoglobin A"
+   ],
+   [
+    4197971,
+    "HbA1c measurement (DCCT aligned)",
+    "SNOMED",
+    "Procedure",
+    "Has component",
+    4150368,
+    "Hemoglobin A"
+   ],
+   [
+    4197971,
+    "HbA1c measurement (DCCT aligned)",
+    "SNOMED",
+    "Procedure",
+    "Has component",
+    37116827,
+    "Glycated hemoglobin-A1c"
+   ],
+   [
+    36031404,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Calculated by Martin-Hopkins",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40795800,
+    "Cholesterol in LDL"
+   ],
+   [
+    36031404,
+    "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Calculated by Martin-Hopkins",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    40758413,
+    "Blood pressure systolic and diastolic",
+    "LOINC",
+    "Clinical Observation",
+    "Has component",
+    1034368,
+    "Blood pressure systolic and diastolic"
+   ],
+   [
+    40758413,
+    "Blood pressure systolic and diastolic",
+    "LOINC",
+    "Clinical Observation",
+    "Has property",
+    1029597,
+    "-"
+   ],
+   [
+    40758569,
+    "Cholesterol.in LDL (real) [Mass/volume] in Serum or Plasma by VAP",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40795800,
+    "Cholesterol in LDL"
+   ],
+   [
+    40758569,
+    "Cholesterol.in LDL (real) [Mass/volume] in Serum or Plasma by VAP",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    44793001,
+    "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+    "SNOMED",
+    "Procedure",
+    "Has component",
+    4143304,
+    "Glycosylated hemoglobin A"
+   ],
+   [
+    44793001,
+    "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+    "SNOMED",
+    "Procedure",
+    "Has component",
+    4150368,
+    "Hemoglobin A"
+   ],
+   [
+    44793001,
+    "Hb A1c (Haemoglobin A1c) measurement - IFCC (International Federation of Clinical Chemistry and Laboratory Medicine) standardised",
+    "SNOMED",
+    "Procedure",
+    "Has component",
+    37116827,
+    "Glycated hemoglobin-A1c"
+   ],
+   [
+    44816672,
+    "Glucose [Mass/volume] in Serum, Plasma or Blood",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    40795740,
+    "Glucose"
+   ],
+   [
+    44816672,
+    "Glucose [Mass/volume] in Serum, Plasma or Blood",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029650,
+    "Mass Concentration"
+   ],
+   [
+    46236950,
+    "Fasting glucose [Moles/volume] in Serum, Plasma or Blood",
+    "LOINC",
+    "Lab Test",
+    "Has component",
+    1021844,
+    "Glucose^post CFst"
+   ],
+   [
+    46236950,
+    "Fasting glucose [Moles/volume] in Serum, Plasma or Blood",
+    "LOINC",
+    "Lab Test",
+    "Has property",
+    1029726,
+    "Substance Concentration"
+   ]
+  ]
+ }
+}
