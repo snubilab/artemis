@@ -144,12 +144,15 @@ class TestTheExtractionPromptCarriesTheRule:
     second copy is the one that drifts.
     """
 
-    def test_should_name_the_fused_negation_vocabulary_in_pattern_c(self):
+    def test_should_state_the_fused_negation_without_listing_its_words(self):
+        """Pattern C used to enumerate the fused-negation words to recognise. A word list
+        in a prompt is an example (AGENTS.md § PROMPTS AND TEXT RULES, rule 1), so the
+        decision is stated once, abstractly, and the list is pinned out."""
         text = prompts.NCT_SYSTEM_PROMPT
 
-        for word in ('"treatment-naive"', '"drug-naive"', '"insulin-naïve"',
-                     '"no prior\n  use of"', '"washout of"'):
-            assert text.count(word) == 1, word
+        assert text.count("may be fused to the drug as a modifier") == 1
+        for word in ("treatment-naive", "drug-naive", "insulin-naïve", "washout of"):
+            assert word not in text, word
 
     def test_should_put_the_negation_in_logic_type_and_not_in_the_entity(self):
         text = prompts.NCT_SYSTEM_PROMPT
