@@ -389,7 +389,9 @@ def _validate_threshold(
         return fields
     kind = _enum_value(kind_raw, _KIND_VALUES)
     if kind is None:
-        rejected.append(_rejection(FIELD_QUANTITY_KIND, answer, f"not one of {sorted(_KIND_VALUES)}"))
+        rejected.append(
+            _rejection(FIELD_QUANTITY_KIND, answer, f"not one of {sorted(_KIND_VALUES)}")
+        )
         return fields
     bound = _enum_value(bound_raw, _BOUND_VALUES)
     if bound is None:
@@ -887,14 +889,26 @@ class ThresholdUse(str, Enum):
     * ``measured`` -- a verified lab value, or an ``other`` quantity on a Measurement row
       (the case the build already supports): applied as a value filter, compared against
       the annotation's ``reference_bound``.
-    * ``not-representable`` -- a verified dose, duration, count, statistical quantity, or
-      an ``other`` quantity outside Measurement: no value filter is emitted for it, and it
-      is recorded under :data:`UNREPRESENTABLE_THRESHOLDS_KEY`.
+    * ``not-representable`` -- a verified duration, count, or an ``other`` quantity outside
+      Measurement: no value filter is emitted for it, the criterion is kept, and the
+      threshold is recorded under :data:`UNREPRESENTABLE_THRESHOLDS_KEY` (the delivery gate
+      WARNs on it).
+    * ``skip-criterion`` -- a verified dose or statistical quantity: the WHOLE criterion is
+      skipped and recorded under :data:`THRESHOLD_NOT_REPRESENTABLE_REASON`, which the
+      delivery gate counts as criterion loss. A drug emitted without its dose, or a row
+      carrying a quantity of the trial's design, says something the protocol did not.
+
+    Decided on the enum alone (coordinator, 2026-10-12); no text is read.
     """
 
     DEFAULT = "default"
     MEASURED = "measured"
     NOT_REPRESENTABLE = "not-representable"
+    SKIP_CRITERION = "skip-criterion"
+
+
+#: The kinds whose criterion is skipped whole rather than kept without its threshold.
+_SKIP_KINDS = frozenset({QuantityKind.DOSE, QuantityKind.STATISTICAL})
 
 
 def threshold_use(row: Mapping[str, Any]) -> tuple[ThresholdUse, StatedThreshold | None]:
@@ -910,6 +924,8 @@ def threshold_use(row: Mapping[str, Any]) -> tuple[ThresholdUse, StatedThreshold
         stated.kind is QuantityKind.OTHER and row.get("domain") == MEASUREMENT_DOMAIN
     ):
         return ThresholdUse.MEASURED, stated
+    if stated.kind in _SKIP_KINDS:
+        return ThresholdUse.SKIP_CRITERION, stated
     return ThresholdUse.NOT_REPRESENTABLE, stated
 
 
@@ -921,13 +937,14 @@ def applied_value_constraint(row: Mapping[str, Any]) -> Any:
     differently from another.
 
     :param row: the store criterion row.
-    :returns: None for a threshold no CIRCE value filter represents; the row's own
+    :returns: None for a threshold no CIRCE value filter represents (a skipped
+        criterion included, so its group label hands nothing down); the row's own
         constraint with ``referenceBound`` taken from the annotation for a measured one;
         the row's own constraint unchanged otherwise.
     """
     constraint = row.get("valueConstraint")
     use, stated = threshold_use(row)
-    if use is ThresholdUse.NOT_REPRESENTABLE:
+    if use in (ThresholdUse.NOT_REPRESENTABLE, ThresholdUse.SKIP_CRITERION):
         return None
     if use is ThresholdUse.MEASURED and isinstance(constraint, Mapping):
         return {**constraint, "referenceBound": stated.bound}
@@ -968,3 +985,49 @@ def unrepresentable_threshold_records(
             }
         )
     return records
+
+
+
+@dataclass(frozen=True)
+class ThresholdSkip:
+    """Why a row is skipped whole for a dose or statistical threshold.
+
+    :param span: the verified fragment of the deciding row's line.
+    :param kind: its ``quantity_kind``.
+    :param decided_by: the id of the row that states it -- the row itself, or the group
+        label it sits under.
+    """
+
+    span: str
+    kind: QuantityKind
+    decided_by: str
+
+
+def threshold_skips(rows: Iterable[Any]) -> dict[str, ThresholdSkip]:
+    """The rows of one role that are skipped whole because their threshold is a dose or
+    a statistical quantity (:attr:`ThresholdUse.SKIP_CRITERION`).
+
+    A group label whose own line states such a threshold takes every row of its group,
+    nested groups included, with it -- the members are what the label describes, as
+    :func:`conditional_skips` does for a conditional label.
+
+    :param rows: one role's store rows.
+    :returns: criterion id (stringified) -> the decision.
+    """
+    rows = [r for r in rows if isinstance(r, Mapping)]
+    own: dict[str, ThresholdSkip] = {}
+    for row in rows:
+        use, stated = threshold_use(row)
+        if use is ThresholdUse.SKIP_CRITERION:
+            row_id = str(row.get(_ID, ""))
+            own[row_id] = ThresholdSkip(span=stated.span, kind=stated.kind, decided_by=row_id)
+    decided = dict(own)
+    for label in rows:
+        decision = own.get(str(label.get(_ID, "")))
+        if decision is None or not label.get(_IS_LABEL) or not label.get(_GROUP):
+            continue
+        groups = group_descendants(rows, str(label.get(_GROUP)))
+        for row in rows:
+            if row is not label and row.get(_GROUP) in groups:
+                decided.setdefault(str(row.get(_ID, "")), decision)
+    return decided

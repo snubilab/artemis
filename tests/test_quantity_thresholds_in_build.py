@@ -10,10 +10,12 @@ What is pinned:
 * ``reference_bound`` comes from the annotation, never from ``unitText`` (A21 deleted):
   "x ULN" in a unit slot is an unresolvable unit without an annotation, and a
   ``RangeHighRatio`` with one;
-* a threshold whose verified ``quantity_kind`` is not a lab value is not emitted as a value
-  filter: the criterion is built without it and the threshold is recorded under
-  ``_unrepresentableThresholds`` with its span, instead of an English word list rejecting
-  it (A5b) or the build refusing the whole criterion;
+* a threshold whose verified ``quantity_kind`` is not a lab value is never a value filter,
+  instead of an English word list rejecting it (A5b). By kind (coordinator, 2026-10-12): a
+  ``dose`` or ``statistical`` threshold skips the WHOLE criterion, recorded under
+  ``_skippedCriteria`` with reason, kind and span (and a group label takes its members);
+  a ``duration``, ``count`` or non-Measurement ``other`` threshold keeps the criterion and
+  is recorded under ``_unrepresentableThresholds``;
 * a group label whose threshold is not a lab value hands nothing down and strands nobody
   (``is_item_count`` deleted);
 * a unit whose trailing exponent the PDF text lost resolves when exactly one unit differing
@@ -51,6 +53,8 @@ ARISTOTLE = {row["id"]: row for row in FIXTURE["aristotle_exclusion"]}
 CARMELINA = {row["id"]: row for row in FIXTURE["carmelina_exclusion"]}
 CAROLINA = {row["id"]: row for row in FIXTURE["carolina_inclusion"]}
 SEGMENTED = FIXTURE["segmentation"]
+ASPIRIN = FIXTURE["aristotle_exclusion_26"]  # "Required treatment with aspirin > 165 mg/day"
+LIFE_EXPECTANCY = FIXTURE["carolina_exclusion_67"]  # "... a life expectancy less than 5 years ..."
 
 
 def _payload(span: Any, kind: Any, bound: Any) -> dict[str, Any]:
@@ -401,3 +405,75 @@ class TestADroppedUnitExponent:
         )
         [criteria] = _criteria(circe)
         assert criteria["Unit"][0]["CONCEPT_ID"] == 720870
+
+
+# --------------------------------------------------------------------------- #
+# dose / statistical: the whole criterion is skipped
+# --------------------------------------------------------------------------- #
+
+
+class TestADoseOrStatisticalThresholdSkipsTheCriterion:
+    """ARISTOTLE exclusion 26: "Required treatment with aspirin > 165 mg/day" on a Drug row
+    with no ``valueConstraint``. Emitted without its number it excludes every aspirin user."""
+
+    def test_should_emit_the_plain_drug_without_an_annotation(self, service):
+        circe = _build(service, exclusion=[ASPIRIN])
+        assert len(_criteria(circe)) == 1
+        assert circe["_skippedCriteria"] == []
+
+    @pytest.mark.parametrize("kind", ["dose", "statistical"])
+    def test_should_skip_the_whole_criterion_and_record_why(self, service, kind):
+        row = _annotated(ASPIRIN, "> 165 mg/day", kind, "none")
+        circe = _build(service, exclusion=[row])
+        assert circe["InclusionRules"] == []
+        [skip] = circe["_skippedCriteria"]
+        assert (skip["criterionId"], skip["reason"], skip["quantityKind"], skip["thresholdSpan"]) == (
+            "26", "threshold-not-representable", kind, "> 165 mg/day",
+        )
+        assert skip["thresholdDecidedBy"] == "26"
+        # Skipped, so not also listed as a threshold the file carries without a filter.
+        assert circe[UNREPRESENTABLE_THRESHOLDS_KEY] == []
+        assert circe["_generationCensus"]["skippedByReason"] == {"threshold-not-representable": 1}
+
+    def test_should_take_a_labels_members_with_it(self, service):
+        """The decision is the label's when the label states the threshold (as a
+        conditional label takes its members). CAROLINA inclusion 31-33, with the label's
+        kind answered ``statistical`` to drive this branch."""
+        label = _annotated(CAROLINA[31], "between 80% and 120%", "statistical", "none")
+        circe = _build(service, inclusion=[label, CAROLINA[32], CAROLINA[33]])
+        skips = {r["criterionId"]: r for r in circe["_skippedCriteria"]}
+        # 33 is E6's duplicate of 32 and is collapsed first, as it was before; the label
+        # and the surviving member go under the label's threshold decision.
+        assert {cid: r["reason"] for cid, r in skips.items()} == {
+            "31": "threshold-not-representable",
+            "32": "threshold-not-representable",
+            "33": "restated-distinctness-duplicate",
+        }
+        assert skips["32"]["thresholdDecidedBy"] == "31"
+        assert circe["InclusionRules"] == []
+
+
+# --------------------------------------------------------------------------- #
+# duration / count: the criterion is kept, the threshold recorded
+# --------------------------------------------------------------------------- #
+
+
+class TestADurationOrCountThresholdKeepsTheCriterion:
+    def test_should_keep_the_life_expectancy_criterion_and_record_its_threshold(self, service):
+        """CAROLINA exclusion 67, ``lt 5 years`` on an Observation row."""
+        span = "life expectancy less than 5 years"
+        row = _annotated(LIFE_EXPECTANCY, span, "duration", "none")
+        circe = _build(service, exclusion=[row])
+        [criteria] = _criteria(circe)
+        assert "ValueAsNumber" not in criteria
+        [record] = circe[UNREPRESENTABLE_THRESHOLDS_KEY]
+        assert (record["criterionId"], record["quantityKind"], record["thresholdSpan"]) == (
+            "67", "duration", span,
+        )
+        assert circe["_skippedCriteria"] == []
+
+    def test_should_keep_a_count_labels_members(self, service):
+        label = _annotated(COUNT_LABEL, "≥2", "count", "none")
+        circe = _build(service, inclusion=[label, SMOKER])
+        assert len(_criteria(circe)) == 1
+        assert [r["quantityKind"] for r in circe[UNREPRESENTABLE_THRESHOLDS_KEY]] == ["count"]

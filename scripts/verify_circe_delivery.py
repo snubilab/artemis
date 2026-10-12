@@ -327,7 +327,7 @@ import sys
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -1149,27 +1149,38 @@ def criteria_index(study: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any
     }
 
 
+class ThresholdFindings(NamedTuple):
+    """Check (j)'s verdict: what fails the file, and what is reported without failing."""
+
+    failures: list[str]
+    warnings: list[str]
+
+
 def threshold_without_value_filter_findings(
     expression: dict[str, Any], study: dict[str, Any]
-) -> list[str]:
+) -> ThresholdFindings:
     """Check (j): a stated threshold whose criterion emitted no value condition.
 
     A store row states a threshold when its accepted annotation carries a
     ``threshold_span`` that is a substring of its ``protocolLine``
     (:func:`src.services.criterion_annotation.threshold_use`; the span is re-checked
     there). Such a row that minted a concept set (``_criterionConceptSetRefs``) and whose
-    criteria over that set carry no key of ``VALUE_CONDITION_ATTRIBUTES`` fails, unless
-    the annotation says no value filter represents the threshold AND the file lists the
-    row under ``_unrepresentableThresholds`` -- the record is the producer's claim, and
-    the decision behind it is re-derived from the store row here, never read off it.
+    criteria over that set carry no key of ``VALUE_CONDITION_ATTRIBUTES`` fails, with one
+    exception that is a WARN instead: the annotation says the threshold is a duration, a
+    count or a non-Measurement ``other`` quantity (the criterion is kept without it) AND
+    the file lists the row under ``_unrepresentableThresholds`` -- the record is the
+    producer's claim, and the decision behind it is re-derived from the store row here,
+    never read off it. A dose or statistical threshold skips the whole criterion, so such a
+    row that emitted at all fails; its skip is counted as criterion loss by check (i).
 
     Nothing reads a name. A row whose line states no threshold, or whose annotation was
     rejected, is not judged: absence of a verified threshold is not evidence of one.
 
     :param expression: the delivered CIRCE expression.
     :param study: the store study it was built from.
-    :returns: one finding per offending criterion; a single fail-closed finding when rows
-        state thresholds and the file carries no refs map to say what they emitted.
+    :returns: the failures (one per offending criterion; a single fail-closed finding when
+        rows state thresholds and the file carries no refs map to say what they emitted)
+        and the warnings (one per recorded threshold the file does not carry).
     """
     stated = {}
     for key, row in criteria_index(study).items():
@@ -1177,41 +1188,52 @@ def threshold_without_value_filter_findings(
         if threshold is not None:
             stated[key] = (row, use, threshold)
     if not stated:
-        return []
+        return ThresholdFindings([], [])
     refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
     if not isinstance(refs, dict):
-        return [
-            f"{len(stated)} store criteria state a verified threshold and the file carries "
-            f"no {CRITERION_CONCEPT_SET_REFS_KEY}, so whether each emitted a value "
-            "condition cannot be checked"
-        ]
+        return ThresholdFindings(
+            [
+                f"{len(stated)} store criteria state a verified threshold and the file "
+                f"carries no {CRITERION_CONCEPT_SET_REFS_KEY}, so whether each emitted a "
+                "value condition cannot be checked"
+            ],
+            [],
+        )
     recorded = {
         (record.get("role"), str(record.get("criterionId") or ""))
         for record in expression.get(UNREPRESENTABLE_THRESHOLDS_KEY) or []
         if isinstance(record, dict)
     }
     conditions = value_conditions_by_codeset(expression)
-    findings: list[str] = []
+    failures: list[str] = []
+    warnings: list[str] = []
     for (role, criterion_id), (row, use, threshold) in sorted(stated.items()):
         codeset = refs.get(f"{role}:{criterion_id}")
         emitted = conditions.get(codeset) if codeset is not None else None
         if not emitted or any(carries for _where, _type, carries in emitted):
             continue
-        if use is ThresholdUse.NOT_REPRESENTABLE and (role, criterion_id) in recorded:
-            continue
         where, criteria_type, _carries = emitted[0]
-        why = (
-            f"the annotation says no value filter represents it and the file does not list "
-            f"it under {UNREPRESENTABLE_THRESHOLDS_KEY}"
-            if use is ThresholdUse.NOT_REPRESENTABLE
-            else "it is applied as a value filter, and none was emitted"
-        )
-        findings.append(
+        head = (
             f"{role} #{criterion_id} {_label_of(row)!r}: {where}: {criteria_type} over "
             f"codeset {codeset} carries no value condition while its protocol line states "
-            f"{threshold.span!r} ({threshold.kind.value}) -- {why}"
+            f"{threshold.span!r} ({threshold.kind.value})"
         )
-    return findings
+        if use is ThresholdUse.NOT_REPRESENTABLE and (role, criterion_id) in recorded:
+            warnings.append(
+                f"{head} -- kept without it and listed under {UNREPRESENTABLE_THRESHOLDS_KEY}"
+            )
+            continue
+        if use is ThresholdUse.NOT_REPRESENTABLE:
+            why = (
+                f"the annotation says no value filter represents it and the file does not "
+                f"list it under {UNREPRESENTABLE_THRESHOLDS_KEY}"
+            )
+        elif use is ThresholdUse.SKIP_CRITERION:
+            why = "the annotation says the whole criterion is skipped, and it emitted"
+        else:
+            why = "it is applied as a value filter, and none was emitted"
+        failures.append(f"{head} -- {why}")
+    return ThresholdFindings(failures, warnings)
 
 
 def _label_of(row: dict[str, Any]) -> str:
@@ -2808,12 +2830,20 @@ def main(argv: list[str] | None = None) -> int:
         # emitted without a value condition. Every other check reads a criterion that is
         # PRESENT and asks whether it is wrong; this one asks whether something is missing
         # from it, which is why lost thresholds used to be counted as "mapped".
-        missing_bounds = threshold_without_value_filter_findings(expression, study)
-        if missing_bounds:
+        threshold_findings = threshold_without_value_filter_findings(expression, study)
+        if threshold_findings.failures:
             reasons.append(
-                f"stated threshold missing ({len(missing_bounds)}): "
-                f"{'; '.join(missing_bounds)}"
+                f"stated threshold missing ({len(threshold_findings.failures)}): "
+                f"{'; '.join(threshold_findings.failures)}"
             )
+        # REPORTED, NOT FAILED: a duration / count threshold the producer kept the
+        # criterion without and recorded (coordinator, 2026-10-12).
+        threshold_warn_clause = (
+            f"stated threshold not representable (WARN, {len(threshold_findings.warnings)}): "
+            f"{'; '.join(threshold_findings.warnings)}"
+            if threshold_findings.warnings
+            else ""
+        )
 
         # (v) a lab range required as a PRESENCE on a mandatory path. Check (j) asks whether a
         # bound went missing; this one asks whether a bound that is present was stated in the
@@ -3134,7 +3164,8 @@ def main(argv: list[str] | None = None) -> int:
                     ]
                 )
                 + ([specimen_warn_clause] if specimen_warn_clause else [])
-                + ([overlap_warn_clause] if overlap_warn_clause else []),
+                + ([overlap_warn_clause] if overlap_warn_clause else [])
+                + ([threshold_warn_clause] if threshold_warn_clause else []),
             }
         )
 

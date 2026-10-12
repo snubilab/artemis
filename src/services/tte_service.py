@@ -81,12 +81,14 @@ from src.services.criterion_annotation import (
     CONDITIONAL_REASON,
     EXTRACTED_CONDITIONAL_KEY,
     PLANNER_EXCEPTED_KEY,
+    THRESHOLD_NOT_REPRESENTABLE_REASON,
     UNREPRESENTABLE_THRESHOLDS_KEY,
     annotate_eligibility,
     applied_value_constraint,
     conditional_skips,
     stated_exceptions,
     stated_exceptions_by_codeset,
+    threshold_skips,
     unrepresentable_threshold_records,
 )
 from src.services.entry_exclusion_repair import (
@@ -5352,6 +5354,19 @@ class TTEService:
                 **(extra or {}),
             })
 
+        def _record_threshold_skip(criterion: dict[str, Any], role: str, decision: Any) -> None:
+            _record_skip(
+                criterion, role, THRESHOLD_NOT_REPRESENTABLE_REASON,
+                f"its protocol line states a {decision.kind.value} threshold "
+                f"({decision.span!r}) that no CIRCE value filter represents; emitted "
+                f"without it the criterion would say something the protocol does not",
+                extra={
+                    "quantityKind": decision.kind.value,
+                    "thresholdSpan": decision.span,
+                    "thresholdDecidedBy": decision.decided_by,
+                },
+            )
+
         def _record_conditional_skip(criterion: dict[str, Any], role: str, decision: Any) -> None:
             _record_skip(
                 criterion, role, CONDITIONAL_REASON, CONDITIONAL_EXPLANATION,
@@ -5407,6 +5422,11 @@ class TTEService:
         unrepresentable_thresholds = unrepresentable_threshold_records(
             inc_criteria, "inclusion"
         ) + unrepresentable_threshold_records(exc_criteria, "exclusion")
+        # ...and a dose or statistical threshold skips the WHOLE criterion (a group label
+        # takes its members), recorded under its own reason, which the delivery gate counts
+        # as criterion loss (coordinator, 2026-10-12).
+        threshold_inclusions = threshold_skips(inc_criteria)
+        threshold_exclusions = threshold_skips(exc_criteria)
 
         # Group labels, recorded once mapping is done (see after the mapping pool).
         deferred_labels: list[tuple[dict[str, Any], str]] = []
@@ -5453,6 +5473,11 @@ class TTEService:
             decision = conditional_inclusions.get(str(criterion.get("id", "")))
             if decision is not None:
                 _record_conditional_skip(criterion, "inclusion", decision)
+                order += 1
+                continue
+            skip = threshold_inclusions.get(str(criterion.get("id", "")))
+            if skip is not None:
+                _record_threshold_skip(criterion, "inclusion", skip)
                 order += 1
                 continue
             # Ahead of the demographic branch: a group label emits no rule of its own,
@@ -5502,6 +5527,11 @@ class TTEService:
             decision = conditional_exclusions.get(str(criterion.get("id", "")))
             if decision is not None:
                 _record_conditional_skip(criterion, "exclusion", decision)
+                order += 1
+                continue
+            skip = threshold_exclusions.get(str(criterion.get("id", "")))
+            if skip is not None:
+                _record_threshold_skip(criterion, "exclusion", skip)
                 order += 1
                 continue
             # Ahead of the demographic branch, as in the inclusion loop: a group label

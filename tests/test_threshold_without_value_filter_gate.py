@@ -114,7 +114,7 @@ class TestALabThreshold:
         number, and as a lab value it is emitted bare."""
         row = _annotated(CAROLINA[32], COMPLIANCE_SPAN, "lab_value", "none")
         expression, study = _delivered(service, inclusion=[row])
-        [finding] = threshold_without_value_filter_findings(expression, study)
+        [finding] = threshold_without_value_filter_findings(expression, study).failures
         assert "inclusion #32" in finding
         assert COMPLIANCE_SPAN in finding
         assert "lab_value" in finding
@@ -122,7 +122,7 @@ class TestALabThreshold:
     def test_should_pass_when_the_criterion_carries_its_filter(self, service):
         row = _annotated(PLATO[29], "greater than the upper limit of normal", "lab_value", "uln")
         expression, study = _delivered(service, inclusion=[row])
-        assert threshold_without_value_filter_findings(expression, study) == []
+        assert threshold_without_value_filter_findings(expression, study).failures == []
 
 
 class TestAThresholdNoValueFilterRepresents:
@@ -132,14 +132,24 @@ class TestAThresholdNoValueFilterRepresents:
         row = _annotated(PLATO[26], "(≥50%)", "other", "none")
         expression, study = _delivered(service, inclusion=[row])
         assert [r["criterionId"] for r in expression[UNREPRESENTABLE_THRESHOLDS_KEY]] == ["26"]
-        assert threshold_without_value_filter_findings(expression, study) == []
+        assert threshold_without_value_filter_findings(expression, study).failures == []
 
     def test_should_fail_when_the_file_does_not_record_it(self, service):
         row = _annotated(PLATO[26], "(≥50%)", "other", "none")
         expression, study = _delivered(service, inclusion=[row])
         expression[UNREPRESENTABLE_THRESHOLDS_KEY] = []
-        [finding] = threshold_without_value_filter_findings(expression, study)
+        [finding] = threshold_without_value_filter_findings(expression, study).failures
         assert "inclusion #26" in finding and UNREPRESENTABLE_THRESHOLDS_KEY in finding
+
+    def test_should_warn_when_the_file_records_it(self, service):
+        """Recorded and re-derived: the criterion stays and its threshold is not carried,
+        which the gate reports without failing (coordinator, 2026-10-12)."""
+        row = _annotated(PLATO[26], "(≥50%)", "other", "none")
+        expression, study = _delivered(service, inclusion=[row])
+        findings = threshold_without_value_filter_findings(expression, study)
+        assert findings.failures == []
+        [warning] = findings.warnings
+        assert "inclusion #26" in warning and "(≥50%)" in warning
 
     def test_should_fail_when_the_store_row_says_it_is_a_lab_value(self, service):
         """The record is a permit, re-derived: a file built from one reading cannot pass
@@ -148,7 +158,7 @@ class TestAThresholdNoValueFilterRepresents:
         expression, _ = _delivered(service, inclusion=[built_from])
         store_row = _annotated(PLATO[26], "(≥50%)", "lab_value", "none")
         study = {"id": 1, "eligibility": {"inclusionCriteria": [store_row]}}
-        assert len(threshold_without_value_filter_findings(expression, study)) == 1
+        assert len(threshold_without_value_filter_findings(expression, study).failures) == 1
 
 
 class TestTheNameIsNotRead:
@@ -164,18 +174,31 @@ class TestTheNameIsNotRead:
         for candidate in (unannotated, annotated):
             expression, study = _delivered(service, **{role: [candidate]})
             assert expression["InclusionRules"], "the row must emit for the check to judge it"
-            assert threshold_without_value_filter_findings(expression, study) == []
+            assert threshold_without_value_filter_findings(expression, study).failures == []
 
 
 def test_should_fail_closed_when_the_file_cannot_say_what_it_emitted(service):
     row = _annotated(CAROLINA[32], COMPLIANCE_SPAN, "lab_value", "none")
     expression, study = _delivered(service, inclusion=[row])
     expression.pop(CRITERION_CONCEPT_SET_REFS_KEY)
-    [finding] = threshold_without_value_filter_findings(expression, study)
+    [finding] = threshold_without_value_filter_findings(expression, study).failures
     assert CRITERION_CONCEPT_SET_REFS_KEY in finding
 
 
 def test_should_say_nothing_when_no_store_row_states_a_threshold(service):
     expression, study = _delivered(service, inclusion=[CAROLINA[32]])
     expression.pop(CRITERION_CONCEPT_SET_REFS_KEY)
-    assert threshold_without_value_filter_findings(expression, study) == []
+    assert threshold_without_value_filter_findings(expression, study).failures == []
+
+
+def test_should_count_a_dose_skip_as_criterion_loss(service):
+    """A dose or statistical threshold skips the criterion; the skip is off the gate's
+    allowlist, so the loss is visible rather than permitted."""
+    from scripts.verify_circe_delivery import criterion_accounting
+
+    row = _annotated(FIXTURE["aristotle_exclusion_26"], "> 165 mg/day", "dose", "none")
+    expression, study = _delivered(service, exclusion=[row])
+    violations, _summary = criterion_accounting(expression, study)
+    joined = "; ".join(violations)
+    assert "not on the allowlist" in joined
+    assert "threshold-not-representable" in joined

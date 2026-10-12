@@ -1,5 +1,5 @@
 {
- "about": "Real rows for the RFC-016 step 3 tests (quantity_kind / reference_bound / threshold_span), copied verbatim from read-only sources. 'candidate' is the 2026-10-12 prompt_f2 store, 'p2_new' the 2026-10-12 P2 NEW store; 'segmentation' is the eligibility segmentation of the production pdftotext rendering of the named PDF with the hand-made truth oracle of tests/fixtures/segmentation/corpus_truth.json (the PDF text is SHA-256 pinned there). leader_exclusion_5 and carmelina_inclusion_16 (candidate) are the rows behind the candidate gate's four former check (j) findings. carmelina_ir_hba1c_band is target/inclusion_rules[4:6] of a shared Agent 1 IR cache file; leader_p2_new_ir holds the first three LEADER inclusion lines Agent 1 was given in the P2 NEW run (its .meta.json) and the source_text the model wrote back for the third.",
+ "about": "Real rows for the RFC-016 step 3 tests (quantity_kind / reference_bound / threshold_span), copied verbatim from read-only sources. 'candidate' is the 2026-10-12 prompt_f2 store, 'p2_new' the 2026-10-12 P2 NEW store; 'segmentation' is the eligibility segmentation of the production pdftotext rendering of the named PDF with the hand-made truth oracle of tests/fixtures/segmentation/corpus_truth.json (the PDF text is SHA-256 pinned there). leader_exclusion_5 and carmelina_inclusion_16 (candidate) are the rows behind the candidate gate's four former check (j) findings. carmelina_ir_hba1c_band is target/inclusion_rules[4:6] of a shared Agent 1 IR cache file; leader_p2_new_ir holds the first three LEADER inclusion lines Agent 1 was given in the P2 NEW run (its .meta.json) and the source_text the model wrote back for the third. aristotle_exclusion_26 and carolina_exclusion_67 (candidate) are a dose line and a life-expectancy line.",
  "sources": {
   "candidate": {
    "path": "output/site_gap/2026-10-12_prompt_f2/store/studies.json",
@@ -611,5 +611,54 @@
    "Glycated hemoglobin ≥7.0%"
   ],
   "glycated_hemoglobin_source_text": "3. Glycated hemoglobin ≥7.0%\n      [value_constraint] {\"op\": \"gte\", \"value\": 7.0, \"referenceBound\": \"absolute\", \"unitText\": \"%\"}"
+ },
+ "aristotle_exclusion_26": {
+  "id": 26,
+  "description": "Aspirin use",
+  "domain": "Drug",
+  "valueConstraint": null,
+  "sourceText": "aspirin",
+  "protocolLine": "Required treatment with aspirin > 165 mg/day",
+  "protocolSpan": "",
+  "window": {
+   "start": -365,
+   "end": 0
+  },
+  "conceptSetId": 27,
+  "conceptSetName": "aspirin",
+  "logicType": "ABSENCE",
+  "groupId": null,
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true
+ },
+ "carolina_exclusion_67": {
+  "id": 67,
+  "description": "Life expectancy less than 5 years for non-CV causes",
+  "domain": "Observation",
+  "valueConstraint": {
+   "op": "lt",
+   "value": 5.0,
+   "valueHigh": null,
+   "unitText": "years",
+   "referenceBound": "absolute",
+   "unitConceptId": 9448
+  },
+  "sourceText": "life expectancy less than 5 years for non-CV causes",
+  "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+  "protocolSpan": "has a life expectancy less than 5 years for non-CV causes",
+  "window": {
+   "start": -9999,
+   "end": 0
+  },
+  "conceptSetId": 79,
+  "conceptSetName": "life expectancy less than 5 years for non-CV causes",
+  "logicType": "ABSENCE",
+  "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true
  }
 }
