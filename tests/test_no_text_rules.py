@@ -96,7 +96,6 @@ KINDS = frozenset({"allowed", "pending"})
 RULE_MODULES = frozenset(
     {
         "src/utils/criterion_seed.py",
-        "src/utils/naming_words.py",
         "src/utils/disease_anchor.py",
     }
 )
