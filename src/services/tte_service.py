@@ -7085,7 +7085,7 @@ class TTEService:
         statement = stated_specimen(criterion)
         specimen = statement.specimen.value if statement else Specimen.ANY.value
         span = statement.span if statement else None
-        line = criterion.get("protocolLine")
+        line = criterion.get(CRITERION_PROTOCOL_LINE_KEY)
 
         def judge(analyte: str, options: Sequence[Any]) -> Any:
             return judge_specimen_options(
