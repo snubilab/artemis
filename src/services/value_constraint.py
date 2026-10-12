@@ -762,6 +762,7 @@ def resolve_group_member_constraint(
     member_vc: Any,
     *,
     member_properties: MemberProperties | Callable[[], MemberProperties] | None = None,
+    member_holds_bound: bool = True,
 ) -> GroupConstraintResolution:
     """Decide what one member of a labelled criteria group is measured against.
 
@@ -807,11 +808,18 @@ def resolve_group_member_constraint(
         or a zero-argument callable returning them, read only when an absolute bound has
         to be checked (so a caller pays for the vocabulary only then). Omitted, every
         absolute bound refuses -- the pre-analyte behaviour.
+    :param member_holds_bound: False when the member's CIRCE criteria type reads none of the
+        value attributes the label's bound would emit (a ConditionOccurrence reads none).
+        The bound is then not about this member: nothing is handed down and nothing is
+        stranded, and the member emits as it would under a label with no bound. Measured
+        on ARISTOTLE's 'AF/Risk Factor Check' (an age bound over the AF and stroke-risk
+        Conditions) and CARMELINA's renal group (an eGFR bound over 'need for maintenance
+        dialysis'), whose Condition members were refused as stranded.
     :returns: the member's effective constraint plus why.
     """
     if member_vc is not None:
         return GroupConstraintResolution(member_vc, False, None)
-    if parent_vc is None:
+    if parent_vc is None or not member_holds_bound:
         return GroupConstraintResolution(None, False, None)
     # A count of the group's own members is not a bound on any of them, so there is
     # nothing to hand down and nothing was stranded: the member emits exactly as it

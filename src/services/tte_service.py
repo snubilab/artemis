@@ -155,6 +155,7 @@ from src.utils.circe_lint import (
     refuse_domain_contradiction,
     refuse_unreadable_value_filter,
     states_flat_disjunction,
+    unreadable_value_attributes,
     value_range_conversion_candidate_ids,
 )
 from src.utils.criterion_refusal import (
@@ -7463,12 +7464,19 @@ class TTEService:
         # Concentration, which mg/dL measures) from the HbA1c member (Mass fraction), so
         # only the third refuses (RFC-016 §4, A20: the member's text is not read). Read
         # lazily: the vocabulary is consulted only for an absolute inherited bound.
+        # A member whose criteria type reads none of the attributes the label's bound
+        # would emit (a ConditionOccurrence) cannot hold it: the bound is about another
+        # member of the group, so this one neither takes it nor is stranded by it.
+        member_holds_bound = parent_value_constraint is None or not unreadable_value_attributes(
+            criteria_key, build_measurement_value_filter(parent_value_constraint)
+        )
         resolution = resolve_group_member_constraint(
             parent_value_constraint,
             criterion.get("valueConstraint"),
             member_properties=lambda: self._concept_set_lab_properties(
                 mapped_criterion.get("expression") or {}
             ),
+            member_holds_bound=member_holds_bound,
         )
         # Refuse rather than emit, the same choice `refuse_domain_contradiction` above
         # and `refuse_unreadable_value_filter` below both make: the caller records the

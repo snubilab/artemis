@@ -44,6 +44,10 @@
   "NCT01243424": {
    "path": "data/nct_cache/NCT01243424.json",
    "sha256": "a302c008de0d8cbae7b92b773a385ba7e236c45bf8496b732fc3b3ac44ef979c"
+  },
+  "p2_new_store_m10b": {
+   "path": "output/site_gap/2026-10-12_p2_new/store/studies.json",
+   "sha256": "e71ce3bfe9c13be85c1f2292a2b2e536ba738a739f7b4090003501578cce01b7"
   }
  },
  "m1_aristotle_af_group": {
@@ -2891,6 +2895,167 @@
     42870529,
     40795800
    ]
+  ]
+ },
+ "m10b_carmelina_renal_group": {
+  "source": "candidate_store",
+  "study": 9,
+  "role": "exclusionCriteria",
+  "rows": [
+   {
+    "id": 22,
+    "description": "Severe renal impairment or ESRD",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "lt",
+     "value": 15.0,
+     "valueHigh": null,
+     "unitText": "ml/min/1.73 m2",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "eGFR",
+    "protocolLine": "eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula), as determined during screening at Visit 1 and/or the need for maintenance dialysis",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "bea99ca7-087e-4c05-a498-ce951706b6ea",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   {
+    "id": 23,
+    "description": "Severe renal impairment based on eGFR",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "lt",
+     "value": 15.0,
+     "valueHigh": null,
+     "unitText": "ml/min/1.73 m2",
+     "referenceBound": "absolute",
+     "unitConceptId": 720870
+    },
+    "sourceText": "eGFR <15 ml/min/1.73 m2",
+    "protocolLine": "eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula), as determined during screening at Visit 1 and/or the need for maintenance dialysis",
+    "protocolSpan": "eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula)",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 21,
+    "conceptSetName": "eGFR <15 ml/min/1.73 m2",
+    "logicType": "ABSENCE",
+    "groupId": "bea99ca7-087e-4c05-a498-ce951706b6ea",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 24,
+    "description": "End-Stage Renal Disease (ESRD) requiring dialysis",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "need for maintenance dialysis",
+    "protocolLine": "eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula), as determined during screening at Visit 1 and/or the need for maintenance dialysis",
+    "protocolSpan": "need for maintenance dialysis",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "bea99ca7-087e-4c05-a498-ce951706b6ea",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   }
+  ]
+ },
+ "m10b_carolina_compliance_group": {
+  "source": "p2_new_store_m10b",
+  "study": 10,
+  "role": "inclusionCriteria",
+  "rows": [
+   {
+    "id": 31,
+    "description": "Treatment compliance in placebo run-in",
+    "domain": "Observation",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 80.0,
+     "valueHigh": null,
+     "unitText": "%",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "Treatment compliance",
+    "protocolLine": "13. Treatment compliance in the placebo run-in should be between 80% and 120% to be eligible for randomisation",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "c82d8642-753f-4eae-8c7a-445538cc8b03",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   {
+    "id": 32,
+    "description": "Treatment compliance >= 80%",
+    "domain": "Measurement",
+    "valueConstraint": null,
+    "sourceText": "Treatment compliance",
+    "protocolLine": "13. Treatment compliance in the placebo run-in should be between 80% and 120% to be eligible for randomisation",
+    "protocolSpan": "Treatment compliance",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "c82d8642-753f-4eae-8c7a-445538cc8b03",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   },
+   {
+    "id": 33,
+    "description": "Treatment compliance <= 120%",
+    "domain": "Measurement",
+    "valueConstraint": null,
+    "sourceText": "Treatment compliance",
+    "protocolLine": "13. Treatment compliance in the placebo run-in should be between 80% and 120% to be eligible for randomisation",
+    "protocolSpan": "Treatment compliance",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "c82d8642-753f-4eae-8c7a-445538cc8b03",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+   }
   ]
  }
 }
