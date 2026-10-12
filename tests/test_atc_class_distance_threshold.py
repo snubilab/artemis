@@ -154,6 +154,9 @@ INGREDIENTS_BY_CLASS = {
     V06A[0]: [],
     A10BH[0]: INGREDIENTS,
     L04AK[0]: [7, 8],
+    # Within threshold beside A10 in the first ranking below, so whether it is the same
+    # class as A10 is asked (RFC-016 §4, C5: by ingredients, not by name).
+    A10BX[0]: [1503297],
 }
 
 
@@ -215,8 +218,8 @@ def ranked_atc(monkeypatch):
 
 def test_should_reach_the_diabetes_class_when_rank_one_has_fewer_than_three_ingredients(ranked_atc):
     # "Anti-diabetic medication": A10X 0.3977 (2), A10XX 0.3977 (1), A10 0.4054 (84).
-    # A10X and A10XX are one name in one subtree, so one candidate; it is too small, and
-    # its parent is A10.
+    # A10X is rank 1 and too small, and its parent is A10. (A10XX holds 1 of A10X's 2
+    # ingredients, so it is a different class, and not the 2/3 needed to replace it.)
     conn = ranked_atc([(A10X, 0.3977), (A10XX, 0.3977), (A10, 0.4054),
                        (A10BX, 0.7116)])
 
