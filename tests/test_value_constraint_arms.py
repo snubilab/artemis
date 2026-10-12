@@ -133,8 +133,11 @@ def test_the_bound_is_read_from_the_constraint_not_the_prose(harness) -> None:
 
 
 def test_the_arms_diverge_on_the_real_stored_shape(harness) -> None:
-    """The exact dict shape found in tmp/tte/studies.json, not a constructed model."""
-    stored = {"op": "gt", "value": 3.0, "unitText": "x ULN"}
+    """The dict shape found in tmp/tte/studies.json, with the ratio in ``referenceBound``:
+    since A21 was deleted the builder reads it there only (the annotation's
+    ``reference_bound``, RFC-016 step 3), and "x ULN" in ``unitText`` alone is an
+    unresolvable unit on which the two arms agree."""
+    stored = {"op": "gt", "value": 3.0, "unitText": "x ULN", "referenceBound": "uln"}
 
     assert build_measurement_value_filter(stored) == {
         "RangeHighRatio": {"Value": 3.0, "Op": "gt"}

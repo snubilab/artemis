@@ -64,16 +64,21 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from src.services.loinc_specimen import MEASUREMENT_DOMAIN
 from src.services.route_subtraction import AdministrationRoute
 
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever either prompt below changes meaning; part of the cache key.
-ANNOTATION_PROMPT_VERSION = "rfc016-step2-step4-v1"
+ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
 ANNOTATION_REJECTED_KEY = "_annotationRejected"
+#: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
+UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
+#: The ``reason`` each of those records carries.
+THRESHOLD_NOT_REPRESENTABLE_REASON = "threshold-not-representable"
 #: Agent 1's own subgroup flag (``Criteria.conditional``), carried onto the store row by
 #: ``TTEService._criteria_from_ir`` instead of the row being dropped.
 EXTRACTED_CONDITIONAL_KEY = "conditional"
@@ -109,6 +114,10 @@ FIELD_NO_ENTITY = "no_entity"
 FIELD_NO_ENTITY_SPAN = "no_entity_span"
 #: The one ``route`` entry that states no restriction; it stands alone in the list.
 ROUTE_ANY = "any"
+#: RFC-016 step 3. The three stand or fall together (:func:`validate_annotation`).
+FIELD_THRESHOLD_SPAN = "threshold_span"
+FIELD_QUANTITY_KIND = "quantity_kind"
+FIELD_REFERENCE_BOUND = "reference_bound"
 
 #: Store row keys the inputs are read from.
 _LINE = "protocolLine"
@@ -201,6 +210,33 @@ _NO_ENTITY_VALUES = frozenset(member.value for member in NoEntity)
 
 def _quoted(values: Iterable[str]) -> str:
     return ", ".join(f"`{value}`" for value in values)
+
+
+class QuantityKind(str, Enum):
+    """What the number in ``threshold_span`` measures (RFC-016 §3)."""
+
+    LAB_VALUE = "lab_value"
+    DOSE = "dose"
+    DURATION = "duration"
+    COUNT = "count"
+    STATISTICAL = "statistical"
+    OTHER = "other"
+
+
+class StatedReferenceBound(str, Enum):
+    """What that number is compared against, as the annotation states it.
+
+    ``none`` is the store's ``referenceBound: "absolute"``; :class:`StatedThreshold`
+    carries the store's spelling so its readers need no second vocabulary.
+    """
+
+    ULN = "uln"
+    LLN = "lln"
+    NONE = "none"
+
+
+_KIND_VALUES = frozenset(member.value for member in QuantityKind)
+_BOUND_VALUES = frozenset(member.value for member in StatedReferenceBound)
 
 
 ANNOTATION_SYSTEM_PROMPT = """You annotate one eligibility criterion of a clinical trial protocol.
@@ -307,6 +343,26 @@ investigator's assessment.
 `no_entity_span` is the fragment of the protocol line that points elsewhere or states the \
 assessment. It is required when `no_entity` is not `none` and null otherwise.
 
+`threshold_span` is the fragment of the protocol line that states the numeric threshold this \
+criterion compares its own entity against: the comparison, the number, and the unit or the \
+reference limit, as written. It is null when the line states no numeric threshold for this \
+criterion's entity.
+
+`quantity_kind` states what the number in `threshold_span` measures. One of:
+- `lab_value`: a value that a laboratory test or a clinical measurement records for the patient.
+- `dose`: an amount of a drug that is given, taken or prescribed.
+- `duration`: how long a condition, a treatment or a state has lasted or must last.
+- `count`: a number of events, of episodes, or of listed items that must hold.
+- `statistical`: a quantity of the trial's statistical design rather than of the patient.
+- `other`: any other quantity.
+It is null when `threshold_span` is null.
+
+`reference_bound` states what the number in `threshold_span` is compared against. One of:
+- `uln`: a multiple of the upper limit of the normal range of the laboratory that measured it.
+- `lln`: a multiple of the lower limit of the normal range of the laboratory that measured it.
+- `none`: the number itself, in the unit that `threshold_span` states.
+It is null when `threshold_span` is null.
+
 Output JSON:
 {{"record_requirement": "<required|forbidden|conditional>", \
 "conditional_span": "<fragment of the protocol line, or null>", \
@@ -322,7 +378,10 @@ Output JSON:
 "specimen": "<blood|urine|other|any>", \
 "specimen_span": "<fragment of the protocol line, or null>", \
 "no_entity": "<none|refers_elsewhere|investigator_judgement>", \
-"no_entity_span": "<fragment of the protocol line, or null>"}}"""
+"no_entity_span": "<fragment of the protocol line, or null>", \
+"threshold_span": "<fragment of the protocol line, or null>", \
+"quantity_kind": "<lab_value|dose|duration|count|statistical|other, or null>", \
+"reference_bound": "<uln|lln|none, or null>"}}"""
 
 
 # --------------------------------------------------------------------------- #
@@ -460,8 +519,8 @@ def validate_annotation(
     :param protocol_line: the row's ``protocolLine``.
     :returns: ``(fields, rejections)``. ``fields`` always carries every output key; a
         rejected field is None (``record_requirement``, ``base_span``, ``relation``,
-        ``timing`` and their spans) or left out of the list (``excepted_entities``),
-        which is the default behaviour downstream.
+        ``timing`` and their spans, the three threshold fields) or left out of the list
+        (``excepted_entities``), which is the default behaviour downstream.
     """
     fields: dict[str, Any] = {
         FIELD_RECORD_REQUIREMENT: None,
@@ -568,6 +627,7 @@ def validate_annotation(
         values=_NO_ENTITY_VALUES,
         spanless=NoEntity.NONE.value,
     )
+    fields.update(_validate_threshold(payload, protocol_line, rejected))
     return fields, rejected
 
 
@@ -642,6 +702,65 @@ def _validate_route(
     else:
         fields[FIELD_ROUTE] = tokens
         fields[FIELD_ROUTE_SPAN] = span
+
+
+def _enum_member(raw: Any, values: frozenset[str]) -> str | None:
+    """``raw`` folded by :func:`_enum_value` when it is one of ``values``, else None."""
+    value = _enum_value(raw)
+    return value if value in values else None
+
+
+def _validate_threshold(
+    payload: Mapping[str, Any], protocol_line: str, rejected: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """The three threshold fields, all set or all None (RFC-016 step 3).
+
+    They are one statement: a kind or a bound says nothing without the fragment it
+    describes, and a fragment whose kind is unknown cannot decide whether a value filter
+    belongs on the criterion. So the span must be a substring of the line AND both enums
+    must hold a value of their own list, or none of the three is kept and the reason is
+    appended to ``rejected``.
+    """
+    fields: dict[str, Any] = {
+        FIELD_THRESHOLD_SPAN: None,
+        FIELD_QUANTITY_KIND: None,
+        FIELD_REFERENCE_BOUND: None,
+    }
+    span = payload.get(FIELD_THRESHOLD_SPAN)
+    kind_raw = payload.get(FIELD_QUANTITY_KIND)
+    bound_raw = payload.get(FIELD_REFERENCE_BOUND)
+    answer = {
+        FIELD_THRESHOLD_SPAN: span,
+        FIELD_QUANTITY_KIND: kind_raw,
+        FIELD_REFERENCE_BOUND: bound_raw,
+    }
+    if span is None or (isinstance(span, str) and not span.strip()):
+        if kind_raw is not None or bound_raw is not None:
+            rejected.append(
+                _rejection(FIELD_QUANTITY_KIND, answer, f"given without a {FIELD_THRESHOLD_SPAN}")
+            )
+        return fields
+    if not span_in_line(span, protocol_line):
+        rejected.append(
+            _rejection(FIELD_THRESHOLD_SPAN, answer, "not a substring of protocolLine")
+        )
+        return fields
+    kind = _enum_member(kind_raw, _KIND_VALUES)
+    if kind is None:
+        rejected.append(
+            _rejection(FIELD_QUANTITY_KIND, answer, f"not one of {sorted(_KIND_VALUES)}")
+        )
+        return fields
+    bound = _enum_member(bound_raw, _BOUND_VALUES)
+    if bound is None:
+        rejected.append(
+            _rejection(FIELD_REFERENCE_BOUND, answer, f"not one of {sorted(_BOUND_VALUES)}")
+        )
+        return fields
+    fields[FIELD_THRESHOLD_SPAN] = span
+    fields[FIELD_QUANTITY_KIND] = kind
+    fields[FIELD_REFERENCE_BOUND] = bound
+    return fields
 
 
 # --------------------------------------------------------------------------- #
@@ -1347,3 +1466,196 @@ def stated_no_entity(row: Mapping[str, Any]) -> NoEntityStatement | None:
     if not span_in_line(span, row.get(_LINE)):
         return None
     return NoEntityStatement(kind=NoEntity(value), span=span)
+
+
+# --------------------------------------------------------------------------- #
+# The stated threshold (RFC-016 step 3)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class StatedThreshold:
+    """A threshold the row's own protocol line states, verified against that line.
+
+    :param span: the fragment of ``protocolLine`` stating it.
+    :param kind: what its number measures.
+    :param bound: what the number is compared against, in the store's ``referenceBound``
+        spelling: ``absolute``, ``uln`` or ``lln``.
+    """
+
+    span: str
+    kind: QuantityKind
+    bound: str
+
+
+def stated_threshold(row: Mapping[str, Any]) -> StatedThreshold | None:
+    """The threshold the row's accepted annotation states, its span re-checked here.
+
+    Checked against the row's line again, as :func:`stated_exceptions` does, so a row
+    edited after it was annotated cannot carry an unchecked threshold into the build or
+    the delivery gate.
+
+    :param row: the store criterion row.
+    :returns: the verified threshold, or None when the annotation states none, was
+        rejected, or no longer matches the row's line.
+    """
+    annotation = _annotation(row)
+    span = annotation.get(FIELD_THRESHOLD_SPAN)
+    kind = _enum_member(annotation.get(FIELD_QUANTITY_KIND), _KIND_VALUES)
+    bound = _enum_member(annotation.get(FIELD_REFERENCE_BOUND), _BOUND_VALUES)
+    if kind is None or bound is None or not span_in_line(span, row.get(_LINE)):
+        return None
+    store_bound = "absolute" if bound == StatedReferenceBound.NONE.value else bound
+    return StatedThreshold(span=span, kind=QuantityKind(kind), bound=store_bound)
+
+
+class ThresholdUse(str, Enum):
+    """How the build uses a row's threshold, decided by its verified annotation.
+
+    * ``default`` -- no verified threshold (no annotation, a rejected one, or a line that
+      states none): the row's own ``valueConstraint`` is used exactly as before.
+    * ``measured`` -- a verified lab value, or an ``other`` quantity on a Measurement row
+      (the case the build already supports): applied as a value filter, compared against
+      the annotation's ``reference_bound``.
+    * ``not-representable`` -- a verified duration, count, or an ``other`` quantity outside
+      Measurement: no value filter is emitted for it, the criterion is kept, and the
+      threshold is recorded under :data:`UNREPRESENTABLE_THRESHOLDS_KEY` (the delivery gate
+      WARNs on it).
+    * ``skip-criterion`` -- a verified dose or statistical quantity: the WHOLE criterion is
+      skipped and recorded under :data:`THRESHOLD_NOT_REPRESENTABLE_REASON`, which the
+      delivery gate counts as criterion loss. A drug emitted without its dose, or a row
+      carrying a quantity of the trial's design, says something the protocol did not.
+
+    Decided on the enum alone (coordinator, 2026-10-12); no text is read.
+    """
+
+    DEFAULT = "default"
+    MEASURED = "measured"
+    NOT_REPRESENTABLE = "not-representable"
+    SKIP_CRITERION = "skip-criterion"
+
+
+#: The kinds whose criterion is skipped whole rather than kept without its threshold.
+_SKIP_KINDS = frozenset({QuantityKind.DOSE, QuantityKind.STATISTICAL})
+
+
+def threshold_use(row: Mapping[str, Any]) -> tuple[ThresholdUse, StatedThreshold | None]:
+    """Decide how the build uses this row's threshold, from its verified annotation only.
+
+    :param row: the store criterion row.
+    :returns: the decision and the verified threshold it rests on (None for ``default``).
+    """
+    stated = stated_threshold(row)
+    if stated is None:
+        return ThresholdUse.DEFAULT, None
+    if stated.kind is QuantityKind.LAB_VALUE or (
+        stated.kind is QuantityKind.OTHER and row.get("domain") == MEASUREMENT_DOMAIN
+    ):
+        return ThresholdUse.MEASURED, stated
+    if stated.kind in _SKIP_KINDS:
+        return ThresholdUse.SKIP_CRITERION, stated
+    return ThresholdUse.NOT_REPRESENTABLE, stated
+
+
+def applied_value_constraint(row: Mapping[str, Any]) -> Any:
+    """The value constraint the build applies for this row (RFC-016 step 3).
+
+    The one place every reader asks -- the member build, the group label's hand-down and
+    the delivery gate's re-derivation -- so none of them can read ``valueConstraint``
+    differently from another.
+
+    :param row: the store criterion row.
+    :returns: None for a threshold no CIRCE value filter represents (a skipped
+        criterion included, so its group label hands nothing down); the row's own
+        constraint with ``referenceBound`` taken from the annotation for a measured one;
+        the row's own constraint unchanged otherwise.
+    """
+    constraint = row.get("valueConstraint")
+    use, stated = threshold_use(row)
+    if use in (ThresholdUse.NOT_REPRESENTABLE, ThresholdUse.SKIP_CRITERION):
+        return None
+    if use is ThresholdUse.MEASURED and isinstance(constraint, Mapping):
+        return {**constraint, "referenceBound": stated.bound}
+    return constraint
+
+
+def unrepresentable_threshold_records(
+    rows: Iterable[Any], role: str
+) -> list[dict[str, Any]]:
+    """One record per row whose verified threshold no CIRCE value filter represents.
+
+    Written into the expression under :data:`UNREPRESENTABLE_THRESHOLDS_KEY` whether or not
+    the row emitted, so a reader sees every threshold the protocol states that the file does
+    not carry. The delivery gate permits an emitted criterion without a value filter only
+    when it finds the record AND re-derives the decision from the store row.
+
+    :param rows: one role's store rows.
+    :param role: ``inclusion`` or ``exclusion``.
+    :returns: the records, in row order.
+    """
+    records = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        use, stated = threshold_use(row)
+        if use is not ThresholdUse.NOT_REPRESENTABLE:
+            continue
+        records.append(
+            {
+                "criterionId": str(row.get(_ID, "")),
+                "role": role,
+                "label": (row.get("sourceText") or row.get("description") or "").strip(),
+                "isGroupLabel": bool(row.get(_IS_LABEL)),
+                "reason": THRESHOLD_NOT_REPRESENTABLE_REASON,
+                "quantityKind": stated.kind.value,
+                "thresholdSpan": stated.span,
+                "valueConstraint": row.get("valueConstraint"),
+            }
+        )
+    return records
+
+
+
+@dataclass(frozen=True)
+class ThresholdSkip:
+    """Why a row is skipped whole for a dose or statistical threshold.
+
+    :param span: the verified fragment of the deciding row's line.
+    :param kind: its ``quantity_kind``.
+    :param decided_by: the id of the row that states it -- the row itself, or the group
+        label it sits under.
+    """
+
+    span: str
+    kind: QuantityKind
+    decided_by: str
+
+
+def threshold_skips(rows: Iterable[Any]) -> dict[str, ThresholdSkip]:
+    """The rows of one role that are skipped whole because their threshold is a dose or
+    a statistical quantity (:attr:`ThresholdUse.SKIP_CRITERION`).
+
+    A group label whose own line states such a threshold takes every row of its group,
+    nested groups included, with it -- the members are what the label describes, as
+    :func:`conditional_skips` does for a conditional label.
+
+    :param rows: one role's store rows.
+    :returns: criterion id (stringified) -> the decision.
+    """
+    rows = [r for r in rows if isinstance(r, Mapping)]
+    own: dict[str, ThresholdSkip] = {}
+    for row in rows:
+        use, stated = threshold_use(row)
+        if use is ThresholdUse.SKIP_CRITERION:
+            row_id = str(row.get(_ID, ""))
+            own[row_id] = ThresholdSkip(span=stated.span, kind=stated.kind, decided_by=row_id)
+    decided = dict(own)
+    for label in rows:
+        decision = own.get(str(label.get(_ID, "")))
+        if decision is None or not label.get(_IS_LABEL) or not label.get(_GROUP):
+            continue
+        groups = group_descendants(rows, str(label.get(_GROUP)))
+        for row in rows:
+            if row is not label and row.get(_GROUP) in groups:
+                decided.setdefault(str(row.get(_ID, "")), decision)
+    return decided

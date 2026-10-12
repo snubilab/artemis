@@ -13,15 +13,12 @@ below, and CIRCE ANDs inclusion rules, so together they select nobody on any CDM
         ALL( Occurrence{Type:0,Count:0} gte 6.5
            , Occurrence{Type:0,Count:0} lte 10.0 )          -> has NO %-unit HbA1c
 
-Two stages produce it, and this file pins one repair in each.
-
-**Stage A -- the allowed-side operator on an ABSENCE criterion.** The IR cache
-``NCT01897532_vllm_google_gemma-4-E4B-it_97e28790a4d24072.json`` carries
-``target/inclusion_rules[5]`` as ``ABSENCE`` + ``lte 10.0``: "no HbA1c <= 10", the
-inverse of the line. ``_repair_inclusive_upper_bounds`` exists for exactly this
-De Morgan error but gated on the ``gte`` spelling alone, so the ``lte`` spelling
-passed through, and ``_repair_split_bands`` -- which needs the upper half's op in
-``{gt, gte}`` -- then could not merge the pair into one inclusive band.
+Two stages produce it. Stage A -- the allowed-side operator on an ABSENCE criterion
+(``target/inclusion_rules[5]`` of the IR cache
+``NCT01897532_vllm_google_gemma-4-E4B-it_97e28790a4d24072.json`` is ``ABSENCE lte 10.0``,
+"no HbA1c <= 10") -- was repaired by reading ``<=`` out of the protocol line (A1). That
+repair is deleted (RFC-016 step 3) with its tests; ``tests/test_quantity_text_rules_removed.py``
+pins the cost on this same row. This file pins the Stage B repair.
 
 **Stage B -- the planner splits each survivor and inherits its polarity.** Both
 parents reach ``CriteriaPlanner._decompose_criterion``, whose model answers that
@@ -124,114 +121,6 @@ def _rules(agent1, arm: str, side: str = "inclusion_rules") -> list:
     return [agent1._build_criteria(c) for c in _cache(arm)["target"][side]]
 
 
-# --------------------------------------------------------------- Stage A: the parser
-
-
-class TestTheLteSpellingOfTheNegatedUpperBound:
-    """`<= X` is `NOT (> X)`. An ABSENCE rule carrying `lte X` says `NOT (<= X)`,
-    which is `> X` -- the allowed side inverted into the forbidden one."""
-
-    def test_should_correct_the_absence_lte_when_the_line_states_that_bound_inclusive(
-        self, agent1
-    ):
-        rules = _rules(agent1, CARMELINA_ARM)
-        upper = rules[5]
-        assert (upper.name, upper.logic_type) == ("HbA1c upper limit check", "ABSENCE")
-        assert (upper.value_constraint.op, upper.value_constraint.value) == ("lte", 10.0)
-        assert upper.source_text == CARMELINA_LINE
-
-        out = agent1._repair_inclusive_upper_bounds(rules)[5]
-
-        assert (out.value_constraint.op, out.value_constraint.value) == ("gt", 10.0)
-
-    def test_should_merge_the_pair_into_one_inclusive_band_once_the_lte_is_corrected(
-        self, agent1
-    ):
-        """The point of the correction: `_repair_split_bands` can then see a pair."""
-        cohort = agent1._build_cohort_definition(_cache(CARMELINA_ARM)["target"])
-
-        hba1c = [
-            r
-            for r in cohort.inclusion_rules
-            if (r.entity_text or "").casefold() == "hba1c"
-        ]
-        assert len(hba1c) == 1, (
-            "the band is still split across "
-            f"{[(r.name, r.logic_type, r.value_constraint.op) for r in hba1c]}"
-        )
-        vc = hba1c[0].value_constraint
-        assert (hba1c[0].logic_type, vc.op, vc.value, vc.value_high) == (
-            "PRESENCE",
-            "bt",
-            6.5,
-            10.0,
-        )
-
-    def test_should_leave_an_absence_lte_alone_when_the_line_states_no_such_bound(
-        self, agent1, models
-    ):
-        """CAROLINA's eGFR line reads `30-59`, so 60 is a value the line never states
-        as a bound -- it is the same bad De Morgan applied to `<= 59`. Correcting the
-        operator alone would give `<= 60`, which is not the band either, so the
-        detector reads the LINE and declines."""
-        line = (
-            "Moderately impaired renal function (as defined by MDRD formula) with "
-            "estimated glomerular filtration rate [eGFR] 30-59 mL/min/1.73 m2"
-        )
-        rule = models.Criteria(
-            name="eGFR upper bound (<= 59)",
-            domain="Measurement",
-            entity_text="eGFR",
-            source_text=line,
-            logic_type="ABSENCE",
-            value_constraint=models.ValueConstraint(op="lte", value=60.0),
-        )
-
-        out = agent1._repair_inclusive_upper_bounds([rule])[0]
-
-        assert out is rule
-        assert out.value_constraint.op == "lte"
-
-
-class TestTheCorrectionIsAccountedFor:
-    def test_should_account_every_repair_when_the_lte_correction_fires(self, agent1):
-        """`assert_repairs_accounted` is what makes the ledger worth reading: a
-        criterion rewritten or removed without a record fails at the repair, not as
-        an absence in a delivery three stages later."""
-        from src.agents.agent1.repair_accounting import (
-            RepairLedger,
-            assert_repairs_accounted,
-        )
-
-        before = _rules(agent1, CARMELINA_ARM)
-        ledger = RepairLedger()
-
-        after = agent1._repair_inclusive_upper_bounds(before, ledger)
-
-        assert_repairs_accounted(
-            before, after, ledger, role="inclusion/inclusive-upper-bound"
-        )
-        records = [
-            r
-            for r in ledger.records()
-            if r["action"] == "inclusive-upper-bound-corrected"
-        ]
-        assert [r["criterion"]["name"] for r in records] == ["HbA1c upper limit check"]
-        assert records[0]["before"]["op"] == "lte"
-        assert records[0]["after"]["op"] == "gt"
-
-    def test_should_account_the_whole_parse_of_the_arm_that_produced_the_defect(
-        self, agent1
-    ):
-        """End to end: every `_gated` step of the real arm holds to its own
-        accounting, the correction included."""
-        cohort = agent1._build_cohort_definition(_cache(CARMELINA_ARM)["target"])
-
-        actions = [r["action"] for r in cohort.repair_accounting]
-        assert "inclusive-upper-bound-corrected" in actions
-        assert actions.count("merged-into-band") == 2
-
-
 # -------------------------------------------------------------- Stage B: the planner
 
 
@@ -257,6 +146,8 @@ def _response(members: list[dict], **relation) -> str:
 #: (``output/site_gap/2026-09-18_verify4/store/studies.json``, study 9,
 #: inclusion ids 13/14/15) and the run's own ``✂ 'HbA1c' → ... (ABSENCE/ALL)``
 #: log line. Both members name HbA1c; both bounds are copied off the one line.
+#: The planner now states each member's threshold as a structure beside its fragment
+#: (RFC-016 step 3); the structure below is what the run's fragment stated.
 TORN_BAND_MEMBERS = [
     {
         "name": "HbA1c below lower limit",
@@ -264,6 +155,8 @@ TORN_BAND_MEMBERS = [
         "domain": "Measurement",
         "source_span": "HbA1c",
         "value_constraint_text": "≥ 6.5%",
+        "value_constraint": {"op": "gte", "value": 6.5, "unit_text": "%",
+                             "reference_bound": "absolute"},
     },
     {
         "name": "HbA1c above upper limit",
@@ -271,6 +164,8 @@ TORN_BAND_MEMBERS = [
         "domain": "Measurement",
         "source_span": "HbA1c",
         "value_constraint_text": "≤ 10.0%",
+        "value_constraint": {"op": "lte", "value": 10.0, "unit_text": "%",
+                             "reference_bound": "absolute"},
     },
 ]
 
@@ -336,9 +231,7 @@ class TestTheMergedBandIsNotTornApartAgain:
     unchanged; without that the correction would hand the planner a whole band to
     tear in half again, and the delivered `ANY(gte, lte)` shape would come back.
 
-    A member can never itself carry a `bt`: `parse_value_constraint` returns None
-    for a range phrase, measured -- `"6.5 - 10.0%"` and `"between 6.5 and 10.0%"`
-    both parse to None -- so a member's bound is one-sided or absent, never a band.
+    The members here carry one-sided bounds, as the planner stated them.
     """
 
     def test_should_decline_the_split_when_the_parent_carries_the_merged_band(self, models):
@@ -372,6 +265,8 @@ class TestAGenuineUmbrellaStillSplits:
             "domain": "Measurement",
             "source_span": "ALT (SGPT)",
             "value_constraint_text": "above 3 x upper limit of normal (ULN)",
+            "value_constraint": {"op": "gt", "value": 3.0, "unit_text": None,
+                                 "reference_bound": "uln"},
         },
         {
             "name": "AST elevation",
@@ -379,6 +274,8 @@ class TestAGenuineUmbrellaStillSplits:
             "domain": "Measurement",
             "source_span": "AST (SGOT)",
             "value_constraint_text": "above 3 x upper limit of normal (ULN)",
+            "value_constraint": {"op": "gt", "value": 3.0, "unit_text": None,
+                                 "reference_bound": "uln"},
         },
         {
             "name": "Alkaline phosphatase elevation",
@@ -386,6 +283,8 @@ class TestAGenuineUmbrellaStillSplits:
             "domain": "Measurement",
             "source_span": "alkaline phosphatase",
             "value_constraint_text": "above 3 x upper limit of normal (ULN)",
+            "value_constraint": {"op": "gt", "value": 3.0, "unit_text": None,
+                                 "reference_bound": "uln"},
         },
     ]
 
@@ -445,6 +344,8 @@ class TestAGenuineUmbrellaStillSplits:
                 "domain": "Measurement",
                 "source_span": "glucose",
                 "value_constraint_text": ">240 mg/dl",
+                "value_constraint": {"op": "gt", "value": 240.0, "unit_text": "mg/dl",
+                                     "reference_bound": "absolute"},
             },
             {
                 "name": "Glucose level >13.3 mmol/L after overnight fast",
@@ -452,6 +353,8 @@ class TestAGenuineUmbrellaStillSplits:
                 "domain": "Measurement",
                 "source_span": "glucose",
                 "value_constraint_text": ">13.3 mmol/L",
+                "value_constraint": {"op": "gt", "value": 13.3, "unit_text": "mmol/L",
+                                     "reference_bound": "absolute"},
             },
         ]
 

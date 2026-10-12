@@ -359,7 +359,8 @@ class TestAgainstTheDeliveredBatch:
             circe_lint.domain_mismatched_criteria,
             circe_lint.unreadable_value_filter_criteria,
             circe_lint.partially_readable_criteria,
-            circe_lint.asserted_bound_missing_criteria,
+            # `asserted_bound_missing_criteria` (a name word list, A29) is deleted; gate
+            # check (j) now reads the store row's verified threshold_span instead.
         )
         for check in others:
             hits = [f for f in check(expression) if "Thrombocytopenia" in str(f)]

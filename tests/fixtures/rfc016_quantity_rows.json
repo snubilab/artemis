@@ -1,0 +1,664 @@
+{
+ "about": "Real rows for the RFC-016 step 3 tests (quantity_kind / reference_bound / threshold_span), copied verbatim from read-only sources. 'candidate' is the 2026-10-12 prompt_f2 store, 'p2_new' the 2026-10-12 P2 NEW store; 'segmentation' is the eligibility segmentation of the production pdftotext rendering of the named PDF with the hand-made truth oracle of tests/fixtures/segmentation/corpus_truth.json (the PDF text is SHA-256 pinned there). leader_exclusion_5 and carmelina_inclusion_16 (candidate) are the rows behind the candidate gate's four former check (j) findings. carmelina_ir_hba1c_band is target/inclusion_rules[4:6] of a shared Agent 1 IR cache file; leader_p2_new_ir holds the first three LEADER inclusion lines Agent 1 was given in the P2 NEW run (its .meta.json) and the source_text the model wrote back for the third. aristotle_exclusion_26 and carolina_exclusion_67 (candidate) are a dose line and a life-expectancy line.",
+ "sources": {
+  "candidate": {
+   "path": "output/site_gap/2026-10-12_prompt_f2/store/studies.json",
+   "sha256": "07db37f85d13003dbe72d0c9b07bcab1784baf9c37aeb2af6b1b0c46dfc41917"
+  },
+  "p2_new": {
+   "path": "output/site_gap/2026-10-12_p2_new/store/studies.json",
+   "sha256": "e71ce3bfe9c13be85c1f2292a2b2e536ba738a739f7b4090003501578cce01b7"
+  }
+ },
+ "plato_inclusion": [
+  {
+   "id": 26,
+   "description": "Carotid stenosis (>=50%)",
+   "domain": "Condition",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 50.0,
+    "valueHigh": null,
+    "unitText": "%",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Carotid stenosis",
+   "protocolLine": "TIA (hospital-based diagnosis), carotid stenosis (≥50%), or cerebral revascularization",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "951d934e-b11c-42f7-b7d0-a7c497716fb0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 28,
+   "description": "Troponin I or T or CK-MB greater than the upper limit of normal",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "Troponin I or T or CK-MB greater than the upper limit of normal",
+   "protocolSpan": "",
+   "window": null,
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "31523358-83f0-412f-a6a1-d3a7b2f1b155",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 29,
+   "description": "Troponin I",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 1.0,
+    "valueHigh": null,
+    "unitText": "uln",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Troponin I",
+   "protocolLine": "Troponin I or T or CK-MB greater than the upper limit of normal",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 18,
+   "conceptSetName": "Troponin I",
+   "logicType": "PRESENCE",
+   "groupId": "31523358-83f0-412f-a6a1-d3a7b2f1b155",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 30,
+   "description": "Troponin T",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 1.0,
+    "valueHigh": null,
+    "unitText": "uln",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Troponin T",
+   "protocolLine": "Troponin I or T or CK-MB greater than the upper limit of normal",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 19,
+   "conceptSetName": "Troponin T",
+   "logicType": "PRESENCE",
+   "groupId": "31523358-83f0-412f-a6a1-d3a7b2f1b155",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 31,
+   "description": "CK-MB",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 1.0,
+    "valueHigh": null,
+    "unitText": "uln",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "CK-MB",
+   "protocolLine": "Troponin I or T or CK-MB greater than the upper limit of normal",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 20,
+   "conceptSetName": "CK-MB",
+   "logicType": "PRESENCE",
+   "groupId": "31523358-83f0-412f-a6a1-d3a7b2f1b155",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 32,
+   "description": "Age >= 60 years",
+   "domain": "Demographics",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "≥2 of the following:",
+   "protocolSpan": "",
+   "window": null,
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "2fcdbae1-55fb-44ef-89ea-2dfaf6f7fa31",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 33,
+   "description": "Age >= 60 y of age",
+   "domain": "Demographics",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 60.0,
+    "valueHigh": null,
+    "unitText": "y of age",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "",
+   "protocolLine": "≥60 y of age",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "2fcdbae1-55fb-44ef-89ea-2dfaf6f7fa31",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": false
+  }
+ ],
+ "aristotle_exclusion": [
+  {
+   "id": 1,
+   "description": "Liver enzyme elevation",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": null,
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 2,
+   "description": "ALT > 2X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 2.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Alanine aminotransferase",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 9,
+   "conceptSetName": "Alanine aminotransferase",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 3,
+   "description": "AST > 2X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 2.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Aspartate aminotransferase",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 10,
+   "conceptSetName": "Aspartate aminotransferase",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 4,
+   "description": "Total Bilirubin ≥ 1.5X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 1.5,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Total bilirubin",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 11,
+   "conceptSetName": "Total bilirubin",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 23,
+   "description": "Platelet count",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "lte",
+    "value": 100000.0,
+    "valueHigh": null,
+    "unitText": "/ mm",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Platelet count",
+   "protocolLine": "Platelet count ≤ 100,000/ mm",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": null,
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carmelina_exclusion": [
+  {
+   "id": 10,
+   "description": "Active liver disease or impaired hepatic function",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "ALT [U/L] in Serum or Plasma",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP) ≥ 3 x upper limit of normal (ULN) as determined at Visit 1",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "dc5f8008-3336-4adc-beb8-10813813222b",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 11,
+   "description": "Elevated ALT",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "ALT [U/L] in Serum or Plasma",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP) ≥ 3 x upper limit of normal (ULN) as determined at Visit 1",
+   "protocolSpan": "ALT (SGPT)",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 15,
+   "conceptSetName": "ALT [U/L] in Serum or Plasma",
+   "logicType": "ABSENCE",
+   "groupId": "dc5f8008-3336-4adc-beb8-10813813222b",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 12,
+   "description": "Elevated AST",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "AST [U/L] in Serum or Plasma",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP) ≥ 3 x upper limit of normal (ULN) as determined at Visit 1",
+   "protocolSpan": "AST (SGOT)",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 16,
+   "conceptSetName": "AST [U/L] in Serum or Plasma",
+   "logicType": "ABSENCE",
+   "groupId": "dc5f8008-3336-4adc-beb8-10813813222b",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 13,
+   "description": "Elevated Alkaline Phosphatase",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "Alkaline phosphatase (AP) [U/L] in Serum or Plasma",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP) ≥ 3 x upper limit of normal (ULN) as determined at Visit 1",
+   "protocolSpan": "alkaline phosphatase (AP)",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 17,
+   "conceptSetName": "Alkaline phosphatase (AP) [U/L] in Serum or Plasma",
+   "logicType": "ABSENCE",
+   "groupId": "dc5f8008-3336-4adc-beb8-10813813222b",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_inclusion": [
+  {
+   "id": 31,
+   "description": "Treatment compliance in placebo run-in",
+   "domain": "Observation",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 80.0,
+    "valueHigh": null,
+    "unitText": "%",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Treatment compliance",
+   "protocolLine": "13. Treatment compliance in the placebo run-in should be between 80% and 120% to be eligible for randomisation",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "c82d8642-753f-4eae-8c7a-445538cc8b03",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 32,
+   "description": "Treatment compliance >= 80%",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "Treatment compliance",
+   "protocolLine": "13. Treatment compliance in the placebo run-in should be between 80% and 120% to be eligible for randomisation",
+   "protocolSpan": "Treatment compliance",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "c82d8642-753f-4eae-8c7a-445538cc8b03",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 33,
+   "description": "Treatment compliance <= 120%",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "Treatment compliance",
+   "protocolLine": "13. Treatment compliance in the placebo run-in should be between 80% and 120% to be eligible for randomisation",
+   "protocolSpan": "Treatment compliance",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "c82d8642-753f-4eae-8c7a-445538cc8b03",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "segmentation": {
+  "CARMELINA.supplement": {
+   "path": "data/papers/NCT01897532/jama_2019_carmelina_supplement.pdf",
+   "sha256": "97596c2b17401b49aec86f5f09fe57fb6f50430bd03b4b156bda43eb0cc3cefa",
+   "inclusion_6": "Body Mass Index (BMI) ≤ 45 kg/m at visit 1 (screening).",
+   "exclusion_4": "eGFR <15 ml/min/1.73 m (severe renal impairment or ESRD, MDRD formula), as determined during screening at Visit 1 and/or the need for maintenance dialysis."
+  },
+  "ARISTOTLE.protocol": {
+   "path": "data/papers/NCT00412984/nejmoa1107039_protocol.pdf",
+   "sha256": "82ead0d37ae6f2729ab3fc796fb73da04ef769de2c299596b15aef52247c3461",
+   "exclusion_17": "Platelet count ≤ 100,000/ mm"
+  }
+ },
+ "leader_exclusion_5": {
+  "id": 5,
+  "description": "Elevated HbA1c",
+  "domain": "Measurement",
+  "valueConstraint": null,
+  "sourceText": "Elevated HbA1c",
+  "protocolLine": "Acute decompensation of glycemic control",
+  "protocolSpan": "",
+  "window": {
+   "start": -9999,
+   "end": 0
+  },
+  "conceptSetId": 29,
+  "conceptSetName": "Elevated HbA1c",
+  "logicType": "ABSENCE",
+  "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true
+ },
+ "carmelina_inclusion_16": {
+  "id": 16,
+  "description": "Impaired renal function (UACR)",
+  "domain": "Measurement",
+  "valueConstraint": null,
+  "sourceText": "Urine Albumin Creatinine Ratio",
+  "protocolLine": "High risk of cardiovascular (CV) events defined by: 1) albuminuria (micro or macro) and previous macrovascular disease and/or 2) impaired renal function with predefined Urine Albumin Creatinine Ratio (UACR",
+  "protocolSpan": "",
+  "window": null,
+  "conceptSetId": 9,
+  "conceptSetName": "Urine Albumin Creatinine Ratio",
+  "logicType": "PRESENCE",
+  "groupId": "93f3744c-b49e-4d25-bec0-2fcbd055f241",
+  "groupType": "ANY",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true
+ },
+ "carmelina_ir_hba1c_band": {
+  "path": "data/cache/agent1_ir/NCT01897532_vllm_google_gemma-4-E4B-it_97e28790a4d24072.json",
+  "sha256": "cae26063601274edb85a26c2122dd1fb4d34d66bc3b422b20b17000480fe49ae",
+  "inclusion_rules_4_5": [
+   {
+    "name": "HbA1c within target range",
+    "domain": "Measurement",
+    "entity_text": "HbA1c",
+    "source_text": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "logic_type": "PRESENCE",
+    "value_constraint": {
+     "op": "gte",
+     "value": 6.5,
+     "unit_text": "%"
+    },
+    "window": {
+     "start": -180,
+     "end": 0
+    }
+   },
+   {
+    "name": "HbA1c upper limit check",
+    "domain": "Measurement",
+    "entity_text": "HbA1c",
+    "source_text": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "logic_type": "ABSENCE",
+    "value_constraint": {
+     "op": "lte",
+     "value": 10.0,
+     "unit_text": "%"
+    },
+    "window": {
+     "start": -180,
+     "end": 0
+    }
+   }
+  ]
+ },
+ "leader_p2_new_ir": {
+  "meta": {
+   "path": "output/site_gap/2026-10-12_p2_new/agent1_ir/NCT01179048_vllm_google_gemma-4-E4B-it_87669bebfd273995.meta.json",
+   "sha256": "13083237a69dfa07c1ef1d6a80421d4be31545014ca714edf6bcf7dff9de022c"
+  },
+  "ir": {
+   "path": "output/site_gap/2026-10-12_p2_new/agent1_ir/NCT01179048_vllm_google_gemma-4-E4B-it_87669bebfd273995.json",
+   "sha256": "c1bf72a9aee7f2a24490e66a5c38b3ce81870c6463ea9b970be7d4687ed567ad"
+  },
+  "inclusion_criteria_1_3": [
+   "Type 2 diabetes",
+   "Anti-diabetic drug naïve or treated with one or more oral anti-diabetic drugs or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+   "Glycated hemoglobin ≥7.0%"
+  ],
+  "glycated_hemoglobin_source_text": "3. Glycated hemoglobin ≥7.0%\n      [value_constraint] {\"op\": \"gte\", \"value\": 7.0, \"referenceBound\": \"absolute\", \"unitText\": \"%\"}"
+ },
+ "aristotle_exclusion_26": {
+  "id": 26,
+  "description": "Aspirin use",
+  "domain": "Drug",
+  "valueConstraint": null,
+  "sourceText": "aspirin",
+  "protocolLine": "Required treatment with aspirin > 165 mg/day",
+  "protocolSpan": "",
+  "window": {
+   "start": -365,
+   "end": 0
+  },
+  "conceptSetId": 27,
+  "conceptSetName": "aspirin",
+  "logicType": "ABSENCE",
+  "groupId": null,
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true
+ },
+ "carolina_exclusion_67": {
+  "id": 67,
+  "description": "Life expectancy less than 5 years for non-CV causes",
+  "domain": "Observation",
+  "valueConstraint": {
+   "op": "lt",
+   "value": 5.0,
+   "valueHigh": null,
+   "unitText": "years",
+   "referenceBound": "absolute",
+   "unitConceptId": 9448
+  },
+  "sourceText": "life expectancy less than 5 years for non-CV causes",
+  "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+  "protocolSpan": "has a life expectancy less than 5 years for non-CV causes",
+  "window": {
+   "start": -9999,
+   "end": 0
+  },
+  "conceptSetId": 79,
+  "conceptSetName": "life expectancy less than 5 years for non-CV causes",
+  "logicType": "ABSENCE",
+  "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true
+ }
+}

@@ -71,12 +71,14 @@ ABSOLUTE_GLUCOSE_BOUND = {
 
 #: The ARISTOTLE exclusion-9 shape: a ratio against the row's own reference range,
 #: which IS analyte-independent and therefore is handed down. A label carrying this
-#: strands nothing, so it is an ordinary `group-label`.
+#: strands nothing, so it is an ordinary `group-label`. The ratio sits in
+#: `referenceBound`, where the annotation's `reference_bound` puts it (RFC-016 step 3);
+#: "x ULN" left in `unitText` alone is no longer read as one (A21 deleted).
 REFERENCE_RELATIVE_BOUND = {
     "op": "gt",
     "value": 3.0,
     "unitText": "x ULN",
-    "referenceBound": "absolute",
+    "referenceBound": "uln",
     "unitConceptId": None,
 }
 

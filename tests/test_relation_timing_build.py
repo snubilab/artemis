@@ -70,6 +70,27 @@ def _annotated(row: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     return row
 
 
+def _liver_rows_with_thresholds() -> list[dict[str, Any]]:
+    """ARISTOTLE's liver group with each member's threshold annotated.
+
+    The members store "x ULN" in ``unitText`` under ``referenceBound: absolute``. Since the
+    ratio is read only from the annotation's ``reference_bound`` (RFC-016 step 3, A21
+    deleted), an unannotated member is an absolute bound in an unresolvable unit and is
+    refused, which would leave no rule whose group type these tests could read.
+    """
+    spans = {2: "> 2X ULN", 3: "> 2X ULN", 4: "≥ 1.5X ULN"}
+    rows = deepcopy(ARISTOTLE_LIVER)
+    return [rows[0]] + [
+        _annotated(
+            row,
+            _payload(
+                threshold_span=spans[row["id"]], quantity_kind="lab_value", reference_bound="uln"
+            ),
+        )
+        for row in rows[1:]
+    ]
+
+
 def _with_label(rows: list[dict[str, Any]], payload: dict[str, Any]) -> list[dict[str, Any]]:
     """The group's rows, its label (the first row) carrying ``payload``'s annotation."""
     return [_annotated(rows[0], payload), *deepcopy(rows[1:])]
@@ -192,10 +213,12 @@ class TestTheGroupTypeComesFromTheStatedRelation:
     ):
         """SPEC-INFRA-003 REQ-004: structural, reads no text."""
         assert ARISTOTLE_LIVER[0]["groupType"] == "ANY"
-        assert _only_rule(_build(service, exclusion=ARISTOTLE_LIVER))["Type"] == "ALL"
+        assert _only_rule(_build(service, exclusion=_liver_rows_with_thresholds()))["Type"] == "ALL"
 
     def test_should_emit_all_when_an_absence_group_states_any(self, service):
-        rows = _with_label(ARISTOTLE_LIVER, _payload(relation="any", relation_span=LIVER_SPAN))
+        rows = _with_label(
+            _liver_rows_with_thresholds(), _payload(relation="any", relation_span=LIVER_SPAN)
+        )
         assert _only_rule(_build(service, exclusion=rows))["Type"] == "ALL"
 
 

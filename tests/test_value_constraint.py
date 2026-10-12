@@ -13,8 +13,13 @@ Defect #11 - the extracted unit is dropped. Circe supports a ``Unit`` filter as 
     sibling of ``ValueAsNumber``; generated output never sets it, so a mg/dL
     threshold is applied unchanged to a mmol/L concept in the same concept set.
 
-These tests describe the contract the fix must satisfy. They are expected to fail
-against the current code.
+These tests describe the contract the fix must satisfy.
+
+The phrase layer -- ``parse_value_constraint``, which read a threshold out of English
+comparator spellings -- is deleted (RFC-016 step 3, A5a): the numbers come from the
+extraction's structured ``value_constraint`` and the ratio from the annotation's
+``reference_bound``. The corpus still pins unit normalisation (a machine format), and the
+builder is exercised on each entry's EXPECTED structure rather than on a parsed phrase.
 """
 
 from __future__ import annotations
@@ -80,6 +85,15 @@ def test_corpus_covers_every_category() -> None:
     }
 
 
+def test_unit_aliases_are_in_cleaned_form_and_resolve() -> None:
+    """The invariant ``value_constraint.demo()`` used to assert before it was deleted with
+    the phrase parser: every alias key is already in ``_clean`` form and names a concept."""
+    api = _api()
+    for alias, concept_id in api._UNIT_ALIASES.items():
+        assert api._clean(alias) == alias, alias
+        assert concept_id in api._UNIT_CONCEPTS, alias
+
+
 def test_corpus_entry_ids_are_unique() -> None:
     ids = [e["id"] for e in CORPUS]
     assert len(ids) == len(set(ids))
@@ -98,22 +112,6 @@ def test_corpus_threshold_phrases_are_verbatim_substrings() -> None:
 # ---------------------------------------------------------------------------
 # Layer 1: parsing / normalisation
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("entry", POSITIVES, ids=[e["id"] for e in POSITIVES])
-def test_parse_classifies_reference_bound(entry: dict[str, Any]) -> None:
-    """"3 x ULN" must be classified as a ratio, not an absolute 3."""
-    parsed = _api().parse_value_constraint(entry["threshold_phrase"])
-    assert parsed is not None, f"{entry['id']}: no constraint parsed"
-    assert parsed.reference_bound == entry["expect"]["reference_bound"]
-
-
-@pytest.mark.parametrize("entry", POSITIVES, ids=[e["id"] for e in POSITIVES])
-def test_parse_extracts_operator_and_value(entry: dict[str, Any]) -> None:
-    parsed = _api().parse_value_constraint(entry["threshold_phrase"])
-    assert parsed is not None, f"{entry['id']}: no constraint parsed"
-    assert parsed.op == entry["expect"]["op"]
-    assert parsed.value == pytest.approx(entry["expect"]["value"])
 
 
 @pytest.mark.parametrize(
@@ -140,18 +138,6 @@ def test_unit_spelling_normalises_to_concept_id(entry: dict[str, Any]) -> None:
 def test_unresolvable_unit_returns_none_rather_than_guessing(entry: dict[str, Any]) -> None:
     """A wrong Unit filter matches no rows - the same silent-zero failure as defect #10."""
     assert _api().normalize_unit(entry["expect"]["unit_text"]) is None
-
-
-@pytest.mark.parametrize("entry", NEGATIVES, ids=[e["id"] for e in NEGATIVES])
-def test_non_constraints_are_rejected(entry: dict[str, Any]) -> None:
-    """Statistical text and ranges must not become criteria.
-
-    'the upper boundary of the two-sided 95% confidence interval was less than 1.3'
-    carries a comparator, a number, and the words 'upper ... of' - it is the
-    highest-risk false positive in the corpus.
-    """
-    parsed = _api().parse_value_constraint(entry["threshold_phrase"])
-    assert parsed is None, f"{entry['id']}: parsed {parsed!r} from a non-constraint"
 
 
 # ---------------------------------------------------------------------------
@@ -211,18 +197,22 @@ def _gold_unit_item_keys() -> set[str]:
     return set(_gold_criteria(lambda c: "Unit" in c)[0]["Unit"][0])
 
 
+#: "\> 3 x upper limit of normal (ULN)" and "\<0.8 LLN", as the extraction and the
+#: annotation state them (structure, not a parsed phrase).
+ULN_3 = {"op": "gt", "value": 3.0, "reference_bound": "uln"}
+LLN_08 = {"op": "lt", "value": 0.8, "reference_bound": "lln"}
+
+
 def test_uln_multiple_emits_range_high_ratio() -> None:
     api = _api()
-    constraint = api.parse_value_constraint("\\> 3 x upper limit of normal (ULN)")
-    fragment = api.build_measurement_value_filter(constraint)
+    fragment = api.build_measurement_value_filter(ULN_3)
     assert fragment.get("RangeHighRatio") == {"Value": 3.0, "Op": "gt"}
 
 
 def test_uln_multiple_does_not_emit_value_as_number() -> None:
     """This is defect #10 exactly: rule 16 of empa_reg_treatment.circe.json."""
     api = _api()
-    constraint = api.parse_value_constraint("\\> 3 x upper limit of normal (ULN)")
-    fragment = api.build_measurement_value_filter(constraint)
+    fragment = api.build_measurement_value_filter(ULN_3)
     assert "ValueAsNumber" not in fragment, (
         "an absolute ValueAsNumber of 3.0 matches every ALT result (real range "
         "10-40 U/L); as an exclusion it returns zero patients"
@@ -231,16 +221,14 @@ def test_uln_multiple_does_not_emit_value_as_number() -> None:
 
 def test_lln_multiple_emits_range_low_ratio() -> None:
     api = _api()
-    constraint = api.parse_value_constraint("\\<0.8 LLN")
-    fragment = api.build_measurement_value_filter(constraint)
+    fragment = api.build_measurement_value_filter(LLN_08)
     assert fragment.get("RangeLowRatio") == {"Value": 0.8, "Op": "lt"}
     assert "ValueAsNumber" not in fragment
 
 
 def test_absolute_with_unit_emits_value_and_sibling_unit() -> None:
     api = _api()
-    constraint = api.parse_value_constraint("\\>= 7.0%")
-    fragment = api.build_measurement_value_filter(constraint)
+    fragment = api.build_measurement_value_filter({"op": "gte", "value": 7.0, "unit_text": "%"})
     assert fragment.get("ValueAsNumber") == {"Value": 7.0, "Op": "gte"}
     assert isinstance(fragment.get("Unit"), list), (
         "Unit is a sibling of ValueAsNumber in Circe, not a key inside it "
@@ -252,8 +240,7 @@ def test_absolute_with_unit_emits_value_and_sibling_unit() -> None:
 
 def test_absolute_with_unresolvable_unit_emits_value_without_unit() -> None:
     api = _api()
-    constraint = api.parse_value_constraint("\\>110 bpm")
-    fragment = api.build_measurement_value_filter(constraint)
+    fragment = api.build_measurement_value_filter({"op": "gt", "value": 110.0, "unit_text": "bpm"})
     assert fragment.get("ValueAsNumber") == {"Value": 110.0, "Op": "gt"}
     assert "Unit" not in fragment
 
@@ -265,8 +252,10 @@ def test_absolute_with_unresolvable_unit_emits_value_without_unit() -> None:
 )
 def test_no_reference_bound_constraint_leaks_value_as_number(entry: dict[str, Any]) -> None:
     api = _api()
-    constraint = api.parse_value_constraint(entry["threshold_phrase"])
-    assert constraint is not None, f"{entry['id']}: no constraint parsed"
+    expect = entry["expect"]
+    constraint = {
+        "op": expect["op"], "value": expect["value"], "reference_bound": expect["reference_bound"],
+    }
     fragment = api.build_measurement_value_filter(constraint)
     ratio_key = "RangeHighRatio" if entry["expect"]["reference_bound"] == "uln" else "RangeLowRatio"
     assert ratio_key in fragment
@@ -313,10 +302,13 @@ def _production_criteria(value_constraint: dict[str, Any], source_text: str) -> 
 
 
 def test_production_builder_emits_range_high_ratio_for_uln() -> None:
-    """The IR carries unitText='x ULN' into this builder, which reads only op/value."""
+    """The ratio reaches this builder in ``referenceBound`` -- the annotation's
+    ``reference_bound`` (RFC-016 step 3). "x ULN" left in ``unitText`` alone is no longer
+    read as one (A21 deleted)."""
     entry = next(e for e in CORPUS if e["id"] == "uln-x-spaced")
     criteria = _production_criteria(
-        {"op": "gt", "value": 3.0, "unitText": "x ULN"}, entry["source_text"]
+        {"op": "gt", "value": 3.0, "unitText": "x ULN", "referenceBound": "uln"},
+        entry["source_text"],
     )
     assert criteria.get("RangeHighRatio") == {"Value": 3.0, "Op": "gt"}
     assert "ValueAsNumber" not in criteria

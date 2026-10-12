@@ -6,7 +6,7 @@ import os
 import json
 import logging
 import re
-from typing import NamedTuple, Optional
+from typing import Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import ValidationError
@@ -19,7 +19,7 @@ from src.models.ir import ARTEMISRequest, CohortDefinition, PrimaryCriteria, Cri
 from src.agents.agent1.prompts import (
     SYSTEM_PROMPT, DECOMPOSITION_PROMPT,
     NCT_SYSTEM_PROMPT, NCT_DECOMPOSITION_PROMPT,
-    THRESHOLD_REVIEW_PROMPT, THRESHOLD_MATCH_PROMPT
+    THRESHOLD_REVIEW_PROMPT,
 )
 from src.agents.agent1.nct_fetcher import (
     fetch_trial_data, fetch_or_load_trial_data, 
@@ -120,67 +120,11 @@ def _normalize_trial_data_for_stable_hash(trial_data: "TrialData") -> "TrialData
     })
 
 
-_NUMBER = r"[0-9]+(?:\.[0-9]+)?"
-
-#: `<= X`, and the three other ways these protocols write it. `=<` is not a typo we
-#: are tolerating: CAROLINA's own line 24 reads "age between >= 40 and =< 85 years",
-#: and CARMELINA writes `=>` for the lower bound on the same line as a `<=` upper one.
-_INCLUSIVE_UPPER_OP = re.compile(r"(?:<=|=<|≤|≦)\s*(" + _NUMBER + r")")
-
-#: `6.5 - 8.5%`, `30-59`, `40 to 85`. A protocol that states a band as a range means
-#: both ends: CAROLINA writes one of its HbA1c bands as "6.5 - 8.5%, inclusive" and
-#: the next as a bare "HbA1c 6.5 - 7.5% (48 - 58 mmol/mol)", and reading the second
-#: as open at the top would exclude a patient at exactly 7.5% from a band the trial
-#: ran on. The same trial's TROY v1.1 gold encodes its band `!bt [6.5, 8.5]`, which
-#: is inclusive at both ends.
-_RANGE = re.compile(r"(" + _NUMBER + r")\s*(?:-|–|—|to)\s*(" + _NUMBER + r")")
-
-
 class _RowRefused(Exception):
     """A row the model emitted that cannot become a criterion, for a reason pydantic
     does not raise itself (``LogicDecomposer._build_or_refuse`` records it)."""
 
 
-class _NegatedUpper(NamedTuple):
-    """How to say, in a record a human reads, what one wrong operator did.
-
-    ``symbol`` is the comparison the operator states, ``effective`` is the bound the
-    ABSENCE negation of it actually applies, and ``harm`` names who that bound
-    removes. Carried as data rather than built with an ``if`` in the message, so the
-    two spellings cannot drift into describing each other.
-    """
-    symbol: str
-    effective: str
-    harm: str
-
-
-def inclusive_upper_bounds(source_text: Optional[str]) -> set[float]:
-    """Every value the protocol line states as an INCLUSIVE upper bound.
-
-    Read from ``source_text`` -- the line the model was handed, verbatim -- and
-    never from ``name``. That is not a stylistic preference: measured over the 65
-    current-model IR caches, the same ``name`` string occurs on a correctly encoded
-    criterion and an incorrectly encoded one, six name strings doing so across
-    runs, so the name carries no information about which encoding this criterion
-    actually got. The line does.
-
-    Used by :meth:`LogicDecomposer._repair_inclusive_upper_bounds` to find the
-    De Morgan error that is the subject of this function's existence. ``<= X`` is
-    ``NOT (> X)``. It is NOT ``NOT (>= X)``, which is ``< X`` -- and the two
-    coincide only on integers. Every analyte here is decimal.
-
-    Deliberately silent about lower bounds. ``>= X`` on the same line is a real
-    bound and a correct ``ABSENCE gte`` elsewhere may sit at that value; returning
-    it would let a correct exclusion rule be "corrected" into the wrong direction.
-    """
-    bounds: set[float] = set()
-    if not source_text:
-        return bounds
-    for match in _INCLUSIVE_UPPER_OP.finditer(source_text):
-        bounds.add(float(match.group(1)))
-    for match in _RANGE.finditer(source_text):
-        bounds.add(float(match.group(2)))
-    return bounds
 
 
 class LogicDecomposer:
@@ -251,8 +195,7 @@ class LogicDecomposer:
                         Priority: appendix/supplement > main paper > PubMed.
             verify_thresholds: Run Step 7's second LLM pass, which reviews the
                         output against the original criteria text for a dropped
-                        numeric threshold Step 6's aggregate count can miss when
-                        another criterion over-produces and offsets the total. Costs
+                        numeric threshold and warns about each one it finds. Costs
                         one extra LLM call per parse_nct(); disable for cheap/smoke runs.
 
         Returns:
@@ -428,67 +371,26 @@ class LogicDecomposer:
                 RuntimeWarning, stacklevel=2
             )
 
-        # Step 6: Value-constraint coverage check — warn if the LLM's output carries
-        # fewer numeric thresholds than the deterministic parser found in the input
-        # criteria text. ADR-031-B hands the model its own thresholds pre-parsed so it
-        # only has to copy them; when source_text isn't copied verbatim (the WRONG/RIGHT
-        # example in prompts.py), the downstream substring match fails and
-        # value_constraint silently comes back None even though the annotation was
-        # right there in the prompt. Pattern E can only ever GROW the count (one shared
-        # threshold written onto several sub_criteria), never shrink it, so `<` here is
-        # always a real loss, not a legitimate merge.
-        input_vc_count = (
-            self._count_value_constraints(trial_data.inclusion_criteria)
-            + self._count_value_constraints(trial_data.exclusion_criteria)
-        )
-        output_vc_count = (
-            self._count_output_value_constraints(ir.target.inclusion_rules)
-            + self._count_output_value_constraints(ir.target.exclusion_rules)
-        )
-        if output_vc_count < input_vc_count:
-            import warnings
-            warnings.warn(
-                f"[Agent 1] ⚠ Value-constraint coverage gap: the deterministic parser "
-                f"found {input_vc_count} threshold(s) in {nct_id}'s criteria text, but "
-                f"only {output_vc_count} appear in the output IR. A threshold likely "
-                f"vanished because source_text wasn't copied verbatim onto every "
-                f"sub_criterion sharing it — inspect this run's criteria before trusting "
-                f"its value_constraint fields.",
-                RuntimeWarning, stacklevel=2
-            )
-
-        # Step 7: LLM threshold review — Step 6's count is a study-wide sum, so one
-        # criterion losing its threshold and another over-producing (e.g. Pattern E
-        # attaching a value_constraint to a sub_criterion that never had one) can
-        # cancel out in the total and leave the aggregate check silent. This asks a
-        # second, small, focused pass to read each criterion line against its
-        # generated rule directly, instead of comparing totals.
+        # Step 7: LLM threshold review -- a second, small, focused pass that reads each
+        # criterion line against its generated rule directly.
+        # Detection only. The thresholds it flags are not re-attached: the English
+        # parser that supplied the numbers to re-attach (Steps 6/8a/8b) is gone
+        # (RFC-016 step 3), and a threshold the line states for a criterion that carries
+        # none is what the annotation's `threshold_span` and delivery-gate check (j)
+        # report.
         if verify_thresholds:
             misses = self._llm_review_value_constraints(
                 nct_id, trial_data.inclusion_criteria, trial_data.exclusion_criteria, ir,
             )
-            still_broken = self._repair_threshold_misses(
-                nct_id,
-                trial_data.inclusion_criteria,
-                trial_data.exclusion_criteria,
-                ir,
-                misses,
-            )
-
             if misses:
-                print(f"[Agent 1] Step 7/8: {len(misses)} flagged, "
-                      f"{len(misses) - len(still_broken)} auto-repaired, "
-                      f"{len(still_broken)} still need review")
-
-            if still_broken:
                 import warnings
                 lines = "; ".join(
                     f"line {m.get('criterion_line')}: {m.get('criterion_text')!r} — {m.get('reason')}"
-                    for m in still_broken
+                    for m in misses
                 )
                 warnings.warn(
-                    f"[Agent 1] ⚠ {len(still_broken)} threshold(s) in {nct_id} could not be "
-                    f"auto-repaired (ambiguous match) — needs human review: {lines}",
+                    f"[Agent 1] ⚠ {len(misses)} threshold(s) in {nct_id} flagged by the "
+                    f"review as missing from the extraction — needs human review: {lines}",
                     RuntimeWarning, stacklevel=2
                 )
 
@@ -523,52 +425,19 @@ class LogicDecomposer:
 
     @staticmethod
     def _format_criteria(criteria: list) -> str:
-        """Number the criteria and attach each one's deterministically parsed constraints.
+        """Number the criterion lines for the extraction prompt, and add nothing else.
 
-        The model classifies; the parser owns the numbers. Agent 1 dropped
-        ARISTOTLE's "ALT or AST > 2X ULN or a Total Bilirubin >= 1.5X ULN" to a bare
-        "Liver Enzyme Elevation" label in the same run that read LVEF, haemoglobin,
-        platelets and creatinine correctly -- three analytes and two thresholds in one
-        sentence, not a harder number. ``parse_value_constraints`` reads it as 2.0 gt
-        uln and 1.5 gte uln, so annotating turns those into something to copy.
-
-        Lines with no threshold get no annotation, so the model never learns that one
-        is always expected.
+        Each line used to be followed by a ``[value_constraint] {...}`` annotation that an
+        English comparator parser read off it (A5a, ADR-031-B). The model copied it into
+        ``source_text`` -- 30 of the 450 rows in the 2026-10-12 P2 NEW IRs -- and from
+        there into ``protocolLine``, the text every quoted span is checked against. The
+        parser is deleted (RFC-016 step 3); the line is the only thing the model reads.
 
         :param criteria: criterion strings in prompt order.
         :returns: the formatted block, or the placeholder when empty.
         """
-        from src.services.value_constraint import annotate_value_constraints
-
-        lines = []
-        for index, criterion in enumerate(criteria):
-            lines.append(f"  {index + 1}. {criterion}")
-            annotation = annotate_value_constraints(str(criterion))
-            if annotation:
-                lines.append(annotation)
+        lines = [f"  {index + 1}. {criterion}" for index, criterion in enumerate(criteria)]
         return "\n".join(lines) or "  None specified"
-
-    @staticmethod
-    def _count_value_constraints(criteria: list) -> int:
-        """Total thresholds the deterministic parser finds across these criterion lines.
-
-        Ground truth for the Step 6 coverage check in parse_nct(): computed the same
-        way _format_criteria's annotations are, so the two describe the same numbers.
-        """
-        from src.services.value_constraint import parse_value_constraints
-
-        return sum(len(parse_value_constraints(str(c))) for c in criteria)
-
-    @classmethod
-    def _count_output_value_constraints(cls, rules: list) -> int:
-        """Total non-None value_constraint fields across rules, recursing into
-        sub_criteria (Pattern E groups carry their thresholds one level down)."""
-        count = 0
-        for rule in rules:
-            if getattr(rule, "value_constraint", None) is not None:
-                count += 1
-            count += cls._count_output_value_constraints(getattr(rule, "sub_criteria", None) or [])
-        return count
 
     @classmethod
     def _flatten_rules_for_review(cls, rules: list, out: list | None = None) -> list[str]:
@@ -592,16 +461,14 @@ class LogicDecomposer:
         self, nct_id: str, inclusion_criteria: list, exclusion_criteria: list, ir
     ) -> list[dict]:
         """Step 7: a second, small LLM pass that reads each criterion line against
-        its generated rule directly, catching the per-criterion loss Step 6's
-        study-wide total can mask when another criterion over-produces.
+        its generated rule directly, for a threshold the line states and the rule lost.
 
-        Detection only — does not warn and does not fix. The caller (parse_nct)
-        decides what to do with the misses: try Step 8's mechanical repair first,
-        warn only for what repair could not resolve.
+        Detection only — does not warn and does not fix. The caller (parse_nct) warns
+        on the misses; nothing re-attaches a number (RFC-016 step 3 deleted the parser
+        that supplied one).
 
         Fails open: a broken review call (bad JSON, network error, anything) is
-        logged and swallowed, never raised — returns []. This is an additional
-        check on top of Step 6, not a replacement, and a review failure must not
+        logged and swallowed, never raised — returns []. A review failure must not
         fail the parse that already succeeded.
 
         :returns: the reviewer's "misses" list (each a dict with criterion_line,
@@ -637,200 +504,6 @@ class LogicDecomposer:
                 nct_id, exc,
             )
             return []
-
-    @staticmethod
-    def _role_indexed_criteria(inclusion_criteria: list, exclusion_criteria: list) -> list[tuple]:
-        """The criterion list Step 7's reviewer is numbered against, each line
-        carrying the block it came from.
-
-        `_llm_review_value_constraints` builds `criteria_block` from
-        ``inclusion + exclusion`` numbered 1..N across BOTH blocks, and
-        THRESHOLD_REVIEW_PROMPT asks for a bare 1-based ``criterion_line`` back —
-        no role marker. The index therefore resolves to a *role and a text*, not
-        to a text alone, and the repair step needs both: a threshold stated in an
-        exclusion line belongs to an exclusion rule.
-
-        :returns: [("inclusion" | "exclusion", criterion_text), ...] in reviewer order.
-        """
-        return (
-            [("inclusion", str(c)) for c in inclusion_criteria]
-            + [("exclusion", str(c)) for c in exclusion_criteria]
-        )
-
-    def _repair_threshold_misses(
-        self, nct_id: str, inclusion_criteria: list, exclusion_criteria: list, ir, misses: list
-    ) -> list:
-        """Step 8: reattach the thresholds Step 7 flagged, to the rules of the
-        criterion's OWN role.
-
-        The constraint numbers were already parsed deterministically from the same
-        criterion text before the first LLM call ever ran (ADR-031-B); neither path
-        here re-extracts or invents a number, only decides which existing rule it
-        belongs to.
-
-          8a. Free, instant zip: safe exactly when rule-count == constraint-count,
-              which holds when every analyte has its own distinct threshold.
-          8b. LLM match (one call): the case 8a can't decide safely — most often a
-              shared threshold ("ALT or AST > 2X ULN") where analyte-count and
-              constraint-count differ on purpose. Given the text, the already-correct
-              constraint list, and the candidate rule names, this asks which rule gets
-              which constraint index, allowing many-to-one sharing. It is a matching
-              decision, not extraction, so it does not carry the "shape separated them,
-              not difficulty" extraction failure Step 6/7 exist for.
-
-        Both are scoped to one role. Trying inclusion and falling back to exclusion
-        crossed the two blocks in every direction at once: an exclusion line's
-        threshold landed on a same-analyte inclusion rule (the cohort starts
-        *requiring* serum creatinine > 2.0 mg/dL), the truthy return then left the
-        exclusion rule at ``value_constraint=None`` so it emitted an ABSENCE rule
-        with no value filter (excluding everyone who ever had that lab drawn), and
-        `_repair_dropped_threshold` stamped the exclusion line over the inclusion
-        rule's ``source_text`` — the provenance field ADR-032's classifier reads.
-
-        :returns: the misses no repair path could resolve; the caller warns on those.
-        """
-        indexed = self._role_indexed_criteria(inclusion_criteria, exclusion_criteria)
-        still_broken: list = []
-        for miss in misses:
-            line = miss.get("criterion_line")
-            valid_line = (
-                isinstance(line, int)
-                and not isinstance(line, bool)
-                and 1 <= line <= len(indexed)
-            )
-            if not valid_line:
-                still_broken.append(miss)
-                continue
-            role, original_text = indexed[line - 1]
-            rules = (
-                ir.target.inclusion_rules if role == "inclusion" else ir.target.exclusion_rules
-            )
-            repaired = self._repair_dropped_threshold(original_text, rules)
-            if not repaired:
-                repaired = self._llm_match_dropped_threshold(nct_id, original_text, rules)
-            if not repaired:
-                still_broken.append(miss)
-        return still_broken
-
-    @staticmethod
-    def _collect_broken_candidates(original_text: str, rules: list) -> list:
-        """Rules (recursing into sub_criteria) with no value_constraint whose
-        `entity_text` or `name` anchors into `original_text`.
-
-        The broken shape (source_text collapsed to a bare label) leaves the entity
-        name itself intact — only source_text/value_constraint are lost — so the
-        entity name is still a reliable anchor back to the line it came from.
-        Shared by both repair paths: 8a's count-match zip and 8b's LLM match.
-        """
-        candidates: list = []
-
-        def _collect(items: list) -> None:
-            for rule in items:
-                if getattr(rule, "value_constraint", None) is None:
-                    anchor = (getattr(rule, "entity_text", None) or getattr(rule, "name", None) or "")
-                    if anchor and anchor.lower() in original_text.lower():
-                        candidates.append(rule)
-                _collect(getattr(rule, "sub_criteria", None) or [])
-
-        _collect(rules)
-        return candidates
-
-    @classmethod
-    def _repair_dropped_threshold(cls, original_text: str, rules: list) -> int:
-        """Step 8a: mechanically reattach a threshold Step 7 found missing.
-
-        No LLM call. Safe only when the candidate-rule count exactly equals the
-        parsed-constraint count for this line — i.e. every analyte has its own
-        distinct threshold, in the same order the rules were generated in. A count
-        mismatch (most often a shared threshold, "ALT or AST > 2X ULN") means the
-        mapping is ambiguous; assigning constraint N to the wrong analyte would
-        silently apply the wrong threshold, worse than leaving it missing, so this
-        refuses to guess and returns 0 — the caller falls back to Step 8b.
-
-        :returns: how many rules were repaired (0 means: not attempted here).
-        """
-        from src.services.value_constraint import parse_value_constraints
-
-        constraints = parse_value_constraints(original_text)
-        if not constraints:
-            return 0
-
-        candidates = cls._collect_broken_candidates(original_text, rules)
-        if len(candidates) != len(constraints):
-            return 0
-
-        for rule, constraint in zip(candidates, constraints):
-            rule.value_constraint = constraint
-            rule.source_text = original_text
-        return len(candidates)
-
-    def _llm_match_dropped_threshold(self, nct_id: str, original_text: str, rules: list) -> int:
-        """Step 8b: when 8a can't confirm a safe 1:1 count match — typically a
-        shared threshold, where analyte-count and constraint-count differ on
-        purpose — ask a small, constrained LLM call which existing rule gets which
-        already-correct constraint, allowing many-to-one sharing.
-
-        The LLM never invents, re-derives, or rounds a number: `constraints` is
-        already the correct output of parse_value_constraints(original_text); this
-        call only decides an assignment. That is a matching decision, not
-        extraction, so it does not carry the "shape separated them, not
-        difficulty" extraction failure Step 6/7 exist for.
-
-        Fails open: any error (network, malformed JSON, an out-of-range index)
-        leaves every candidate untouched and returns 0 — Step 7's warning stands.
-        """
-        from src.services.value_constraint import parse_value_constraints
-
-        constraints = parse_value_constraints(original_text)
-        candidates = self._collect_broken_candidates(original_text, rules)
-        if not constraints or not candidates:
-            return 0
-
-        constraints_block = "\n".join(
-            f"{i}: {c.op} {c.value} ({c.reference_bound}"
-            f"{', ' + c.unit_text if c.unit_text else ''})"
-            for i, c in enumerate(constraints)
-        )
-        rules_block = "\n".join(
-            f"{i}: {(getattr(r, 'entity_text', None) or getattr(r, 'name', '') or '')!r}"
-            for i, r in enumerate(candidates)
-        )
-        prompt = THRESHOLD_MATCH_PROMPT.format(
-            original_text=original_text,
-            constraints_block=constraints_block,
-            rules_block=rules_block,
-        )
-
-        try:
-            matcher = get_llm(
-                model_name=self.model_name, temperature=0.0,
-                response_format={"type": "json_object"},
-            )
-            response = matcher.invoke([HumanMessage(content=prompt)])
-            data = self._extract_json(response.content)
-            mapping = data.get("mapping") or []
-        except Exception as exc:
-            logger.debug(
-                "[Agent 1] Step 8b LLM match failed for %s, skipping (fail-open): %s",
-                nct_id, exc,
-            )
-            return 0
-
-        repaired = 0
-        for entry in mapping:
-            rule_index = entry.get("rule_index")
-            constraint_index = entry.get("constraint_index")
-            if not isinstance(rule_index, int) or not isinstance(constraint_index, int):
-                continue
-            if not (0 <= rule_index < len(candidates)) or not (0 <= constraint_index < len(constraints)):
-                continue
-            rule = candidates[rule_index]
-            if rule.value_constraint is not None:
-                continue  # already resolved by an earlier entry — don't overwrite
-            rule.value_constraint = constraints[constraint_index]
-            rule.source_text = original_text
-            repaired += 1
-        return repaired
 
     @staticmethod
     def _discover_pdfs(papers_dir: str) -> list:
@@ -1445,15 +1118,6 @@ class LogicDecomposer:
             assert_repairs_accounted(before, after, ledger, role=f"inclusion/{step}")
             return after
 
-        # `<= X` is `NOT (> X)`, and a model that writes `NOT (>= X)` has moved the
-        # boundary. This runs FIRST because it is what makes a half-open pair whole:
-        # an upper bound corrected from `gte` to `gt` is exactly what
-        # `_repair_split_bands` needs to merge the pair into an inclusive `bt`.
-        inclusion_rules = _gated(
-            "inclusive-upper-bound",
-            lambda rules: self._repair_inclusive_upper_bounds(rules, ledger),
-        )
-
         # Split-band repair: a band's two halves are adjacent flat rules. Exclusion rules
         # are not repaired: `_build_criteria` forces
         # `logic_type="ABSENCE"` on every one of them, so the PRESENCE lower bound a
@@ -1486,138 +1150,6 @@ class LogicDecomposer:
             exit_strategy=data.get("exit_strategy", "OBSERVATION_END"),
             repair_accounting=ledger.records(),
         )
-
-    #: The two operators an ABSENCE rule writes an upper bound with and gets wrong,
-    #: and what each one's negation really applies.
-    #:
-    #: `gte` is the near miss: `NOT (>= X)` is `< X`, one boundary value away from the
-    #: `<= X` the line states. `lte` is the inversion: `NOT (<= X)` is `> X`, which
-    #: demands the very values the line excludes, so the rule selects exactly the
-    #: patients the protocol does not admit. Measured on CARMELINA's
-    #: `NCT01897532_..._97e28790a4d24072` arm, `target/inclusion_rules[5]` is
-    #: `ABSENCE lte 10.0` off the line "HbA1c of >= 6.5% and <= 10.0%", i.e. "no
-    #: HbA1c at or below 10" -- and because the pair it belongs to is then unmergeable
-    #: (`_repair_split_bands` reads `{gt, gte}` on the upper half), the 2026-09-18
-    #: delivery shipped it as its own inclusion rule.
-    #:
-    #: `lt` and `gt` are absent deliberately: `NOT (> X)` IS `<= X`, the correct
-    #: encoding and this repair's own target shape, and `NOT (< X)` is `>= X`, a lower
-    #: bound rather than an upper one.
-    _NEGATED_UPPER_OPS = {
-        "gte": _NegatedUpper(">=", "<", "excludes a patient at exactly"),
-        "lte": _NegatedUpper("<=", ">", "admits only patients above"),
-    }
-
-    def _repair_inclusive_upper_bounds(self, rules: list, ledger: "RepairLedger" = None) -> list:
-        """Correct an upper bound the model negated with the wrong operator.
-
-        A protocol states `<= X`. Agent 1 encodes the upper half of a band as an
-        ABSENCE rule, which is right -- `<= X` is `NOT (> X)` -- but it writes the
-        operator on the ALLOWED side of the bound instead of the forbidden one. Two
-        spellings do that, and `_NEGATED_UPPER_OPS` above records what each costs:
-        `gte` gives `NOT (>= X)` = `< X`, which moves the boundary by one value, and
-        `lte` gives `NOT (<= X)` = `> X`, which inverts the criterion outright.
-        `gte` and `<= X` agree only when X is an integer and the analyte is integral.
-        HbA1c 8.5%, eGFR 59, an age of 85: none of them are.
-
-        Measured over the 65 current-model IR caches, both cohorts, 1520 parsed
-        constraints: 191 ABSENCE `gte` constraints, of which 116 sit at a value the
-        criterion's OWN protocol line states as an inclusive upper bound. All 116
-        are on the inclusion side, across three trials -- NCT01243424 (69),
-        NCT01131676 (36), NCT01897532 (11). Seven of them are `Age <= 85`, which as
-        written excluded 85-year-olds from CAROLINA; the rest are HbA1c.
-
-        The grounding is `source_text` and not `name`, for the reason
-        :func:`inclusive_upper_bounds` gives: the same name string occurs on both
-        encodings, so the name cannot tell them apart.
-
-        Inclusion rules only. On the exclusion side `ABSENCE gte X` is the CORRECT
-        encoding of "exclude if >= X" -- ARISTOTLE's `Total Bilirubin >= 1.5X ULN`,
-        LEADER's `Calcitonin >= 50 ng/L`, CARMELINA's `ALT >= 3x ULN` are all of
-        that shape -- and rewriting one would invert it. `_build_criteria` forces
-        `ABSENCE` on every exclusion rule, so the operator alone cannot tell the two
-        apart; the side can.
-
-        That restriction used to prevent nothing, and with `lte` in scope it now
-        prevents eight wrong flips. Re-measured over all 234 IR caches under
-        `data/cache/agent1_ir`, both cohorts, counting ABSENCE constraints whose
-        value their OWN line states as an inclusive upper bound:
-
-        ===========  ==============  ==============
-        operator     inclusion side  exclusion side
-        ===========  ==============  ==============
-        ``gte``      127             0
-        ``lte``      2               8
-        ===========  ==============  ==============
-
-        The `gte` column is still all inclusion, for the reason above -- an exclusion
-        line states `>= X` and this detector reads only inclusive UPPER bounds. The
-        `lte` column is not: all eight exclusion matches are one line, PLATO's
-        "Severe comorbid condition with life expectancy of ≤ 1 year", where
-        `ABSENCE lte 1.0` is "exclude if life expectancy <= 1 year" and is exactly
-        right. Flipping it to `gt 1.0` would exclude every patient expected to live
-        LONGER than a year, which is the whole cohort. The two inclusion matches are
-        both CARMELINA's `HbA1c upper limit check`, the delivered defect.
-
-        Recurses into `sub_criteria`: an upper bound is no more correct for sitting
-        inside a group the model emitted.
-
-        :returns: the same list, with each corrected criterion replaced by a copy.
-        """
-        ledger = ledger if ledger is not None else RepairLedger()
-
-        def _repair(criterion: "Criteria") -> "Criteria":
-            # Members are rewired IN PLACE rather than by rebuilding the parent around
-            # them. Rebuilding replaces the parent object too, and the accounting gate
-            # matches by identity -- so a group whose only change was one member's
-            # operator read as the group itself vanishing. Correcting a child's bound
-            # is not a statement about the parent, and the ledger should not claim it is.
-            if criterion.sub_criteria:
-                criterion.sub_criteria = [_repair(child) for child in criterion.sub_criteria]
-            vc = criterion.value_constraint
-            needs_fix = (
-                vc is not None
-                and vc.op in self._NEGATED_UPPER_OPS
-                and criterion.logic_type == "ABSENCE"
-                and vc.value is not None
-                and float(vc.value) in inclusive_upper_bounds(criterion.source_text)
-            )
-            if not needs_fix:
-                return criterion
-            was = vc.op
-            corrected = criterion.model_copy(update={
-                "value_constraint": vc.model_copy(update={"op": "gt"}),
-            })
-            # The ORIGINAL, not the copy: the gate matches by object identity, and
-            # it is the original that leaves the tree here. Recording the copy would
-            # leave the original looking like an unexplained deletion.
-            wrong = self._NEGATED_UPPER_OPS[was]
-            ledger.rewritten(
-                criterion,
-                action="inclusive-upper-bound-corrected",
-                reason=(
-                    f"the protocol line states an inclusive upper bound at {vc.value}, "
-                    f"and an ABSENCE rule carrying '{was}' encodes "
-                    f"NOT({wrong.symbol} {vc.value}), which is {wrong.effective} "
-                    f"{vc.value} and {wrong.harm}; NOT(> {vc.value}) is the inclusive "
-                    f"reading"
-                ),
-                before={
-                    "op": was,
-                    "value": vc.value,
-                    "effectiveBound": f"{wrong.effective} {vc.value}",
-                },
-                after={"op": "gt", "value": vc.value, "effectiveBound": f"<= {vc.value}"},
-            )
-            logger.info(
-                "[Agent 1] Inclusive-upper-bound repair: '%s' ABSENCE %s %s -> gt %s "
-                "(line states an inclusive bound: %r)",
-                criterion.name, was, vc.value, vc.value,
-                (criterion.source_text or "")[:120],
-            )
-            return corrected
-
-        return [_repair(rule) for rule in rules]
 
     # A band's upper half is written with De Morgan, never with lt/lte: measured over
     # the 65 current-model IR caches, every one of the 58 upper bounds is an ABSENCE
@@ -1685,9 +1217,11 @@ class LogicDecomposer:
         NCT01131676 and NCT01897532". That was false -- a large share were on
         NCT01243424 -- and it was false because the declining had ONE cause, not two:
         the upper half carried `ABSENCE gte`, which is the mis-encoded `<= X` that
-        `_repair_inclusive_upper_bounds` now corrects BEFORE this repair runs. The
-        merged pairs and the declined ones were never different kinds of band; they
-        were one kind, encoded correctly or incorrectly.
+        `_repair_inclusive_upper_bounds` corrected before this repair ran -- until it was
+        deleted with the other rules reading the protocol line's comparators (RFC-016
+        step 3, A1), so those pairs decline here again. The merged pairs and the declined
+        ones were never different kinds of band; they were one kind, encoded correctly or
+        incorrectly.
 
         Measured over the 65 current-model IR caches, both cohorts, adjacent inclusion
         pairs: 24 merged and 93 declined before that correction existed; 87 of the 93

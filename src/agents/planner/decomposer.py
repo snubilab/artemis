@@ -3,11 +3,18 @@ Criteria Planner (Agent 1.5) - Clinical Criteria Decomposer.
 Decomposes composite clinical criteria into granular, OMOP-searchable sub-criteria.
 """
 import json
+from collections.abc import Mapping
 from typing import Optional, List
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from src.utils.llm import get_llm
-from src.models.ir import ARTEMISRequest, CohortDefinition, Criteria, ExceptedEntity
+from src.models.ir import (
+    ARTEMISRequest,
+    CohortDefinition,
+    Criteria,
+    ExceptedEntity,
+    ValueConstraint,
+)
 from src.agents.planner.prompts import PLANNER_SYSTEM_PROMPT, DECOMPOSITION_PROMPT
 from src.services.criterion_annotation import (
     FIELD_CARDINALITY,
@@ -18,7 +25,6 @@ from src.services.criterion_annotation import (
     declared_group_type,
     span_in_line,
 )
-from src.services.value_constraint import parse_value_constraint
 
 
 def _comparison_form(text: str) -> str:
@@ -95,6 +101,38 @@ def _stated_exceptions(result: object, source_text: str) -> List[ExceptedEntity]
     return kept
 
 
+def stated_member_value_constraint(sc_data: object, source_text: str) -> Optional[ValueConstraint]:
+    """A member's threshold as the planner stated it, kept only when its fragment is in the line.
+
+    The planner returns the threshold twice: ``value_constraint_text``, the fragment of
+    Source Text that states it, and ``value_constraint``, its structure (``op``, ``value``,
+    ``unit_text``, ``reference_bound``). The structure is machine format, validated by the
+    IR model; the fragment is checked as a substring of the line (:func:`span_in_line`,
+    the annotation step's own check). Until RFC-016 step 3 the fragment was parsed with
+    English comparator spellings (``parse_value_constraint``, A5a) instead.
+
+    REQ-007 fail-open: a missing or rejected fragment, a missing structure, or one the IR
+    model refuses gives None -- never the parent's value and never an exception.
+
+    :param sc_data: one entry of the planner's ``sub_criteria``.
+    :param source_text: the parent criterion's protocol line.
+    :returns: the member's own constraint, or None.
+    """
+    if not isinstance(sc_data, Mapping):
+        return None
+    payload = sc_data.get("value_constraint")
+    if not isinstance(payload, Mapping) or not span_in_line(
+        sc_data.get("value_constraint_text"), source_text
+    ):
+        return None
+    try:
+        return ValueConstraint.model_validate(
+            {key: value for key, value in payload.items() if value is not None}
+        )
+    except (ValueError, TypeError):
+        return None
+
+
 def _member_is_stated_exception(excepted: List[ExceptedEntity], members: list) -> bool:
     """Whether a member the planner proposed IS one of the entities the line excepts.
 
@@ -119,10 +157,10 @@ def _member_is_stated_exception(excepted: List[ExceptedEntity], members: list) -
 
 #: Bounds that state ONE side of a range. `bt` is deliberately absent -- it is a whole
 #: band and states both sides -- and so is None, which is no bound at all. A member can
-#: never actually carry `bt`: `parse_value_constraint` returns None for a range phrase
-#: (measured: `"6.5 - 10.0%"` and `"between 6.5 and 10.0%"` both parse to None), so a
-#: member's bound is one-sided or absent. It is listed as excluded anyway, because the
-#: check below must keep meaning what it says if that ever changes.
+#: rarely carry `bt` (it was never produced while the member's threshold was a parsed
+#: phrase, and now the planner states it), so a member's bound is mostly one-sided or
+#: absent. It is listed as excluded anyway, because the check below must keep meaning what
+#: it says.
 _ONE_SIDED_OPS = frozenset({"gt", "gte", "lt", "lte"})
 
 
@@ -183,10 +221,9 @@ def _torn_range_declined(entity_text: str, members: list[Criteria]) -> Optional[
     :param entity_text: the parent criterion's entity text.
     :param members: the sub-criteria as they would be installed, already built, so
         each member's ``value_constraint`` is the one it would really carry --
-        including the None that :func:`parse_value_constraint` fail-open produces.
-        Checked after construction rather than off the raw payload for that reason:
-        the raw ``value_constraint_text`` is a phrase, and what matters is what it
-        parses to.
+        including the None that :func:`stated_member_value_constraint` fail-open
+        produces. Checked after construction rather than off the raw payload for that
+        reason: what matters is what the member ends up carrying.
     :returns: the reason to record, or None to leave the split alone.
     """
     parent = _comparison_form(entity_text or "")
@@ -333,22 +370,12 @@ class CriteriaPlanner:
                 sub_criteria = []
                 for sc_data in result["sub_criteria"]:
                     # REQ-004/REQ-005: a sub-criterion's value_constraint is
-                    # determined from its OWN text (the grounding requirement
-                    # above), never unconditionally copied from the parent
-                    # (decomposer.py:107, pre-fix). REQ-007 fail-open: any
-                    # missing field, unparseable phrase, or unexpected error
-                    # here leaves value_constraint as None — never the
-                    # parent's (possibly wrong) value, never a raised
-                    # exception that aborts the whole decomposition.
-                    value_constraint = None
-                    try:
-                        raw_text = sc_data.get("value_constraint_text")
-                        if raw_text:
-                            value_constraint = parse_value_constraint(raw_text)
-                    except Exception as vc_exc:
-                        print(f"  ⚠ value_constraint parse failed for "
-                              f"{sc_data.get('entity_text', '')!r}: {vc_exc}")
-                        value_constraint = None
+                    # its OWN, as the planner stated it with a fragment of the
+                    # line, never copied from the parent. REQ-007 fail-open: a
+                    # missing or unverified answer leaves it None.
+                    value_constraint = stated_member_value_constraint(
+                        sc_data, criterion.source_text or ""
+                    )
 
                     sc = Criteria(
                         name=sc_data.get("name", "Unnamed"),
@@ -370,8 +397,8 @@ class CriteriaPlanner:
                         # This carries provenance across the hop and decides nothing:
                         # not what is decomposed, not the prompt, and not the member's
                         # own `value_constraint`, which REQ-004/REQ-005 require be
-                        # grounded in the member's OWN text and which is still parsed
-                        # from `value_constraint_text` above, never inherited.
+                        # the member's OWN (`stated_member_value_constraint` above),
+                        # never inherited.
                         source_text=criterion.source_text,
                         # Which part of that line this member actually reads -- None
                         # when the line names it nowhere and the member is the model's

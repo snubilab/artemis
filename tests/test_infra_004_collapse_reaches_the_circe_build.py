@@ -125,7 +125,9 @@ CAROLINA_ALCOHOL = [
 ]
 
 # EMPA-REG's liver group: six criteria, three analytes, each emitted twice.
-_ULN = {"op": "gt", "value": 3.0, "unitText": "x ULN"}
+# The ratio in its field: "x ULN" in `unitText` alone is not read as one since A21 was
+# deleted (RFC-016 step 3).
+_ULN = {"op": "gt", "value": 3.0, "unitText": "x ULN", "referenceBound": "uln"}
 EMPA_REG_LIVER = [
     _criterion(str(i), "Liver disease (ALT/AST/ALP > 3x ULN)", analyte, domain="Measurement",
                value_constraint=_ULN)

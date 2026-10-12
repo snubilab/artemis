@@ -77,18 +77,28 @@ Checks per file:
     reason prose cannot carry it — and one carrying no reason, no code, or an unknown
     code fails on its own line.
 
-(j) no ``Measurement`` criterion carries no value condition while its own concept-set
-    name or rule name asserts one. Every check above reads a criterion that is PRESENT
-    and asks whether it is wrong; a rule that LOST its threshold is byte-identical to
-    one that legitimately never had a threshold, so none of them could see it. Measured
-    in ``carolina_treatment.circe.json``: rule 30 keeps its "3x ULN" as a
+(j) no criterion whose protocol line states a threshold emitted without a value
+    condition. "States a threshold" is the store row's annotation (RFC-016 step 3): a
+    ``threshold_span`` that is a substring of the row's ``protocolLine``, with its
+    ``quantity_kind``. Every check above reads a criterion that is PRESENT and asks whether
+    it is wrong; a rule that LOST its threshold is byte-identical to one that legitimately
+    never had a threshold, so none of them could see it. Measured in
+    ``carolina_treatment.circe.json`` (2026-09-08): rule 30 keeps its "3x ULN" as a
     ``RangeHighRatio`` while rules 33 and 37 emit bare, and rule 37 then excludes any
-    patient who has ever had an ALT, AST, bilirubin or INR drawn — routine panel labs.
-    The file was reported as "78 mapped, 0 unmapped": the bare members were counted as
-    mapped. 26 such criteria in this batch, and 4 more in the hand-built TROY v1.1 gold
-    under ``data/gold/``, which carries the same defect on ARISTOTLE's
-    "systolic BP > 180 mm Hg" exclusion. See
-    ``src.utils.circe_lint.asserted_bound_missing_criteria``.
+    patient who has ever had an ALT, AST, bilirubin or INR drawn. A duration, a count or a
+    non-Measurement ``other`` threshold is kept without a filter and is a WARN only when
+    the file lists it under ``_unrepresentableThresholds`` AND the store row still says so;
+    a dose or statistical threshold skips the whole criterion, which check (i) counts as
+    loss. Until 2026-10-12 this check read the rule and concept-set
+    NAMES for words asserting a bound (A29); that word list is deleted. See
+    ``threshold_without_value_filter_findings``.
+
+(aa) no presence and absence from one protocol line, over the same (or member-identical)
+    concept set in overlapping windows, where the absence forbids the bound the presence
+    requires. Numbers and operators only. CARMELINA's "HbA1c of >= 6.5% and <= 10.0%" as
+    ``PRESENCE gte 6.5`` + ``ABSENCE lte 10.0`` keeps only patients above 10; the repair
+    that read ``<=`` out of the line to prevent it (A1) is deleted. See
+    ``absence_forbids_required_values_findings``.
 
 (k) the STORE study's repair ledger (``eligibility._repairAccounting``) reconciles
     against the store's own criteria. Every check above reconciles the delivered file
@@ -323,7 +333,7 @@ import sys
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -342,8 +352,12 @@ from src.services.conceptset_closure import (  # noqa: E402
 from src.services.criterion_annotation import (  # noqa: E402
     CONDITIONAL_REASON,
     PROSPECTIVE_REASON,
+    UNREPRESENTABLE_THRESHOLDS_KEY,
+    ThresholdUse,
+    applied_value_constraint,
     group_descendants,
     span_in_line,
+    threshold_use,
 )
 from src.services.restated_absence_repair import (  # noqa: E402
     RESTATED_ABSENCE_REMOVALS_KEY,
@@ -384,7 +398,6 @@ from src.utils.circe_lint import (  # noqa: E402
     absence_overlap_codesets,
     absence_overlap_findings,
     aliased_concept_sets,
-    asserted_bound_missing_criteria,
     closure_subsumed_presence_criteria,
     closure_subsumption_codesets,
     confusable_concept_sets,
@@ -392,6 +405,7 @@ from src.utils.circe_lint import (  # noqa: E402
     contradictory_absence_rules,
     contradictory_presence_absence_criteria,
     domain_mismatched_criteria,
+    presence_bound_forbidden_pairs,
     entry_concept_ids,
     entry_concept_set_name,
     entry_matches_expected,
@@ -408,6 +422,7 @@ from src.utils.circe_lint import (  # noqa: E402
     unitless_value_bound_criteria,
     unreadable_value_attributes,
     unsatisfiable_presence_rules,
+    value_conditions_by_codeset,
     value_range_conversion_member_ids,
     value_range_inclusion_criteria,
 )
@@ -1148,6 +1163,149 @@ def criteria_index(study: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any
     }
 
 
+class ThresholdFindings(NamedTuple):
+    """Check (j)'s verdict: what fails the file, and what is reported without failing."""
+
+    failures: list[str]
+    warnings: list[str]
+
+
+def threshold_without_value_filter_findings(
+    expression: dict[str, Any], study: dict[str, Any]
+) -> ThresholdFindings:
+    """Check (j): a stated threshold whose criterion emitted no value condition.
+
+    A store row states a threshold when its accepted annotation carries a
+    ``threshold_span`` that is a substring of its ``protocolLine``
+    (:func:`src.services.criterion_annotation.threshold_use`; the span is re-checked
+    there). Such a row that minted a concept set (``_criterionConceptSetRefs``) and whose
+    criteria over that set carry no key of ``VALUE_CONDITION_ATTRIBUTES`` fails, with one
+    exception that is a WARN instead: the annotation says the threshold is a duration, a
+    count or a non-Measurement ``other`` quantity (the criterion is kept without it) AND
+    the file lists the row under ``_unrepresentableThresholds`` -- the record is the
+    producer's claim, and the decision behind it is re-derived from the store row here,
+    never read off it. A dose or statistical threshold skips the whole criterion, so such a
+    row that emitted at all fails; its skip is counted as criterion loss by check (i).
+
+    Nothing reads a name. A row whose line states no threshold, or whose annotation was
+    rejected, is not judged: absence of a verified threshold is not evidence of one.
+
+    :param expression: the delivered CIRCE expression.
+    :param study: the store study it was built from.
+    :returns: the failures (one per offending criterion; a single fail-closed finding when
+        rows state thresholds and the file carries no refs map to say what they emitted)
+        and the warnings (one per recorded threshold the file does not carry).
+    """
+    stated = {}
+    for key, row in criteria_index(study).items():
+        use, threshold = threshold_use(row)
+        if threshold is not None:
+            stated[key] = (row, use, threshold)
+    if not stated:
+        return ThresholdFindings([], [])
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    if not isinstance(refs, dict):
+        return ThresholdFindings(
+            [
+                f"{len(stated)} store criteria state a verified threshold and the file "
+                f"carries no {CRITERION_CONCEPT_SET_REFS_KEY}, so whether each emitted a "
+                "value condition cannot be checked"
+            ],
+            [],
+        )
+    recorded = {
+        (record.get("role"), str(record.get("criterionId") or ""))
+        for record in expression.get(UNREPRESENTABLE_THRESHOLDS_KEY) or []
+        if isinstance(record, dict)
+    }
+    conditions = value_conditions_by_codeset(expression)
+    failures: list[str] = []
+    warnings: list[str] = []
+    for (role, criterion_id), (row, use, threshold) in sorted(stated.items()):
+        codeset = refs.get(f"{role}:{criterion_id}")
+        emitted = conditions.get(codeset) if codeset is not None else None
+        if not emitted or any(carries for _where, _type, carries in emitted):
+            continue
+        where, criteria_type, _carries = emitted[0]
+        head = (
+            f"{role} #{criterion_id} {_label_of(row)!r}: {where}: {criteria_type} over "
+            f"codeset {codeset} carries no value condition while its protocol line states "
+            f"{threshold.span!r} ({threshold.kind.value})"
+        )
+        if use is ThresholdUse.NOT_REPRESENTABLE and (role, criterion_id) in recorded:
+            warnings.append(
+                f"{head} -- kept without it and listed under {UNREPRESENTABLE_THRESHOLDS_KEY}"
+            )
+            continue
+        if use is ThresholdUse.NOT_REPRESENTABLE:
+            why = (
+                f"the annotation says no value filter represents it and the file does not "
+                f"list it under {UNREPRESENTABLE_THRESHOLDS_KEY}"
+            )
+        elif use is ThresholdUse.SKIP_CRITERION:
+            why = "the annotation says the whole criterion is skipped, and it emitted"
+        else:
+            why = "it is applied as a value filter, and none was emitted"
+        failures.append(f"{head} -- {why}")
+    return ThresholdFindings(failures, warnings)
+
+
+def absence_forbids_required_values_findings(
+    expression: dict[str, Any], study: dict[str, Any]
+) -> list[str]:
+    """Check (aa): an absence that forbids the values its sibling presence requires.
+
+    :func:`~src.utils.circe_lint.presence_bound_forbidden_pairs` finds, from numbers and
+    operators alone, a mandatory presence and absence over the same concepts in overlapping
+    windows where the absence forbids the bound the presence states. This keeps the pairs
+    whose two criteria come from ONE store row's ``protocolLine`` -- the two halves of one
+    stated range -- read through ``_criterionConceptSetRefs``. Measured on CARMELINA's IR
+    row "HbA1c of >= 6.5% and <= 10.0%": ``PRESENCE gte 6.5`` + ``ABSENCE lte 10.0`` keeps
+    only patients above 10 and fails; the correct ``ABSENCE gt 10.0`` passes.
+
+    :param expression: the delivered CIRCE expression.
+    :param study: the store study it was built from.
+    :returns: one finding per pair; a single fail-closed finding when pairs exist and the
+        file carries no refs map to say which line each criterion came from.
+    """
+    pairs = presence_bound_forbidden_pairs(expression)
+    if not pairs:
+        return []
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    if not isinstance(refs, dict):
+        return [
+            f"{len(pairs)} presence/absence pair(s) where the absence forbids the values the "
+            f"presence requires, and the file carries no {CRITERION_CONCEPT_SET_REFS_KEY}, so "
+            "whether each pair comes from one protocol line cannot be checked"
+        ]
+    index = criteria_index(study)
+    lines_by_codeset: dict[Any, set[str]] = {}
+    for key, codeset in refs.items():
+        role, separator, criterion_id = str(key).partition(":")
+        line = (index.get((role, criterion_id)) or {}).get("protocolLine") if separator else None
+        if isinstance(line, str) and line.strip():
+            lines_by_codeset.setdefault(codeset, set()).add(line)
+    findings: list[str] = []
+    for pair in pairs:
+        shared = lines_by_codeset.get(pair.presence_codeset, set()) & lines_by_codeset.get(
+            pair.absence_codeset, set()
+        )
+        if not shared:
+            continue
+        findings.append(
+            f"{pair.presence_where} requires at least one occurrence {pair.presence_bound} "
+            f"over codeset {pair.presence_codeset} while {pair.absence_where} requires ZERO "
+            f"occurrences {pair.absence_bound} over codeset {pair.absence_codeset}, both from "
+            f"the line {sorted(shared)[0][:80]!r} -- absence forbids the values the presence "
+            f"requires"
+        )
+    return findings
+
+
+def _label_of(row: dict[str, Any]) -> str:
+    return str(row.get("sourceText") or row.get("description") or "")
+
+
 def unmapped_refusal_block_reason(
     record: dict[str, Any], criterion: dict[str, Any] | None = None
 ) -> str | None:
@@ -1445,7 +1603,9 @@ def _group_label_violations(
     # file's concept-set refs (`emitted` None) every such member is re-judged that way. A
     # member the file already books as lost for ANOTHER reason (a skip record, or a
     # refusal under a different code) is that loss, not this one.
-    label_constraint = label.get("valueConstraint")
+    # The label's threshold as the producer applies it (RFC-016 step 3): None when its
+    # annotation says no value filter represents it, the annotation's bound otherwise.
+    label_constraint = applied_value_constraint(label)
     if label_constraint:
         refusal_codes = {
             (record.get("role"), str(record.get("criterionId") or "")): record.get("refusalCode")
@@ -1455,7 +1615,7 @@ def _group_label_violations(
         stranded = [
             criterion
             for key, criterion in members
-            if criterion.get("valueConstraint") is None
+            if applied_value_constraint(criterion) is None
             and (emitted is None or key not in emitted)
             and key not in skipped_by_key
             and refusal_codes.get(key, REFUSAL_STRANDED_GROUP_THRESHOLD)
@@ -2771,15 +2931,33 @@ def main(argv: list[str] | None = None) -> int:
                 f"redundant inclusion rules ({len(redundant_rules)}): {'; '.join(redundant_rules)}"
             )
 
-        # (j) a Measurement criterion whose own name asserts a bound it does not
-        # carry. Every other check reads a criterion that is PRESENT and asks whether
-        # it is wrong; this one asks whether something is missing from it, which is
-        # why the 26 lost thresholds in this batch were counted as "mapped".
-        missing_bounds = asserted_bound_missing_criteria(expression)
-        if missing_bounds:
+        # (j) a criterion whose protocol line states a threshold (its verified annotation)
+        # emitted without a value condition. Every other check reads a criterion that is
+        # PRESENT and asks whether it is wrong; this one asks whether something is missing
+        # from it, which is why lost thresholds used to be counted as "mapped".
+        threshold_findings = threshold_without_value_filter_findings(expression, study)
+        if threshold_findings.failures:
             reasons.append(
-                f"asserted bound missing ({len(missing_bounds)}): "
-                f"{'; '.join(missing_bounds)}"
+                f"stated threshold missing ({len(threshold_findings.failures)}): "
+                f"{'; '.join(threshold_findings.failures)}"
+            )
+        # REPORTED, NOT FAILED: a duration / count threshold the producer kept the
+        # criterion without and recorded (coordinator, 2026-10-12).
+        threshold_warn_clause = (
+            f"stated threshold not representable (WARN, {len(threshold_findings.warnings)}): "
+            f"{'; '.join(threshold_findings.warnings)}"
+            if threshold_findings.warnings
+            else ""
+        )
+
+        # (aa) one stated range split into a presence and an absence whose operator sits on
+        # the allowed side: the absence forbids the bound the presence requires. Numbers and
+        # operators only, for two criteria from one protocol line.
+        forbidden_required = absence_forbids_required_values_findings(expression, study)
+        if forbidden_required:
+            reasons.append(
+                f"absence forbids required values ({len(forbidden_required)}): "
+                f"{'; '.join(forbidden_required)}"
             )
 
         # (v) a lab range required as a PRESENCE on a mandatory path. Check (j) asks whether a
@@ -3121,7 +3299,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 + ([specimen_warn_clause] if specimen_warn_clause else [])
                 + ([overlap_warn_clause] if overlap_warn_clause else [])
-                + ([description_warn_clause] if description_warn_clause else []),
+                + ([description_warn_clause] if description_warn_clause else [])
+                + ([threshold_warn_clause] if threshold_warn_clause else []),
             }
         )
 

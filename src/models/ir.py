@@ -75,7 +75,7 @@ class ValueConstraint(BaseModel):
     # Circe's own `NumericRange` {Value, Extent, Op} -- see
     # `src/services/value_constraint.build_measurement_value_filter`. Naming the second
     # bound rather than widening `value` to a list keeps every existing reader of
-    # `.value` (the demographic builders, the store row, `parse_value_constraint`)
+    # `.value` (the demographic builders, the store row, the planner's members)
     # reading a float.
     value_high: Optional[float] = None
     # What `value` is measured against. "ALT > 3x ULN" means three times this

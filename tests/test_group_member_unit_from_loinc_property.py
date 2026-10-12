@@ -112,7 +112,7 @@ def test_should_read_the_properties_only_when_the_bound_needs_them():
         asked.append(1)
         return _properties(FPG)
 
-    uln = SimpleNamespace(op="gt", value=3.0, unit_text="x ULN", reference_bound="absolute",
+    uln = SimpleNamespace(op="gt", value=3.0, unit_text="x ULN", reference_bound="uln",
                           unit_concept_id=None)
     assert resolve_group_member_constraint(uln, None, member_properties=lookup).propagated
     assert resolve_group_member_constraint(BOUND, BOUND, member_properties=lookup).constraint is BOUND

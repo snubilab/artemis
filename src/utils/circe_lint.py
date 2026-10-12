@@ -16,11 +16,10 @@ satisfies it, so the rule silently does nothing.
 from __future__ import annotations
 
 import json
-import re
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NamedTuple
 
 # Same purity contract: `conceptset_closure` imports no database driver at module level.
 # The vocabulary arrives as an injected `VocabularyLookup`, so the one check here that
@@ -979,82 +978,15 @@ def unreadable_value_filter_criteria(expression: dict[str, Any]) -> list[str]:
 
 
 # --------------------------------------------------------------------------
-# A bound the name asserts and the criterion does not carry
+# Which emitted criteria carry a value condition, by concept set
 # --------------------------------------------------------------------------
 #
-# `unreadable_value_filter_criteria` above catches a filter PRESENT on a type that
-# cannot read it. Nothing caught a filter that is simply ABSENT -- and a rule that
-# lost its threshold is byte-indistinguishable from a rule that legitimately never
-# had one, which is why this shipped.
-#
-# Measured, verbatim, from `output/site_gap/2026-09-08/deliver_20260908/`
-# (`carolina_treatment.circe.json`), all three `Occurrence {Type: 0, Count: 0}`:
-#
-#     rule 30  ALT(36) AST(37) ALP(38)                         keys=['RangeHighRatio']
-#     rule 33  T4(49) T3(50) TSH(51)                           keys=[]
-#     rule 37  'Elevated ALT'(71) ... 'Coagulopathy...INR'(74) keys=[]
-#
-# Rule 30 is correct -- "3x ULN" survived as a RangeHighRatio. Rules 33 and 37 lost
-# their bound, so rule 37 excludes any patient who has ever had an ALT, AST, bilirubin
-# or INR drawn: routine panel labs, which in a T2DM cohort is effectively everyone.
-# The gate reported the file as "78 mapped, 0 unmapped, 32 skipped": the bare members
-# are counted as MAPPED and nothing anywhere flagged them.
-#
-# The predicate is structural on one side and a heuristic over English on the other,
-# and it is worth being precise about which is which. That the criterion carries NO
-# value attribute is structural and exact. Whether the name ASSERTS a bound is the
-# heuristic, and it is the only guessed half.
-#
-# So the vocabulary below is grounded rather than imagined. Measured over the 12
-# delivered files (136 Measurement criteria, 32 of them bare) and, independently, over
-# the 18 hand-built TROY v1.1 files under `data/gold/` (85 Measurement criteria, 4 bare):
-#
-#     09-08 batch   26 of 32 bare criteria fire -- exactly the 26 known lost bounds
-#                   (CAROLINA T4/T3/TSH 49-51, HbA1c/FPG/RPG 66-68,
-#                   ALT/AST/bili/INR 71-74; EMPA-REG FPG/RPG/HbA1c 57-59, x2 arms)
-#     gold          4 of 4 bare criteria fire, and all four are TRUE: ARISTOTLE's
-#                   `Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg,
-#                   or diastolic BP > 100 mm Hg)` emits `{CodesetId: 98}` and
-#                   `{CodesetId: 99}` with no bound at all. The hand-built corpus
-#                   carries the same defect, and nobody was looking for it.
-#
-# 30 firings across two independent corpora, 30 true positives, 0 false. The 6 bare
-# criteria that do NOT fire are right not to: "Asymptomatic cardiac ischemia",
-# "ECG Ischemia" and "Positive biomarker" assert no numeric bound.
-#
-# Two terms were MEASURED AND REJECTED, and they are the reason this list is shorter
-# than an intuitive one. `high` and `low` appear in Measurement names only as parts of
-# an analyte's own name -- "Low-density lipoprotein (LDL) cholesterol",
-# "High-density lipoprotein" -- and inside the composite rule "High risk of CV events",
-# which asserts no lab bound. Matching them as bare words is precisely the
-# false-positive shape this check must not have. `severe` is rejected for the same
-# reason: in this corpus it qualifies a condition ("Severe renal insufficiency"), and
-# every occurrence sits on a criterion that is correctly filtered already.
+# Gate check (j) asks whether a criterion whose protocol line states a threshold emitted
+# a value condition (RFC-016 step 3). What the line states is the store row's annotation;
+# what was emitted is structural and read here. Until 2026-10-12 the first half was a
+# word list over the rule and concept-set names (A29) -- deleted.
 
-#: Words and symbols that assert a numeric bound on a measurement.
-#:
-#: Attested on real defects: ``elevated`` / ``elevation`` (20 of the 26),
-#: ``impaired`` (8 of the 26), ``level`` (6 of the 26), ``uncontrolled`` and the
-#: comparator symbols (the 4 gold rows), ``ULN`` / ``LLN`` (both corpora, on rules
-#: whose bound survived).
-#:
-#: ``raised``, ``increased``, ``decreased``, ``reduced``, ``depressed`` and
-#: ``abnormal`` are NOT attested in either corpus. They are here as the direct
-#: synonyms and the symmetric counterparts of ``elevated``: a detector that fires on
-#: a lost upper bound and stays silent on a lost lower one has a hole by construction,
-#: not a conservative margin.
-_BOUND_ASSERTION_RE = re.compile(
-    r"\belevat(?:ed|ion|ions)\b"
-    r"|\braised\b|\bincreased\b"
-    r"|\bdecreased\b|\breduced\b|\bdepressed\b"
-    r"|\babnormal\b|\bimpaired\b|\buncontrolled\b"
-    r"|\blevels?\b"
-    r"|\bULN\b|\bLLN\b"
-    r"|[<>≤≥]",
-    re.IGNORECASE,
-)
-
-#: The one criteria type this check judges. Every value attribute that can carry a
+#: The one criteria type the absence checks below judge. Every value attribute that can carry a
 #: numeric bound with a direction -- ``RangeHigh``, ``RangeLow`` and their ratio forms
 #: -- is readable ONLY by ``Measurement`` (see
 #: :data:`CRITERIA_TYPE_VALUE_ATTRIBUTES`), so a lost bound on any other type is a
@@ -1063,69 +995,29 @@ _BOUND_ASSERTION_RE = re.compile(
 _BOUND_BEARING_CRITERIA_TYPE = "Measurement"
 
 
-def asserted_bound_missing_criteria(expression: dict[str, Any]) -> list[str]:
-    """Locators for criteria whose own name asserts a bound they do not carry.
+def value_conditions_by_codeset(
+    expression: dict[str, Any],
+) -> dict[Any, list[tuple[str, str, bool]]]:
+    """``CodesetId`` -> ``(where, criteria type, carries a value condition)`` per criterion.
 
-    In the same locator format :func:`unreadable_value_filter_criteria` uses::
-
-        "<where>: Measurement over codeset <id> <name!r> carries no value condition
-         while <what asserted the bound> asserts one (<matched term>)"
-
-    A criterion qualifies when BOTH halves hold:
-
-    * it carries no key from :data:`VALUE_CONDITION_ATTRIBUTES` -- structural and
-      exact, so a criterion whose bound survived in any readable form is never
-      flagged. This is what keeps CAROLINA's rule 30 (``RangeHighRatio``, "3x ULN")
-      silent while its rule 33 and rule 37 siblings fire, even though rule 30's name
-      ("ALT above 3x ULN + ...") matches the vocabulary just as loudly.
-    * its concept-set name OR its rule name matches :data:`_BOUND_ASSERTION_RE`.
-
-    Reading the CONCEPT-SET name and not only the rule name is load-bearing, not
-    thoroughness: CAROLINA's liver panel sits under the rule name "Acute Liver
-    Disease + ... + Impaired Hepatic Function", while for the thyroid panel the
-    assertion is only in the rule name ("Thyroxine (T4) level") and the concept-set
-    names are bare analytes ("Thyroxine (T4)"). Either side alone misses part of the
-    26.
-
-    Silent, like the two checks beside it, on what the file cannot settle: a criteria
-    type other than ``Measurement``, and a ``CodesetId`` with no matching
-    ``ConceptSets`` entry (the rule name is still read in that case, since it is
-    present in the file either way).
+    Structural and exact: a criterion carries a value condition when its payload holds any
+    key of :data:`VALUE_CONDITION_ATTRIBUTES`. A set nothing references is absent.
 
     :param expression: a CIRCE cohort expression.
-    :returns: one locator per offending criterion, empty when none.
+    :returns: one entry per criterion reading each codeset, in walk order.
     """
-    findings: list[str] = []
+    by_codeset: dict[Any, list[tuple[str, str, bool]]] = {}
     for where, entry in _criterion_locations(expression):
         body = entry.get("Criteria")
         body = body if isinstance(body, dict) else entry
         for criteria_type, payload in body.items():
-            if criteria_type != _BOUND_BEARING_CRITERIA_TYPE or not isinstance(payload, dict):
+            if not isinstance(payload, dict) or "CodesetId" not in payload:
                 continue
-            if "CodesetId" not in payload:
-                continue
-            if any(key in VALUE_CONDITION_ATTRIBUTES for key in payload):
-                continue
-            codeset_id = payload["CodesetId"]
-            concept_set = _find_concept_set(expression, codeset_id)
-            concept_set_name = (concept_set or {}).get("name") or ""
-            # The concept set first: it names the analyte the bound belongs to, so
-            # when both sides assert, quoting that one puts the reader on the right
-            # sub-criterion instead of on a six-way concatenated rule name.
-            for source, text in (
-                ("its concept-set name", concept_set_name),
-                ("its rule name", where),
-            ):
-                match = _BOUND_ASSERTION_RE.search(str(text))
-                if match is None:
-                    continue
-                findings.append(
-                    f"{where}: {criteria_type} over codeset {codeset_id} "
-                    f"{concept_set_name!r} carries no value condition while {source} "
-                    f"asserts one ({match.group(0)!r})"
-                )
-                break
-    return findings
+            carries = any(key in VALUE_CONDITION_ATTRIBUTES for key in payload)
+            by_codeset.setdefault(payload["CodesetId"], []).append(
+                (where, criteria_type, carries)
+            )
+    return by_codeset
 
 
 def unfiltered_measurement_absence_criteria(expression: dict[str, Any]) -> list[str]:
@@ -1144,7 +1036,7 @@ def unfiltered_measurement_absence_criteria(expression: dict[str, Any]) -> list[
     this host is synthetic (``CLAUDE.md``), so a patient count from one is not evidence
     about a site, and the check rests on the SQL property above instead.
 
-    In the same locator format :func:`asserted_bound_missing_criteria` uses::
+    In the locator format the other value-condition checks use::
 
         "<where>: Measurement over codeset <id> <name!r> is an ABSENCE with no value
          condition, so it excludes every patient who has ever had <analytes> measured
@@ -1164,22 +1056,21 @@ def unfiltered_measurement_absence_criteria(expression: dict[str, Any]) -> list[
       is a different consequence with a different repair, so it is out of scope rather
       than folded in.
     * the criterion carries no key from :data:`VALUE_CONDITION_ATTRIBUTES` -- the same
-      predicate :func:`asserted_bound_missing_criteria` applies, so the two checks
-      cannot drift apart about what "filtered" means.
+      predicate :func:`value_conditions_by_codeset` applies for gate check (j), so the two
+      checks cannot drift apart about what "filtered" means.
 
     Why it is a separate check from the three beside it, rather than a widening of one.
     :func:`unreadable_value_filter_criteria` needs a filter the table cannot read and
     :func:`domain_mismatched_criteria` needs a concept set the table cannot join: here
     the filter is absent and the join is perfect.
-    :func:`asserted_bound_missing_criteria` needs a NAME that asserts a bound and reads
-    a BROKEN PROMISE; ``'Thrombocytopenia'`` promises nothing, because a diagnosis needs
-    no threshold. That is precisely why PLATO shipped this from 2026-09-10 to
-    2026-09-14 with all seven lints green on it.
+    Gate check (j) needs the protocol LINE to state a threshold (the row's verified
+    ``threshold_span``) and reads a BROKEN PROMISE; ``'Thrombocytopenia'`` promises
+    nothing, because a diagnosis needs no threshold. That is precisely why PLATO shipped
+    this from 2026-09-10 to 2026-09-14 with all seven lints green on it.
 
-    The two checks overlap on purpose where a name does assert (LEADER's
-    ``'Elevated HbA1c'`` fires in both). They say different things: that one says the
-    name promised a bound, this one says what the rule selects without it, and a reader
-    needs the second sentence to know the size of the loss.
+    The two checks overlap on purpose where a line does state one. They say different
+    things: (j) says the line promised a bound, this one says what the rule selects
+    without it, and a reader needs the second sentence to know the size of the loss.
 
     What this check CANNOT separate, stated rather than papered over: a criterion whose
     subject really is the testing event ("never had an HbA1c measured") has exactly this
@@ -1988,9 +1879,8 @@ def contradictory_presence_absence_criteria(expression: dict[str, Any]) -> list[
       resolving descendants, which needs the vocabulary this module does not touch.
       LEADER's codeset 29 ('Elevated HbA1c', 5 of 6 ids shared with codeset 17) is a
       real contradiction this check does NOT report; it is already reported by
-      :func:`unfiltered_measurement_absence_criteria` and
-      :func:`asserted_bound_missing_criteria`, and widening this one to overlap would
-      double-report it while inviting false positives everywhere else.
+      :func:`unfiltered_measurement_absence_criteria`, and widening this one to overlap
+      would double-report it while inviting false positives everywhere else.
 
     Measured at ``953d6b2``: four findings on each delivered LEADER arm, zero on the
     other ten delivered files, and zero on all 18 hand-built TROY v1.1 files under
@@ -3100,6 +2990,117 @@ def bound_contradicted_presence_criteria(expression: dict[str, Any]) -> list[str
                 f"not filter on"
             )
     return findings
+
+
+class PresenceBoundForbidden(NamedTuple):
+    """A mandatory presence whose own bound a mandatory absence forbids."""
+
+    presence_where: str
+    absence_where: str
+    presence_codeset: Any
+    absence_codeset: Any
+    presence_bound: str
+    absence_bound: str
+
+
+def _lost_bounds(
+    required: tuple[tuple[float, bool, float, bool], ...],
+    forbidden: tuple[tuple[float, bool, float, bool], ...],
+) -> list[float]:
+    """The finite bounds of ``required`` that no value left after ``forbidden`` reaches.
+
+    What remains of the required ranges once the forbidden ones are cut out is compared
+    with the bounds the presence states: a lower bound is kept when some remaining piece
+    still starts there, an upper bound when some piece still ends there.
+    """
+    remaining = [piece for piece in required if _range_is_inhabited(piece)]
+    for cut in forbidden:
+        remaining = [piece for chunk in remaining for piece in _subtract_range(chunk, cut)]
+    lost: list[float] = []
+    for low, _low_closed, high, _high_closed in required:
+        if low != float("-inf") and not any(piece[0] == low for piece in remaining):
+            lost.append(low)
+        if high != float("inf") and not any(piece[2] == high for piece in remaining):
+            lost.append(high)
+    return lost
+
+
+def presence_bound_forbidden_pairs(expression: dict[str, Any]) -> list[PresenceBoundForbidden]:
+    """Mandatory presence/absence pairs where the absence forbids the presence's own bound.
+
+    Structural and numeric only. A pair reads the same concept-set members (the same
+    ``CodesetId`` or a member-identical one), the same criteria type and residue
+    (:func:`_criterion_signature`), windows that share a day, and unit filters one
+    measurement could satisfy together; both carry a ``ValueAsNumber``. It is reported when,
+    once the absence's forbidden values are removed from the presence's admitted values,
+    some finite bound the presence states is no longer reached.
+
+    The motivating shape is one protocol range split into a presence and an absence with
+    the absence's operator on the ALLOWED side: CARMELINA's "HbA1c of >= 6.5% and <= 10.0%"
+    as ``PRESENCE gte 6.5`` + ``ABSENCE lte 10.0`` leaves ``(10, inf)``, which no longer
+    starts at 6.5. The correct split, ``ABSENCE gt 10.0``, leaves ``[6.5, 10]`` and is
+    silent. Overlap alone does not separate them -- both pairs intersect -- and
+    containment (:func:`bound_contradicted_presence_criteria`) is silent on both.
+
+    Whether the two halves come from one protocol line is not in the file; the delivery
+    gate decides that from the store (check (aa)).
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one pair per presence/absence combination that loses a bound.
+    """
+    member_ids_by_codeset = _member_ids_by_codeset(expression)
+    presences: list[tuple[str, tuple[Any, ...], Mapping[str, Any]]] = []
+    absences: list[tuple[str, tuple[Any, ...], Mapping[str, Any]]] = []
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        if not isinstance(rule, Mapping):
+            continue
+        where = f"InclusionRules[{index}] {(rule.get('name') or '')!r}"
+        for entry in _conjoined_entries(rule.get("expression") or {}):
+            signature = _criterion_signature(member_ids_by_codeset, entry)
+            body = _criterion_body(entry)
+            if signature is None or body is None:
+                continue
+            if not isinstance(body[1].get("ValueAsNumber"), Mapping):
+                continue
+            # Members, criteria type, residue: everything but the bound, the unit list and
+            # the window, which are compared below.
+            shared = (signature[0], signature[1], signature[5])
+            if _required_occurrence(entry):
+                presences.append((where, shared, entry))
+            elif _forbidden_occurrence(entry):
+                absences.append((where, shared, entry))
+
+    pairs: list[PresenceBoundForbidden] = []
+    for present_where, present_shared, present_entry in presences:
+        present_payload = _criterion_body(present_entry)[1]
+        for absent_where, absent_shared, absent_entry in absences:
+            if present_shared != absent_shared:
+                continue
+            absent_payload = _criterion_body(absent_entry)[1]
+            if not _intervals_overlap(
+                _entry_interval(present_entry), _entry_interval(absent_entry)
+            ):
+                continue
+            if not _unit_ids_compatible(
+                _criterion_unit_ids(present_payload), _criterion_unit_ids(absent_payload)
+            ):
+                continue
+            if not _lost_bounds(
+                _value_ranges(present_payload.get("ValueAsNumber")),
+                _value_ranges(absent_payload.get("ValueAsNumber")),
+            ):
+                continue
+            pairs.append(
+                PresenceBoundForbidden(
+                    presence_where=present_where,
+                    absence_where=absent_where,
+                    presence_codeset=present_payload.get("CodesetId"),
+                    absence_codeset=absent_payload.get("CodesetId"),
+                    presence_bound=_render_bound_phrase(present_payload),
+                    absence_bound=_render_bound_phrase(absent_payload),
+                )
+            )
+    return pairs
 
 
 def _render_bound_phrase(payload: Mapping[str, Any]) -> str:

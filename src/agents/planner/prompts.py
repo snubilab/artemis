@@ -103,11 +103,14 @@ term back to us unchanged.
 For EACH sub-term you produce, also determine whether the Source Text above states a
 numeric threshold that belongs to THAT specific sub-term (not the umbrella as a whole).
 If it does, copy the threshold phrase — the comparator, the number and any unit or
-reference-limit multiple, as written — verbatim into `value_constraint_text`. Copy only
-text that is actually present in Source Text, never invent or estimate a number. If
-Source Text is blank, or does not state a threshold for that sub-term, set
-`value_constraint_text` to `null`. Do not use one sub-term's threshold for a different
-sub-term.
+reference-limit multiple, as written — verbatim into `value_constraint_text`, and state
+the same threshold in `value_constraint`: `op` is the comparison (`gt`, `gte`, `lt`, `lte`
+or `eq`), `value` is the number, `unit_text` is the unit as written (`null` when the phrase
+states none), and `reference_bound` is `uln` or `lln` when the number is a multiple of the
+upper or lower limit of normal and `absolute` otherwise. Copy only text that is actually
+present in Source Text, never invent or estimate a number. If Source Text is blank, or
+does not state a threshold for that sub-term, set both to `null`. Do not use one
+sub-term's threshold for a different sub-term.
 
 `excepted_entities` lists the entities Source Text explicitly removes from the set this
 criterion names, one entry per entity: `text` is the entity's name to look up in a clinical
@@ -139,7 +142,8 @@ when Source Text names fewer than two of the sub-terms.
       "entity_text": "<specific, OMOP-searchable clinical term>",
       "domain": "<Condition|Drug|Measurement|Procedure|Observation|Device>",
       "source_span": "<verbatim fragment of Source Text naming this sub-term, or null>",
-      "value_constraint_text": "<verbatim threshold phrase from Source Text, or null>"
+      "value_constraint_text": "<verbatim threshold phrase from Source Text, or null>",
+      "value_constraint": {{"op": "<gt|gte|lt|lte|eq>", "value": <number>, "unit_text": "<unit as written, or null>", "reference_bound": "<absolute|uln|lln>"}}
     }}
   ]
 }}
