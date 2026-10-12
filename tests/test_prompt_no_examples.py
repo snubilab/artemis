@@ -701,7 +701,6 @@ _INVENTORY: list[dict[str, Any]] = json.loads(INVENTORY_PATH.read_text())
 #: yet. Each milestone commit removes its share; ``strict=True`` turns a cleaned prompt that
 #: is still listed into a failure, so an entry cannot outlive its fix. Empty when P1 is done.
 _NOT_YET_CLEANED_FILES: frozenset[str] = frozenset({
-    "src/agents/planner/prompts.py",
     "src/agents/agent2/reranker.py",
     "src/agents/agent2/critic.py",
     "src/agents/conceptset/nlu_router.py",
@@ -711,7 +710,7 @@ _NOT_YET_CLEANED_FILES: frozenset[str] = frozenset({
     "docs/daily_notes/tte_value_taxonomy.prompt.txt",
 })
 _NOT_YET_CLEANED_PROMPTS: frozenset[str] = frozenset({
-    "planner", "agent2.reranker_single_select", "agent2.reranker_topn", "agent2.critic",
+    "agent2.reranker_single_select", "agent2.reranker_topn", "agent2.critic",
     "conceptset.nlu_router", "comparator.classify", "comparator.literature",
     "tte.report_narrative", "agent1.threshold_classifier",
 })

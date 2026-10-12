@@ -141,7 +141,7 @@ rendered prompt contains one.
 | D7 | CE | deleted |
 | D8 | TW | deleted |
 
-### Other wording the lint required in these prompts (not inventory rows)
+### Other wording the lint required in the Agent 1 prompts (not inventory rows)
 
 - `drop the "  1. " numbering only` → "drop only the line's leading list number" (a quoted instance of the format).
 - "(a range, or a line naming three analytes at once)" → "several analytes".
@@ -158,3 +158,25 @@ rendered prompt contains one.
   ages. `TTEService._build_demographic_rule` (tte_service.py) builds the CIRCE age rule FROM `valueConstraint`.
   Both prompt statements predate this change and both are kept verbatim in substance; resolving which one
   holds is a decision, not an example removal.
+
+## Planner — `src/agents/planner/prompts.py` (14 rows, production)
+
+| ID | Class | Outcome |
+|---|---|---|
+| PS1 | CE | decision kept as: "→ Laboratory test results are in this domain" |
+| PS2 | CE | decision kept as: "including when a sub-term names the lab test by its clinical *effect* (a raised or lowered result) rather than by the test's name: such a sub-term is still a lab value, not a diagnosis, so its `domain` is Measurement, not Observation." |
+| PS3 | CE | decision kept as rule 1: "If a criterion already names one specific, individually codeable clinical concept, return it as-is with `decompose: false`" |
+| PS4 | CE | decision kept as rule 2: "If a criterion is composite/umbrella — it names a category that covers several distinct, individually codeable concepts — decompose it into specific sub-terms" |
+| PS5 | CE | decision kept as rule 5: "PRESENCE → `"ANY"` — an umbrella term is satisfied by any one of its sub-terms" |
+| PS6 | CE | decision kept as rule 5: "ABSENCE → `"ALL"` — the absence of an umbrella term requires every one of its sub-terms to be absent." |
+| PS7 | CE | decision kept as rule 6: "Do NOT over-decompose: a term that already names one specific concept stays as it is; only a category term is decomposed" |
+| PD1 | CE | decision kept as: "a sub-term that is still an umbrella is not finished, and a term that names no analyte or codeable concept leaves a criterion nothing can query." |
+| PD2 | CE | decision kept as: "Every sub-term the line names carries its own span." |
+| PD3 | CE (IO) | decision kept as: "Breaking a term the line names into codeable concepts the line does not name is exactly what this step is FOR — those concepts come back with `source_span: null`, while the sub-terms the line itself names come back with spans." |
+| PD4 | CE (IO+CX) | decision kept as: "an umbrella term must come back as its specific kinds, each with `source_span: null`, which is the correct and expected answer — and NOT as one entry quoting the line back." |
+| PD5 | CE | decision kept as: "When the line enumerates members that are ALREADY individually codeable, that enumeration IS the sub-term list — do not add a member the line does not mention." |
+| PD6 | TW | decision kept as: "When the line marks its list as open — it presents its members as instances of a larger set rather than as the whole set — you may extend it" |
+| PD7 | CE | decision kept as: "copy the threshold phrase — the comparator, the number and any unit or reference-limit multiple, as written — verbatim into `value_constraint_text`." |
+
+Lint-required wording outside the inventory: `"composite"` unquoted; the output schema's `"decompose": true/false`
+and `"reasoning": "brief explanation"` became `<true|false>` / `"<brief explanation>"`.
