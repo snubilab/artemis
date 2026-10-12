@@ -2961,6 +2961,27 @@ def main(argv: list[str] | None = None) -> int:
                     f"specimen refinement declined (WARN, {len(declined)}): {'; '.join(declined)}"
                 )
 
+        # A criterion mapped on its description because extraction left `entity_text`
+        # empty (RFC-016 step 2: the description is the seed as written, nothing cut out
+        # of it). A WARN, never a FAIL: the concept set came from a phrase written for a
+        # human, which a reader should see named, while the criterion itself is kept.
+        seeded_on_description = [
+            record
+            for record in expression.get(MISSING_ENTITY_CRITERIA_KEY) or []
+            if isinstance(record, dict) and record.get("seededOnDescription", True)
+        ]
+        description_warn_clause = (
+            f"seeded on description (WARN, {len(seeded_on_description)}): "
+            + "; ".join(
+                f"{record.get('role')} #{record.get('criterionId')} "
+                f"{(record.get('seed') or record.get('label') or '')!r}"
+                + ("" if record.get("outcome") == "mapped" else " (not mapped)")
+                for record in seeded_on_description
+            )
+            if seeded_on_description
+            else ""
+        )
+
         # (z) a criterion the annotation places after entry, emitted as an occurrence. The
         # builder records such a row as a prospective skip; one that reached a rule anyway
         # selects on the patient's past for an event the protocol places in the future.
@@ -3040,7 +3061,8 @@ def main(argv: list[str] | None = None) -> int:
                     ]
                 )
                 + ([specimen_warn_clause] if specimen_warn_clause else [])
-                + ([overlap_warn_clause] if overlap_warn_clause else []),
+                + ([overlap_warn_clause] if overlap_warn_clause else [])
+                + ([description_warn_clause] if description_warn_clause else []),
             }
         )
 

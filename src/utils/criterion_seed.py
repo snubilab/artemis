@@ -1,21 +1,17 @@
 """The one place a criterion's mapper seed is chosen.
 
-The seed is the criterion's own ``entity_text`` (stored as ``sourceText``), or -- when the
-annotation step quoted a verified ``base_span`` for a stated exception -- that fragment.
-An extracted criterion (one that carries the ``protocolLine`` it came from) gets nothing
-else: no fallback to its human-facing ``description``, and no cutting of time phrases out
-of any text. A row that was never extracted -- typed in the UI, or built by the
-natural-language draft path -- has no ``entity_text`` and no line; its ``description`` is
-the entity as entered, and is the seed as written.
+The seed is the annotation's verified ``base_span`` (a stated exception's base set), else
+the criterion's own ``entity_text`` (stored as ``sourceText``), else -- when extraction
+left that mandatory field empty, or the row was never extracted -- its ``description``,
+exactly as written. A seed taken from the description is recorded: on the row
+(``seededOnDescription`` / ``mapperSeed``, written by ``TTEService._build_seeded_target_circe``)
+and in the artifact under :data:`MISSING_ENTITY_CRITERIA_KEY`, which the delivery gate
+reports as a WARN.
 
-Both of those are removed in RFC-016 step 2 (inventory A10). The fallback handed the mapper
-a sentence written for a reader, and ``strip_window_expressed_temporal`` then cut "within 3
-years" / "prior to randomisation" out of it with a word table so the intent router would
-accept it -- reading natural language to change what the mapper is asked. A criterion whose
-mandatory ``entity_text`` is empty is now refused as ``missing-entity-text`` before mapping
-(``TTEService._build_seeded_eligibility_rule``) and recorded under
-:data:`MISSING_ENTITY_CRITERIA_KEY`. An ``entity_text`` that itself carries a time phrase
-is mapped as extracted; the remedy for that is extraction, not a text rule here.
+What RFC-016 step 2 removed (inventory A10) is the cutting: ``strip_window_expressed_temporal``
+took "within 3 years" / "prior to randomisation" out of the description with a word table
+so the intent router would accept it -- reading natural language to change what the mapper
+is asked. Nothing is cut now, here or anywhere else.
 
 Both call sites in ``tte_service`` -- the ChromaDB batch pre-fetch and
 ``_build_seeded_eligibility_rule`` -- must read the seed from here, or the candidates
@@ -33,23 +29,39 @@ def criterion_mapper_seed(criterion: Mapping[str, Any]) -> str:
 
     The annotation's verified ``base_span`` first (RFC-016 addendum: a seed that carries
     a whole exception clause is mapped tail-first, so the fragment naming the base set
-    is the seed), else the criterion's own ``entity_text`` (``sourceText``). A criterion
-    with neither and no ``protocolLine`` was never extracted, and its ``description`` is
-    its entity as entered.
+    is the seed), else the criterion's own ``entity_text`` (``sourceText``), else its
+    ``description`` as written (see :func:`seeded_on_description`).
 
     :param criterion: a store eligibility-criterion dict.
-    :returns: the seed text, whitespace-collapsed; ``""`` when an extracted criterion has
-        no entity text -- the caller refuses that as ``missing-entity-text``, and should.
+    :returns: the seed text, whitespace-collapsed; ``""`` when the criterion names
+        nothing at all (the caller refuses that, and should).
     """
     from src.services.criterion_annotation import stated_base
 
     base = stated_base(criterion)
     if base:
         return base
-    entity = " ".join((criterion.get("sourceText") or "").split())
-    if entity or (criterion.get("protocolLine") or "").strip():
-        return entity
-    return " ".join((criterion.get("description") or "").split())
+    return " ".join(
+        ((criterion.get("sourceText") or criterion.get("description") or "").strip()).split()
+    )
+
+
+def seeded_on_description(criterion: Mapping[str, Any]) -> bool:
+    """Whether :func:`criterion_mapper_seed` takes this criterion's ``description``.
+
+    True when the criterion carries no entity text of its own
+    (:func:`criterion_entity_text_missing`), no verified ``base_span`` stands in for it,
+    and a description exists to fall back to.
+
+    :param criterion: a store eligibility-criterion dict.
+    """
+    from src.services.criterion_annotation import stated_base
+
+    return (
+        criterion_entity_text_missing(criterion)
+        and not stated_base(criterion)
+        and bool((criterion.get("description") or "").strip())
+    )
 
 
 #: Where the record below is written in a study's ``structuredExpression``, and read from
@@ -66,10 +78,11 @@ def criterion_entity_text_missing(criterion: Mapping[str, Any]) -> bool:
 
     ``entity_text`` is the only text the concept mapper is ever given, which is why
     ``agent1/prompts.NCT_SYSTEM_PROMPT`` makes it mandatory on every criterion with no
-    ``sub_criteria`` (``8bbd50d``). When it is empty there is nothing to seed the mapper
-    with (:func:`criterion_mapper_seed` returns ``""``) and the criterion is refused as
-    ``missing-entity-text``. This function is the one place that fact is decided, so the
-    record, the refusal, and the seed itself cannot disagree about which rows it covers.
+    ``sub_criteria`` (``8bbd50d``). When it is empty, :func:`criterion_mapper_seed`
+    falls back to ``description`` -- a phrase written for a human ("Drug naive",
+    "Stable Background Medication (8 weeks prior to screening)") -- as written. This
+    function is the one place that fact is decided, so the record, the re-coded refusal,
+    and the seed itself cannot disagree about which rows it covers.
 
     Reads the store column ``sourceText``, which carries the IR's ``entity_text``:
     ``_criterion_dict_from_ir_item`` assigns ``source_text = entity_text``, while the
@@ -84,12 +97,14 @@ def criterion_entity_text_missing(criterion: Mapping[str, Any]) -> bool:
     six delivered trials: 30 of the 117 rows with an empty ``sourceText`` are group
     labels, and three of the five rows that opened this investigation are among them.
 
-    Whitespace counts as empty, because :func:`criterion_mapper_seed` collapses
-    whitespace -- a ``sourceText`` of ``"   "`` yields no seed exactly as an empty one
-    does, and a predicate that disagreed would write a record contradicting the seed.
+    Whitespace counts as empty, because :func:`criterion_mapper_seed` strips before it
+    chooses -- a ``sourceText`` of ``"   "`` seeds the mapper on the description exactly
+    as an empty one does, and a predicate that disagreed would write a record
+    contradicting the seed it describes.
 
     :param criterion: a store eligibility-criterion dict.
-    :returns: ``True`` when this criterion carries no entity text of its own.
+    :returns: ``True`` when the mapper will be seeded on something other than this
+        criterion's own entity text.
     """
     if criterion.get("isGroupLabel"):
         return False
@@ -122,5 +137,6 @@ def missing_entity_record(
         "label": (criterion.get("description") or "").strip(),
         "domain": (criterion.get("domain") or "").strip() or None,
         "seed": criterion_mapper_seed(criterion),
+        "seededOnDescription": seeded_on_description(criterion),
         "outcome": "mapped" if mapped else "unmapped",
     }

@@ -130,23 +130,43 @@ def _build(service, *, inclusion=(), exclusion=()) -> dict[str, Any]:
     )
 
 
-class TestAnEmptyEntityIsRefusedNotStripped:
+class TestAnEmptyEntityIsSeededOnTheDescriptionAsWritten:
+    """A10 removed the stripping; the description stays the seed, exactly as written, and
+    the row says so (``seededOnDescription`` / ``mapperSeed``). CARMELINA is in the default
+    delivery; PLATO's line is the one the stripper cut into "with onset , ischemic ..."."""
+
     @pytest.mark.parametrize(
         "row,role", [(PLATO_ACS, "inclusion"), (CARMELINA_CABG, "exclusion")], ids=["plato", "carmelina"]
     )
-    def test_should_refuse_and_record_when_entity_text_is_empty(self, service, row, role):
+    def test_should_map_on_the_description_as_written_and_mark_the_row(self, service, row, role):
         assert row["sourceText"] == "" and row["window"]
-        circe = (
-            _build(service, inclusion=[row]) if role == "inclusion" else _build(service, exclusion=[row])
-        )
-        assert circe["InclusionRules"] == []
-        # Only the target cohort's own name is mapped; the criterion never reaches the mapper.
-        assert service.asked == ["ticagrelor"], service.asked
-        [unmapped] = circe["_unmappedCriteria"]
-        assert unmapped["criterionId"] == str(row["id"])
-        assert unmapped["refusalCode"] == "missing-entity-text"
+        eligibility = {
+            "targetCohortName": "ticagrelor",
+            "inclusionCriteria": [deepcopy(row)] if role == "inclusion" else [],
+            "exclusionCriteria": [deepcopy(row)] if role == "exclusion" else [],
+        }
+        circe = service._build_seeded_target_circe(eligibility)
+        written = " ".join(row["description"].split())
+
+        assert len(circe["InclusionRules"]) == 1
+        assert circe["_unmappedCriteria"] == []
+        assert written in service.asked
         [record] = circe[MISSING_ENTITY_CRITERIA_KEY]
-        assert (record["criterionId"], record["outcome"]) == (str(row["id"]), "unmapped")
+        assert (record["criterionId"], record["outcome"], record["seed"]) == (
+            str(row["id"]), "mapped", written
+        )
+        [stored] = eligibility[f"{role}Criteria"]
+        assert stored["seededOnDescription"] is True
+        assert stored["mapperSeed"] == written
+
+    def test_should_not_mark_a_row_that_carries_its_entity(self, service):
+        eligibility = {
+            "targetCohortName": "linagliptin",
+            "inclusionCriteria": [],
+            "exclusionCriteria": [deepcopy(CAROLINA_CANCER)],
+        }
+        service._build_seeded_target_circe(eligibility)
+        assert "seededOnDescription" not in eligibility["exclusionCriteria"][0]
 
     def test_should_seed_on_the_entity_text_as_extracted_when_it_carries_a_time_phrase(self):
         """The seed is no longer cut: CAROLINA exclusion 68's entity text is the seed."""
@@ -154,8 +174,8 @@ class TestAnEmptyEntityIsRefusedNotStripped:
             "cancer other than non-melanoma skin cancer within last 3 years"
         )
 
-    def test_should_seed_nothing_when_entity_text_is_empty(self):
-        assert criterion_mapper_seed(PLATO_ACS) == ""
+    def test_should_seed_on_the_description_as_written_when_entity_text_is_empty(self):
+        assert criterion_mapper_seed(PLATO_ACS) == " ".join(PLATO_ACS["description"].split())
 
 
 # --------------------------------------------------------------------------- #
