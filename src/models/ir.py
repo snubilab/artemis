@@ -165,8 +165,11 @@ class Criteria(BaseModel):
     Supports composite criteria via sub_criteria (fan-out).
     """
     name: str
-    domain: str # Condition, Drug, Measurement, Procedure, Observation...
-    
+    # Condition, Drug, Measurement, Procedure, Observation... Required on a criterion that
+    # emits a rule of its own, and None-able only on a GROUP row (one with sub_criteria),
+    # which emits none: its members carry their own domains. See `_a_leaf_needs_a_domain`.
+    domain: Optional[str] = None
+
     # The entity key is the text term (e.g., "T2DM") initially.
     # After Agent 2, it is mapped to a concept_set_id.
     entity_text: Optional[str] = None
@@ -236,6 +239,25 @@ class Criteria(BaseModel):
     # Empty for every criterion the planner stated none for, and for IR stored before
     # the field existed; the annotation step fills the store row's equivalent then.
     excepted_entities: List[ExceptedEntity] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _a_leaf_needs_a_domain(self) -> "Criteria":
+        """Refuse a missing domain on a criterion that emits a rule of its own.
+
+        A group row emits no rule -- its members do -- so it has no domain to state, and
+        nothing is inferred for it. Measured 2026-10-12 on PLATO: the model returned the
+        line "4. ≥2 of the following:" with five members and ``"domain": null``, and
+        ``domain: str`` aborted the whole trial on it. Readers of a label's domain treat
+        ``None`` as empty; the store builder checks the demographic domains before it
+        checks ``isGroupLabel``, so an inferred domain could only route a label into a
+        rule-building branch.
+        """
+        if self.domain is None and not self.sub_criteria:
+            raise ValueError(
+                "a criterion with no sub_criteria emits a rule of its own and needs a "
+                "domain; only a group row may leave it null"
+            )
+        return self
 
 class PrimaryCriteria(BaseModel):
     """

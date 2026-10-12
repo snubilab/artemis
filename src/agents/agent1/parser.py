@@ -38,7 +38,11 @@ from src.agents.agent1.pubmed_fetcher import (
     fetch_pubmed_abstract, extract_eligibility_from_text, rejoin_stranded_superscripts
 )
 from src.agents.agent1.enricher import enrich_trial_data
-from src.agents.agent1.repair_accounting import RepairLedger, assert_repairs_accounted
+from src.agents.agent1.repair_accounting import (
+    DISPOSITION_REFUSAL,
+    RepairLedger,
+    assert_repairs_accounted,
+)
 from src.agents.agent1.temporal_grounding import (
     stated_interval,
     temporal_intervals,
@@ -143,6 +147,11 @@ _INCLUSIVE_UPPER_OP = re.compile(r"(?:<=|=<|≤|≦)\s*(" + _NUMBER + r")")
 #: ran on. The same trial's TROY v1.1 gold encodes its band `!bt [6.5, 8.5]`, which
 #: is inclusive at both ends.
 _RANGE = re.compile(r"(" + _NUMBER + r")\s*(?:-|–|—|to)\s*(" + _NUMBER + r")")
+
+
+class _RowRefused(Exception):
+    """A row the model emitted that cannot become a criterion, for a reason pydantic
+    does not raise itself (``LogicDecomposer._build_or_refuse`` records it)."""
 
 
 class _NegatedUpper(NamedTuple):
@@ -1445,20 +1454,38 @@ class LogicDecomposer:
             observation_window=pc_data.get("observation_window", {"prior": 365, "post": 0})
         )
         
+        # Created before the rows are built: a row the schema refuses is recorded on it,
+        # beside what the repairs below do, so it reaches the store and the gate too.
+        ledger = RepairLedger()
         inclusion_rules = [
-            self._build_criteria(c, rule_name=c.get("name")) for c in data.get("inclusion_rules", [])
+            rule for rule in (
+                self._build_or_refuse(c, ledger, role="inclusion")
+                for c in data.get("inclusion_rules", [])
+            ) if rule is not None
         ]
         exclusion_rules = [
-            self._build_criteria(c, force_logic_type="ABSENCE", rule_name=c.get("name"))
-            for c in data.get("exclusion_rules", [])
+            rule for rule in (
+                self._build_or_refuse(c, ledger, role="exclusion", force_logic_type="ABSENCE")
+                for c in data.get("exclusion_rules", [])
+            ) if rule is not None
         ]
-        
+        refused = [r for r in ledger.records() if r["disposition"] == DISPOSITION_REFUSAL]
+        if refused:
+            logger.warning(
+                "[Agent 1] IR build refused %d criterion row(s) (%d inclusion, %d exclusion) "
+                "and %d member row(s) with them; recorded under _repairAccounting as "
+                "disposition 'refusal', which the delivery gate counts as criterion loss",
+                len(refused),
+                sum(r["role"] == "inclusion" for r in refused),
+                sum(r["role"] == "exclusion" for r in refused),
+                sum(len(r["lostMembers"]) for r in refused),
+            )
+
         # Everything below rewrites `inclusion_rules`. `before_repair` is the list of
         # criteria as the model emitted them, and `assert_repairs_accounted` below
         # checks it against what survives: a repair that removes a criterion without
         # recording it fails HERE, at the removal, rather than as an absence in a
         # delivery three stages later.
-        ledger = RepairLedger()
 
         def _gated(step: str, repair) -> list:
             """Run one repair and hold it to its own accounting, immediately.
@@ -2320,7 +2347,60 @@ class LogicDecomposer:
 
         return result
 
-    def _build_criteria(self, data: dict, force_logic_type: str = None, rule_name: str = None) -> Criteria:
+    def _build_or_refuse(self, data: dict, refusals: "RepairLedger", *, role: str,
+                         force_logic_type: str = None) -> Optional[Criteria]:
+        """Build one row, or refuse it on ``refusals`` and return None.
+
+        One row the schema cannot hold must not take the trial with it: PLATO's whole IR
+        was lost on 2026-10-12 to a single row raising out of a list comprehension. The
+        refusal is a RECORD, not a skip -- it reaches the store as
+        ``eligibility._repairAccounting`` and the delivery gate reads it as criterion
+        loss -- and it names every member row lost with the refused one, so the count is
+        of criteria rather than of rows.
+
+        :param data: one row of the model's JSON.
+        :param refusals: the cohort's ledger.
+        :param role: ``"inclusion"`` or ``"exclusion"``.
+        :param force_logic_type: as for :meth:`_build_criteria`.
+        :returns: the criterion, or None when the row was refused.
+        """
+        mark = len(refusals)
+        try:
+            return self._build_criteria(
+                data, force_logic_type=force_logic_type, rule_name=data.get("name"),
+                refusals=refusals, role=role,
+            )
+        except (ValidationError, _RowRefused) as exc:
+            # A member already refused is counted by its own record, not again here.
+            recorded = {id(row) for row in refusals.refused_rows_since(mark)}
+            lost = self._member_rows_lost_with(data, recorded)
+            reason = str(exc)
+            refusals.refused(data, role=role, reason=reason, lost_members=lost)
+            logger.warning(
+                "[Agent 1] IR build refused %s row %r; %d member row(s) lost with it: "
+                "%s | protocol line: %r",
+                role, data.get("name"), len(lost), " ".join(reason.split()),
+                (data.get("source_text") or "")[:160],
+            )
+            return None
+
+    @staticmethod
+    def _member_rows_lost_with(row: dict, recorded: set[int]) -> list[dict]:
+        """Every member row beneath ``row``, depth-first, except those in ``recorded``
+        (and their own members, which their record already names)."""
+        members = row.get("sub_criteria")
+        if not isinstance(members, list):
+            return []
+        lost: list[dict] = []
+        for member in members:
+            if not isinstance(member, dict) or id(member) in recorded:
+                continue
+            lost.append(member)
+            lost.extend(LogicDecomposer._member_rows_lost_with(member, recorded))
+        return lost
+
+    def _build_criteria(self, data: dict, force_logic_type: str = None, rule_name: str = None,
+                        refusals: "RepairLedger" = None, role: str = "inclusion") -> Criteria:
         """Build Criteria from dict.
 
         Args:
@@ -2328,6 +2408,10 @@ class LogicDecomposer:
             force_logic_type: If set, override logic_type to this value.
                 Used for exclusion_rules where LLM often outputs "PRESENCE"
                 instead of the correct "ABSENCE".
+            refusals: The cohort's ledger. When given, a member row that cannot be
+                built is refused onto it and the group keeps its other members; when
+                None (a direct call), it raises as any invalid row does.
+            role: ``"inclusion"`` or ``"exclusion"``, for the refusal records.
         """
         window = None
         if isinstance(data.get("window"), dict):
@@ -2386,17 +2470,33 @@ class LogicDecomposer:
         # Parse sub_criteria for composite rules (Pattern E: OR grouping)
         sub_criteria_data = data.get("sub_criteria", [])
         sub_criteria = []
+        member_rows = 0
         if sub_criteria_data and isinstance(sub_criteria_data, list):
             for sc_data in sub_criteria_data:
                 if not isinstance(sc_data, dict):
                     continue
-                sc = self._build_criteria(
-                    sc_data,
-                    force_logic_type=force_logic_type,
-                    rule_name=sc_data.get("name"),
-                )
-                sub_criteria.append(sc)
-        
+                member_rows += 1
+                if refusals is None:
+                    sc = self._build_criteria(
+                        sc_data,
+                        force_logic_type=force_logic_type,
+                        rule_name=sc_data.get("name"),
+                    )
+                else:
+                    sc = self._build_or_refuse(
+                        sc_data, refusals, role=role, force_logic_type=force_logic_type
+                    )
+                if sc is not None:
+                    sub_criteria.append(sc)
+        if member_rows and not sub_criteria:
+            # Every member was refused. What is left is a label, and a label carries no
+            # criterion of its own -- kept, it would turn into a leaf seeded on its own
+            # name ("4. ≥2 of the following:").
+            raise _RowRefused(
+                f"every one of its {member_rows} member row(s) was refused, and a group "
+                "row carries no criterion of its own"
+            )
+
         group_type = data.get("group_type", "ALL")
         if isinstance(group_type, str):
             group_type = group_type.strip().upper()

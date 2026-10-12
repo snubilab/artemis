@@ -32,9 +32,23 @@ Two things are recorded, and they are not the same thing:
     protocol line stops being decomposed. That is how CAROLINA's six drug-therapy
     criteria stopped being produced: nothing dropped them, the line they were
     decomposed FROM stopped being visited.
+
+A third and fourth record share the ledger because they share the problem:
+
+``rewrite``
+    The criterion is where it was, but a repair moved one of its boundaries.
+
+``refusal``
+    The row the model emitted could not be built into a criterion at all -- it never
+    entered the tree, so no repair touched it, and like a departure it is invisible to
+    every census computed from the store. Recorded with the members that were lost
+    with it, and judged by the delivery gate as criterion loss. Before this record a
+    single such row raised out of ``parse_nct`` and took the whole trial with it
+    (PLATO, 2026-10-12).
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Iterable
 
 #: The one spelling of the key, for every producer and every reader of it. The store
@@ -50,8 +64,9 @@ REPAIR_ACCOUNTING_KEY = "_repairAccounting"
 DISPOSITION_DEPARTURE = "departure"
 DISPOSITION_DEMOTION = "demotion"
 DISPOSITION_REWRITE = "rewrite"
+DISPOSITION_REFUSAL = "refusal"
 KNOWN_DISPOSITIONS = frozenset(
-    {DISPOSITION_DEPARTURE, DISPOSITION_DEMOTION, DISPOSITION_REWRITE}
+    {DISPOSITION_DEPARTURE, DISPOSITION_DEMOTION, DISPOSITION_REWRITE, DISPOSITION_REFUSAL}
 )
 
 
@@ -70,26 +85,37 @@ def iter_nodes(rules: Iterable[Any]) -> list[Any]:
     return out
 
 
+def _field(item: Any, key: str) -> Any:
+    """``key`` of a built criterion, or of a raw row the model emitted (a mapping)."""
+    if isinstance(item, Mapping):
+        return item.get(key)
+    return getattr(item, key, None)
+
+
 def _describe(criterion: Any) -> dict[str, Any]:
-    """The identifying fields of a criterion, for a record a human can act on."""
-    vc = getattr(criterion, "value_constraint", None)
+    """The identifying fields of a criterion, for a record a human can act on.
+
+    Reads a built ``Criteria`` or the raw row it would have been built from -- a refused
+    row never became a ``Criteria``, and its record must name it the same way.
+    """
+    vc = _field(criterion, "value_constraint")
     constraint = None
     if vc is not None:
         constraint = {
-            "op": getattr(vc, "op", None),
-            "value": getattr(vc, "value", None),
-            "valueHigh": getattr(vc, "value_high", None),
-            "unitText": getattr(vc, "unit_text", None),
+            "op": _field(vc, "op"),
+            "value": _field(vc, "value"),
+            "valueHigh": _field(vc, "value_high"),
+            "unitText": _field(vc, "unit_text"),
         }
     return {
-        "name": getattr(criterion, "name", None),
-        "domain": getattr(criterion, "domain", None),
-        "entityText": getattr(criterion, "entity_text", None),
-        "logicType": getattr(criterion, "logic_type", None),
+        "name": _field(criterion, "name"),
+        "domain": _field(criterion, "domain"),
+        "entityText": _field(criterion, "entity_text"),
+        "logicType": _field(criterion, "logic_type"),
         "valueConstraint": constraint,
         # The protocol line is the part that matters most in a record of a loss:
         # it is the only field that says what the cohort no longer asks about.
-        "sourceText": getattr(criterion, "source_text", None),
+        "sourceText": _field(criterion, "source_text"),
     }
 
 
@@ -161,6 +187,33 @@ class RepairLedger:
         }
         self._add(criterion, record)
 
+    def refused(self, row: Mapping[str, Any], *, role: str, reason: str,
+                lost_members: Iterable[Mapping[str, Any]] = ()) -> None:
+        """Record a row the model emitted that could not be built into a criterion.
+
+        :param row: the raw row, as the model emitted it.
+        :param role: ``"inclusion"`` or ``"exclusion"``.
+        :param reason: why it could not be built -- the validation error, verbatim.
+        :param lost_members: member rows that were lost WITH it and are not recorded
+            by a refusal of their own, so the record counts every criterion it costs.
+        """
+        record = {
+            "disposition": DISPOSITION_REFUSAL,
+            "action": "refused-at-ir-build",
+            "role": role,
+            "reason": reason,
+            "criterion": _describe(row),
+            "lostMembers": [_describe(member) for member in lost_members],
+        }
+        self._add(row, record)
+
+    def refused_rows_since(self, mark: int) -> list[Any]:
+        """The raw rows refused after the ledger held ``mark`` entries, in order."""
+        return [
+            item for item, record in self._entries[mark:]
+            if record["disposition"] == DISPOSITION_REFUSAL
+        ]
+
     def accounted_ids(self) -> set[int]:
         """The criteria whose absence from the tree a repair has explained.
 
@@ -170,11 +223,14 @@ class RepairLedger:
         would let "a later repair moved this into a group" sign off "a still later
         repair deleted it". Only a record that says the criterion is gone may
         satisfy the gate that asks where it went.
+
+        Refusals are not in here either: a refused row never entered the tree, so it
+        explains no departure from it.
         """
         return {
             id(criterion)
             for criterion, record in self._entries
-            if record["disposition"] != "demotion"
+            if record["disposition"] in (DISPOSITION_DEPARTURE, DISPOSITION_REWRITE)
         }
 
     def records(self) -> list[dict[str, Any]]:

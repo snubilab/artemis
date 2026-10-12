@@ -1,0 +1,252 @@
+{
+  "_provenance": {
+    "source": "/home/bilab/work/projects/Broadsea/.worktrees/p2-new/data/cache/agent1_ir/NCT00391872_vllm_google_gemma-4-E4B-it_0e38aa9efdaca589.json",
+    "sha256": "e22dde9841331b23928cf704e32950fe369bf97ee8926691f51b5fefca883270",
+    "observed": "2026-10-12 P2 NEW re-extraction of PLATO (NCT00391872): parse_nct raised pydantic ValidationError \"domain: Input should be a valid string\" on the group row below and aborted the whole trial. artemis/output/site_gap/2026-10-12_p2_new/reingest.log, PLATO block from line 12849.",
+    "copied": [
+      "/target/primary_criteria",
+      "/comparator/primary_criteria",
+      "/target/inclusion_rules/2",
+      "/target/inclusion_rules/3",
+      "/target/inclusion_rules/4",
+      "/comparator/inclusion_rules/2",
+      "/comparator/inclusion_rules/3",
+      "/comparator/inclusion_rules/4",
+      "/outcome"
+    ],
+    "note": "Rows are copied verbatim, in source order; exclusion_rules and the other inclusion rows are not copied."
+  },
+  "target": {
+    "primary_criteria": {
+      "domain": "Drug",
+      "entity_text": "Ticagrelor",
+      "limit": "First"
+    },
+    "inclusion_rules": [
+      {
+        "name": "ACS Onset and Duration",
+        "domain": "Condition",
+        "entity_text": "Acute Coronary Syndrome",
+        "source_text": "3. Hospitalized for potential ST-segment elevation or non–STsegment elevation ACS, with onset during the previous 24 hours, documented by cardiac ischemic symptoms due to atherosclerosis of ≥10 minutes' duration at rest, ≥18 years of age, not pregnant, and with informed consent",
+        "logic_type": "PRESENCE",
+        "window": {
+          "start": -24,
+          "end": 0
+        },
+        "value_constraint": {
+          "op": "gte",
+          "value": 18.0,
+          "unit_text": "years"
+        }
+      },
+      {
+        "name": "ACS Criteria OR Group",
+        "domain": null,
+        "entity_text": null,
+        "source_text": "4. ≥2 of the following:",
+        "logic_type": "PRESENCE",
+        "group_type": "ANY",
+        "sub_criteria": [
+          {
+            "name": "Persistent ST-segment",
+            "domain": "Condition",
+            "entity_text": "ST-segment",
+            "source_text": "5. Or: Persistent ST-segment",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -9999,
+              "end": 0
+            }
+          },
+          {
+            "name": "ST-segment elevation",
+            "domain": "Measurement",
+            "entity_text": "ST-segment",
+            "source_text": "6. ST-segment changes on elevation ≥1 mm (not known",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -180,
+              "end": 0
+            },
+            "value_constraint": {
+              "op": "gte",
+              "value": 1.0,
+              "unit_text": "mm (not known"
+            }
+          },
+          {
+            "name": "ECG indicating ischemia",
+            "domain": "Observation",
+            "entity_text": "ECG",
+            "source_text": "7. ECG indicating ischemia",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -180,
+              "end": 0
+            }
+          },
+          {
+            "name": "ST-segment depression or coexisting disorder",
+            "domain": "Condition",
+            "entity_text": "ST-segment depression",
+            "source_text": "8. to be preexisting or due to a\n9. ST-segment depression or coexisting disorder) in ≥2 transient elevation ≥ 1 mm contiguous leads or new in two or more 2 contiguous leads",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -9999,
+              "end": 0
+            }
+          },
+          {
+            "name": "Transient elevation in leads",
+            "domain": "Measurement",
+            "entity_text": "transient elevation",
+            "source_text": "9. ST-segment depression or coexisting disorder) in ≥2 transient elevation ≥ 1 mm contiguous leads or new in two or more 2 contiguous leads",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -180,
+              "end": 0
+            },
+            "value_constraint": {
+              "op": "gte",
+              "value": 2.0,
+              "unit_text": "transient elevation ≥ 1 mm contiguous leads"
+            }
+          }
+        ]
+      },
+      {
+        "name": "LBBB plus primary",
+        "domain": "Condition",
+        "entity_text": "LBBB",
+        "source_text": "10. LBBB plus primary",
+        "logic_type": "PRESENCE",
+        "window": {
+          "start": -9999,
+          "end": 0
+        }
+      }
+    ],
+    "exclusion_rules": []
+  },
+  "comparator": {
+    "primary_criteria": {
+      "domain": "Drug",
+      "entity_text": "Clopidogrel",
+      "limit": "First"
+    },
+    "inclusion_rules": [
+      {
+        "name": "ACS Onset and Duration",
+        "domain": "Condition",
+        "entity_text": "Acute Coronary Syndrome",
+        "source_text": "3. Hospitalized for potential ST-segment elevation or non–STsegment elevation ACS, with onset during the previous 24 hours, documented by cardiac ischemic symptoms due to atherosclerosis of ≥10 minutes' duration at rest, ≥18 years of age, not pregnant, and with informed consent",
+        "logic_type": "PRESENCE",
+        "window": {
+          "start": -24,
+          "end": 0
+        },
+        "value_constraint": {
+          "op": "gte",
+          "value": 18.0,
+          "unit_text": "years"
+        }
+      },
+      {
+        "name": "ACS Criteria OR Group",
+        "domain": null,
+        "entity_text": null,
+        "source_text": "4. ≥2 of the following:",
+        "logic_type": "PRESENCE",
+        "group_type": "ANY",
+        "sub_criteria": [
+          {
+            "name": "Persistent ST-segment",
+            "domain": "Condition",
+            "entity_text": "ST-segment",
+            "source_text": "5. Or: Persistent ST-segment",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -9999,
+              "end": 0
+            }
+          },
+          {
+            "name": "ST-segment elevation",
+            "domain": "Measurement",
+            "entity_text": "ST-segment",
+            "source_text": "6. ST-segment changes on elevation ≥1 mm (not known",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -180,
+              "end": 0
+            },
+            "value_constraint": {
+              "op": "gte",
+              "value": 1.0,
+              "unit_text": "mm (not known"
+            }
+          },
+          {
+            "name": "ECG indicating ischemia",
+            "domain": "Observation",
+            "entity_text": "ECG",
+            "source_text": "7. ECG indicating ischemia",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -180,
+              "end": 0
+            }
+          },
+          {
+            "name": "ST-segment depression or coexisting disorder",
+            "domain": "Condition",
+            "entity_text": "ST-segment depression",
+            "source_text": "8. to be preexisting or due to a\n9. ST-segment depression or coexisting disorder) in ≥2 transient elevation ≥ 1 mm contiguous leads or new in two or more 2 contiguous leads",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -9999,
+              "end": 0
+            }
+          },
+          {
+            "name": "Transient elevation in leads",
+            "domain": "Measurement",
+            "entity_text": "transient elevation",
+            "source_text": "9. ST-segment depression or coexisting disorder) in ≥2 transient elevation ≥ 1 mm contiguous leads or new in two or more 2 contiguous leads",
+            "logic_type": "PRESENCE",
+            "window": {
+              "start": -180,
+              "end": 0
+            },
+            "value_constraint": {
+              "op": "gte",
+              "value": 2.0,
+              "unit_text": "transient elevation ≥ 1 mm contiguous leads"
+            }
+          }
+        ]
+      },
+      {
+        "name": "LBBB plus primary",
+        "domain": "Condition",
+        "entity_text": "LBBB",
+        "source_text": "10. LBBB plus primary",
+        "logic_type": "PRESENCE",
+        "window": {
+          "start": -9999,
+          "end": 0
+        }
+      }
+    ],
+    "exclusion_rules": []
+  },
+  "outcome": {
+    "name": "Composite of Death From Vascular Causes, Myocardial Infarction (MI), and Stroke",
+    "domain": "Condition",
+    "entity_text": "Death From Vascular Causes, Myocardial Infarction (MI), and Stroke",
+    "time_at_risk": {
+      "start": 0,
+      "end": 365
+    }
+  }
+}

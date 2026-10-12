@@ -332,6 +332,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.verify_entry_exclusion_conflict import DEFAULT_DSN  # noqa: E402
 from src.agents.agent1.repair_accounting import (  # noqa: E402
     DISPOSITION_DEMOTION,
+    DISPOSITION_REFUSAL,
     KNOWN_DISPOSITIONS,
     REPAIR_ACCOUNTING_KEY,
 )
@@ -1731,6 +1732,13 @@ def repair_ledger_violations(study: dict[str, Any]) -> tuple[list[str], str]:
     ``rewrite`` -- COUNTED. The criterion is where it was; only a boundary moved, and
         the record exists so that a moved boundary is not silent.
 
+    ``refusal`` -- criterion LOSS, never permitted. The model emitted the row and the
+        schema could not build it (PLATO 2026-10-12: one such row used to abort the
+        whole trial), so the criterion and every member lost with it reach no rule. The
+        loss is reducible -- a correct extraction gives the row a valid field -- which
+        is the axis :data:`PERMITTED_REFUSAL_CODES` permits on. Judged before the name
+        check, because a null name can itself be the reason for the refusal.
+
     An unrecognised ``disposition``, a record that is not a record, a ledger that is not
     a list, and a record naming no criterion all FAIL. This is a reconciliation, so a
     record it cannot read is an unreconciled criterion -- the same direction
@@ -1776,6 +1784,8 @@ def repair_ledger_violations(study: dict[str, Any]) -> tuple[list[str], str]:
     violations: list[str] = []
     counts = Counter()
     lost: list[str] = []
+    refused: list[str] = []
+    refused_members = 0
 
     for position, record in enumerate(ledger):
         where = f"{REPAIR_ACCOUNTING_KEY}[{position}]"
@@ -1801,6 +1811,19 @@ def repair_ledger_violations(study: dict[str, Any]) -> tuple[list[str], str]:
             violations.append(
                 f"{where} ({disposition}) names no criterion, so nothing says which "
                 "criterion the repair acted on"
+            )
+            continue
+
+        if disposition == DISPOSITION_REFUSAL:
+            members = record.get("lostMembers")
+            members = members if isinstance(members, list) else []
+            refused_members += len(members)
+            refused.append(
+                f"{where} {record.get('role') or '?'} row "
+                f"{(criterion.get('name') or '').strip() or '<no name>'!r}"
+                f" (protocol line: {(criterion.get('sourceText') or '')[:120]!r})"
+                f" refused at IR build, {len(members)} member row(s) lost with it"
+                f" -- {' '.join(str(record.get('reason') or 'no reason recorded').split())[:200]}"
             )
             continue
 
@@ -1830,6 +1853,12 @@ def repair_ledger_violations(study: dict[str, Any]) -> tuple[list[str], str]:
             f"criteria recorded as demoted that the store does not carry ({len(lost)}): "
             + "; ".join(lost)
         )
+    if refused:
+        violations.append(
+            f"criterion rows refused at IR build ({len(refused)}, plus {refused_members} "
+            "member row(s) lost with them) -- criterion loss: the model emitted them and no "
+            "rule carries them: " + "; ".join(refused)
+        )
 
     if not ledger:
         summary = "repair accounting: 0 repairs recorded"
@@ -1841,6 +1870,11 @@ def repair_ledger_violations(study: dict[str, Any]) -> tuple[list[str], str]:
         )
         if lost:
             summary += f", {len(lost)} demoted criteria MISSING from the store"
+        if refused:
+            summary += (
+                f", {len(refused)} rows LOST at IR build "
+                f"(+{refused_members} member rows with them)"
+            )
     return violations, summary
 
 
