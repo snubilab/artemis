@@ -2802,5 +2802,95 @@
    ],
    "rows": []
   }
+ },
+ "vocabulary_loinc_components": {
+  "about": "LOINC 'Has component' of every LOINC concept the A28 tests read (the members of every real concept set holding 3005446, 3007070 or 40758413 in the 2026-09-12 delivery, the 2026-09-18_verify DELIVERY and the 2026-10-12 candidate, plus the lint tests' LDL/HbA1c/systolic ids, plus 3030989, the second LOINC test of HbA1 total). A non-LOINC id has no row.",
+  "query": "SELECT c.concept_id, x.concept_id FROM synthea23m.concept c JOIN synthea23m.concept_relationship r ON r.concept_id_1 = c.concept_id AND r.invalid_reason IS NULL AND r.relationship_id = 'Has component' JOIN synthea23m.concept x ON x.concept_id = r.concept_id_2 AND x.vocabulary_id = 'LOINC' WHERE c.concept_id = ANY(%s) AND c.vocabulary_id = 'LOINC'",
+  "rows": [
+   [
+    3001308,
+    40795800
+   ],
+   [
+    3004249,
+    1030724
+   ],
+   [
+    3004410,
+    37056065
+   ],
+   [
+    3005446,
+    37024125
+   ],
+   [
+    3007070,
+    40782589
+   ],
+   [
+    3007263,
+    37056065
+   ],
+   [
+    3009966,
+    40795800
+   ],
+   [
+    3028288,
+    40795800
+   ],
+   [
+    3028437,
+    40795800
+   ],
+   [
+    3030989,
+    37024125
+   ],
+   [
+    3034639,
+    40789263
+   ],
+   [
+    3035009,
+    40795800
+   ],
+   [
+    3035856,
+    1020244
+   ],
+   [
+    3035899,
+    40795800
+   ],
+   [
+    3038988,
+    40795800
+   ],
+   [
+    3039873,
+    40795800
+   ],
+   [
+    3053341,
+    40795800
+   ],
+   [
+    36031404,
+    40795800
+   ],
+   [
+    40758413,
+    1034368
+   ],
+   [
+    40758569,
+    40795800
+   ],
+   [
+    42870529,
+    40795800
+   ]
+  ]
  }
 }

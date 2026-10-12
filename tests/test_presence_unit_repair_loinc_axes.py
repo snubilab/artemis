@@ -28,6 +28,13 @@ from src.utils.circe_lint import (  # noqa: E402
 )
 from src.utils.presence_unit_allowlist import lab_test_axes  # noqa: E402
 
+#: LOINC concept id -> its 'Has component' concept ids (synthea23m).
+COMPONENTS: dict[int, set[int]] = {}
+for _cid, _component in json.loads(
+    (REPO_ROOT / "tests" / "fixtures" / "p3_structural_rows.json").read_text()
+)["vocabulary_loinc_components"]["rows"]:
+    COMPONENTS.setdefault(_cid, set()).add(_component)
+
 PT = "Point in time (spot)"
 EGFR = ("Glomerular filtration rate", "Volume Rate/Area", "Serum, Plasma or Blood", "Qn", PT)
 LDL_MASS = ("Cholesterol in LDL", "Mass Concentration", "Serum or Plasma", "Qn", PT)
@@ -226,6 +233,11 @@ def _run_gate(monkeypatch, tmp_path, cohort: dict, axes: dict) -> None:
 
         def properties(self, _ids):
             return {}
+
+        def components(self, ids):
+            # Check (r) reads what each member measures: LOINC 'Has component', the real
+            # synthea23m rows (tests/fixtures/p3_structural_rows.json).
+            return {cid: COMPONENTS[cid] for cid in ids if cid in COMPONENTS}
 
         def close(self):
             pass

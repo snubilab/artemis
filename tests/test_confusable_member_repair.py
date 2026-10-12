@@ -1,6 +1,6 @@
 """Unit tests for the export-time removal of a confusable concept-set member.
 
-THE REVERSED DECISION. ``src.utils.circe_lint.CONFUSABLE_ANALYTES`` used to argue that
+THE REVERSED DECISION. The confusable table in ``src.utils.circe_lint`` used to argue that
 nothing should remove the member, because doing so changes which patients the cohort
 SELECTS. The user reversed that under one safety condition: the removal is applied only
 where every criterion reading the set is a PRESENCE criterion, so a smaller set can only
@@ -15,10 +15,13 @@ filter on rule #4, and the hospital's Atlas inclusion report measured that rule 
 people. The first test below is that set, that bound and that criterion shape, copied
 from ``output/site_gap/2026-09-18_verify3/DELIVERY/empa-reg_treatment.circe.json``.
 
-No vocabulary, no LLM, no database: every condition is readable from the expression.
+No LLM, no database. What a member measures is its LOINC ``Has component``, read from the
+real synthea23m rows in ``tests/fixtures/p3_structural_rows.json``
+(``vocabulary_loinc_components``); the concept-set NAME decides nothing (RFC-016 §4, A28).
 """
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from copy import deepcopy
@@ -34,6 +37,17 @@ from src.utils.circe_lint import (  # noqa: E402
     confusable_concept_sets,
     iter_confusable_members,
 )
+
+#: LOINC concept id -> its 'Has component' concept ids (synthea23m).
+COMPONENTS: dict[int, set[int]] = {}
+for _cid, _component in json.loads(
+    (REPO_ROOT / "tests" / "fixtures" / "p3_structural_rows.json").read_text()
+)["vocabulary_loinc_components"]["rows"]:
+    COMPONENTS.setdefault(_cid, set()).add(_component)
+
+#: 'Hemoglobin A1/Hemoglobin.total in Blood by Electrophoresis' -- the same component as
+#: 3005446, so a set holding both measures one thing.
+HBA1_TOTAL_ELECTROPHORESIS = 3030989
 
 # ---------------------------------------------------------------------------
 # concept ids, copied from the delivered files
@@ -151,14 +165,13 @@ def test_should_remove_hba1_total_when_the_hba1c_set_is_read_only_by_a_presence_
         [concept_set(3, "Glycosylated haemoglobin (HbA1c)", HBA1C + [HBA1_TOTAL])],
         [empa_reg_rule_4(3, PRESENCE)],
     )
-    applied = repair_confusable_members(expression)
+    applied = repair_confusable_members(expression, COMPONENTS)
 
     assert len(applied) == 1
     assert applied[0].codeset_id == 3
-    assert applied[0].analyte == "HbA1c"
     assert applied[0].removed_concept_ids == [HBA1_TOTAL]
     assert members_of(expression, 3) == HBA1C
-    assert confusable_concept_sets(expression) == [], (
+    assert confusable_concept_sets(expression, COMPONENTS) == [], (
         "the lint must go quiet on the repaired expression"
     )
 
@@ -177,7 +190,7 @@ def test_should_decline_when_an_absence_criterion_reads_the_set(caplog):
     before = deepcopy(expression)
 
     with caplog.at_level(logging.WARNING):
-        applied = repair_confusable_members(expression)
+        applied = repair_confusable_members(expression, COMPONENTS)
 
     assert applied == []
     assert expression == before, "the member must stay"
@@ -193,14 +206,16 @@ def test_should_decline_when_an_absence_criterion_reads_the_set(caplog):
 # 3-5. the remaining conditions
 # ---------------------------------------------------------------------------
 
-def test_should_leave_the_set_alone_when_the_name_states_both_analytes():
-    """Condition 1, borrowed from the lint: 'systolic and diastolic' names the panel."""
+def test_should_leave_the_set_alone_when_another_member_measures_the_same_component():
+    """Condition 1, borrowed from the lint: HbA1 total beside its electrophoresis sibling
+    is one analyte measured twice, whatever the set is called."""
     expression = cohort(
-        [concept_set(28, "Systolic and diastolic blood pressure", SYSTOLIC + [BP_PANEL])],
+        [concept_set(28, "Glycosylated haemoglobin (HbA1c)",
+                     [HBA1_TOTAL, HBA1_TOTAL_ELECTROPHORESIS])],
         [empa_reg_rule_4(28, PRESENCE)],
     )
     before = deepcopy(expression)
-    assert repair_confusable_members(expression) == []
+    assert repair_confusable_members(expression, COMPONENTS) == []
     assert expression == before
 
 
@@ -211,24 +226,37 @@ def test_should_never_remove_ldl_units_per_volume_because_it_is_not_in_the_table
         [concept_set(30, "LDL cholesterol", LDL + [LDL_UNITS_PER_VOLUME, HDL])],
         [empa_reg_rule_4(30, PRESENCE)],
     )
-    applied = repair_confusable_members(expression)
+    applied = repair_confusable_members(expression, COMPONENTS)
 
     assert [r.removed_concept_ids for r in applied] == [[HDL]]
     assert LDL_UNITS_PER_VOLUME in members_of(expression, 30)
     assert HDL not in members_of(expression, 30)
 
 
-def test_should_decline_when_removing_the_member_would_empty_the_set(caplog):
-    """Condition 3. A set whose ONLY included member is the confusable has nothing to
-    fall back to, and an empty concept set matches every patient in Circe."""
+def test_should_leave_a_set_whose_only_lab_test_is_the_listed_concept():
+    """Condition 1: with no other member to say what the set measures, nothing
+    contradicts the member, so it is not confusable and the set is left alone."""
     expression = cohort(
         [concept_set(3, "Glycosylated haemoglobin (HbA1c)", [HBA1_TOTAL])],
         [empa_reg_rule_4(3, PRESENCE)],
     )
     before = deepcopy(expression)
+    assert repair_confusable_members(expression, COMPONENTS) == []
+    assert expression == before
+
+
+def test_should_decline_when_removing_the_member_would_empty_the_set(caplog):
+    """Condition 3. When every included member is a listed concept measuring something
+    the others do not -- HbA1 total beside HDL -- removing them all leaves nothing, and
+    an empty concept set matches every patient in Circe."""
+    expression = cohort(
+        [concept_set(3, "Glycosylated haemoglobin (HbA1c)", [HBA1_TOTAL, HDL])],
+        [empa_reg_rule_4(3, PRESENCE)],
+    )
+    before = deepcopy(expression)
 
     with caplog.at_level(logging.WARNING):
-        assert repair_confusable_members(expression) == []
+        assert repair_confusable_members(expression, COMPONENTS) == []
 
     assert expression == before
     assert "no included member would remain" in caplog.text
@@ -245,7 +273,7 @@ def test_should_decline_when_the_set_carries_an_excluded_item(caplog):
     before = deepcopy(expression)
 
     with caplog.at_level(logging.WARNING):
-        assert repair_confusable_members(expression) == []
+        assert repair_confusable_members(expression, COMPONENTS) == []
 
     assert expression == before
     assert HDL in members_of(expression, 30)
@@ -263,16 +291,16 @@ def test_should_agree_with_the_lint_on_which_sets_are_confusable():
         [
             concept_set(3, "Glycosylated haemoglobin (HbA1c)", HBA1C + [HBA1_TOTAL]),
             concept_set(5, "Glycosylated haemoglobin (HbA1c)", HBA1C),
-            concept_set(28, "Systolic and diastolic blood pressure", SYSTOLIC + [BP_PANEL]),
+            concept_set(28, "Hemoglobin A1", [HBA1_TOTAL, HBA1_TOTAL_ELECTROPHORESIS]),
             concept_set(30, "LDL cholesterol", LDL + [HDL]),
         ],
         [empa_reg_rule_4(3, PRESENCE)],
     )
 
     from_iterator = {
-        int(cs["id"]) for cs, _entry, _held in iter_confusable_members(expression)
+        int(cs["id"]) for cs, _held in iter_confusable_members(expression, COMPONENTS)
     }
-    findings = confusable_concept_sets(expression)
+    findings = confusable_concept_sets(expression, COMPONENTS)
     from_lint = {int(f.split()[1]) for f in findings}
 
     assert from_iterator == from_lint == {3, 30}

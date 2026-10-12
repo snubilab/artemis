@@ -141,6 +141,7 @@ from src.utils.circe_lint import (
     DROPPED_CRITERIA_KEY,
     VALUE_RANGE_CONVERSIONS_KEY,
     closure_subsumption_codesets,
+    confusable_member_ids,
     convert_value_range_inclusions,
     criteria_types_by_codeset,
     default_criterion_window,
@@ -8263,13 +8264,24 @@ class TTEService:
 
         The five conditions, the safety one among them, and why the recorded decision
         against removing a member was reversed live in
-        :mod:`src.services.confusable_member_repair`; this is the wiring. Unlike its
-        three siblings it needs NO vocabulary -- every condition is readable from the
-        expression -- so there is no database round trip and no pre-gate to skip it.
+        :mod:`src.services.confusable_member_repair`; this is the wiring. Which member is
+        not what its set measures is read off the LOINC ``Has component`` of the set's
+        members (RFC-016 §4, A28), so the vocabulary is opened -- and only when some set
+        holds a listed concept at all (`circe_lint.confusable_member_ids`).
         """
         from src.services.confusable_member_repair import repair_confusable_members
 
-        repair_confusable_members(base)
+        ids = confusable_member_ids(base)
+        if not ids:
+            return
+        vocabulary = self._lab_test_vocabulary()
+        try:
+            components = vocabulary.components(ids)
+        finally:
+            close = getattr(vocabulary, "close", None)
+            if callable(close):
+                close()
+        repair_confusable_members(base, components)
 
     def _repair_presence_unit_filters(self, base: dict[str, Any]) -> None:
         """Drop the ``Unit`` filter from allowlisted presence Measurement criteria whose

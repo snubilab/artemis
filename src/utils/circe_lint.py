@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -1724,25 +1724,8 @@ def aliased_concept_sets(expression: dict[str, Any]) -> list[str]:
     return findings
 
 
-@dataclass(frozen=True)
-class ConfusableAnalyte:
-    """One analyte a concept-set NAME can claim, and the concepts that are not it.
-
-    ``states`` matches a name claiming the analyte; ``also_states_other`` is the escape
-    hatch for a name claiming BOTH ('LDL/HDL ratio' legitimately holds HDL), so a
-    finding requires the first to match and the second not to.
-    """
-
-    analyte: str
-    states: re.Pattern[str]
-    also_states_other: re.Pattern[str]
-    #: ``concept_id -> (verbatim vocabulary name, why it is not this analyte)``, the same
-    #: recorded shape :data:`DIMENSIONLESS_VALUE_CONCEPTS` uses.
-    confusables: Mapping[int, tuple[str, str]]
-
-
-#: Concepts that CONTRADICT the analyte a concept set's own name states -- the defect no
-#: other check here can see.
+#: Concepts that are mistaken for the analyte their concept set's other members measure,
+#: and why -- the defect no other check here can see.
 #:
 #: WHY THIS IS A DIFFERENT DEFECT FROM EVERY UNIT CHECK ABOVE. Those ask whether a bound
 #: is on the right SCALE. This asks whether it is on the right QUANTITY. A unit filter
@@ -1750,20 +1733,20 @@ class ConfusableAnalyte:
 #: mg/dL, and an HDL of 135 mg/dL is not merely a different number but the opposite risk
 #: direction. :func:`aliased_concept_sets` is the nearest existing check and structurally
 #: cannot reach this: it fires when two sets hold IDENTICAL members under two names, and
-#: here one set holds members its single name contradicts.
+#: here one set holds a member that measures something its other members do not.
 #:
-#: WHY THIS ONE READS THE NAME, when every table beside it deliberately does not.
-#: :data:`DIMENSIONLESS_VALUE_CONCEPTS` is keyed on concept id precisely because a
-#: concept-set name is model-written free text and this corpus supplies three spellings
-#: of HbA1c alone. That argument holds and is not contradicted here -- it is about
-#: identifying an ANALYTE, and this check's subject is the NAME itself. The question is
-#: whether the name describes what the members measure, so the name is the claim under
-#: test and cannot be replaced by an id. What follows from the free-text problem is the
-#: shape of ``states``: it matches every spelling the corpus supplies rather than an
-#: exact string, and ``also_states_other`` is what keeps a name claiming both analytes
-#: from firing.
+#: WHAT A SET MEASURES IS READ OFF THE VOCABULARY, NOT ITS NAME (RFC-016 §4, A28). Until
+#: 2026-10-12 a regex over the concept-set NAME decided which analyte a set claimed
+#: ("ldl", "a1c", "systolic") and a second one excused a name claiming both. A set name is
+#: model-written free text. A listed member is now confusable in a set when it has a LOINC
+#: ``Has component`` and no other LOINC member of the set shares it -- the other members
+#: measure something else. On every real set holding one of these three concepts (the
+#: 2026-09-12 delivery, ``2026-09-18_verify``, the 2026-10-12 candidate; 25 sets) the two
+#: rules agree. The table stays keyed on concept id, the shape
+#: :data:`DIMENSIONLESS_VALUE_CONCEPTS` uses: which concept is easily mistaken is a
+#: recorded clinical fact, not something the vocabulary carries.
 #:
-#: WHY THE MEMBER IS NOW REMOVED, reversing what this comment said until 2026-09-18.
+#: WHY THE MEMBER IS REMOVED, reversing what this comment said until 2026-09-18.
 #: The old argument was that every export-time repair beside this
 #: (``presence_unit_repair``, ``entry_exclusion_repair``, ``range_disjunction_repair``)
 #: changes how a criterion is COMPARED, while dropping HDL from an LDL set changes which
@@ -1773,152 +1756,130 @@ class ConfusableAnalyte:
 #: codeset 3 'Glycosylated haemoglobin (HbA1c)', which holds 3005446; that one member
 #: makes :mod:`src.utils.presence_unit_allowlist` classify the set as "unlisted", so the
 #: unit repair keeps the ``Unit [8554]`` filter, and the hospital's Atlas inclusion
-#: report measured that rule at 0 people. A confusable member held a whole cohort at
-#: zero while the gate reported it and waited for an upstream fix that re-rolls a third
-#: of the criteria to change one set.
+#: report measured that rule at 0 people.
 #:
-#: The user reversed the decision under ONE safety condition, and it is that condition
-#: that makes the direction defensible rather than the measurement above. Removing a
-#: member SHRINKS the set, so where every criterion reading it is a PRESENCE criterion
-#: the cohort can only select FEWER patients -- the same "can only miss patients"
-#: direction the unit allowlist requires. Where an ABSENCE criterion reads it, a smaller
-#: set makes the absence EASIER to satisfy and the direction flips to "can wrongly
-#: include patients", which is not a trade anyone authorised. So
-#: :mod:`src.services.confusable_member_repair` enumerates every reader across the whole
-#: expression and declines unless all of them are provably presence criteria under
-#: monotone groups; it also declines a set carrying an ``isExcluded`` item, and one that
-#: would be left with no included member. This table stays the single source of WHICH
-#: member is confusable -- the repair and this lint read it through
-#: :func:`iter_confusable_members`, so the gate and the repair cannot drift apart -- and
-#: the gate still refuses anything the repair declined.
-#:
-#: MEASURED, not enumerated from what seemed complete. Every concept set in the six
-#: ``deliveries/2026-09-12/`` files and the six ``output/site_gap/2026-09-18_verify/
-#: DELIVERY/`` files was resolved against ``omop_vocab.concept`` and read against its own
-#: name; three pairs came out, and all three appear in BOTH corpora. Each row's name and
-#: domain below is that vocabulary read, dated 2026-09-18.
+#: The user reversed the decision under ONE safety condition: removing a member SHRINKS
+#: the set, so where every criterion reading it is a PRESENCE criterion the cohort can
+#: only select FEWER patients. Where an ABSENCE criterion reads it the direction flips,
+#: so :mod:`src.services.confusable_member_repair` declines unless every reader is
+#: provably a presence criterion (or a converted value-range absence); it also declines a
+#: set carrying an ``isExcluded`` item, and one that would be left with no included
+#: member. The repair and this lint read one predicate, :func:`iter_confusable_members`,
+#: and the gate still refuses anything the repair declined.
 #:
 #: The unit-drop allowlist declines a set holding any of these as "unlisted", and
-#: :mod:`src.utils.presence_unit_allowlist`'s docstring records why none of them is ever
-#: a one-line addition there. ``tests/test_confusable_concept_set_lint.py`` gates the two
-#: tables against each other, so a confusable cannot become an allowlisted analyte
-#: member without failing a test first.
-CONFUSABLE_ANALYTES: tuple[ConfusableAnalyte, ...] = (
-    ConfusableAnalyte(
-        analyte="LDL cholesterol",
-        states=re.compile(r"\bldl\b|low[-\s]density lipoprotein", re.IGNORECASE),
-        also_states_other=re.compile(r"\bhdl\b|high[-\s]density lipoprotein", re.IGNORECASE),
-        confusables={
-            3007070: (
-                "Cholesterol in HDL [Mass/volume] in Serum or Plasma",
-                "HDL is a different lipoprotein, and its bound runs the other way -- a "
-                "high HDL is protective while a high LDL is the risk the criterion "
-                "selects on, so 'LDL >= 135' over an HDL result selects the opposite "
-                "patients rather than merely the wrong number",
-            ),
-        },
+#: ``tests/test_confusable_concept_set_lint.py`` gates the two tables against each other.
+CONFUSABLE_MEMBERS: Mapping[int, str] = {
+    3007070: (
+        "Cholesterol in HDL: HDL is a different lipoprotein, and its bound runs the other "
+        "way -- a high HDL is protective while a high LDL is the risk the criterion "
+        "selects on, so 'LDL >= 135' over an HDL result selects the opposite patients "
+        "rather than merely the wrong number"
     ),
-    ConfusableAnalyte(
-        analyte="HbA1c",
-        # 'a1c' carries no leading \b on purpose: in 'HbA1c' the 'b' and the 'A' are both
-        # word characters, so \ba1c\b never matches it. The trailing \b is what keeps
-        # 'HbA1' and 'Hemoglobin A1' -- the names that legitimately hold 3005446 -- out.
-        states=re.compile(r"a1c\b|glyc(?:osyl|)ated\s+ha?emoglobin", re.IGNORECASE),
-        also_states_other=re.compile(
-            r"h(?:a?emoglobin\s+)?a1\b|a1\s*(?:total|a\b|b\b)", re.IGNORECASE
-        ),
-        confusables={
-            3005446: (
-                "Hemoglobin A1/Hemoglobin.total in Blood",
-                "HbA1 total includes HbA1a and HbA1b as well as HbA1c, so it reads "
-                "HIGHER than HbA1c on the same blood; an upper bound written for HbA1c "
-                "('<= 10.0%') therefore excludes patients who satisfy it",
-            ),
-        },
+    3005446: (
+        "Hemoglobin A1/Hemoglobin.total: HbA1 total includes HbA1a and HbA1b as well as "
+        "HbA1c, so it reads HIGHER than HbA1c on the same blood; an upper bound written "
+        "for HbA1c ('<= 10.0%') therefore excludes patients who satisfy it"
     ),
-    ConfusableAnalyte(
-        analyte="systolic blood pressure",
-        states=re.compile(r"\bsystolic\b", re.IGNORECASE),
-        # A name saying 'systolic and diastolic' is describing the panel, not claiming
-        # the single quantity, so the panel concept belongs to it.
-        also_states_other=re.compile(r"\bdiastolic\b", re.IGNORECASE),
-        confusables={
-            40758413: (
-                "Blood pressure systolic and diastolic",
-                "a panel over TWO quantities rather than a single value, so Circe "
-                "compares 'systolic > 140' against whichever of the two the site "
-                "recorded on the row -- a diastolic of 141 would satisfy it and a "
-                "systolic of 141 stored on a diastolic row would not",
-            ),
-        },
+    40758413: (
+        "Blood pressure systolic and diastolic: a panel over TWO quantities rather than a "
+        "single value, so Circe compares 'systolic > 140' against whichever of the two the "
+        "site recorded on the row -- a diastolic of 141 would satisfy it and a systolic of "
+        "141 stored on a diastolic row would not"
     ),
-)
+}
+
+
+def confusable_member_ids(expression: Mapping[str, Any]) -> set[int]:
+    """Every included seed member of every set holding a :data:`CONFUSABLE_MEMBERS` concept.
+
+    What :func:`iter_confusable_members` needs the vocabulary's components for; empty --
+    so no vocabulary is opened -- when no set holds one.
+    """
+    found: set[int] = set()
+    for concept_set in expression.get("ConceptSets") or []:
+        if not isinstance(concept_set, Mapping):
+            continue
+        members = seed_concept_ids(concept_set)
+        if members & set(CONFUSABLE_MEMBERS):
+            found |= members
+    return found
 
 
 def iter_confusable_members(
     expression: Mapping[str, Any],
-) -> Iterator[tuple[Mapping[str, Any], ConfusableAnalyte, tuple[int, ...]]]:
-    """``(concept set, the analyte its NAME states, the confusables it holds)``.
+    components: Mapping[int, Collection[int]],
+) -> Iterator[tuple[Mapping[str, Any], tuple[int, ...]]]:
+    """``(concept set, the confusables it holds)``.
 
-    THE single predicate for "this set holds a member that is not what it says it is".
-    :func:`confusable_concept_sets` reports it and
-    :mod:`src.services.confusable_member_repair` removes it, and both read it from here
-    so the gate and the repair cannot disagree about which member is confusable -- the
-    same arrangement ``entry_exclusion_repair`` and ``scripts/verify_entry_exclusion_
-    conflict.py`` already share their traversal through.
+    THE single predicate for "this set holds a member that is not what its other members
+    measure". :func:`confusable_concept_sets` reports it and
+    :mod:`src.services.confusable_member_repair` removes it, both from here.
 
-    Conditions 1 and 2 of the repair live here: the name states the analyte and not the
-    other thing (``states`` matches, ``also_states_other`` does not), and the held
-    concept is in that entry's ``confusables`` mapping. Everything the repair adds on top
-    -- the readers, the ``isExcluded`` item, the surviving member -- is about whether
-    removal is SAFE, not about whether the member is wrong.
+    A held :data:`CONFUSABLE_MEMBERS` concept is confusable when it has a LOINC component,
+    at least one other included LOINC member of the set has one too, and none of those
+    shares it. A set whose only lab test is the listed concept, or whose other members
+    measure the same component (HbA1 total beside HbA1 total by electrophoresis), is not.
 
     ``isExcluded`` members are skipped -- via :func:`~src.utils.presence_unit_allowlist.
-    seed_concept_ids`, the same helper the unit checks use. An exclusion REMOVES the
-    concept, so the bound never reaches it and there is nothing to report.
+    seed_concept_ids`, the same helper the unit checks use. Seed concepts, not the resolved
+    closure: a confusable reached only as a DESCENDANT of a listed seed is missed.
 
-    Seed concepts, not the resolved closure -- the same limit
-    :func:`_concept_set_is_dimensionless` carries and for the same reason: this module is
-    pure functions over a CIRCE expression dict. The consequence is one-directional and
-    worth stating: a confusable reached only as a DESCENDANT of a listed seed is missed.
-    All three pairs in both corpora are seeds, so the gap costs nothing measured today.
+    :param expression: a CIRCE cohort expression.
+    :param components: LOINC concept id -> its ``Has component`` concept ids, for at least
+        :func:`confusable_member_ids`; a non-LOINC id is absent.
     """
     for concept_set in expression.get("ConceptSets") or []:
         if not isinstance(concept_set, Mapping):
             continue
-        name = str(concept_set.get("name") or "")
         members = seed_concept_ids(concept_set)
-        for entry in CONFUSABLE_ANALYTES:
-            if not entry.states.search(name) or entry.also_states_other.search(name):
-                continue
-            held = tuple(sorted(members & set(entry.confusables)))
-            if held:
-                yield concept_set, entry, held
+        held = []
+        for concept_id in sorted(members & set(CONFUSABLE_MEMBERS)):
+            own = set(components.get(concept_id) or ())
+            others: set[int] = set()
+            for member in members - {concept_id}:
+                others |= set(components.get(member) or ())
+            if own and others and not own & others:
+                held.append(concept_id)
+        if held:
+            yield concept_set, tuple(held)
 
 
-def confusable_concept_sets(expression: dict[str, Any]) -> list[str]:
-    """Locators for concept sets holding a concept that is not the analyte they name.
+def _member_name(concept_set: Mapping[str, Any], concept_id: int) -> str:
+    """The item's own ``CONCEPT_NAME``, for a message; never compared."""
+    for item in (concept_set.get("expression") or {}).get("items") or []:
+        concept = (item or {}).get("concept") or {}
+        if concept.get("CONCEPT_ID") == concept_id:
+            return str(concept.get("CONCEPT_NAME") or "")
+    return ""
 
-    See :data:`CONFUSABLE_ANALYTES` for the table, why this one check reads the name, and
-    why the member is now removed at export time where it is provably safe. This still
-    fires on everything :mod:`src.services.confusable_member_repair` DECLINED, which is
-    what keeps the delivery gate refusing the cases removal would not be safe for.
+
+def confusable_concept_sets(
+    expression: dict[str, Any], components: Mapping[int, Collection[int]]
+) -> list[str]:
+    """Locators for concept sets holding a concept that is not what their other members measure.
+
+    See :data:`CONFUSABLE_MEMBERS` for the table and why the member is removed at export
+    time where it is provably safe. This still fires on everything
+    :mod:`src.services.confusable_member_repair` DECLINED, which is what keeps the delivery
+    gate refusing the cases removal would not be safe for.
 
     :param expression: a CIRCE cohort expression.
+    :param components: as :func:`iter_confusable_members` takes it.
     :returns: one locator per offending concept set, empty when none.
     """
     findings: list[str] = []
-    for concept_set, entry, held in iter_confusable_members(expression):
+    for concept_set, held in iter_confusable_members(expression, components):
         detail = "; ".join(
-            f"{cid} {entry.confusables[cid][0]!r} -- {entry.confusables[cid][1]}"
+            f"{cid} {_member_name(concept_set, cid)!r} -- {CONFUSABLE_MEMBERS[cid]}"
             for cid in held
         )
         findings.append(
             f"codeset {concept_set.get('id')} {str(concept_set.get('name') or '')!r} "
-            f"names {entry.analyte} but holds {len(held)} concept(s) that measure "
-            f"something else: {detail}. The bound is applied to the wrong quantity, so "
-            f"no unit filter can make it right; the export-time repair declined to "
-            f"remove it, so the removal is not provably safe here and the fix is upstream"
+            f"holds {len(held)} concept(s) whose LOINC component no other member shares: "
+            f"{detail}. The bound is applied to the wrong quantity, so no unit filter can "
+            f"make it right; the export-time repair declined to remove it, so the removal "
+            f"is not provably safe here and the fix is upstream"
         )
     return findings
 

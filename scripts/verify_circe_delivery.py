@@ -213,14 +213,12 @@ Checks per file:
     them: every export-time repair in this pipeline changes how a criterion is COMPARED,
     while dropping HDL from an LDL set changes which patients the cohort SELECTS, so it is
     a mapping correction and this gate refuses instead. ``isExcluded`` members are skipped
-    -- an exclusion removes the concept, so the bound never reaches it. This is the one
-    check here that reads a concept-set NAME, and deliberately: the name is the claim
-    under test, so it cannot be replaced by a concept id the way
-    ``DIMENSIONLESS_VALUE_CONCEPTS`` is. What the free-text problem costs instead is the
-    shape of the match -- every spelling the corpus supplies, plus an escape for a name
-    claiming both analytes ('LDL/HDL ratio' legitimately holds HDL). See
-    ``src.utils.circe_lint.confusable_concept_sets`` and the table
-    ``CONFUSABLE_ANALYTES`` beside it.
+    -- an exclusion removes the concept, so the bound never reaches it. What the set
+    measures is read off the LOINC ``Has component`` of its members (``--dsn``), never off
+    its NAME (RFC-016 §4, A28): a listed concept is confusable where no other LOINC member
+    shares its component. The vocabulary is opened only for a file whose sets hold a
+    listed concept, and an unreachable one then aborts. See
+    ``src.utils.circe_lint.confusable_concept_sets`` and ``CONFUSABLE_MEMBERS`` beside it.
 
 (s) no inclusion rule requires at least one occurrence of criteria that are EVERY ONE of
     them forbidden outright by a mandatory zero-occurrence criterion elsewhere in the
@@ -388,6 +386,7 @@ from src.utils.circe_lint import (  # noqa: E402
     closure_subsumed_presence_criteria,
     closure_subsumption_codesets,
     confusable_concept_sets,
+    confusable_member_ids,
     conjoined_disjunction_rules,
     contradictory_absence_rules,
     contradictory_presence_absence_criteria,
@@ -2803,7 +2802,23 @@ def main(argv: list[str] | None = None) -> int:
         # filter can make 'LDL >= 135 mg/dL' right over an HDL result. Check (m) is the
         # nearest and cannot reach it: it needs TWO sets with identical members, and
         # here ONE set holds members its single name contradicts.
-        confusables = confusable_concept_sets(expression)
+        confusable_ids = confusable_member_ids(expression)
+        member_components: dict[int, set[int]] = {}
+        if confusable_ids:
+            if lab_test_vocabulary is None:
+                try:
+                    lab_test_vocabulary = _open_lab_test_vocabulary(args.dsn, args.vocab_schema)
+                except Exception as exc:  # noqa: BLE001 -- re-raised as a named abort
+                    print(
+                        f"ABORT: vocabulary unreachable at DSN {args.dsn!r} (schema "
+                        f"{args.vocab_schema}): {exc}. Check (r) reads the LOINC components "
+                        f"of the concept-set members and will not pass a file it could not "
+                        f"read.",
+                        file=sys.stderr,
+                    )
+                    return 2
+            member_components = lab_test_vocabulary.components(confusable_ids)
+        confusables = confusable_concept_sets(expression, member_components)
         if confusables:
             reasons.append(
                 f"confusable concept sets ({len(confusables)}): {'; '.join(confusables)}"

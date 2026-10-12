@@ -11,10 +11,13 @@ is rule #6 and its ``_valueRangeConversions`` records as that file carries them.
 
 THE CONTROLS. A plain absence -- one no conversion record covers -- still declines, as does
 an absence whose bound or unit is not what the conversion emitted, and one reached through a
-non-ALL group. No vocabulary, no database: every condition is read off the expression.
+non-ALL group. No database: every condition is read off the expression, and what each
+member measures is its LOINC ``Has component`` from the real synthea23m rows in
+``tests/fixtures/p3_structural_rows.json`` (RFC-016 §4, A28).
 """
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from copy import deepcopy
@@ -26,8 +29,19 @@ sys.path.insert(0, str(REPO_ROOT))
 from src.services.confusable_member_repair import repair_confusable_members  # noqa: E402
 from src.utils.circe_lint import (  # noqa: E402
     VALUE_RANGE_CONVERSIONS_KEY,
-    confusable_concept_sets,
 )
+from src.utils.circe_lint import confusable_concept_sets as _confusable_concept_sets  # noqa: E402
+
+#: LOINC concept id -> its 'Has component' concept ids (synthea23m).
+COMPONENTS: dict[int, set[int]] = {}
+for _cid, _component in json.loads(
+    (REPO_ROOT / "tests" / "fixtures" / "p3_structural_rows.json").read_text()
+)["vocabulary_loinc_components"]["rows"]:
+    COMPONENTS.setdefault(_cid, set()).add(_component)
+
+
+def confusable_concept_sets(expression: dict) -> list[str]:
+    return _confusable_concept_sets(expression, COMPONENTS)
 from src.utils.presence_unit_allowlist import iter_codeset_readers  # noqa: E402
 
 #: EMPA-REG codesets 3/4 on the dry rebuild, after the conversion pruned 3034639, 4197971 and
@@ -142,7 +156,7 @@ def members_of(expression: dict, codeset_id: int) -> list[int]:
 def test_should_remove_hba1_total_when_only_converted_value_range_absences_read_the_set():
     expression = empa_reg_dry_rebuild()
 
-    applied = repair_confusable_members(expression)
+    applied = repair_confusable_members(expression, COMPONENTS)
 
     assert sorted(r.codeset_id for r in applied) == [3, 4]
     assert all(r.removed_concept_ids == [HBA1_TOTAL] for r in applied)
@@ -159,7 +173,7 @@ def test_should_touch_nothing_but_the_member_when_it_repairs_a_converted_set():
             i for i in cs["expression"]["items"] if i["concept"]["CONCEPT_ID"] != HBA1_TOTAL
         ]
 
-    repair_confusable_members(expression)
+    repair_confusable_members(expression, COMPONENTS)
 
     assert expression == expected
 
@@ -182,7 +196,7 @@ def test_should_decline_when_a_plain_absence_that_no_conversion_record_covers_re
     before = deepcopy(expression)
 
     with caplog.at_level(logging.WARNING):
-        applied = repair_confusable_members(expression)
+        applied = repair_confusable_members(expression, COMPONENTS)
 
     assert applied == []
     assert expression == before
@@ -197,7 +211,7 @@ def test_should_decline_when_the_conversion_was_declined_rather_than_applied():
         record["status"] = "declined"
     before = deepcopy(expression)
 
-    assert repair_confusable_members(expression) == []
+    assert repair_confusable_members(expression, COMPONENTS) == []
     assert expression == before
 
 
@@ -207,7 +221,7 @@ def test_should_decline_when_the_absence_bound_is_not_one_the_conversion_emitted
     first["Criteria"]["Measurement"]["ValueAsNumber"] = {"Value": 6.5, "Op": "lt"}
     before = deepcopy(expression)
 
-    applied = repair_confusable_members(expression)
+    applied = repair_confusable_members(expression, COMPONENTS)
 
     assert [r.codeset_id for r in applied] == [4], "codeset 4's readers are still the record's"
     assert members_of(expression, 3) == members_of(before, 3)
@@ -218,7 +232,7 @@ def test_should_decline_when_the_absence_carries_a_unit_the_conversion_never_emi
     first = expression["InclusionRules"][0]["expression"]["Groups"][0]["CriteriaList"][0]
     first["Criteria"]["Measurement"]["Unit"] = [{"CONCEPT_ID": 8554, "CONCEPT_CODE": "%"}]
 
-    applied = repair_confusable_members(expression)
+    applied = repair_confusable_members(expression, COMPONENTS)
 
     assert [r.codeset_id for r in applied] == [4]
     assert HBA1_TOTAL in members_of(expression, 3)
@@ -228,7 +242,7 @@ def test_should_decline_when_the_absence_is_reached_through_a_non_all_group():
     expression = empa_reg_dry_rebuild()
     expression["InclusionRules"][0]["expression"]["Groups"][0]["Type"] = "ANY"
 
-    applied = repair_confusable_members(expression)
+    applied = repair_confusable_members(expression, COMPONENTS)
 
     assert [r.codeset_id for r in applied] == [4]
     assert HBA1_TOTAL in members_of(expression, 3)
