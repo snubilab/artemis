@@ -38,9 +38,9 @@ with ``ast``. A *text-rule site* is one of:
     does to free text before testing it for words; a dict-key test (``"CodesetId" in
     payload``) is not normalised and is not collected.
 (d) ``split: / rsplit: / replace: / find: / rfind: / count: / partition: /
-    rpartition: / index: / rindex:`` -- that string method called on normalised text
-    (the condition of (c)) with a first argument that is a string literal containing a
-    letter.
+    rpartition: / index: / rindex:`` -- that string method called, on any receiver,
+    with a first argument that is a string literal containing a letter. ``re.split`` is
+    already a site under (a) and is not collected again.
 
 A site is keyed by ``(file, fingerprint)``. The fingerprint is the pattern text, the
 sorted string members, or the tested literal -- never a line number, so editing
@@ -48,7 +48,7 @@ unrelated code does not churn the ledger.
 
 WHAT IT MISSES
 --------------
-Literal tests and string-method calls on text that was not normalised first; a lookup
+Literal ``in / startswith / endswith / ==`` tests on text that was not normalised first; a lookup
 table whose values are names or attributes rather than constants; a word list held as a
 single delimited string and split at run time, unless it reaches ``re``, a collection
 literal or a (d) call; names imported from another module, which a pattern argument
@@ -370,14 +370,14 @@ class _Collector(ast.NodeVisitor):
                     f"{func.attr}:"
                     + _fingerprint_list(e.value for e in argument.elts if _is_str(e)),  # type: ignore[attr-defined]
                 )
-        # -- (d) string-method calls with a word on normalised text --------------------
+        # -- (d) string-method calls with a word, on any receiver but the re module ------
         if (
             isinstance(func, ast.Attribute)
             and func.attr in SEARCH_METHODS
             and node.args
             and _is_str(node.args[0])
             and any(character.isalpha() for character in node.args[0].value)  # type: ignore[attr-defined]
-            and self._normalised(func.value)
+            and not is_re
         ):
             self._add(node, f"{func.attr}:" + json.dumps(node.args[0].value, ensure_ascii=False))  # type: ignore[attr-defined]
         self.generic_visit(node)
