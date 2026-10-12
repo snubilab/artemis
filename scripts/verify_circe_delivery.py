@@ -76,18 +76,20 @@ Checks per file:
     reason prose cannot carry it — and one carrying no reason, no code, or an unknown
     code fails on its own line.
 
-(j) no ``Measurement`` criterion carries no value condition while its own concept-set
-    name or rule name asserts one. Every check above reads a criterion that is PRESENT
-    and asks whether it is wrong; a rule that LOST its threshold is byte-identical to
-    one that legitimately never had a threshold, so none of them could see it. Measured
-    in ``carolina_treatment.circe.json``: rule 30 keeps its "3x ULN" as a
+(j) no criterion whose protocol line states a threshold emitted without a value
+    condition. "States a threshold" is the store row's annotation (RFC-016 step 3): a
+    ``threshold_span`` that is a substring of the row's ``protocolLine``, with its
+    ``quantity_kind``. Every check above reads a criterion that is PRESENT and asks whether
+    it is wrong; a rule that LOST its threshold is byte-identical to one that legitimately
+    never had a threshold, so none of them could see it. Measured in
+    ``carolina_treatment.circe.json`` (2026-09-08): rule 30 keeps its "3x ULN" as a
     ``RangeHighRatio`` while rules 33 and 37 emit bare, and rule 37 then excludes any
-    patient who has ever had an ALT, AST, bilirubin or INR drawn — routine panel labs.
-    The file was reported as "78 mapped, 0 unmapped": the bare members were counted as
-    mapped. 26 such criteria in this batch, and 4 more in the hand-built TROY v1.1 gold
-    under ``data/gold/``, which carries the same defect on ARISTOTLE's
-    "systolic BP > 180 mm Hg" exclusion. See
-    ``src.utils.circe_lint.asserted_bound_missing_criteria``.
+    patient who has ever had an ALT, AST, bilirubin or INR drawn. A threshold the
+    annotation says no value filter represents (a dose, a duration, a count, a statistical
+    quantity) passes only when the file lists it under ``_unrepresentableThresholds`` AND
+    the store row still says so. Until 2026-10-12 this check read the rule and concept-set
+    NAMES for words asserting a bound (A29); that word list is deleted. See
+    ``threshold_without_value_filter_findings``.
 
 (k) the STORE study's repair ledger (``eligibility._repairAccounting``) reconciles
     against the store's own criteria. Every check above reconciles the delivered file
@@ -343,8 +345,12 @@ from src.services.conceptset_closure import (  # noqa: E402
 )
 from src.services.criterion_annotation import (  # noqa: E402
     CONDITIONAL_REASON,
+    UNREPRESENTABLE_THRESHOLDS_KEY,
+    ThresholdUse,
+    applied_value_constraint,
     group_descendants,
     span_in_line,
+    threshold_use,
 )
 from src.services.restated_absence_repair import (  # noqa: E402
     RESTATED_ABSENCE_REMOVALS_KEY,
@@ -385,7 +391,6 @@ from src.utils.circe_lint import (  # noqa: E402
     absence_overlap_codesets,
     absence_overlap_findings,
     aliased_concept_sets,
-    asserted_bound_missing_criteria,
     closure_subsumed_presence_criteria,
     closure_subsumption_codesets,
     confusable_concept_sets,
@@ -409,6 +414,7 @@ from src.utils.circe_lint import (  # noqa: E402
     unitless_value_bound_criteria,
     unreadable_value_attributes,
     unsatisfiable_presence_rules,
+    value_conditions_by_codeset,
     value_range_conversion_member_ids,
     value_range_inclusion_criteria,
 )
@@ -1143,6 +1149,75 @@ def criteria_index(study: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any
     }
 
 
+def threshold_without_value_filter_findings(
+    expression: dict[str, Any], study: dict[str, Any]
+) -> list[str]:
+    """Check (j): a stated threshold whose criterion emitted no value condition.
+
+    A store row states a threshold when its accepted annotation carries a
+    ``threshold_span`` that is a substring of its ``protocolLine``
+    (:func:`src.services.criterion_annotation.threshold_use`; the span is re-checked
+    there). Such a row that minted a concept set (``_criterionConceptSetRefs``) and whose
+    criteria over that set carry no key of ``VALUE_CONDITION_ATTRIBUTES`` fails, unless
+    the annotation says no value filter represents the threshold AND the file lists the
+    row under ``_unrepresentableThresholds`` -- the record is the producer's claim, and
+    the decision behind it is re-derived from the store row here, never read off it.
+
+    Nothing reads a name. A row whose line states no threshold, or whose annotation was
+    rejected, is not judged: absence of a verified threshold is not evidence of one.
+
+    :param expression: the delivered CIRCE expression.
+    :param study: the store study it was built from.
+    :returns: one finding per offending criterion; a single fail-closed finding when rows
+        state thresholds and the file carries no refs map to say what they emitted.
+    """
+    stated = {}
+    for key, row in criteria_index(study).items():
+        use, threshold = threshold_use(row)
+        if threshold is not None:
+            stated[key] = (row, use, threshold)
+    if not stated:
+        return []
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    if not isinstance(refs, dict):
+        return [
+            f"{len(stated)} store criteria state a verified threshold and the file carries "
+            f"no {CRITERION_CONCEPT_SET_REFS_KEY}, so whether each emitted a value "
+            "condition cannot be checked"
+        ]
+    recorded = {
+        (record.get("role"), str(record.get("criterionId") or ""))
+        for record in expression.get(UNREPRESENTABLE_THRESHOLDS_KEY) or []
+        if isinstance(record, dict)
+    }
+    conditions = value_conditions_by_codeset(expression)
+    findings: list[str] = []
+    for (role, criterion_id), (row, use, threshold) in sorted(stated.items()):
+        codeset = refs.get(f"{role}:{criterion_id}")
+        emitted = conditions.get(codeset) if codeset is not None else None
+        if not emitted or any(carries for _where, _type, carries in emitted):
+            continue
+        if use is ThresholdUse.NOT_REPRESENTABLE and (role, criterion_id) in recorded:
+            continue
+        where, criteria_type, _carries = emitted[0]
+        why = (
+            f"the annotation says no value filter represents it and the file does not list "
+            f"it under {UNREPRESENTABLE_THRESHOLDS_KEY}"
+            if use is ThresholdUse.NOT_REPRESENTABLE
+            else "it is applied as a value filter, and none was emitted"
+        )
+        findings.append(
+            f"{role} #{criterion_id} {_label_of(row)!r}: {where}: {criteria_type} over "
+            f"codeset {codeset} carries no value condition while its protocol line states "
+            f"{threshold.span!r} ({threshold.kind.value}) -- {why}"
+        )
+    return findings
+
+
+def _label_of(row: dict[str, Any]) -> str:
+    return str(row.get("sourceText") or row.get("description") or "")
+
+
 def unmapped_refusal_block_reason(record: dict[str, Any]) -> str | None:
     """Why this ``_unmappedCriteria`` row is criterion loss, or ``None`` when it is not.
 
@@ -1422,7 +1497,9 @@ def _group_label_violations(
     # file's concept-set refs (`emitted` None) every such member is re-judged that way. A
     # member the file already books as lost for ANOTHER reason (a skip record, or a
     # refusal under a different code) is that loss, not this one.
-    label_constraint = label.get("valueConstraint")
+    # The label's threshold as the producer applies it (RFC-016 step 3): None when its
+    # annotation says no value filter represents it, the annotation's bound otherwise.
+    label_constraint = applied_value_constraint(label)
     if label_constraint:
         refusal_codes = {
             (record.get("role"), str(record.get("criterionId") or "")): record.get("refusalCode")
@@ -1432,7 +1509,7 @@ def _group_label_violations(
         stranded = [
             criterion
             for key, criterion in members
-            if criterion.get("valueConstraint") is None
+            if applied_value_constraint(criterion) is None
             and (emitted is None or key not in emitted)
             and key not in skipped_by_key
             and refusal_codes.get(key, REFUSAL_STRANDED_GROUP_THRESHOLD)
@@ -2727,14 +2804,14 @@ def main(argv: list[str] | None = None) -> int:
                 f"redundant inclusion rules ({len(redundant_rules)}): {'; '.join(redundant_rules)}"
             )
 
-        # (j) a Measurement criterion whose own name asserts a bound it does not
-        # carry. Every other check reads a criterion that is PRESENT and asks whether
-        # it is wrong; this one asks whether something is missing from it, which is
-        # why the 26 lost thresholds in this batch were counted as "mapped".
-        missing_bounds = asserted_bound_missing_criteria(expression)
+        # (j) a criterion whose protocol line states a threshold (its verified annotation)
+        # emitted without a value condition. Every other check reads a criterion that is
+        # PRESENT and asks whether it is wrong; this one asks whether something is missing
+        # from it, which is why lost thresholds used to be counted as "mapped".
+        missing_bounds = threshold_without_value_filter_findings(expression, study)
         if missing_bounds:
             reasons.append(
-                f"asserted bound missing ({len(missing_bounds)}): "
+                f"stated threshold missing ({len(missing_bounds)}): "
                 f"{'; '.join(missing_bounds)}"
             )
 

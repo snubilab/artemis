@@ -1,5 +1,5 @@
 {
- "about": "Real rows for the RFC-016 step 3 tests (quantity_kind / reference_bound / threshold_span), copied verbatim from read-only sources. 'candidate' is the 2026-10-12 prompt_f2 store, 'p2_new' the 2026-10-12 P2 NEW store; 'segmentation' is the eligibility segmentation of the production pdftotext rendering of the named PDF with the hand-made truth oracle of tests/fixtures/segmentation/corpus_truth.json (the PDF text is SHA-256 pinned there).",
+ "about": "Real rows for the RFC-016 step 3 tests (quantity_kind / reference_bound / threshold_span), copied verbatim from read-only sources. 'candidate' is the 2026-10-12 prompt_f2 store, 'p2_new' the 2026-10-12 P2 NEW store; 'segmentation' is the eligibility segmentation of the production pdftotext rendering of the named PDF with the hand-made truth oracle of tests/fixtures/segmentation/corpus_truth.json (the PDF text is SHA-256 pinned there). leader_exclusion_5 and carmelina_inclusion_16 (candidate) are the rows behind the candidate gate's four former check (j) findings.",
  "sources": {
   "candidate": {
    "path": "output/site_gap/2026-10-12_prompt_f2/store/studies.json",
@@ -518,5 +518,44 @@
    "sha256": "82ead0d37ae6f2729ab3fc796fb73da04ef769de2c299596b15aef52247c3461",
    "exclusion_17": "Platelet count ≤ 100,000/ mm"
   }
+ },
+ "leader_exclusion_5": {
+  "id": 5,
+  "description": "Elevated HbA1c",
+  "domain": "Measurement",
+  "valueConstraint": null,
+  "sourceText": "Elevated HbA1c",
+  "protocolLine": "Acute decompensation of glycemic control",
+  "protocolSpan": "",
+  "window": {
+   "start": -9999,
+   "end": 0
+  },
+  "conceptSetId": 29,
+  "conceptSetName": "Elevated HbA1c",
+  "logicType": "ABSENCE",
+  "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true
+ },
+ "carmelina_inclusion_16": {
+  "id": 16,
+  "description": "Impaired renal function (UACR)",
+  "domain": "Measurement",
+  "valueConstraint": null,
+  "sourceText": "Urine Albumin Creatinine Ratio",
+  "protocolLine": "High risk of cardiovascular (CV) events defined by: 1) albuminuria (micro or macro) and previous macrovascular disease and/or 2) impaired renal function with predefined Urine Albumin Creatinine Ratio (UACR",
+  "protocolSpan": "",
+  "window": null,
+  "conceptSetId": 9,
+  "conceptSetName": "Urine Albumin Creatinine Ratio",
+  "logicType": "PRESENCE",
+  "groupId": "93f3744c-b49e-4d25-bec0-2fcbd055f241",
+  "groupType": "ANY",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true
  }
 }
