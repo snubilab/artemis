@@ -180,15 +180,14 @@ def make_placebo(prompt: str, index: int) -> tuple[str, str]:
 
 def observe(crit) -> dict:
     """What one decomposition produced, in comparable form."""
-    from src.utils.naming_words import naming_words
-    from src.utils.circe_lint import _line_names_the_criterion
+    from src.utils.naming_words import _line_names_the_criterion, naming_words
 
     line_words = naming_words(crit.source_text or "")
     members = []
     for sc in crit.sub_criteria:
         claimed = naming_words(sc.entity_text) | naming_words(sc.name)
-        # The lint's own predicate, not a re-implementation of it: this is the
-        # same question `circe_lint.ungrounded_criteria` asks of a delivered
+        # The predicate of the deleted gate check (p), not a re-implementation of
+        # it: the question `circe_lint.ungrounded_criteria` asked of a delivered
         # artifact, asked one stage earlier where the member is minted.
         lint_grounded = bool(line_words and claimed
                              and _line_names_the_criterion(claimed, line_words))

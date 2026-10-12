@@ -501,7 +501,6 @@
     {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"comparator\", \"treatment\"]", "kind": "allowed", "inventory_id": "B23", "reason": "CIRCE field / attribute names, op sets, arm roles, store keys (B23)"},
     {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"{\", \"}\"]", "kind": "allowed", "inventory_id": "B23", "reason": "brace escaping for a str.format prompt line"},
     {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"{{\", \"}}\"]", "kind": "allowed", "inventory_id": "B23", "reason": "brace escaping for a str.format prompt line"},
-    {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"exclusion\", \"inclusion\"]", "kind": "pending", "inventory_id": "A9", "reason": "A9: whether a planner member's LLM source_span is kept (shares a naming word with the sub-term); gate check (p), report only"},
     {"file": "src/utils/delivery_mode.py", "fingerprint": "strings:[\"1\", \"true\", \"yes\"]", "kind": "allowed", "inventory_id": "B35", "reason": "env-flag truthiness values"},
     {"file": "src/utils/env_flags.py", "fingerprint": "eq:\"true\"", "kind": "allowed", "inventory_id": "new:B", "reason": "env-flag / config value compared after normalisation"},
     {"file": "src/utils/llm.py", "fingerprint": "endswith:[\"/no_think\"]", "kind": "allowed", "inventory_id": "B24", "reason": "/no_think control suffix on a chat message (B24)"},

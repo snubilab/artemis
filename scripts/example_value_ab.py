@@ -45,8 +45,8 @@ evidence about the examples.
 
 WHAT IS MEASURED
 ----------------
-  fabrication          circe_lint._line_names_the_criterion over every emitted
-                       criterion -- the lint's own predicate, not a copy of it
+  fabrication          naming_words._line_names_the_criterion over every emitted
+                       criterion -- the predicate of the deleted gate check (p)
   decomposition        named control rows: did each still decompose, into how
                        many members, under what group_type
   criterion count      top-level rules and total criteria
@@ -158,8 +158,7 @@ def build_arms(paths: dict[str, str], replicates: int) -> dict[tuple[str, int], 
 # --------------------------------------------------------------------------
 
 def walk(rule, section: str, depth: int = 0, parent=None) -> list[dict]:
-    from src.utils.circe_lint import _line_names_the_criterion
-    from src.utils.naming_words import naming_words
+    from src.utils.naming_words import _line_names_the_criterion, naming_words
 
     line_words = naming_words(rule.source_text or "")
     claimed = naming_words(rule.entity_text) | naming_words(rule.name)
@@ -176,7 +175,7 @@ def walk(rule, section: str, depth: int = 0, parent=None) -> list[dict]:
         "group_type": rule.group_type if rule.sub_criteria else None,
         "n_members": len(rule.sub_criteria),
         "parent_source_text": (parent.source_text if parent is not None else None),
-        # The lint's own predicate, asked one stage earlier than the delivered
+        # The deleted gate check (p)'s predicate, asked one stage earlier than the delivered
         # artifact -- a criterion whose own protocol line does not name what it
         # claims is a fabrication wherever it is observed.
         "lint_grounded": bool(line_words and claimed
