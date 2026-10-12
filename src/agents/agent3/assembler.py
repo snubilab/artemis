@@ -12,7 +12,7 @@ from src.models.ir import (
 from src.registry.models import RegisteredConceptSet
 from src.agents.agent3.mappings import (
     DOMAIN_TO_CRITERIA_TYPE, DOMAIN_TO_PRIMARY_CRITERIA_TYPE,
-    OPERATOR_MAP, OCCURRENCE_TYPE, DEMOGRAPHIC_KEYWORDS
+    OPERATOR_MAP, OCCURRENCE_TYPE
 )
 from src.services.value_constraint import (
     build_measurement_value_filter,
@@ -500,15 +500,13 @@ class CohortAssembler:
         return HealAction("KEEP", rule_name, entity_text, "all criteria valid")
 
     @staticmethod
-    def _is_demographic(domain: Optional[str], entity_text: Optional[str]) -> bool:
-        """Check if this criteria should be a DemographicCriteria."""
-        if domain and domain.lower() == "demographics":
-            return True
-        if entity_text:
-            first_word = entity_text.strip().split()[0].lower() if entity_text.strip() else ""
-            if first_word in DEMOGRAPHIC_KEYWORDS:
-                return True
-        return False
+    def _is_demographic(domain: Optional[str]) -> bool:
+        """Whether Agent 1 put this criterion in the Demographics domain.
+
+        The domain field decides alone: no word of ``entity_text`` is read (AGENTS.md
+        § PROMPTS AND TEXT RULES, rule 2).
+        """
+        return domain == "Demographics"
 
     @staticmethod
     def _offset_to_circe_window(offset_days: int) -> Dict[str, int]:
@@ -619,7 +617,7 @@ class CohortAssembler:
             criteria_list = []
             demographic_list = []
             for sc in rule.sub_criteria:
-                if self._is_demographic(sc.domain, sc.entity_text):
+                if self._is_demographic(sc.domain):
                     # Route to DemographicCriteriaList (Age, Gender, etc.)
                     demo_entry = self._build_demographic_criteria(sc)
                     demographic_list.append(demo_entry)
@@ -724,7 +722,7 @@ class CohortAssembler:
             }
         
         # Atomic criteria — check if demographic
-        if self._is_demographic(rule.domain, rule.entity_text):
+        if self._is_demographic(rule.domain):
             demo_entry = self._build_demographic_criteria(rule)
             return {
                 "name": rule.name,
@@ -842,12 +840,17 @@ class CohortAssembler:
         return None
     
     def _build_demographic_criteria(self, rule: Criteria) -> Dict[str, Any]:
-        """Build a DemographicCriteria entry for age/gender rules."""
+        """Build a DemographicCriteria entry from a Demographics rule's value constraint.
+
+        A numeric bound on a Demographics rule is an age bound, the convention
+        ``TTEService._build_demographic_rule`` uses on the delivery path. Nothing is read
+        out of ``entity_text``: a rule without a value constraint yields an empty entry,
+        which ``_validate_and_heal`` reports.
+        """
         entry: Dict[str, Any] = {}
-        entity = (rule.entity_text or "").lower()
-        
+
         # Age constraint
-        if "age" in entity and rule.value_constraint:
+        if rule.value_constraint:
             vc = rule.value_constraint
             op = OPERATOR_MAP.get(vc.op, "gte")
             entry["Age"] = {
@@ -859,15 +862,7 @@ class CohortAssembler:
             # node on a rule that reads as fully translated.
             if op == "bt" and vc.value_high is not None:
                 entry["Age"]["Extent"] = vc.value_high
-        
-        # Gender constraint
-        if "gender" in entity or "sex" in entity:
-            from src.agents.agent3.mappings import GENDER_MAP
-            for key, concept_id in GENDER_MAP.items():
-                if key.lower() in entity:
-                    entry["Gender"] = [{"CONCEPT_ID": concept_id}]
-                    break
-        
+
         return entry
 
     def _find_concept_set_id(
@@ -875,42 +870,17 @@ class CohortAssembler:
         entity_text: Optional[str],
         concept_sets: List[RegisteredConceptSet]
     ) -> int:
-        """Find ConceptSet ID by source entity text with fuzzy matching."""
+        """Find the ConceptSet registered for exactly this entity text.
+
+        Identity only: the set whose ``source_entity_text`` is this entity. Concept-set
+        names are not matched as text, so a criterion with no registered set gets
+        CodesetId=0, which ``_validate_and_heal`` reports.
+        """
         if not entity_text:
             return 0
-        
-        query = entity_text.lower().strip()
-        
-        # Pass 1: Exact match on source_entity_text or name
         for cs in concept_sets:
             if cs.source_entity_text == entity_text:
                 return cs.id
-            if cs.name.lower() == query:
-                return cs.id
-        
-        # Pass 2: Substring/contains match (handles plurals, minor differences)
-        best_match = None
-        best_score = 0
-        for cs in concept_sets:
-            cs_name = cs.name.lower()
-            cs_src = (cs.source_entity_text or "").lower()
-            # Check if query is contained in name or vice versa
-            if query in cs_name or cs_name in query:
-                score = len(set(query.split()) & set(cs_name.split()))
-                if score > best_score:
-                    best_score = score
-                    best_match = cs
-            elif query in cs_src or cs_src in query:
-                score = len(set(query.split()) & set(cs_src.split()))
-                if score > best_score:
-                    best_score = score
-                    best_match = cs
-        
-        if best_match:
-            logger.info(f"[Agent3] Fuzzy matched '{entity_text}' → '{best_match.name}' (id={best_match.id})")
-            return best_match.id
-        
-        # Fallback: log warning and return 0
         logger.warning(f"[Agent3] No ConceptSet found for entity '{entity_text}' — CodesetId=0")
         return 0
 

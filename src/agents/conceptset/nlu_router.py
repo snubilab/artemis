@@ -41,25 +41,6 @@ class IntentResult(BaseModel):
 
 
 # ============================================================================
-# Temporal Negation Detector
-# ============================================================================
-
-TEMPORAL_KEYWORDS = [
-    "history of", "prior", "previous", "currently", "within",
-    "before", "after", "at least", "at most", "days", "months", "years"
-]
-
-
-def detect_temporal_negation(query: str) -> bool:
-    """
-    시계열 로직이 포함된 쿼리 감지.
-    RFC-001 부록 B.4에 따라 Agent1으로 Fallback 필요.
-    """
-    query_lower = query.lower()
-    return any(kw in query_lower for kw in TEMPORAL_KEYWORDS)
-
-
-# ============================================================================
 # Intent Separator (LLM-based)
 # ============================================================================
 
@@ -135,9 +116,8 @@ class NLURouter:
     ConceptSet 추천 시스템의 첫 번째 관문.
     
     역할:
-    1. Temporal 로직 감지 → Agent1 Fallback
-    2. Include/Exclude 의도 분리
-    3. 후속 검색 파이프라인으로 라우팅
+    1. Include/Exclude 의도 분리 (시계열 로직 Fallback 여부도 LLM이 fallback_to로 정한다)
+    2. 후속 검색 파이프라인으로 라우팅
     """
     
     def __init__(self):
@@ -154,18 +134,10 @@ class NLURouter:
             IntentResult with routing information
         """
         logger.info("Processing query", query=query)
-        
-        # Step 1: Temporal Fallback Check
-        if detect_temporal_negation(query):
-            logger.info("Temporal logic detected, fallback to Agent1", query=query)
-            return IntentResult(
-                include=[],
-                exclude=[],
-                fallback_to="Agent1",
-                fallback_reason=f"Temporal logic detected in: '{query}'"
-            )
-        
-        # Step 2: Intent Separation (LLM)
+
+        # Intent separation (LLM). No word list refuses the query first: whether it
+        # carries temporal logic this separation cannot express is the model's
+        # `fallback_to` field (AGENTS.md § PROMPTS AND TEXT RULES, rule 2).
         result = self.intent_separator.separate(query)
         
         logger.info("Intent separated", include=result.include, exclude=result.exclude)

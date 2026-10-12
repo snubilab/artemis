@@ -2,21 +2,17 @@
 Agent 2 (Intelligent Mapper) - Semantic Mapping Workflow.
 
 Executes the full Semantic Mapping pipeline with KG-RAG:
-Text -> [Complexity Check] -> [Fast Path | Slow Path] -> [KG Expansion] -> [LLM Critic] -> IDs
+Text -> [Retriever + LLM Reranker] -> [KG Expansion] -> [LLM Critic] -> IDs
 
 Enhanced with patterns from artemis_agent:
-- Pattern 1: Complexity Router (Fast/Slow Path)
-- Pattern 2: Rule-Based Fallback Extraction
 - Pattern 3: Gap Analysis
-- Pattern 4: Batch Processing
-- Pattern 5: Ambiguous Term Detection (in ComplexityRouter)
 - KG-RAG: Neo4j graph traversal + LLM multi-select (KRAGEN architecture)
 """
 
 import os
 import re
 import threading
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Any, Union
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import time
@@ -63,8 +59,6 @@ from src.agents.agent2.regex_rules import CodePatternMatcher
 from src.agents.agent2.retriever import retriever, CandidateConcept
 from src.agents.agent2.reranker import get_reranker
 from src.agents.agent2.logic import logician
-from src.agents.agent2.complexity_router import get_router, ComplexityRouter
-from src.agents.agent2.rule_extractor import get_extractor, RuleExtractor
 from src.agents.agent2.abbreviation_expander import expand_abbreviation, expand_in_context
 from src.agents.agent2.drug_class_expander import expand_drug_class_via_vocab
 from src.agents.agent2.umls_synonym_expander import get_umls_expander
@@ -253,18 +247,13 @@ def _prefilter_candidates(
 
 class Agent2Workflow:
     """
-    Intelligent Mapper Workflow with Fast/Slow Path Routing.
-    
+    Intelligent Mapper Workflow: every query takes the reranked ("slow") path.
+
     Features:
-    - Complexity-based routing (Pattern 1 & 5)
-    - Rule-based extraction for simple terms (Pattern 2)
     - Gap analysis for unmapped items (Pattern 3)
-    - Batch processing support (Pattern 4)
     """
     
     def __init__(self):
-        self.router: Optional[ComplexityRouter] = None
-        self.extractor: Optional[RuleExtractor] = None
         self._reranker = None
         self._umls_expander = None
 
@@ -274,20 +263,6 @@ class Agent2Workflow:
         if self._umls_expander is None:
             self._umls_expander = get_umls_expander()
         return self._umls_expander
-    
-    @property
-    def complexity_router(self) -> ComplexityRouter:
-        """Lazy load complexity router."""
-        if self.router is None:
-            self.router = get_router()
-        return self.router
-    
-    @property
-    def rule_extractor(self) -> RuleExtractor:
-        """Lazy load rule extractor."""
-        if self.extractor is None:
-            self.extractor = get_extractor()
-        return self.extractor
     
     @property
     def reranker(self):
@@ -455,46 +430,15 @@ class Agent2Workflow:
             # TODO: Implement direct DB lookup by code
             # For now, continue to vector search
         
-        # Step 1: Complexity Routing (Pattern 1 & 5)
-        # FORCE_SLOW_PATH=1 → bypass router for ablation/benchmark
-        # FORCE_FAST_PATH=1 → force fast path (no LLM reranking)
-        # domain_hint is now provided by caller (Agent 1 or benchmark)
-        force_slow = os.environ.get("FORCE_SLOW_PATH", "").strip()
-        force_fast = os.environ.get("FORCE_FAST_PATH", "").strip()
-        if force_slow_path:
-            route_path = "slow"
-        elif force_slow:
-            route_path = "slow"
-        elif force_fast:
-            route_path = "fast"
-        else:
-            route_path = self.complexity_router.route(query_text)
-        
-        # Force slow path for drug class queries that need UMLS expansion.
-        # Drug class terms (e.g., "Fibrinolytic agents", "CYP inhibitors") are
-        # simple 2-3 word queries that the router classifies as "fast", but the
-        # fast path only returns a single retriever hit without UMLS synonym
-        # expansion, leading to wrong matches (e.g., fibrinolytic → fibrinogen).
-        import re as _re
-        _DRUG_CLASS_PATTERNS = _re.compile(
-            r'\b(agents?|inhibitors?|inducers?|drugs?|blockers?|activators?|agonists?|antagonists?)\b',
-            _re.IGNORECASE,
-        )
-        # Fast path disabled: all queries go through slow path (LLM reranker + UMLS expansion)
-        # Fast path was causing wrong mappings for drug class queries and condition terms.
-        # if route_path == "fast" and domain_hint == "Drug" and _DRUG_CLASS_PATTERNS.search(query_text):
-        #     route_path = "slow"
-        #     logger.info(f"[Agent 2] Drug class query detected → forced slow path")
+        # Step 1: every query takes the slow path (LLM reranker + UMLS expansion). The
+        # fast path and the word-pattern router that chose it were removed (P5): the
+        # router's verdict had been overwritten to "slow" here for every query, so it
+        # decided nothing. `force_slow_path` is accepted for callers and has no effect.
         route_path = "slow"
 
-        logger.info(f"[Agent 2] Route: {route_path} path (fast path disabled), domain_hint={domain_hint}")
+        logger.info(f"[Agent 2] Route: {route_path} path, domain_hint={domain_hint}")
 
         result.route_path = route_path
-        # Fast path disabled — always use slow path
-        # if route_path == "fast":
-        #     result.fast_path_count += 1
-        #     concept_ids = self._fast_path(query_text, domain_hint=domain_hint)
-        # else:
         result.slow_path_count += 1
         concept_ids = self._slow_path(
             query_text, context, domain_hint=domain_hint,
@@ -575,130 +519,6 @@ class Agent2Workflow:
         )
         
         return result
-    
-    def process_batch(
-        self,
-        queries: List[str],
-        contexts: Optional[List[str]] = None
-    ) -> MappingResult:
-        """
-        Batch processing with parallel LLM calls (Pattern 4).
-        
-        Args:
-            queries: List of clinical terms to map
-            contexts: Optional list of contexts for each query
-            
-        Returns:
-            MappingResult with aggregated results
-        """
-        start_time = time.time()
-        result = MappingResult()
-        result.gap_report.total_criteria = len(queries)
-        
-        if not queries:
-            return result
-        
-        logger.info(f"[Agent 2] Batch processing {len(queries)} queries")
-        
-        # Route all queries first
-        fast_queries = []
-        slow_queries = []
-        
-        for i, query in enumerate(queries):
-            route = self.complexity_router.route(query)
-            context = contexts[i] if contexts and i < len(contexts) else None
-            
-            if route == "fast":
-                fast_queries.append((i, query, context))
-                result.fast_path_count += 1
-            else:
-                slow_queries.append((i, query, context))
-                result.slow_path_count += 1
-        
-        # Process fast path queries (parallel)
-        all_results: Dict[int, List[int]] = {}
-        
-        if fast_queries:
-            with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(fast_queries))) as pool:
-                futures = [
-                    (idx, pool.submit(self._fast_path, query, None))
-                    for idx, query, _ in fast_queries
-                ]
-                for idx, future in futures:
-                    try:
-                        all_results[idx] = future.result()
-                    except Exception as e:
-                        logger.warning(f"[Agent 2] Fast path failed for idx {idx}: {e}")
-                        all_results[idx] = []
-        
-        # Process slow path queries in batch
-        if slow_queries:
-            slow_results = self._slow_path_batch(slow_queries)
-            for (idx, _, _), ids in zip(slow_queries, slow_results):
-                all_results[idx] = ids
-        
-        # Aggregate results
-        for i, query in enumerate(queries):
-            ids = all_results.get(i, [])
-            if ids:
-                result.concept_ids.extend(ids)
-                result.gap_report.mapped_count += 1
-            else:
-                result.gap_report.add_gap(
-                    item_id=f"Q_{i+1:02d}",
-                    original_text=query,
-                    reason="No OMOP mapping found",
-                    attempted_searches=[query]
-                )
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_ids = []
-        for cid in result.concept_ids:
-            if cid not in seen:
-                seen.add(cid)
-                unique_ids.append(cid)
-        result.concept_ids = unique_ids
-        
-        result.processing_time_ms = (time.time() - start_time) * 1000
-        logger.info(f"[Agent 2] Batch result: {len(result.concept_ids)} unique concepts, "
-                   f"{result.gap_report.mapped_count}/{len(queries)} mapped, "
-                   f"{result.processing_time_ms:.1f}ms")
-        
-        return result
-    
-    def _fast_path(self, query_text: str, domain_hint: Optional[str] = None) -> List[int]:
-        """
-        Fast path: Rule-based extraction + direct lookup (no LLM).
-        
-        Pattern 2: Rule-Based Fallback Extraction.
-        """
-        logger.debug(f"[Agent 2] Fast path for: {query_text}")
-        
-        # Try rule-based extraction first
-        domain = domain_hint
-        extraction = self.rule_extractor.extract(query_text, domain)
-        
-        if extraction and self.rule_extractor.is_extraction_complete(extraction, domain):
-            # Use extracted concept_text for search
-            search_term = extraction.get("concept_text", query_text)
-        else:
-            search_term = query_text
-        
-        # Vector search with domain hint
-        candidates = retriever.search(search_term, domain_hint=domain)
-        if not candidates:
-            return []
-        
-        # For fast path, take top candidate without LLM reranking
-        best = candidates[0]
-        logger.debug(f"[Agent 2] Fast path selected: {best.concept_name} (ID: {best.concept_id})")
-        
-        # Decompose if needed
-        final_ids = logician.decompose_combination(best.concept_id)
-        
-        # Prune empty concepts
-        return logician.prune_empty_concepts(final_ids)
     
     def _slow_path(
         self,
@@ -1047,113 +867,6 @@ class Agent2Workflow:
             logger.warning(f"[Agent 2] Critic failed: {e}")
             return seed_ids, [], False
 
-    def _slow_path_batch(
-        self, 
-        queries: List[tuple]  # List of (index, query, context)
-    ) -> List[List[int]]:
-        """
-        Batch slow path processing with parallel reranking + KG + Critic.
-        
-        Full pipeline per query:
-          1. UMLS synonym expansion + parallel retriever search
-          2. Batch Top-N LLM reranking
-          3. Per-query KG expansion + Critic (parallel across queries)
-        """
-        # Phase 1: Retriever + UMLS multi-query for all queries
-        all_candidates: List[List[CandidateConcept]] = []
-        
-        for _, query, _ in queries:
-            domain_hint = None  # batch mode: domain not available
-            candidates = retriever.search(query, domain_hint=domain_hint)
-            
-            # UMLS Multi-query: expand synonyms and merge (parallel)
-            if self.umls_expander.is_available:
-                synonyms = self.umls_expander.expand(query, max_synonyms=3)
-                if synonyms:
-                    seen_ids = {c.concept_id for c in candidates}
-                    with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(synonyms))) as pool:
-                        futures = [
-                            pool.submit(retriever.search, syn, 10, domain_hint)
-                            for syn in synonyms
-                        ]
-                        for future in futures:
-                            try:
-                                for sc in future.result():
-                                    if sc.concept_id not in seen_ids:
-                                        seen_ids.add(sc.concept_id)
-                                        candidates.append(sc)
-                            except Exception as e:
-                                logger.warning(f"[Agent 2] Batch synonym search failed for '{query}': {e}")
-            
-            all_candidates.append(candidates)
-        
-        # Phase 2: Batch Top-N reranking
-        batch_items = []
-        for (_, query, context), candidates in zip(queries, all_candidates):
-            search_context = f"{context}: {query}" if context else query
-            batch_items.append({
-                "query": search_context,
-                "candidates": candidates,
-            })
-        
-        topn_results = self.reranker.rerank_topn_batch(batch_items, top_n=3)
-        
-        # Phase 2b: Force-include retriever's #1 candidate per query
-        for i, candidates in enumerate(all_candidates):
-            if candidates and topn_results[i] is not None:
-                best_candidate = candidates[0]
-                selected_ids = {c.concept_id for c in topn_results[i]}
-                if best_candidate.concept_id not in selected_ids:
-                    topn_results[i].insert(0, best_candidate)
-        
-        # Phase 3: Decompose + KG expand + Critic (parallel across queries)
-        def _post_process_query(idx: int) -> List[int]:
-            top_concepts = topn_results[idx]
-            _, query, context = queries[idx]
-            domain_hint = None  # batch mode: domain not available
-            
-            if not top_concepts:
-                return []
-            
-            # Decompose each seed
-            all_ids = []
-            seen = set()
-            for concept in top_concepts:
-                decomposed = logician.decompose_combination(concept.concept_id)
-                pruned = logician.prune_empty_concepts(decomposed)
-                for cid in pruned:
-                    if cid not in seen:
-                        seen.add(cid)
-                        all_ids.append(cid)
-            
-            if not all_ids:
-                return []
-            
-            # KG expansion + Critic
-            expanded, _, _ = self._kg_expand_and_critique(all_ids, query, context, domain_hint)
-            return expanded
-        
-        with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(queries))) as pool:
-            futures = [
-                (i, pool.submit(_post_process_query, i))
-                for i in range(len(queries))
-            ]
-            results: List[List[int]] = [[] for _ in queries]
-            for idx, future in futures:
-                try:
-                    results[idx] = future.result()
-                except Exception as e:
-                    logger.warning(f"[Agent 2] Batch post-process failed for query {idx}: {e}")
-                    results[idx] = []
-        
-        # Deferred KG cache save — single disk write after all batch queries complete
-        try:
-            get_kg_expander().save_cache()
-        except Exception:
-            logger.warning("[Agent 2] KG cache save failed after batch")
-        
-        return results
-    
     # _guess_domain() — REMOVED
     # Domain classification is now handled by Agent 1 (via Criteria.domain field).
     # Agent 2 receives domain_hint as a parameter instead of guessing.

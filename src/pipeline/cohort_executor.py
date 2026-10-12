@@ -115,9 +115,13 @@ class CohortExecutor:
                 used_fallback=True,
             )
 
-        # Default outcome if not provided
+        # The outcome concept set is the caller's to supply. It is not chosen by reading
+        # concept-set names, and no default concept stands in for a missing one.
         if not outcome_concept_ids:
-            outcome_concept_ids = self._extract_outcome_concepts(circe_json)
+            raise ValueError(
+                "[CohortExecutor] outcome_concept_ids is required: the outcome concept set "
+                "is not guessed from concept-set names"
+            )
 
         # --- WebAPI-first path ---
         try:
@@ -293,25 +297,6 @@ class CohortExecutor:
             )
             for d in raw
         ]
-
-    def _extract_outcome_concepts(
-        self, circe_json: Dict[str, Any]
-    ) -> List[int]:
-        """Extract outcome concept IDs from Circe JSON."""
-        concept_sets = circe_json.get("ConceptSets", [])
-
-        for cs in concept_sets:
-            name = cs.get("name", "").lower()
-            if "outcome" in name or "event" in name or "death" in name:
-                items = cs.get("expression", {}).get("items", [])
-                return [
-                    item.get("concept", {}).get("CONCEPT_ID", 0)
-                    for item in items
-                    if item.get("concept", {}).get("CONCEPT_ID")
-                ]
-
-        # Default: common outcome concept ID
-        return [260139]
 
     def _generate_fallback_data(
         self,

@@ -14,9 +14,8 @@ mapper, where :func:`src.agents.conceptset.nlu_router.detect_temporal_negation` 
 ``within`` / ``days`` / ``prior`` and refuses to route it at all. The number is asserted
 twice and only the second assertion breaks anything.
 
-The gate that matters is the last class here: the real detector that produced the
-refusal is run over the real seeds, rather than a synthetic string that merely looks
-similar.
+That detector (the router's temporal word list, RFC-016 A15) has since been deleted, so
+the class that ran it over these seeds went with it.
 """
 from __future__ import annotations
 
@@ -106,35 +105,3 @@ class TestTheSeedFieldPrecedenceIsUnchanged:
     def test_should_fall_back_to_description_when_source_text_is_empty(self):
         crit = _crit("Cancer other than nonmelanoma skin cancer within 3 years")
         assert criterion_mapper_seed(crit) == "Cancer other than nonmelanoma skin cancer"
-
-
-class TestTheRealRouterNoLongerRefusesTheFourCarmelinaSeeds:
-    """The detector that produced `intent-unparsed`, run over the rows that produced it.
-
-    A stripper that satisfies its own assertions but still trips the real predicate
-    would fix nothing, so the predicate is imported rather than restated.
-    """
-
-    CARMELINA = [
-        "Cancer other than nonmelanoma skin cancer within 3 years",
-        "Drug-naïve or pre-treated excluding GLP-1/DPP-4/SGLT-2 inhibitors (7 days)",
-        "Drug-naïve or pre-treated excluding GLP-1/DPP-4/SGLT-2 inhibitors (>= 7 days)",
-        "Stable background medication for 8 weeks prior to randomization (Insulin change <= 10%)",
-    ]
-
-    def test_should_have_tripped_the_router_before_the_strip(self):
-        from src.agents.conceptset.nlu_router import detect_temporal_negation
-
-        assert all(detect_temporal_negation(s) for s in self.CARMELINA), (
-            "if the router no longer refuses these, this fix is aimed at the wrong defect"
-        )
-
-    def test_should_not_trip_the_router_after_the_strip(self):
-        from src.agents.conceptset.nlu_router import detect_temporal_negation
-
-        still_refused = [
-            s
-            for s in self.CARMELINA
-            if detect_temporal_negation(strip_window_expressed_temporal(s))
-        ]
-        assert still_refused == []

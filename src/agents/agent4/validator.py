@@ -194,11 +194,9 @@ class CirCeValidator:
         self, 
         data: Dict[str, Any]
     ) -> Tuple[List[ValidationError], List[ValidationError]]:
-        """Semantic validation: CodesetId=0, domain consistency, empty criteria."""
+        """Semantic validation: CodesetId=0 and empty criteria."""
         errors = []
         warnings = []
-        
-        DEMOGRAPHIC_NAMES = {"age", "gender", "sex", "race", "ethnicity"}
         
         # Scan all CodesetId references for unmapped (=0)
         def scan_codeset_zero(node: Any, path: str):
@@ -217,23 +215,12 @@ class CirCeValidator:
         
         scan_codeset_zero(data, "")
         
-        # Check domain consistency in InclusionRules
+        # Every InclusionRule must carry some criteria
         for i, rule in enumerate(data.get("InclusionRules", [])):
-            rule_name = rule.get("name", "").lower()
             expression = rule.get("expression", {})
-            
-            # Check if demographic-like rule is in CriteriaList instead of DemographicCriteriaList
             criteria_list = expression.get("CriteriaList", [])
             demo_list = expression.get("DemographicCriteriaList", [])
-            
-            first_word = rule_name.split()[0] if rule_name.split() else ""
-            if first_word in DEMOGRAPHIC_NAMES and criteria_list and not demo_list:
-                warnings.append(ValidationError(
-                    field=f"InclusionRules[{i}]",
-                    message=f"Rule '{rule.get('name', '')}' looks demographic but uses CriteriaList instead of DemographicCriteriaList",
-                    severity="warning"
-                ))
-            
+
             # Check empty criteria (no CriteriaList, no DemographicCriteriaList, no Groups)
             groups = expression.get("Groups", [])
             if not criteria_list and not demo_list and not groups:

@@ -2440,9 +2440,10 @@ class LogicDecomposer:
         else:
             logic_type = force_logic_type or llm_logic_type
         
-        entity_text = self._normalize_entity_text(
-            data.get("entity_text"), data.get("domain", "Condition"), rule_name=rule_name
-        )
+        # Taken as the model wrote it. A Drug entity used to lose its parentheticals and
+        # a trailing "or other <word>" here (RFC-016 §5, A3); `entity_text` is already
+        # the bare-entity field, so nothing replaces that rewrite.
+        entity_text = data.get("entity_text")
 
         # Parse sub_criteria for composite rules (Pattern E: OR grouping)
         sub_criteria_data = data.get("sub_criteria", [])
@@ -2513,44 +2514,6 @@ class LogicDecomposer:
             conditional=bool(data.get("conditional", False)),
         )
 
-    @staticmethod
-    def _normalize_entity_text(entity_text: Optional[str], domain: str, rule_name: str = None) -> Optional[str]:
-        if not entity_text or not domain:
-            return entity_text
-        if domain.lower() != "drug":
-            return entity_text
-        return LogicDecomposer._normalize_drug_entity_text(entity_text, rule_name)
-
-    @staticmethod
-    def _normalize_drug_entity_text(entity_text: str, rule_name: Optional[str] = None) -> str:
-        """
-        Normalize Drug entity_text to prevent over-expansion in Agent2.
-
-        General-purpose guardrail that strips parenthetical content and
-        trailing generalizations from drug names. Agent2 handles hierarchy
-        expansion, so parenthetical details are redundant.
-        """
-        import re
-
-        text = entity_text.strip()
-        if not text:
-            return text
-
-        # Pattern 1: Remove ALL parenthetical content
-        # Agent2 handles hierarchy expansion — parenthetical lists are noise
-        cleaned = re.sub(r'\s*\([^)]*\)', '', text).strip()
-
-        # Pattern 2: Remove trailing "or other X" clauses
-        cleaned = re.sub(r'\s+or\s+other\s+\w+.*$', '', cleaned, flags=re.IGNORECASE).strip()
-
-        # Pattern 3: Clean up dangling commas/spaces
-        cleaned = re.sub(r',\s*$', '', cleaned).strip()
-
-        if cleaned and cleaned != text:
-            logger.info(f"[Agent1] Drug entity normalized: '{text}' → '{cleaned}'")
-
-        return cleaned or text
-    
     def _normalize_operator(self, op_str: str) -> str:
         """Normalize operator string from LLM output to expected format."""
         op_map = {

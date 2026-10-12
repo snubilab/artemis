@@ -251,17 +251,6 @@ def _render_clinical_reranker() -> str:
     return _joined(recorder.calls)
 
 
-def _render_comparator_classify() -> str:
-    from src.agents.comparator import recommender
-    from src.agents.comparator.literature import CandidateEvidence, Evidence
-
-    recorder = _Recorder(reply='{"verdict": "unknown"}')
-    evidence = Evidence(pmid=STUB, title=STUB, finding=STUB)
-    recommender._classify(CandidateEvidence(drug_class=STUB, cv_effect_evidence=[evidence]),
-                          STUB, STUB, recorder.runnable())
-    return _joined(recorder.calls)
-
-
 def _render_comparator_literature() -> str:
     from src.agents.comparator import recommender
 
@@ -320,16 +309,6 @@ def _render_dedup_judge() -> str:
     from src.agents.agent1 import criteria_dedup_judge
 
     return criteria_dedup_judge._render_prompt(f"{STUB} candidate", [f"{STUB} one", f"{STUB} two"])
-
-
-def _render_threshold_classifier() -> str:
-    from src.agents.agent1 import threshold_classifier
-
-    recorder = _Recorder(reply='{"spans": []}')
-    for every_numeral in (False, True):
-        threshold_classifier._complete(f"{STUB} criterion", recorder.runnable(), "stub-model",
-                                       every_numeral, None)
-    return _joined(recorder.calls)
 
 
 def _render_criterion_annotation() -> str:
@@ -469,11 +448,6 @@ PROMPTS: dict[str, PromptSpec] = {
     "conceptset.clinical_reranker": PromptSpec(
         _render_clinical_reranker, tokens=frozenset({"selected_id", "confidence"}),
     ),
-    "comparator.classify": PromptSpec(
-        _render_comparator_classify,
-        tokens=frozenset({"verdict", "confidence", "caveat", "beneficial", "neutral", "harmful",
-                          "unknown"}),
-    ),
     "comparator.literature": PromptSpec(
         _render_comparator_literature,
         tokens=frozenset({"candidates", "drug_class", "ingredients", "verdict", "same_setting",
@@ -505,14 +479,6 @@ PROMPTS: dict[str, PromptSpec] = {
         tokens=frozenset({
             "record_requirement", "conditional_span", "excepted_entities", "base_span", "text",
             "span", "required", "forbidden", "conditional",
-        }),
-    ),
-    "agent1.threshold_classifier": PromptSpec(
-        _render_threshold_classifier,
-        tokens=frozenset({
-            "spans", "threshold_phrase", "head", "class", "family", "confidence", "high", "low",
-            "REVIEW", "AGE", "MEASUREMENT_VALUE", "TEMPORAL_WINDOW", "STATE_DURATION",
-            "DRUG_DOSE", "SCORE_GRADE", "EVENT_QUANTITY", "NON_CRITERION",
         }),
     ),
 }
@@ -756,7 +722,10 @@ def test_should_leave_no_inventoried_example_in_its_prompt(row: dict[str, Any]) 
         haystack = rendered(_RENDERED_ONLY_PROMPT[row["file"]])
         where = f"the rendered {_RENDERED_ONLY_PROMPT[row['file']]} prompt"
     else:
-        haystack = (ROOT / row["file"]).read_text(encoding="utf-8")
+        source = ROOT / row["file"]
+        # A source file deleted outright sends none of its text to a model; the other
+        # two checks still cover any prompt that moved elsewhere.
+        haystack = source.read_text(encoding="utf-8") if source.exists() else ""
         where = row["file"]
     for needle_key in ("needle", "core_needle"):
         needle = row.get(needle_key)
@@ -828,13 +797,12 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     ),
     "src/agents/agent1/segmentation.py": (3, ("agent1.eligibility_segmentation",)),
     "src/agents/agent1/criteria_dedup_judge.py": (2, ("agent1.dedup_judge",)),
-    "src/agents/agent1/threshold_classifier.py": (4, ("agent1.threshold_classifier",)),
     "src/agents/planner/decomposer.py": (3, ("planner",)),
     "src/agents/agent2/reranker.py": (3, ("agent2.reranker_single_select", "agent2.reranker_topn")),
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),
     "src/agents/conceptset/nlu_router.py": (2, ("conceptset.nlu_router",)),
     "src/agents/conceptset/clinical_reranker.py": (2, ("conceptset.clinical_reranker",)),
-    "src/agents/comparator/recommender.py": (3, ("comparator.classify", "comparator.literature")),
+    "src/agents/comparator/recommender.py": (2, ("comparator.literature",)),
     "src/services/tte_service.py": (6, ("tte.analysis_finalizer", "tte.report_narrative")),
     "src/services/criterion_annotation.py": (3, ("criterion_annotation",)),
     "src/utils/llm.py": (6, "transport: builds the chat client get_llm returns and appends "

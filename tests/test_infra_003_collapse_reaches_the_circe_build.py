@@ -108,7 +108,7 @@ CARMELINA_PREGNANCY = [
 
 class TestTheCollapseIsEmitted:
     def test_should_always_carry_the_key_even_when_nothing_collapses(self):
-        """Present-and-empty, matching `_restatedClusters` and `_skippedCriteria`.
+        """Present-and-empty, matching `_skippedCriteria`.
 
         An absent key would be indistinguishable from a clean run on an artifact built
         before this shipped.
@@ -126,13 +126,6 @@ class TestTheCollapseIsEmitted:
         assert records[0]["survivorId"] == "11"
         assert records[0]["droppedIds"] == ["12", "18"]
         assert records[0]["survivorRule"] == "first-in-document-order"
-
-    def test_should_leave_the_stem_signal_emission_untouched(self):
-        """M2's `_restatedClusters` is a separate signal and keeps reporting all three."""
-        circe = service_build(_eligibility(exclusion=CARMELINA_PREGNANCY))
-        clusters = circe["_restatedClusters"]
-        assert len(clusters) == 1
-        assert clusters[0]["criterionIds"] == ["11", "12", "18"]
 
 
 class TestTheDroppedCriteriaNeverReachTheMapper:

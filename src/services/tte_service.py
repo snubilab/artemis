@@ -108,7 +108,6 @@ from src.services.restated_absence_repair import (
     repair_restated_absences,
 )
 from src.services.contradicted_absence_refusal import refuse_contradicted_absences
-from src.services.restated_clusters import detect_all_restated_clusters
 from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
     collapse_all_restated_demographics,
@@ -1127,25 +1126,6 @@ class TTEService:
         "Device": "DeviceExposure",
         "Death": "Death",
     }
-    STRUCTURED_TARGET_GENERIC_LABELS = {
-        "target cohort",
-        "target population",
-        "target",
-        "population",
-        "cohort",
-    }
-    STRUCTURED_TARGET_OVERLAP_STOPWORDS = {
-        "adult",
-        "adults",
-        "cohort",
-        "group",
-        "patient",
-        "patients",
-        "population",
-        "target",
-        "the",
-        "with",
-    }
     DRUG_LIKE_TARGET_LABEL_FAILURE_MESSAGE = (
         "Target population label appears to be a treatment/drug label; provide a "
         "patient-population target or correct the structured criteria first."
@@ -1469,15 +1449,12 @@ class TTEService:
         )
 
     def generate_draft(self, description: str, model_name: str | None = None) -> GenerateResponse:
-        generation_mode = "heuristic"
+        # The trial agent is the only drafter. A failure surfaces: there is no draft
+        # parsed out of the sentence by "X vs Y for Z in W" to fall back on (RFC-016 §5, A24).
+        generation_mode = "trial_agent"
         fallback_reason: str | None = None
         capability_signal = self._get_capability_signal("generate_draft")
-        try:
-            study = self._generate_with_trial_agent(description, model_name=model_name)
-            generation_mode = "trial_agent"
-        except Exception as exc:
-            study = self._heuristic_draft(description)
-            fallback_reason = str(exc)
+        study = self._generate_with_trial_agent(description, model_name=model_name)
 
         study_payload = TTEStudy.model_validate(study).model_dump()
         suggestions = self._build_suggestions(description, study_payload, generation_mode)
@@ -1519,21 +1496,16 @@ class TTEService:
             }
         )
 
-        generation_mode = "heuristic"
+        generation_mode = "trial_agent"
         fallback_reason: str | None = None
         try:
             generated_study = self._generate_with_trial_agent(description, model_name=model_name)
-            generation_mode = "trial_agent"
         except Exception as exc:
-            # _heuristic_draft refuses a description it could not read anything from,
-            # so this can now raise. Close the job before the raise leaves, or it sits
-            # at "running" forever and the failure reads as a hang.
-            try:
-                generated_study = self._heuristic_draft(description)
-            except ValueError as refusal:
-                self._fail_job(job, f"{exc} | {refusal}")
-                raise
-            fallback_reason = str(exc)
+            # The trial agent is the only drafter (RFC-016 §5, A24). Close the job before
+            # the raise leaves, or it sits at "running" forever and the failure reads as
+            # a hang.
+            self._fail_job(job, str(exc))
+            raise
 
         generated_payload = TTEStudy.model_validate(generated_study).model_dump()
         proposed_changes = {
@@ -3792,23 +3764,6 @@ class TTEService:
         text = str(value or "").strip().lower()
         return " ".join(text.split())
 
-    def _normalize_structured_summary_tokens(self, value: Any) -> set[str]:
-        normalized = self._normalize_structured_summary_label(value)
-        if not normalized:
-            return set()
-        tokens = {
-            token
-            for token in re.findall(r"[a-z0-9]+", normalized)
-            if token not in self.STRUCTURED_TARGET_OVERLAP_STOPWORDS
-        }
-        return tokens
-
-    def _structured_target_label_is_clear_signal(self, label: Any) -> bool:
-        normalized = self._normalize_structured_summary_label(label)
-        if not normalized or normalized in self.STRUCTURED_TARGET_GENERIC_LABELS:
-            return False
-        return bool(self._normalize_structured_summary_tokens(normalized))
-
     def _get_primary_criteria_codeset_ids(
         self, structured_expression: dict[str, Any] | None
     ) -> set[int]:
@@ -3827,35 +3782,6 @@ class TTEService:
                 if isinstance(codeset_id, int):
                     codeset_ids.add(codeset_id)
         return codeset_ids
-
-    def _get_structured_target_labels(self, structured_expression: dict[str, Any] | None) -> list[str]:
-        if not structured_expression:
-            return []
-
-        target_codeset_ids = self._get_primary_criteria_codeset_ids(structured_expression)
-        if not target_codeset_ids:
-            return []
-
-        labels: list[str] = []
-        for concept_set in structured_expression.get("ConceptSets") or []:
-            if not isinstance(concept_set, dict):
-                continue
-            if concept_set.get("id") not in target_codeset_ids:
-                continue
-
-            for candidate in (
-                concept_set.get("name"),
-                *[
-                    ((item.get("concept") or {}).get("CONCEPT_NAME"))
-                    for item in (concept_set.get("expression") or {}).get("items") or []
-                    if isinstance(item, dict)
-                ],
-            ):
-                normalized = self._normalize_structured_summary_label(candidate)
-                if normalized and self._structured_target_label_is_clear_signal(normalized):
-                    labels.append(normalized)
-                    break
-        return labels
 
     def _get_structured_inclusion_rule_labels(
         self, structured_expression: dict[str, Any] | None
@@ -3903,34 +3829,6 @@ class TTEService:
         structured_set = set(structured_labels)
         canonical_set = set(canonical_labels)
         return structured_set.isdisjoint(canonical_set)
-
-    def _canonical_target_summary_looks_stale(
-        self, eligibility: dict[str, Any] | None, structured_expression: dict[str, Any] | None
-    ) -> bool:
-        """Compare canonical target copy only to concept sets referenced by PrimaryCriteria."""
-        if not isinstance(eligibility, dict):
-            return False
-
-        canonical_target = self._normalize_structured_summary_label(eligibility.get("targetCohortName"))
-        if not canonical_target:
-            return False
-
-        canonical_tokens = self._normalize_structured_summary_tokens(canonical_target)
-        if not canonical_tokens:
-            return False
-
-        structured_labels = self._get_structured_target_labels(structured_expression)
-        if not structured_labels:
-            return False
-
-        for structured_label in structured_labels:
-            if canonical_target in structured_label or structured_label in canonical_target:
-                return False
-            structured_tokens = self._normalize_structured_summary_tokens(structured_label)
-            if canonical_tokens & structured_tokens:
-                return False
-
-        return True
 
     def _build_structured_eligibility_guardrails(
         self,
@@ -4629,39 +4527,11 @@ class TTEService:
             eligibility=eligibility,
             prebuilt_circe=prebuilt_treatment_circe,
         )
-        # Retrieve criterionMappingMetadata from the latest eligibility_processing artifact
-        _criterion_mapping_meta: dict[str, Any] = {}
-        try:
-            all_artifacts = self.store.list_artifacts(study_id)
-            eligibility_artifacts = [
-                a for a in all_artifacts
-                if (a.get("kind") if isinstance(a, dict) else getattr(a, "kind", None))
-                == "eligibility_processing"
-            ]
-            if eligibility_artifacts:
-                latest_elig = eligibility_artifacts[-1]
-                _elig_artifact_id = (
-                    latest_elig.get("id")
-                    if isinstance(latest_elig, dict)
-                    else latest_elig.id
-                )
-                _elig_artifact = self.store.get_artifact(_elig_artifact_id)
-                _elig_payload = (
-                    _elig_artifact.get("payload")
-                    if isinstance(_elig_artifact, dict)
-                    else _elig_artifact.payload
-                ) or {}
-                _criterion_mapping_meta = _elig_payload.get("criterionMappingMetadata") or {}
-        except Exception:
-            logging.debug("Could not retrieve criterionMappingMetadata from eligibility artifact")
-
         outcomes_diag = self._materialize_seeded_outcome_cohorts(
             client=client,
             study_id=study_id,
             study_name=study_name,
             outcomes=outcomes,
-            eligibility=eligibility,
-            criterion_mapping_metadata=_criterion_mapping_meta,
             study=study,
         )
 
@@ -4899,10 +4769,14 @@ class TTEService:
         study_id: int,
         study_name: str,
         outcomes: dict[str, Any],
-        eligibility: dict[str, Any] | None = None,
-        criterion_mapping_metadata: dict[str, Any] | None = None,
         study: dict[str, Any] | None = None,
     ) -> SeededCohortSectionDiagnostic:
+        """Each outcome cohort is mapped from its own label alone.
+
+        No eligibility criterion's concepts are handed to the outcome mapper: the outcome
+        label used to be split on "or" / "and" / "," / ";" and matched against criterion
+        descriptions to prefetch them (RFC-016 §5, A23).
+        """
         items: list[SeededCohortGenerationItem] = []
         if not outcomes.get("primary"):
             outcomes["primary"] = {}
@@ -4911,16 +4785,6 @@ class TTEService:
             primary.get("cohortName") or primary.get("description") or "Primary outcome"
         ).strip()
 
-        # Extract pre-mapped concept IDs from eligibility criteria matching this outcome
-        all_criteria = (
-            list((eligibility or {}).get("inclusionCriteria", []))
-            + list((eligibility or {}).get("exclusionCriteria", []))
-        )
-        primary_pre_fetched = self._extract_eligibility_concept_ids_for_outcome(
-            outcome_label=primary_label,
-            criteria=all_criteria,
-            criterion_mapping_metadata=criterion_mapping_metadata or {},
-        ) or None
         primary_domain = (primary.get("domain") or "").strip() or None
 
         primary_item = self._materialize_seeded_cohort_item(
@@ -4941,7 +4805,6 @@ class TTEService:
             expression_builder=lambda: self._build_seeded_condition_circe(
                 primary_label,
                 expected_domain=primary_domain,
-                pre_fetched_candidates=primary_pre_fetched,
                 capture_all_events=True,
             ),
         )
@@ -4954,11 +4817,6 @@ class TTEService:
         secondary = outcomes["secondary"]
         for index, outcome in enumerate(secondary):
             outcome_label = (outcome.get("cohortName") or outcome.get("description") or "").strip()
-            outcome_pre_fetched = self._extract_eligibility_concept_ids_for_outcome(
-                outcome_label=outcome_label,
-                criteria=all_criteria,
-                criterion_mapping_metadata=criterion_mapping_metadata or {},
-            ) or None
             outcome_domain = (outcome.get("domain") or "").strip() or None
             item = self._materialize_seeded_cohort_item(
                 client=client,
@@ -4970,8 +4828,8 @@ class TTEService:
                 label=outcome_label or f"Secondary outcome {index + 1}",
                 seed_text=outcome_label,
                 existing_cohort_id=outcome.get("cohortId"),
-                expression_builder=lambda ol=outcome_label, od=outcome_domain, opf=outcome_pre_fetched: self._build_seeded_condition_circe(
-                    ol, expected_domain=od, pre_fetched_candidates=opf, capture_all_events=True,
+                expression_builder=lambda ol=outcome_label, od=outcome_domain: self._build_seeded_condition_circe(
+                    ol, expected_domain=od, capture_all_events=True,
                 ),
             )
             if item.status == "created" and item.cohortDefinitionId is not None:
@@ -5256,47 +5114,6 @@ class TTEService:
         minimal = self._sanitize_cohort_name(f"TTE {study_id} {role_title} - {compact_label}")
         return minimal[:_MAX_RULE_NAME_LENGTH]
 
-    @staticmethod
-    def _extract_eligibility_concept_ids_for_outcome(
-        outcome_label: str,
-        criteria: list[dict[str, Any]],
-        criterion_mapping_metadata: dict[str, Any],
-    ) -> list[int]:
-        """Extract mapped concept IDs from eligibility criteria matching the outcome label.
-
-        Splits the outcome label by common separators (or, and, comma, semicolon)
-        and matches each sub-term against criterion descriptions via substring
-        containment. Returns a deduplicated list of concept IDs from matching
-        criteria.
-        """
-        if not outcome_label or not criteria:
-            return []
-
-        sub_terms = [
-            t.strip().lower()
-            for t in re.split(r"\s+or\s+|\s+and\s+|[,;]", outcome_label)
-            if t.strip()
-        ]
-        if not sub_terms:
-            return []
-
-        matched_ids: set[int] = set()
-        for criterion in criteria:
-            crit_desc = (criterion.get("description") or "").strip().lower()
-            if not crit_desc:
-                continue
-            for term in sub_terms:
-                if term in crit_desc or crit_desc in term:
-                    crit_id = str(criterion.get("id", ""))
-                    meta = criterion_mapping_metadata.get(crit_id)
-                    if meta and isinstance(meta, dict):
-                        for cid in meta.get("selectedConceptIds", []):
-                            if isinstance(cid, int):
-                                matched_ids.add(cid)
-                    break
-
-        return list(matched_ids)
-
     def _build_seeded_condition_circe(
         self,
         label: str,
@@ -5529,9 +5346,9 @@ class TTEService:
         )
 
         # SPEC-INFRA-004 REQ-001 / REQ-007 / REQ-011. The same defect in every other domain,
-        # gated on a distinctness key rather than on a relaxed domain test. Runs here for the
-        # same reason the Demographics collapse does -- it partitions a whole stem group at
-        # once and has no concept-set dependency -- and the two never contend for a criterion
+        # decided on structured fields (RFC-016 §5 E6). Runs here for the same reason the
+        # Demographics collapse does -- it partitions a whole role at once and has no
+        # concept-set dependency -- and the two never contend for a criterion
         # because REQ-013 gates this path on the complement of `is_restatable_demographic`,
         # so the eligible sets are complementary by construction rather than by coincidence.
         (
@@ -6141,28 +5958,19 @@ class TTEService:
                 missing_entity_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
             "_generationCensus": generation_census,
-            # SPEC-INFRA-003 REQ-005. Same present-and-empty contract as the two above.
-            # Detection runs over the criteria as they arrived, not over what survived
-            # mapping: a restatement whose duplicate failed to map is still a
-            # restatement, and the point of this record is to show the duplication that
-            # the concept-set fragmentation in `spec.md` §2.2 is downstream of.
-            "_restatedClusters": detect_all_restated_clusters(
-                inclusion_criteria=inc_criteria,
-                exclusion_criteria=exc_criteria,
-            ),
-            # SPEC-INFRA-003 REQ-001 / REQ-007. Same present-and-empty contract again.
-            # This is a second, independent signal from `_restatedClusters` above, not a
-            # refinement of it: that one reads description stems and so cannot reach
-            # EMPA-REG's pair (`spec.md` §2.5.2), while this one is a cardinality
-            # invariant that never compares descriptions. Each record names its
-            # `survivorRule`, because for EMPA-REG which member should survive is not
-            # settled -- see `restated_demographics.py` and `spec.md` §2.4
-            # ASSUMPTION-1.
+            # SPEC-INFRA-003 REQ-001 / REQ-007. Same present-and-empty contract as the two
+            # above. A cardinality invariant that never compares descriptions. Each record
+            # names its `survivorRule`, because for EMPA-REG which member should survive is
+            # not settled -- see `restated_demographics.py` and `spec.md` §2.4 ASSUMPTION-1.
+            # (The description-stem `_restatedClusters` report was removed with its stem,
+            # RFC-016 §5 E6; `_restatedDistinctnessCollapse` and `_restatedIntactGroups`
+            # below report duplicates on structured fields.)
             "_restatedDemographicsCollapse": restated_demographic_collapses,
             # SPEC-INFRA-004 REQ-007. Same present-and-empty contract again. Kept separate
             # from `_restatedDemographicsCollapse` rather than merged into it: the two paths
-            # use different grouping units -- whole-role against per-(role, domain, stem) --
-            # so a merged list would carry records whose fields mean different things, and a
+            # use different grouping units -- whole-role against per-(role, distinctness key,
+            # place in the rule tree) -- so a merged list would carry records whose fields
+            # mean different things, and a
             # reader could not tell which rule produced which record.
             "_restatedDistinctnessCollapse": restated_distinctness_collapses,
             # SPEC-INFRA-004 REQ-011. The report is the deliverable here, not the collapse.
@@ -6780,118 +6588,6 @@ class TTEService:
         if not expr.get("items"):
             return None
         return {"name": f"{class_name} (recommended comparator)", "expression": expr}
-
-    def _discover_comparator_candidates(self, treatment_drug_name: str) -> list[dict[str, Any]]:
-        """Data-driven candidate comparator classes from the CDM vocabulary.
-
-        The treatment drug's ATC-4th SIBLINGS (same ATC-3rd pharmacological subgroup)
-        are its candidate comparator classes, each carrying its member RxNorm
-        ingredients present in the CDM. No hardcoded class list. The treatment's own
-        class and ATC catch-all buckets ("Other …", "Combinations …") are excluded.
-
-        Uses the 'RxNorm - ATC pr lat' (primary ATC) relationship to anchor the drug's
-        true class — otherwise combination products (e.g. insulin+GLP-1) would steer
-        discovery into the wrong subgroup. Returns [] on any failure (caller falls back).
-        """
-        drug = (treatment_drug_name or "").strip()
-        if not drug:
-            return []
-        try:
-            import psycopg2
-
-            from src.settings import settings
-
-            conn = psycopg2.connect(settings.DATABASE_URL)
-        except Exception as exc:
-            logging.debug("[TTE] candidate discovery connect failed: %s", exc)
-            return []
-        S = settings.CDM_SCHEMA
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"""SELECT concept_id FROM {S}.concept
-                        WHERE LOWER(concept_name) = LOWER(%s) AND vocabulary_id = 'RxNorm'
-                          AND concept_class_id = 'Ingredient' AND standard_concept = 'S'
-                          AND invalid_reason IS NULL""",
-                    (drug,),
-                )
-                row = cur.fetchone()
-                if not row:
-                    return []
-                ingredient_id = row[0]
-                # Primary ATC (disambiguates combination-product cross-links).
-                cur.execute(
-                    f"""SELECT concept_id_2 FROM {S}.concept_relationship
-                        WHERE concept_id_1 = %s AND relationship_id = 'RxNorm - ATC pr lat'
-                          AND invalid_reason IS NULL""",
-                    (ingredient_id,),
-                )
-                prim = cur.fetchone()
-                if not prim:
-                    return []
-                # Resolve to the drug's own ATC-4th class.
-                cur.execute(f"SELECT concept_class_id FROM {S}.concept WHERE concept_id = %s", (prim[0],))
-                cls_row = cur.fetchone()
-                if cls_row and cls_row[0] == "ATC 4th":
-                    own_atc4 = prim[0]
-                else:
-                    cur.execute(
-                        f"""SELECT c.concept_id FROM {S}.concept_ancestor ca
-                            JOIN {S}.concept c ON c.concept_id = ca.ancestor_concept_id
-                            WHERE ca.descendant_concept_id = %s AND c.vocabulary_id = 'ATC'
-                              AND c.concept_class_id = 'ATC 4th'""",
-                        (prim[0],),
-                    )
-                    r = cur.fetchone()
-                    own_atc4 = r[0] if r else None
-                if not own_atc4:
-                    return []
-                # ATC-3rd parent, then its ATC-4th children (the sibling classes).
-                cur.execute(
-                    f"""SELECT c.concept_id FROM {S}.concept_ancestor ca
-                        JOIN {S}.concept c ON c.concept_id = ca.ancestor_concept_id
-                        WHERE ca.descendant_concept_id = %s AND c.vocabulary_id = 'ATC'
-                          AND c.concept_class_id = 'ATC 3rd'""",
-                    (own_atc4,),
-                )
-                r = cur.fetchone()
-                if not r:
-                    return []
-                atc3 = r[0]
-                cur.execute(
-                    f"""SELECT c.concept_id, c.concept_name FROM {S}.concept_ancestor ca
-                        JOIN {S}.concept c ON c.concept_id = ca.descendant_concept_id
-                        WHERE ca.ancestor_concept_id = %s AND c.vocabulary_id = 'ATC'
-                          AND c.concept_class_id = 'ATC 4th'
-                        ORDER BY c.concept_code""",
-                    (atc3,),
-                )
-                siblings = cur.fetchall()
-                out: list[dict[str, Any]] = []
-                for cid, name in siblings:
-                    if cid == own_atc4:
-                        continue
-                    low = name.lower()
-                    if low.startswith("other") or "combinations" in low:
-                        continue  # ATC catch-all buckets — not real comparator classes
-                    cur.execute(
-                        f"""SELECT DISTINCT c.concept_name FROM {S}.concept_ancestor ca
-                            JOIN {S}.concept c ON c.concept_id = ca.descendant_concept_id
-                            WHERE ca.ancestor_concept_id = %s AND c.vocabulary_id = 'RxNorm'
-                              AND c.concept_class_id = 'Ingredient' AND c.standard_concept = 'S'
-                              AND c.invalid_reason IS NULL
-                            ORDER BY 1""",
-                        (cid,),
-                    )
-                    ings = [x[0] for x in cur.fetchall()]
-                    if ings:
-                        out.append({"drug_class": name, "atc4_id": cid, "ingredients": ings})
-                return out
-        except Exception as exc:
-            logging.debug("[TTE] candidate discovery failed for '%s': %s", drug, exc)
-            return []
-        finally:
-            conn.close()
 
     def _treatment_atc_class(self, drug_name: str) -> str:
         """The treatment drug's own ATC-4th class name (context for the literature query)."""
@@ -8878,11 +8574,6 @@ class TTEService:
             agent2_empty = True
             agent2_route = str(getattr(mapping_result, "route_path", "") or "")
         except Exception as exc:
-            if self._should_use_placeholder_seeded_mapping(exc):
-                return self._build_placeholder_seeded_concept_set(
-                    normalized_seed,
-                    expected_domain=expected_domain,
-                )
             agent2_exc = exc
             import structlog
             structlog.get_logger().warning(
@@ -8923,19 +8614,11 @@ class TTEService:
         expected_domain: str | None = None,
     ) -> dict[str, Any]:
         """Fallback: ConceptSetRecommender RAG-only path."""
-        try:
-            response = self._get_seeded_concept_set_recommender().recommend(
-                normalized_seed,
-                top_k=5,
-                include_descendants=True,
-            )
-        except Exception as exc:
-            if self._should_use_placeholder_seeded_mapping(exc):
-                return self._build_placeholder_seeded_concept_set(
-                    normalized_seed,
-                    expected_domain=expected_domain,
-                )
-            raise
+        response = self._get_seeded_concept_set_recommender().recommend(
+            normalized_seed,
+            top_k=5,
+            include_descendants=True,
+        )
         recommendations = list(response.include_recommendations or [])
         if expected_domain:
             filtered = [
@@ -9089,116 +8772,6 @@ class TTEService:
         from src.agents.conceptset.recommender import get_recommender
 
         return get_recommender()
-
-    def _should_use_placeholder_seeded_mapping(self, exc: Exception) -> bool:
-        # Always returns False — placeholder concept injection was removed.
-        # ModuleNotFoundError (ChromaDB missing) now propagates so callers
-        # receive a clear failure instead of fake ARTEMIS vocabulary concepts.
-        return False
-
-    def _build_placeholder_seeded_concept_set(
-        self,
-        seed_text: str,
-        *,
-        expected_domain: str | None = None,
-    ) -> dict[str, Any]:
-        domain = self._infer_placeholder_seeded_domain(seed_text, expected_domain=expected_domain)
-        concept_id = self._placeholder_concept_id(seed_text, domain)
-        return {
-            "name": seed_text,
-            "expression": {
-                "items": [
-                    {
-                        "concept": {
-                            "CONCEPT_ID": concept_id,
-                            "CONCEPT_NAME": seed_text,
-                            "DOMAIN_ID": domain,
-                            "VOCABULARY_ID": "ARTEMIS",
-                            "CONCEPT_CLASS_ID": "Placeholder",
-                            "STANDARD_CONCEPT": "S",
-                            "CONCEPT_CODE": f"ARTEMIS-{concept_id}",
-                        },
-                        "includeDescendants": True,
-                        "includeMapped": False,
-                        "isExcluded": False,
-                    }
-                ]
-            },
-            "domain": domain,
-        }
-
-    def _placeholder_concept_id(self, seed_text: str, domain: str) -> int:
-        digest = hashlib.md5(f"{domain}:{seed_text}".encode("utf-8")).hexdigest()
-        return int(digest[:8], 16)
-
-    def _infer_placeholder_seeded_domain(
-        self,
-        seed_text: str,
-        *,
-        expected_domain: str | None = None,
-    ) -> str:
-        if expected_domain:
-            return expected_domain
-
-        normalized = seed_text.lower()
-        if any(
-            token in normalized
-            for token in (
-                "hba1c",
-                "hemoglobin",
-                "blood pressure",
-                "bmi",
-                "egfr",
-                "creatinine",
-                "glucose",
-                ">",
-                "<",
-                ">=",
-                "<=",
-                "%",
-            )
-        ):
-            return "Measurement"
-        if any(
-            token in normalized
-            for token in (
-                "drug",
-                "insulin",
-                "liraglutide",
-                "exenatide",
-                "pramlintide",
-                "agonist",
-                "inhibitor",
-                "medication",
-                "therapy",
-            )
-        ):
-            return "Drug"
-        if any(
-            token in normalized
-            for token in (
-                "angioplasty",
-                "surgery",
-                "procedure",
-                "transplant",
-                "revascularization",
-            )
-        ):
-            return "Procedure"
-        if any(
-            token in normalized
-            for token in (
-                "age",
-                "pregnan",
-                "contraception",
-                "smok",
-                "sex",
-                "male",
-                "female",
-            )
-        ):
-            return "Observation"
-        return "Condition"
 
     def _run_mapping_pipeline_for_query(
         self,
@@ -11438,11 +11011,6 @@ class TTEService:
         description = " ".join((study.get("description") or "").split())
         title = " ".join((study.get("name") or "").split())
         fallback_text = description or title
-        parsed = (
-            self._parse_description(fallback_text)
-            if fallback_text
-            else {"treatment": "", "comparator": "", "outcome": "", "population": ""}
-        )
 
         eligibility = study.get("eligibility") or {}
         treatment_arms = study.get("treatmentArms") or []
@@ -11471,30 +11039,22 @@ class TTEService:
             ],
         ]
 
-        if not any(fragment.strip() for fragment in eligibility_fragments) and parsed["population"]:
-            eligibility_fragments.append(parsed["population"])
-        if not any(fragment.strip() for fragment in treatment_fragments):
-            if parsed["treatment"]:
-                treatment_fragments.append(parsed["treatment"])
-            if parsed["comparator"]:
-                treatment_fragments.append(parsed["comparator"])
-        if not any(fragment.strip() for fragment in outcome_fragments) and parsed["outcome"]:
-            outcome_fragments.append(parsed["outcome"])
-
+        # An empty section falls back to the description or title verbatim in
+        # `_build_provisional_section_source`; nothing is parsed out of either (A24).
         return ProvisionalStudyIR(
             study_type=study.get("studyType") or "comparative",
             title=title,
             description=description,
             source_text=fallback_text,
-            target_text=canonical_target or parsed["population"],
+            target_text=canonical_target or "",
             comparator_text=(
                 treatment_arms[1].get("name")
                 if len(treatment_arms) > 1 and treatment_arms[1].get("name")
-                else parsed["comparator"]
+                else ""
             ),
             primary_outcome_text=primary_outcome.get("cohortName")
             or primary_outcome.get("description")
-            or parsed["outcome"],
+            or "",
             eligibility=self._build_provisional_section_source(
                 "eligibility", eligibility_fragments, description, title
             ),
@@ -11771,28 +11331,12 @@ class TTEService:
         self, study: dict[str, Any], provisional_ir: ProvisionalStudyIR
     ) -> dict[str, Any]:
         eligibility = deepcopy(study.get("eligibility") or {})
-        parsed = (
-            self._parse_description(provisional_ir.source_text)
-            if provisional_ir.source_text
-            else {"population": ""}
-        )
-
         inclusion = deepcopy(eligibility.get("inclusionCriteria") or [])
-        if not inclusion and parsed.get("population"):
-            inclusion = [
-                {
-                    "id": 1,
-                    "description": parsed["population"],
-                    "conceptSetId": None,
-                    "conceptSetName": "",
-                }
-            ]
 
         return {
             "targetCohortId": eligibility.get("targetCohortId"),
             "targetCohortName": self._get_target_display_label(eligibility)
             or provisional_ir.target_text
-            or parsed.get("population")
             or "Target population to be specified",
             "inclusionCriteria": inclusion,
             "exclusionCriteria": deepcopy(eligibility.get("exclusionCriteria") or []),
@@ -11808,11 +11352,6 @@ class TTEService:
         self, study: dict[str, Any], provisional_ir: ProvisionalStudyIR
     ) -> list[dict[str, Any]]:
         existing = deepcopy(study.get("treatmentArms") or [])
-        parsed = (
-            self._parse_description(provisional_ir.source_text)
-            if provisional_ir.source_text
-            else {"treatment": "", "comparator": ""}
-        )
         existing_treatment_name = (existing[0].get("name") if existing else "") or ""
         existing_comparator_name = (existing[1].get("name") if len(existing) > 1 else "") or ""
         provisional_comparator_name = (
@@ -11820,14 +11359,9 @@ class TTEService:
             if provisional_ir.comparator_text not in {"", "Comparator"}
             else ""
         )
-        treatment_name = (
-            parsed.get("treatment")
-            or existing_treatment_name
-            or "Treatment"
-        )
+        treatment_name = existing_treatment_name or "Treatment"
         comparator_name = (
             provisional_comparator_name
-            or parsed.get("comparator")
             or existing_comparator_name
             or "Comparator"
         )
@@ -11863,16 +11397,10 @@ class TTEService:
     ) -> dict[str, Any]:
         outcomes = deepcopy(study.get("outcomes") or {})
         primary = deepcopy(outcomes.get("primary") or {})
-        parsed = (
-            self._parse_description(provisional_ir.source_text)
-            if provisional_ir.source_text
-            else {"outcome": ""}
-        )
         primary_text = (
             primary.get("cohortName")
             or primary.get("description")
             or provisional_ir.primary_outcome_text
-            or parsed.get("outcome")
             or "Primary outcome to be defined"
         )
         primary["cohortId"] = primary.get("cohortId")
@@ -12517,135 +12045,8 @@ class TTEService:
             **planner_excepted_field,
         }
 
-    def _heuristic_draft(self, description: str) -> dict[str, Any]:
-        """Build a draft study from a natural-language question.
-
-        Refuses when the parse recovered no structure. ``_parse_description`` only
-        finds a comparator, an outcome, or a population when the sentence actually
-        contains one; ``treatment`` is its catch-all and falls back to the whole input,
-        so a non-empty treatment is never evidence that anything was understood. With
-        all three empty, every field of the returned study is either a constant default
-        or the input echoed into an arm name -- zero eligibility criteria, a target of
-        "Target population to be specified", an undefined outcome.
-
-        That shell is what a failed NCT extraction used to become: the caller hands
-        this method ``f"Target trial emulation from {nct_id}"``, which contains no
-        comparator, outcome, or population, and the result was recorded as a completed
-        draft proposal. Refusing here means an extraction failure stays a failure.
-
-        The path is kept, not removed: ``generate_draft`` and ``run_generate_draft``
-        pass a real question ("compare X vs Y for Z in P") and get a real draft back.
-
-        :param description: the natural-language study description.
-        :returns: a draft study payload.
-        :raises ValueError: nothing was recovered from ``description``.
-        """
-        normalized = " ".join(description.strip().split())
-        parsed = self._parse_description(normalized)
-        if not (parsed["comparator"] or parsed["outcome"] or parsed["population"]):
-            raise ValueError(
-                f"Heuristic draft refused for {normalized!r}: no comparator, outcome, or "
-                f"population could be read from it, so the draft would be a shell with "
-                f"zero eligibility criteria and an unspecified target. A shell recorded "
-                f"as a completed proposal is a failed generation wearing a success."
-            )
-        study_type = "comparative" if parsed["comparator"] else "single_arm"
-        study_name = self._build_study_name(parsed)
-        eligibility_name = parsed["population"] or "Target population to be specified"
-
-        inclusion_criteria = []
-        if parsed["population"]:
-            inclusion_criteria.append({"id": 1, "description": parsed["population"]})
-        if "new user" in normalized.lower():
-            inclusion_criteria.append({"id": len(inclusion_criteria) + 1, "description": "New-user design"})
-
-        treatment_arms = [{"id": 1, "name": parsed["treatment"], "cohortId": None, "cohortName": ""}]
-        if parsed["comparator"]:
-            treatment_arms.append(
-                {"id": 2, "name": parsed["comparator"], "cohortId": None, "cohortName": ""}
-            )
-
-        return {
-            "id": None,
-            "name": study_name,
-            "description": normalized,
-            "studyType": study_type,
-            "comparisonMode": "explicit_comparator" if parsed["comparator"] else "target_minus_treatment",
-            "status": "draft",
-            "eligibility": {
-                "targetCohortId": None,
-                "targetCohortName": eligibility_name,
-                "inclusionCriteria": inclusion_criteria,
-                "exclusionCriteria": [],
-            },
-            "treatmentArms": treatment_arms,
-            "outcomes": {
-                "primary": {
-                    "cohortId": None,
-                    "cohortName": parsed["outcome"] or "Primary outcome to be defined",
-                    "description": parsed["outcome"] or "",
-                },
-                "secondary": [],
-            },
-            "timeParams": {
-                "followUpDuration": 30,
-                "followUpUnit": "days",
-                "washoutPeriod": 180,
-                "gracePeriod": 30,
-                "minDaysAtRisk": 1,
-            },
-            "analysisSettings": {
-                "outcomeModel": "cox",
-                "adjustForCovariates": True,
-                "psMethod": "matching",
-                "psCaliper": 0.2,
-                "trimByPs": True,
-                "trimFraction": 0.05,
-            },
-            "executions": [],
-            "results": None,
-        }
-
-    def _parse_description(self, description: str) -> dict[str, str]:
-        text = description.strip()
-        pattern = re.compile(
-            r"^(?:compare\s+)?(?P<treatment>.+?)\s+"
-            r"(?:(?:vs\.?)|versus|compared with|compared to|against)\s+"
-            r"(?P<comparator>.+?)"
-            r"(?:\s+for\s+(?P<outcome>.+?))?"
-            r"(?:\s+(?:in|among)\s+(?P<population>.+))?$",
-            re.IGNORECASE,
-        )
-        match = pattern.match(text)
-        if match:
-            return {
-                "treatment": self._clean_phrase(match.group("treatment")),
-                "comparator": self._clean_phrase(match.group("comparator")),
-                "outcome": self._clean_phrase(match.group("outcome") or ""),
-                "population": self._clean_phrase(match.group("population") or ""),
-            }
-
-        population_match = re.search(r"\b(?:in|among)\s+(.+)$", text, re.IGNORECASE)
-        outcome_match = re.search(r"\bfor\s+(.+?)(?:\s+(?:in|among)\s+.+)?$", text, re.IGNORECASE)
-
-        return {
-            "treatment": self._clean_phrase(text),
-            "comparator": "",
-            "outcome": self._clean_phrase(outcome_match.group(1) if outcome_match else ""),
-            "population": self._clean_phrase(population_match.group(1) if population_match else ""),
-        }
-
     def _clean_phrase(self, value: str) -> str:
         return re.sub(r"\s+", " ", value.strip(" ,.;:")).strip()
-
-    def _build_study_name(self, parsed: dict[str, str]) -> str:
-        if parsed["comparator"]:
-            base = f'{parsed["treatment"]} vs {parsed["comparator"]}'
-        else:
-            base = parsed["treatment"]
-        if parsed["outcome"]:
-            return f"{base} for {parsed['outcome']}"
-        return base
 
     def _build_suggestions(
         self, description: str, study_payload: dict[str, Any], generation_mode: str

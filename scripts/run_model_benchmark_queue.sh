@@ -164,37 +164,6 @@ except Exception:
 PY
 }
 
-PROBE_DIR=/home/bilab/work/projects/Broadsea/artemis/output/classifier_probe
-
-# The six-study benchmark costs hours per model and leaves the informative matrix
-# columns blank. This costs ~28 minutes on a 4B and returns a hard number that
-# separates models by a factor of three: 75/85 correct MEASUREMENT_VALUE for
-# hari-q3-8b against 26/85 for medgemma-1.5-4b. Run while the server is already up,
-# so it adds no load time.
-run_probe() {
-  local model="$1"
-  local safe; safe=$(echo "$model" | tr '/:' '__')
-  local out="${PROBE_DIR}/${safe}.json"
-  if [ -f "$out" ]; then
-    log "  probe already recorded: $out"
-    return 0
-  fi
-  mkdir -p "$PROBE_DIR"
-  log "  probe start"
-  docker exec \
-    -e LLM_MODEL="vllm/${model}" \
-    -e VLLM_BASE_URL="http://${HOST_IP}:${PORT}/v1" \
-    -e ARTEMIS_GIT_REV="$rev" \
-    -e PYTHONUNBUFFERED=1 \
-    artemis-api python /app/scripts/eval_threshold_classifier.py \
-    --max-workers 4 --save "/app/output/classifier_probe/${safe}.json" \
-    > "/tmp/probe_${safe}.log" 2>&1
-  local rc=$?
-  local score; score=$(rg -o 'MEASUREMENT_VALUE\s+\d+\s+\d+' "/tmp/probe_${safe}.log" 2>/dev/null | tail -1)
-  log "  probe exit=${rc} ${score:-no-score}"
-  echo "${model}|probe|rc=${rc}|${score:-}" >> "$STATE"
-}
-
 already_done() {
   local model="$1"
   # The harness names the directory from LLM_MODEL with "/" -> "__", and
@@ -244,19 +213,13 @@ for model in "${WORKING[@]}"; do
   # Plain assignment: this is the loop body, not a function, and `local` is a
   # function-only builtin -- it aborts the script here rather than warning.
   rev=$(git -C "$(dirname "$0")/.." rev-parse --short HEAD 2>/dev/null || echo unknown)
-  # A benchmarked model can still be missing its probe. Serve it once and do both.
-  if already_done "$model" && [ -f "${PROBE_DIR}/$(echo "$model" | tr '/:' '__').json" ]; then
-    log "SKIP ${model} — benchmark and probe both present"
+  if already_done "$model"; then
+    log "SKIP ${model} — benchmark present"
     continue
   fi
   stop_server
   start_server "$model" 0.55 || { echo "${model}|start|failed" >> "$STATE"; continue; }
-  if already_done "$model"; then
-    log "  benchmark already present, probe only"
-  else
-    run_benchmark "$model"
-  fi
-  run_probe "$model"
+  run_benchmark "$model"
 done
 
 log "working set complete — probing the heavy tail"
@@ -270,7 +233,6 @@ for model in "${HEAVY[@]}"; do
   log "  probe ${secs}s ${toks} tokens — recorded, not gating"
   echo "{\"model\":\"${model}\",\"probe_s\":${secs},\"tokens\":${toks}}" >> "$PROBE_JSON"
   echo "${model}|probe|${secs}s|${toks}tok" >> "$STATE"
-  run_probe "$model"
   run_benchmark "$model"
 done
 

@@ -1,10 +1,9 @@
 """SPEC-INFRA-003 REQ-001 / REQ-007: collapse restated demographics to one criterion.
 
-`restated_clusters.py` supplies the *measurement* (REQ-005) and deliberately stops
-there. This module supplies a fix for one shape, and it is a separate signal rather
-than an extension of that one because the stem test cannot reach the shape that needs
-fixing most: EMPA-REG's pair shares no description stem, which `spec.md` §2.5.2 records
-as the stem signal's one known false negative.
+This module supplies a fix for one shape. It began as a separate signal from the
+description-stem measurement (since removed, RFC-016 §5 E6) because the stem test could
+not reach the shape that needs fixing most: EMPA-REG's pair shares no description stem,
+which `spec.md` §2.5.2 recorded as the stem signal's one known false negative.
 
 **The signal: restated-demographics collapse.** Within one study and one role, among
 top-level criteria satisfying all four structural gates
@@ -118,9 +117,8 @@ def collapse_restated_demographics(
     """
     eligible = [c for c in criteria or [] if is_restatable_demographic(c)]
     # One eligible criterion is not a duplication, and zero is not either. Both are
-    # reported as the same nothing, which is correct here -- unlike the stability
-    # measurement in `restated_clusters.cluster_key`, this signal only ever acts on a
-    # surplus.
+    # reported as the same nothing, which is correct here: this signal only ever acts on
+    # a surplus.
     if len(eligible) < 2:
         return set(), []
 
