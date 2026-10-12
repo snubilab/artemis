@@ -446,5 +446,15 @@
   "parentGroupId": null,
   "isGroupLabel": false,
   "mappable": true
+ },
+ "aristotle_exclusion_32_unmapped_record": {
+  "criterionId": "32",
+  "role": "exclusion",
+  "label": "Investigational drug use",
+  "domain": "Drug",
+  "reason": "CriterionRefused: criterion domain contradiction: DrugExposure reads Drug but the concept set mapped for 'Investigational drug use' holds only Measurement, Observation, Procedure concepts, so the rule would match nothing — after CriterionRefused: criterion domain contradiction: DrugExposure reads Drug but the concept set mapped for 'Investigational drug use' holds only Measurement, Observation, Procedure concepts, so the rule would match nothing",
+  "exceptionType": "src.utils.criterion_refusal.CriterionRefused",
+  "refusalCode": "unmappable-placeholder",
+  "refusalDetail": "DrugExposure vs Measurement, Observation, Procedure"
  }
 }

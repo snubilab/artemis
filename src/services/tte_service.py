@@ -158,7 +158,6 @@ from src.utils.circe_lint import (
     value_range_conversion_candidate_ids,
 )
 from src.utils.criterion_refusal import (
-    REFUSAL_DOMAIN_CONTRADICTION,
     REFUSAL_EMPTY_CONCEPT_SET,
     REFUSAL_EMPTY_SEED,
     REFUSAL_INTENT_UNPARSED,
@@ -649,376 +648,42 @@ def _stranded_group_constraint_labels(
     }
 
 
-#: Stems that name nothing on their own, so a trailing ordinal after one is an index
-#: into the protocol rather than part of a name. A single ARABIC digit or a single
-#: LETTER counts as an ordinal after one of these (see :data:`_PLACEHOLDER_ORDINAL`);
-#: multi-letter roman numerals do not, because "NYHA class IV" is an entity a vocabulary
-#: holds and no stem here is worth reaching for one. `factor` alone is out of the set --
-#: "Factor 8" is haemophilia B's clotting factor, "Risk factor 1" is a row number.
-_PLACEHOLDER_ORDINAL_STEMS = frozenset(
-    {
-        "risk factor",
-        "risk factors",
-        "criterion",
-        "criteria",
-        "inclusion criterion",
-        "inclusion criteria",
-        "exclusion criterion",
-        "exclusion criteria",
-        "condition",
-        "conditions",
-        "item",
-        "items",
-    }
-)
+def _refuse_line_naming_no_entity(criterion: Mapping[str, Any], label: str) -> None:
+    """Refuse, before mapping, a criterion whose protocol line names no clinical entity.
 
-#: What a protocol writes between an ordinal and the stem it indexes: one word that
-#: modifies the SCAFFOLDING rather than naming an entity. CAROLINA writes "CV risk
-#: factor A", not "Risk factor A", and until 2026-09-10 that two-word prefix was enough
-#: to defeat the whole rule.
-#:
-#: A closed measured list, and exactly ONE word wide, for the same reason
-#: :data:`_UNMAPPABLE_DRUG_CATEGORIES` matches the whole residue: the prefix is the only
-#: place a real entity could ride in front of an ordinal, and an unbounded prefix would
-#: read "Prior stroke + Risk factor 1" as naming nothing. These three are what the
-#: corpus writes -- `cv` and `cvd` on CAROLINA's seven risk-factor rows and its
-#: "CVD criterion 1", `sub` on "Sub condition 1" and "Sub condition 2". Every wider
-#: word would be imagined rather than measured.
-#:
-#: Note what a prefix does NOT do: it never makes the residue mappable. "CV risk factor
-#: A" is the risk factor labelled A in the protocol's CV list, and the letter is the
-#: whole of its identity -- which is why the mapper answered it with eight "at increased
-#: risk of ..." Observation concepts, and answered "CV risk factor B", "C" and "D" with
-#: the same eight.
-_PLACEHOLDER_ORDINAL_PREFIXES = frozenset({"cv", "cvd", "sub"})
+    ``unmappable-placeholder`` is the one refusal code the delivery gate permits: the loss is
+    IRREDUCIBLE, because no vocabulary holds a pointer into the protocol ("Table II
+    criteria"), a product known only by its role in a study ("investigational drug"), or an
+    investigator's assessment. Whether a line is one of those is meaning, so the annotation
+    step decides it (``no_entity``, RFC-016 step 4) and quotes the fragment that shows it;
+    this reads only that verified field (``stated_no_entity``) -- never the seed, the
+    description or the label. It replaces ``_seed_is_unmappable_placeholder`` and its word
+    lists (A16).
 
-#: The index itself: one arabic number, or ONE letter. The single-letter form is what
-#: CAROLINA's "CV risk factor A/B/C/D" needs and it is deliberately not the roman
-#: numerals :data:`_POINTER_IDENTIFIER` accepts -- a document pointer is anchored by
-#: "Table"/"Appendix" and can afford them, while this rule is anchored only by a stem
-#: and "Troponin I" would be one word away if the stem list ever grew.
-_PLACEHOLDER_ORDINAL = re.compile(r"^(?:\d+|[a-z])$")
+    The fragment travels as the refusal's ``detail`` (``refusalDetail`` on the
+    ``_unmappedCriteria`` record), where ``scripts/verify_circe_delivery.py`` checks it
+    against the store row's ``protocolLine`` before permitting the loss.
 
-#: Words that point INTO the source document. Each must be FOLLOWED by an identifier to
-#: count, which is the whole of what keeps the anatomical "Appendix" and "Cesarean
-#: section" out. `supplement` is deliberately absent -- a dietary supplement is a real
-#: drug-domain entity, and "Supplementary Table 1" is caught by `table` anyway.
-_DOCUMENT_POINTER_WORDS = frozenset({"table", "appendix", "figure", "exhibit", "annex"})
+    Refused before the mapper rather than after it: the mapper's answer to such a seed is
+    whatever the vocabulary holds nearest it, and neither its domain nor its plausibility
+    changes the verdict the line already gave.
 
-#: Nouns whose count is a tally of protocol rows rather than a measured quantity. Every
-#: cell and analyte is deliberately absent: "Platelet count", "Absolute neutrophil
-#: count" and "CD4 count" are measurements a better mapper finds, and permitting one
-#: would walk a real loss through the delivery gate.
-_TALLIED_PLACEHOLDER_NOUNS = frozenset(
-    {
-        "condition",
-        "conditions",
-        "criterion",
-        "criteria",
-        "comorbidity",
-        "comorbidities",
-        "factor",
-        "factors",
-    }
-)
-
-#: Qualifiers that name a RELATION to a substance and no substance. Bare, nothing can be
-#: mapped; with a substance after them ("Contraindication to clopidogrel") the loss is
-#: reducible and the refusal must stay `no-concept-mapping`.
-_BARE_QUALIFIERS = frozenset({"contraindication", "contraindications"})
-
-#: Drug CATEGORIES a protocol writes when it means "whatever this trial is testing".
-#: Each names a ROLE in the study rather than a substance, so no RxNorm ingredient sits
-#: behind it and no mapper can ever find one -- what comes back instead is whatever the
-#: vocabulary finds semantically near, which is how "Investigational Drug" answered with
-#: Meas Value, Measurement, Observation and Procedure concepts on 2026-09-10 and refused
-#: as `domain-contradiction`.
-#:
-#: Matched against the WHOLE seed and never as a substring, which is the entire reason
-#: "Hypersensitivity to investigational product or glimepiride", "Contraindication to
-#: study drug or bleeding" and "Participation in another trial with an investigational
-#: drug" keep failing the delivery gate: each names a real entity beside the category,
-#: and a mapper that found it would reduce the loss.
-#:
-#: Measured over the 2,055 distinct `sourceText` / `description` / `label` / `name` /
-#: `conceptSetName` strings of `tmp/tte_cold6_20260908/studies.json` and
-#: `output/site_gap/2026-09-10/store/studies.json`: 28 carry an investigational- or
-#: study-drug phrase, and exactly 6 of them are the bare category. `study drug` and
-#: `study medication` appear in that corpus only INSIDE a larger phrase, never alone;
-#: they are listed because the exact-residue match cannot reach the larger phrases, so
-#: carrying them costs nothing and guards the next batch. "Investigational drug trial"
-#: is deliberately absent -- a trial has an Observation concept and is mappable.
-_UNMAPPABLE_DRUG_CATEGORIES = frozenset(
-    {
-        "investigational drug",
-        "investigational drugs",
-        "investigational product",
-        "investigational products",
-        "investigational medicinal product",
-        "investigational medicinal products",
-        "investigational medicinal/medical product",
-        "investigational agent",
-        "investigational agents",
-        "study drug",
-        "study drugs",
-        "study medication",
-        "study medications",
-    }
-)
-
-#: The one trailing noun the corpus actually writes after a category ("Investigational
-#: Drug Use"). Kept to exactly that: every wider word -- "therapy", "exposure",
-#: "treatment" -- would be imagined rather than measured, and each one widens what the
-#: delivery gate permits.
-_DRUG_CATEGORY_TRAILING_FILLER = frozenset({"use"})
-
-#: An identifier a document pointer may carry: "3", "II", "B".
-_POINTER_IDENTIFIER = re.compile(r"^(?:\d+|[ivxlcdm]+|[a-z])$")
-
-
-def _seed_is_unmappable_placeholder(seed: str) -> bool:
-    """Does this seed name no clinical entity at all, so that NO mapper could map it?
-
-    A heuristic over English, and narrow on purpose. It exists because
-    ``REFUSAL_NO_CONCEPT_MAPPING`` straddles the axis a delivery gate permits on -- not
-    "was the refusal deliberate" (all of them are) but "is this loss IRREDUCIBLE given a
-    correct pipeline". "Table II criteria" is irreducible: the content lives in the
-    protocol's own table and no vocabulary will ever hold the pointer. "Contraindication
-    to clopidogrel" is REDUCIBLE: it names a real substance and a better mapper finds
-    it. One code, two opposite verdicts, and no reason string separates them -- so the
-    call is made here, at the raise site that can see the seed, and
-    ``PERMITTED_REFUSAL_CODES`` in ``scripts/verify_circe_delivery.py`` applies no
-    judgement of its own. The same call is made from
-    :func:`_refuse_domain_contradiction_for_seed`, where the mapper DID answer and the
-    answer's domain is what betrays that there was nothing to find.
-
-    The bias is one-directional and asymmetric on purpose. A false ``True`` permits a
-    real mapping loss through the delivery gate, which is the failure that matters; a
-    false ``False`` merely fails a delivery a human then reads. So each rule below is
-    keyed on a closed stem list rather than on a shape, and anything not on a list gets
-    ``False``. Four rules, each answering "what is left once the placeholder scaffolding
-    is removed?" with "nothing":
-
-    * a trailing ordinal -- an arabic number or a single letter -- after a stem that
-      names nothing, optionally carrying one modifier word in front of it: "Risk factor
-      1", "CV risk factor A";
-    * a pointer into the source document -- "Table II criteria", "Appendix B criteria";
-    * a tally of protocol rows -- "Preexisting Conditions Count";
-    * a bare relational qualifier -- "Contraindication", alone;
-    * a drug CATEGORY naming no ingredient -- "Investigational Drug", "study drug".
-
-    Verified against the delivered 2026-09-08 batch (652 distinct criterion
-    ``sourceText`` values): it permits none of them, including the four
-    ``Contraindication <substance>`` seeds, ``Platelet count``, and the four seeds
-    ending in a bare digit (``Age >=50``, ``MELD score >= 30``,
-    ``Multiple endocrine neoplasia type 2``, ``Chronic Kidney Disease Stage 4 or 5``).
-
-    Re-verified 2026-09-10 when the drug-category rule was added, over the 2,055 distinct
-    ``sourceText`` / ``description`` / ``label`` / ``name`` / ``conceptSetName`` strings
-    of ``tmp/tte_cold6_20260908/studies.json`` and
-    ``output/site_gap/2026-09-10/store/studies.json``: the rule newly permits 6 of them,
-    every one the bare category, and none of the 22 further strings that carry an
-    investigational- or study-drug phrase beside a real entity.
-
-    Re-verified again 2026-09-10 when the ordinal rule gained its one-word prefix and
-    its letter index, over the 2,091 distinct strings of the same two keys in
-    ``tmp/tte_cold6_20260908/studies.json`` and
-    ``output/site_gap/2026-09-10/store_grounded/studies.json``: 13 permitted before, 22
-    after, and the 9 it newly permits are exactly CAROLINA's ``CV risk factor``
-    ``1``/``2``/``A``/``B``/``C``/``D``, its ``CVD criterion 1``, and
-    ``Sub condition 1``/``2``. Nothing lost the classification, and the near misses the
-    prefix and the letter put in reach all stayed refused -- ``Troponin I``,
-    ``Troponin T``, ``Two or more specified CV risk factors``, and the ``+``-joined
-    group-label names (``CV risk factor A + ... + D``).
-
-    Where the classification is consulted is worth stating where it will be read, because
-    for one day it was consulted only where it could not act. There are THREE raise sites
-    -- the RAG fallback that found no concepts,
-    :func:`_refuse_domain_contradiction_for_seed`, and
-    :func:`_refuse_mapped_seed_naming_no_entity`. The first two are both FAILURE paths,
-    and on 2026-09-10 eight of the nine placeholder-seeded criteria in the grounded store
-    took neither -- all six CAROLINA ``CV risk factor`` rows were
-    answered with eight ``Observation`` "at increased risk of ..." concepts under an
-    ``Observation`` criterion, so nothing contradicted and all six were counted in
-    ``census.mapped`` (92 of 128). Six names, two distinct concept sets, two required
-    inclusion rules. The third site is what closed that: a seed naming no entity is
-    refused whether or not the mapper found something to say about it. Classifying the
-    seed correctly is a precondition for refusing it and is still not by itself the
-    refusal.
-    """
-    text = re.sub(r"\s+", " ", (seed or "").strip()).strip(" .;:,")
-    if not text:
-        return False
-
-    words = text.lower().split(" ")
-
-    if len(words) == 1 and words[0] in _BARE_QUALIFIERS:
-        return True
-
-    for index, word in enumerate(words[:-1]):
-        if word.strip("()[]") in _DOCUMENT_POINTER_WORDS and _POINTER_IDENTIFIER.match(
-            words[index + 1].strip("().,")
-        ):
-            return True
-
-    # The stem may carry ONE modifier word in front of it ("CV risk factor A"), drawn
-    # from a closed list, and nothing wider. An unbounded prefix would read the group
-    # label "CV risk factor A + CV risk factor B + ... + D" -- and, worse, any
-    # "<real entity> + Risk factor 1" -- as naming nothing.
-    if _PLACEHOLDER_ORDINAL.match(words[-1]):
-        stem = words[:-1]
-        if " ".join(stem) in _PLACEHOLDER_ORDINAL_STEMS:
-            return True
-        if (
-            len(stem) >= 2
-            and stem[0] in _PLACEHOLDER_ORDINAL_PREFIXES
-            and " ".join(stem[1:]) in _PLACEHOLDER_ORDINAL_STEMS
-        ):
-            return True
-
-    if len(words) >= 2 and words[-1] == "count" and words[-2] in _TALLIED_PLACEHOLDER_NOUNS:
-        return True
-
-    # Matched on the WHOLE residue, never as a substring: "Investigational drug use" is
-    # the category and nothing else, while "Participation in another trial with an
-    # investigational drug" names a trial the vocabulary holds.
-    category = list(words)
-    while len(category) > 1 and category[-1] in _DRUG_CATEGORY_TRAILING_FILLER:
-        category.pop()
-    if " ".join(category) in _UNMAPPABLE_DRUG_CATEGORIES:
-        return True
-
-    return False
-
-
-def _refuse_domain_contradiction_for_seed(
-    criteria_key: str, mapped_criterion: dict[str, Any], label: str, seed: str
-) -> None:
-    """:func:`refuse_domain_contradiction`, re-coded when the seed named no entity.
-
-    ``domain-contradiction`` names a MECHANISM -- the vocabulary answered, and answered
-    from a domain the criterion's own CDM table cannot read. The delivery gate does not
-    permit it, and that is right for the case it was written against: CAROLINA's
-    "Glimepiride" is a real substance in the wrong domain, so a better seed or a better
-    mapper recovers it and the loss is REDUCIBLE.
-
-    It is not right for a seed that names no substance at all. "Investigational drug"
-    is a role in the study, not an ingredient; nothing in RxNorm sits behind it, so the
-    vocabulary answers with whatever is semantically near -- Meas Value, Measurement,
-    Observation, Procedure -- and the wrong domain is the SYMPTOM of unmappability
-    rather than a mapping that went astray. Both rows the 2026-09-10 delivery blocked on
-    (ARISTOTLE exclusion #31 "Investigational drug use", EMPA-REG exclusion #41
-    "Investigational Drug") are that shape, and no re-extraction would change it.
-
-    So the code moves and nothing else does. The message and ``detail`` are carried
-    through verbatim, which keeps the mechanism legible in the delivered record: a
-    reader still sees which domains came back and which table could not read them. Only
-    the key a consumer classifies on -- "is this loss IRREDUCIBLE" -- is corrected.
-
-    Placed here rather than inside :func:`refuse_domain_contradiction` because the
-    classifier reads the SEED, and ``circe_lint`` is handed only the rule's ``label``.
-    The two diverge exactly where it matters: EMPA-REG #41's ``description`` is "Prior
-    investigational drug trial", which names a trial and would NOT be permitted.
-
-    :param criteria_key: the CIRCE criteria type the rule will be emitted under.
-    :param mapped_criterion: the mapper's answer, in the seeded-concept-set shape.
+    :param criterion: the store row, carrying its ``annotation``.
     :param label: the rule's name, for the recorded reason.
-    :param seed: the text the mapper was actually asked about.
-    :raises CriterionRefused: unchanged from :func:`refuse_domain_contradiction`, except
-        that a seed naming no clinical entity carries
-        :data:`~src.utils.criterion_refusal.REFUSAL_UNMAPPABLE_PLACEHOLDER`.
-    """
-    try:
-        refuse_domain_contradiction(criteria_key, mapped_criterion, label)
-    except CriterionRefused as refused:
-        if refused.code != REFUSAL_DOMAIN_CONTRADICTION or not _seed_is_unmappable_placeholder(
-            seed
-        ):
-            raise
-        raise CriterionRefused(
-            str(refused), code=REFUSAL_UNMAPPABLE_PLACEHOLDER, detail=refused.detail
-        ) from refused
-
-
-def _refuse_mapped_seed_naming_no_entity(
-    mapped_criterion: dict[str, Any], seed: str
-) -> None:
-    """Refuse a placeholder seed the mapper ANSWERED, before its concepts become a rule.
-
-    The third and last site that consults :func:`_seed_is_unmappable_placeholder`, and
-    the only one reached on a path where the mapping SUCCEEDED. The other two are both
-    failure paths -- the RAG fallback that found nothing, and
-    :func:`_refuse_domain_contradiction_for_seed`, where the answer's domain betrayed
-    that there was nothing to find -- so until this existed, a seed naming no entity
-    whose mapper happened to answer plausibly, in the criterion's own domain, was
-    emitted with no record of any kind.
-
-    That is the larger half. Measured on
-    ``output/site_gap/2026-09-10/store_grounded/studies.json`` and the delivery that
-    store produces at ``fd8a9d1``
-    (``output/placeholder_refusal/2026-09-10/deliver_before``): nine criteria across the
-    six trials carry a seed the classifier calls a placeholder, ONE of them refused
-    (ARISTOTLE exclusion 26, through the domain path) and the other EIGHT shipped rules
-    that filter patients. What they shipped is why this is a refusal rather than a
-    record:
-
-    * CAROLINA inclusion 6/7 and 25-28 -- "CV risk factor 1/2/A/B/C/D" -- two required
-      ``ANY`` InclusionRules at ``>= 1`` occurrence over Observation risk-ASSESSMENT
-      flags ("At increased risk of thrombophlebitis", "Cardiovascular disease 10Y
-      risk"), not the smoking / hypertension / dyslipidemia the protocol line
-      enumerates. Six protocol branches, two distinct 8-concept sets between them, and a
-      required inclusion over codes a CDM almost never records is a cohort that matches
-      nobody;
-    * CAROLINA exclusion 39 -- "Investigational drug" -- ABSENCE over 25 Procedure
-      concepts including "Drug therapy", "Routine administration of medication" and
-      "Administration of sulfonylurea", in the trial whose active comparator IS a
-      sulfonylurea. The exclusion removes the patients the protocol enrols;
-    * CAROLINA exclusion 71 -- "Investigational Medicinal Product" -- ABSENCE over four
-      Procedure concepts, three of which do name clinical-trial assessment. It is the
-      closest of the eight to the protocol's intent and is refused anyway: the fourth is
-      "Dispensing of pharmaceutical/biologic product" WITH descendants, which inside an
-      absence rule excludes anyone ever dispensed a medicine. A partly plausible set is
-      still a set no criterion asked for.
-
-    Nor is any of the eight what the protocol's own gold encodes. CAROLINA's TROY v1.1
-    definition answers the same two risk-factor lines with concrete entities -- Smoking,
-    dyslipidemia, LDL cholesterol, SBP, eGFR, albumin/creatinine ratio, BMI, and for the
-    "high CV risk" branches PCI, CABG, limb angioplasty, ischemic stroke, PAOD, ACS, MI
-    -- and holds no counterpart of any kind for "investigational drug" or "IMP", which
-    are administrative facts a CDM does not record.
-
-    Placed AFTER :func:`_refuse_domain_contradiction_for_seed` rather than before the
-    mapper call, and the order is load-bearing in both directions. Before the mapper,
-    the domain path becomes unreachable for exactly these seeds and ARISTOTLE exclusion
-    26's delivered record loses the mechanism it carries today -- which domains came
-    back, and which table could not read them. After the mapper, both records survive
-    and this one can say what the answer WAS, which is the only thing separating it from
-    the RAG-fallback refusal that shares its code and found nothing at all.
-
-    :param mapped_criterion: the mapper's answer, in the seeded-concept-set shape.
-    :param seed: the text the mapper was actually asked about.
     :raises CriterionRefused: with
-        :data:`~src.utils.criterion_refusal.REFUSAL_UNMAPPABLE_PLACEHOLDER` when the
-        seed names no clinical entity. Nothing is raised otherwise.
+        :data:`~src.utils.criterion_refusal.REFUSAL_UNMAPPABLE_PLACEHOLDER` when the verified
+        annotation says the line names no entity. Nothing is raised otherwise.
     """
-    if not _seed_is_unmappable_placeholder(seed):
+    from src.services.criterion_annotation import stated_no_entity
+
+    statement = stated_no_entity(criterion)
+    if statement is None:
         return
-    items = list(((mapped_criterion or {}).get("expression") or {}).get("items") or [])
-    domains = sorted(
-        {
-            (item.get("concept") or {}).get("DOMAIN_ID")
-            for item in items
-            if (item.get("concept") or {}).get("DOMAIN_ID")
-        }
-    )
-    answered = ", ".join(domains) or "unknown-domain"
     raise CriterionRefused(
-        f"the mapper answered {seed!r} with {len(items)} {answered} concept(s), and the "
-        f"seed names no clinical entity: an answer to a placeholder is whatever the "
-        f"vocabulary holds NEAREST it, not what the protocol asked for, so emitting it "
-        f"would filter patients on concepts no criterion named",
+        f"the protocol line of {label!r} names no clinical entity a vocabulary could hold "
+        f"({statement.kind.value}: {statement.span!r}), so no concept set can stand for it",
         code=REFUSAL_UNMAPPABLE_PLACEHOLDER,
-        detail=f"{len(items)} concepts from {answered}",
+        detail=statement.span,
     )
 
 
@@ -1059,11 +724,12 @@ def _recode_refusal_for_missing_entity(
       :data:`~src.utils.criterion_refusal.SEED_CAUSED_REFUSAL_CODES` is re-coded. That
       list is an ALLOW-list, so a refusal about the criterion's NUMBER rather than its
       concepts keeps the record it already had;
-    * ``unmappable-placeholder`` is never re-coded even though it IS seed-caused,
-      because it is the one code ``PERMITTED_REFUSAL_CODES`` permits and those rows earn
-      it on the seed's own words. ARISTOTLE exclusion 26 ("Investigational drug use")
-      carries an empty ``entity_text`` AND that permit; re-coding it would flip both
-      ARISTOTLE arms from PASS to FAIL for a loss that is irreducible either way.
+    * ``unmappable-placeholder`` is never re-coded, because it is the one code
+      ``PERMITTED_REFUSAL_CODES`` permits and those rows earn it on their protocol line's
+      verified ``no_entity`` annotation (raised before the mapper, so it does not reach
+      here today). ARISTOTLE's "Investigational drug use" carries an empty
+      ``entity_text`` AND that permit; re-coding it would take the permit away for a loss
+      that is irreducible either way.
 
     What the new code does NOT claim is that the protocol had an entity to extract.
     CAROLINA exclusion 72 ("patients considered reliable by the investigator") has no
@@ -7141,6 +6807,9 @@ class TTEService:
         # infers the real domain (e.g. Observation/Condition) from the concept-set
         # match itself instead.
         criterion_domain = None if raw_domain in DEMOGRAPHIC_DOMAINS else raw_domain
+        # A line that names no clinical entity is refused on its verified annotation before
+        # anything is mapped; the one refusal the delivery gate permits (RFC-016 step 4, A16).
+        _refuse_line_naming_no_entity(criterion, label)
         # Everything the SEED can be blamed for lives inside this block, and nothing
         # else does. A refusal raised here is a verdict on the text the mapper was
         # asked; the two refusals further down (`stranded-group-threshold`,
@@ -7161,21 +6830,7 @@ class TTEService:
             # expressions is how they drift apart.
             resolved_domain = criterion_domain or mapped_criterion["domain"]
             criteria_key = self._seeded_criteria_key(resolved_domain)
-            # `seed` and not `label`: the classifier inside decides on what the MAPPER was
-            # asked, and the two differ on the row it matters for (EMPA-REG exclusion #41
-            # is seeded "Investigational Drug" while its description says "Prior
-            # investigational drug trial", which names a trial and stays unpermitted).
-            _refuse_domain_contradiction_for_seed(criteria_key, mapped_criterion, label, seed)
-            # ...and last, the same classifier on the path where NOTHING went wrong. The
-            # two consults above are both failure paths, so a placeholder seed whose
-            # mapper answered plausibly in the criterion's own domain took neither and
-            # was emitted: eight of the nine placeholder-seeded criteria in the
-            # 2026-09-10 grounded delivery shipped rules, six of them CAROLINA's
-            # `CV risk factor` branches under two required inclusion rules and two of
-            # them ABSENCE rules over "Drug therapy" and "Dispensing of
-            # pharmaceutical/biologic product". Kept after the domain check so a row
-            # that fails both keeps the richer record.
-            _refuse_mapped_seed_naming_no_entity(mapped_criterion, seed)
+            refuse_domain_contradiction(criteria_key, mapped_criterion, label)
         except CriterionRefused as refused:
             recoded = _recode_refusal_for_missing_entity(refused, criterion, seed)
             if recoded is None:
@@ -8779,18 +8434,12 @@ class TTEService:
                     code=REFUSAL_INTENT_UNPARSED,
                     detail=str(fallback_reason),
                 )
-            # Two verdicts on one axis, and only this line can see which. The seed that
-            # names no clinical entity is an IRREDUCIBLE loss -- no vocabulary will ever
-            # hold "Table II criteria" -- and is the one thing the delivery gate may
-            # permit; the seed that names a real substance is a mapping failure a better
-            # mapper fixes, and must keep failing the gate.
+            # Whether the line names no clinical entity at all -- the irreducible loss the
+            # delivery gate permits -- is decided before mapping from the row's verified
+            # annotation (`_refuse_line_naming_no_entity`); the seed is not read for it here.
             raise CriterionRefused(
                 f"No concept mapping found for '{normalized_seed}'",
-                code=(
-                    REFUSAL_UNMAPPABLE_PLACEHOLDER
-                    if _seed_is_unmappable_placeholder(normalized_seed)
-                    else REFUSAL_NO_CONCEPT_MAPPING
-                ),
+                code=REFUSAL_NO_CONCEPT_MAPPING,
             )
 
         recommendation = recommendations[0]

@@ -46,10 +46,12 @@ REFUSAL_NO_CONCEPT_MAPPING = "no-concept-mapping"
 #:     "Contraindication to clopidogrel"    REDUCIBLE — names a real substance, and a
 #:                                          better mapper finds it
 #:
-#: One code, two opposite verdicts, and no reason string separates them — which is why
-#: the split is made HERE, at the raise site that can see the seed, rather than by a
-#: gate-side heuristic over English. A gate that guessed would silently permit the
-#: second row the day its seed happened to look placeholder-shaped.
+#: One code, two opposite verdicts, and no reason string separates them. Since RFC-016
+#: step 4 the split is the annotation step's ``no_entity`` field, which quotes the
+#: fragment of ``protocolLine`` showing that the line names no entity; the refusal
+#: carries that fragment as its ``detail``, and the delivery gate permits the code only
+#: when the fragment is a substring of the store row's line. No word list over the seed
+#: decides it (A16), at the raise site or in the gate.
 REFUSAL_UNMAPPABLE_PLACEHOLDER = "unmappable-placeholder"
 
 #: The intent router could not parse the seed into a clinical entity — usually because
@@ -176,11 +178,10 @@ REFUSAL_MISSING_ENTITY_TEXT = "missing-entity-text"
 #: Four codes are deliberately absent:
 #:
 #: * :data:`REFUSAL_UNMAPPABLE_PLACEHOLDER` -- the ONE code the delivery gate permits,
-#:   and these rows earn it on the seed's own words. "Investigational drug use"
-#:   (ARISTOTLE exclusion 26, empty ``entity_text``) names a role in the study rather
-#:   than a substance, so no ``entity_text`` would have helped and the loss is
-#:   irreducible either way. Re-coding it would take a real permit away and flip both
-#:   ARISTOTLE arms from PASS to FAIL for a row nothing is wrong with.
+#:   earned on the protocol line's verified ``no_entity`` annotation. "Investigational
+#:   drug use" (ARISTOTLE, empty ``entity_text``) names a role in the study rather than a
+#:   substance, so no ``entity_text`` would have helped and the loss is irreducible either
+#:   way. Re-coding it would take a real permit away.
 #: * :data:`REFUSAL_STRANDED_GROUP_THRESHOLD`, :data:`REFUSAL_UNREADABLE_VALUE_FILTER`
 #:   and :data:`REFUSAL_UNSTATED_UNIT_BOUND` -- all three are refused AFTER the mapper
 #:   answered, and all three are about the NUMBER rather than the concepts. A different
