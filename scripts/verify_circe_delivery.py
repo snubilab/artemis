@@ -91,6 +91,13 @@ Checks per file:
     NAMES for words asserting a bound (A29); that word list is deleted. See
     ``threshold_without_value_filter_findings``.
 
+(z) no presence and absence from one protocol line, over the same (or member-identical)
+    concept set in overlapping windows, where the absence forbids the bound the presence
+    requires. Numbers and operators only. CARMELINA's "HbA1c of >= 6.5% and <= 10.0%" as
+    ``PRESENCE gte 6.5`` + ``ABSENCE lte 10.0`` keeps only patients above 10; the repair
+    that read ``<=`` out of the line to prevent it (A1) is deleted. See
+    ``absence_forbids_required_values_findings``.
+
 (k) the STORE study's repair ledger (``eligibility._repairAccounting``) reconciles
     against the store's own criteria. Every check above reconciles the delivered file
     against the store, and the store's criteria rows are written AFTER Agent 1's
@@ -399,6 +406,7 @@ from src.utils.circe_lint import (  # noqa: E402
     contradictory_absence_rules,
     contradictory_presence_absence_criteria,
     domain_mismatched_criteria,
+    presence_bound_forbidden_pairs,
     entry_concept_ids,
     entry_concept_set_name,
     entry_matches_expected,
@@ -1234,6 +1242,58 @@ def threshold_without_value_filter_findings(
             why = "it is applied as a value filter, and none was emitted"
         failures.append(f"{head} -- {why}")
     return ThresholdFindings(failures, warnings)
+
+
+def absence_forbids_required_values_findings(
+    expression: dict[str, Any], study: dict[str, Any]
+) -> list[str]:
+    """Check (z): an absence that forbids the values its sibling presence requires.
+
+    :func:`~src.utils.circe_lint.presence_bound_forbidden_pairs` finds, from numbers and
+    operators alone, a mandatory presence and absence over the same concepts in overlapping
+    windows where the absence forbids the bound the presence states. This keeps the pairs
+    whose two criteria come from ONE store row's ``protocolLine`` -- the two halves of one
+    stated range -- read through ``_criterionConceptSetRefs``. Measured on CARMELINA's IR
+    row "HbA1c of >= 6.5% and <= 10.0%": ``PRESENCE gte 6.5`` + ``ABSENCE lte 10.0`` keeps
+    only patients above 10 and fails; the correct ``ABSENCE gt 10.0`` passes.
+
+    :param expression: the delivered CIRCE expression.
+    :param study: the store study it was built from.
+    :returns: one finding per pair; a single fail-closed finding when pairs exist and the
+        file carries no refs map to say which line each criterion came from.
+    """
+    pairs = presence_bound_forbidden_pairs(expression)
+    if not pairs:
+        return []
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    if not isinstance(refs, dict):
+        return [
+            f"{len(pairs)} presence/absence pair(s) where the absence forbids the values the "
+            f"presence requires, and the file carries no {CRITERION_CONCEPT_SET_REFS_KEY}, so "
+            "whether each pair comes from one protocol line cannot be checked"
+        ]
+    index = criteria_index(study)
+    lines_by_codeset: dict[Any, set[str]] = {}
+    for key, codeset in refs.items():
+        role, separator, criterion_id = str(key).partition(":")
+        line = (index.get((role, criterion_id)) or {}).get("protocolLine") if separator else None
+        if isinstance(line, str) and line.strip():
+            lines_by_codeset.setdefault(codeset, set()).add(line)
+    findings: list[str] = []
+    for pair in pairs:
+        shared = lines_by_codeset.get(pair.presence_codeset, set()) & lines_by_codeset.get(
+            pair.absence_codeset, set()
+        )
+        if not shared:
+            continue
+        findings.append(
+            f"{pair.presence_where} requires at least one occurrence {pair.presence_bound} "
+            f"over codeset {pair.presence_codeset} while {pair.absence_where} requires ZERO "
+            f"occurrences {pair.absence_bound} over codeset {pair.absence_codeset}, both from "
+            f"the line {sorted(shared)[0][:80]!r} -- absence forbids the values the presence "
+            f"requires"
+        )
+    return findings
 
 
 def _label_of(row: dict[str, Any]) -> str:
@@ -2844,6 +2904,16 @@ def main(argv: list[str] | None = None) -> int:
             if threshold_findings.warnings
             else ""
         )
+
+        # (z) one stated range split into a presence and an absence whose operator sits on
+        # the allowed side: the absence forbids the bound the presence requires. Numbers and
+        # operators only, for two criteria from one protocol line.
+        forbidden_required = absence_forbids_required_values_findings(expression, study)
+        if forbidden_required:
+            reasons.append(
+                f"absence forbids required values ({len(forbidden_required)}): "
+                f"{'; '.join(forbidden_required)}"
+            )
 
         # (v) a lab range required as a PRESENCE on a mandatory path. Check (j) asks whether a
         # bound went missing; this one asks whether a bound that is present was stated in the

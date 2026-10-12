@@ -20,7 +20,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NamedTuple
 
 # Same purity contract: `conceptset_closure` imports no database driver at module level.
 # The vocabulary arrives as an injected `VocabularyLookup`, so the one check here that
@@ -2991,6 +2991,117 @@ def bound_contradicted_presence_criteria(expression: dict[str, Any]) -> list[str
                 f"not filter on"
             )
     return findings
+
+
+class PresenceBoundForbidden(NamedTuple):
+    """A mandatory presence whose own bound a mandatory absence forbids."""
+
+    presence_where: str
+    absence_where: str
+    presence_codeset: Any
+    absence_codeset: Any
+    presence_bound: str
+    absence_bound: str
+
+
+def _lost_bounds(
+    required: tuple[tuple[float, bool, float, bool], ...],
+    forbidden: tuple[tuple[float, bool, float, bool], ...],
+) -> list[float]:
+    """The finite bounds of ``required`` that no value left after ``forbidden`` reaches.
+
+    What remains of the required ranges once the forbidden ones are cut out is compared
+    with the bounds the presence states: a lower bound is kept when some remaining piece
+    still starts there, an upper bound when some piece still ends there.
+    """
+    remaining = [piece for piece in required if _range_is_inhabited(piece)]
+    for cut in forbidden:
+        remaining = [piece for chunk in remaining for piece in _subtract_range(chunk, cut)]
+    lost: list[float] = []
+    for low, _low_closed, high, _high_closed in required:
+        if low != float("-inf") and not any(piece[0] == low for piece in remaining):
+            lost.append(low)
+        if high != float("inf") and not any(piece[2] == high for piece in remaining):
+            lost.append(high)
+    return lost
+
+
+def presence_bound_forbidden_pairs(expression: dict[str, Any]) -> list[PresenceBoundForbidden]:
+    """Mandatory presence/absence pairs where the absence forbids the presence's own bound.
+
+    Structural and numeric only. A pair reads the same concept-set members (the same
+    ``CodesetId`` or a member-identical one), the same criteria type and residue
+    (:func:`_criterion_signature`), windows that share a day, and unit filters one
+    measurement could satisfy together; both carry a ``ValueAsNumber``. It is reported when,
+    once the absence's forbidden values are removed from the presence's admitted values,
+    some finite bound the presence states is no longer reached.
+
+    The motivating shape is one protocol range split into a presence and an absence with
+    the absence's operator on the ALLOWED side: CARMELINA's "HbA1c of >= 6.5% and <= 10.0%"
+    as ``PRESENCE gte 6.5`` + ``ABSENCE lte 10.0`` leaves ``(10, inf)``, which no longer
+    starts at 6.5. The correct split, ``ABSENCE gt 10.0``, leaves ``[6.5, 10]`` and is
+    silent. Overlap alone does not separate them -- both pairs intersect -- and
+    containment (:func:`bound_contradicted_presence_criteria`) is silent on both.
+
+    Whether the two halves come from one protocol line is not in the file; the delivery
+    gate decides that from the store (check (z)).
+
+    :param expression: a CIRCE cohort expression.
+    :returns: one pair per presence/absence combination that loses a bound.
+    """
+    member_ids_by_codeset = _member_ids_by_codeset(expression)
+    presences: list[tuple[str, tuple[Any, ...], Mapping[str, Any]]] = []
+    absences: list[tuple[str, tuple[Any, ...], Mapping[str, Any]]] = []
+    for index, rule in enumerate(expression.get("InclusionRules") or []):
+        if not isinstance(rule, Mapping):
+            continue
+        where = f"InclusionRules[{index}] {(rule.get('name') or '')!r}"
+        for entry in _conjoined_entries(rule.get("expression") or {}):
+            signature = _criterion_signature(member_ids_by_codeset, entry)
+            body = _criterion_body(entry)
+            if signature is None or body is None:
+                continue
+            if not isinstance(body[1].get("ValueAsNumber"), Mapping):
+                continue
+            # Members, criteria type, residue: everything but the bound, the unit list and
+            # the window, which are compared below.
+            shared = (signature[0], signature[1], signature[5])
+            if _required_occurrence(entry):
+                presences.append((where, shared, entry))
+            elif _forbidden_occurrence(entry):
+                absences.append((where, shared, entry))
+
+    pairs: list[PresenceBoundForbidden] = []
+    for present_where, present_shared, present_entry in presences:
+        present_payload = _criterion_body(present_entry)[1]
+        for absent_where, absent_shared, absent_entry in absences:
+            if present_shared != absent_shared:
+                continue
+            absent_payload = _criterion_body(absent_entry)[1]
+            if not _intervals_overlap(
+                _entry_interval(present_entry), _entry_interval(absent_entry)
+            ):
+                continue
+            if not _unit_ids_compatible(
+                _criterion_unit_ids(present_payload), _criterion_unit_ids(absent_payload)
+            ):
+                continue
+            if not _lost_bounds(
+                _value_ranges(present_payload.get("ValueAsNumber")),
+                _value_ranges(absent_payload.get("ValueAsNumber")),
+            ):
+                continue
+            pairs.append(
+                PresenceBoundForbidden(
+                    presence_where=present_where,
+                    absence_where=absent_where,
+                    presence_codeset=present_payload.get("CodesetId"),
+                    absence_codeset=absent_payload.get("CodesetId"),
+                    presence_bound=_render_bound_phrase(present_payload),
+                    absence_bound=_render_bound_phrase(absent_payload),
+                )
+            )
+    return pairs
 
 
 def _render_bound_phrase(payload: Mapping[str, Any]) -> str:
