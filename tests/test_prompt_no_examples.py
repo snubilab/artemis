@@ -248,17 +248,6 @@ def _render_clinical_reranker() -> str:
     return _joined(recorder.calls)
 
 
-def _render_comparator_classify() -> str:
-    from src.agents.comparator import recommender
-    from src.agents.comparator.literature import CandidateEvidence, Evidence
-
-    recorder = _Recorder(reply='{"verdict": "unknown"}')
-    evidence = Evidence(pmid=STUB, title=STUB, finding=STUB)
-    recommender._classify(CandidateEvidence(drug_class=STUB, cv_effect_evidence=[evidence]),
-                          STUB, STUB, recorder.runnable())
-    return _joined(recorder.calls)
-
-
 def _render_comparator_literature() -> str:
     from src.agents.comparator import recommender
 
@@ -454,11 +443,6 @@ PROMPTS: dict[str, PromptSpec] = {
     ),
     "conceptset.clinical_reranker": PromptSpec(
         _render_clinical_reranker, tokens=frozenset({"selected_id", "confidence"}),
-    ),
-    "comparator.classify": PromptSpec(
-        _render_comparator_classify,
-        tokens=frozenset({"verdict", "confidence", "caveat", "beneficial", "neutral", "harmful",
-                          "unknown"}),
     ),
     "comparator.literature": PromptSpec(
         _render_comparator_literature,
@@ -814,7 +798,7 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),
     "src/agents/conceptset/nlu_router.py": (2, ("conceptset.nlu_router",)),
     "src/agents/conceptset/clinical_reranker.py": (2, ("conceptset.clinical_reranker",)),
-    "src/agents/comparator/recommender.py": (3, ("comparator.classify", "comparator.literature")),
+    "src/agents/comparator/recommender.py": (2, ("comparator.literature",)),
     "src/services/tte_service.py": (6, ("tte.analysis_finalizer", "tte.report_narrative")),
     "src/services/criterion_annotation.py": (3, ("criterion_annotation",)),
     "src/utils/llm.py": (6, "transport: builds the chat client get_llm returns and appends "

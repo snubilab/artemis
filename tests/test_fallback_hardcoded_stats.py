@@ -214,6 +214,7 @@ class TestCohortExecutorEmptyReturnsNoSyntheticRows:
             executor = CohortExecutor(connector=mock_connector, webapi_client=mock_webapi)
             result = executor.execute(
                 circe_json={"ConceptSets": []},
+                outcome_concept_ids=[260139],
                 cohort_name="test",
             )
 
@@ -246,6 +247,7 @@ class TestCohortExecutorEmptyReturnsNoSyntheticRows:
             executor = CohortExecutor(connector=mock_connector, webapi_client=mock_webapi)
             result = executor.execute(
                 circe_json={"ConceptSets": []},
+                outcome_concept_ids=[260139],
                 cohort_name="test",
             )
 
@@ -278,6 +280,7 @@ class TestCohortExecutorEmptyReturnsNoSyntheticRows:
             executor = CohortExecutor(connector=mock_connector, webapi_client=mock_webapi)
             result = executor.execute(
                 circe_json={"ConceptSets": []},
+                outcome_concept_ids=[260139],
                 cohort_name="test",
             )
 
@@ -311,6 +314,7 @@ class TestCohortExecutorEmptyReturnsNoSyntheticRows:
             executor = CohortExecutor(connector=mock_connector, webapi_client=mock_webapi)
             result = executor.execute(
                 circe_json={"ConceptSets": []},
+                outcome_concept_ids=[260139],
                 cohort_name="test",
             )
 
@@ -321,6 +325,22 @@ class TestCohortExecutorEmptyReturnsNoSyntheticRows:
         assert result.used_fallback is False, (
             "used_fallback must be False when dataset is empty — no valid substitution occurred"
         )
+
+
+class TestCohortExecutorNeedsTheOutcomeConcepts:
+    """The outcome concept set is supplied, never guessed from concept-set names."""
+
+    def test_should_refuse_to_execute_when_no_outcome_concept_ids_are_given(self):
+        from src.pipeline.cohort_executor import CohortExecutor
+
+        mock_webapi = MagicMock()
+        circe = {"ConceptSets": [{"id": 1, "name": "Cardiovascular death event",
+                                  "expression": {"items": [{"concept": {"CONCEPT_ID": 4306655}}]}}]}
+        with patch.dict(os.environ, {"ARTEMIS_FALLBACK_MODE": "auto"}):
+            executor = CohortExecutor(connector=MagicMock(), webapi_client=mock_webapi)
+            with pytest.raises(ValueError, match="outcome_concept_ids is required"):
+                executor.execute(circe_json=circe, cohort_name="test")
+        mock_webapi.generate_cohort.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ Unit tests for Agent 3 (Cohort Assembler) - Phase 2.2.
 """
 import pytest
 from src.agents.agent3.assembler import CohortAssembler, AssemblyResult, HealAction
-from src.agents.agent3.mappings import DOMAIN_TO_CRITERIA_TYPE, GENDER_MAP, OPERATOR_MAP
+from src.agents.agent3.mappings import DOMAIN_TO_CRITERIA_TYPE, OPERATOR_MAP
 from src.registry.models import RegisteredConceptSet, RegisteredConcept
 from src.services.value_constraint import build_measurement_value_filter
 from src.models.ir import (
@@ -20,11 +20,6 @@ class TestMappings:
         assert DOMAIN_TO_CRITERIA_TYPE["Condition"] == "ConditionOccurrence"
         assert DOMAIN_TO_CRITERIA_TYPE["Drug"] == "DrugExposure"
         assert DOMAIN_TO_CRITERIA_TYPE["Measurement"] == "Measurement"
-    
-    def test_gender_map(self):
-        """Test gender mapping."""
-        assert GENDER_MAP["MALE"] == 8507
-        assert GENDER_MAP["FEMALE"] == 8532
     
     def test_operator_map(self):
         """Test operator mapping."""

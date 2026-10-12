@@ -3,14 +3,6 @@ Static attribute mappings for Agent 3 (Cohort Assembler).
 Maps IR values to OMOP Concept IDs and Circe-be format values.
 """
 
-# Gender Concept IDs (standard OMOP)
-GENDER_MAP = {
-    "MALE": 8507,
-    "FEMALE": 8532,
-    "M": 8507,
-    "F": 8532
-}
-
 # Race Concept IDs (standard OMOP)
 RACE_MAP = {
     "WHITE": 8527,
@@ -44,9 +36,6 @@ DOMAIN_TO_CRITERIA_TYPE = {
     "Death": "Death",
     "Demographics": "DemographicCriteria",
 }
-
-# Keywords that indicate demographic criteria (case-insensitive)
-DEMOGRAPHIC_KEYWORDS = {"age", "gender", "sex", "race", "ethnicity"}
 
 # PrimaryCriteria uses Era-based types for Drug/Condition domains
 DOMAIN_TO_PRIMARY_CRITERIA_TYPE = {

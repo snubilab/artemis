@@ -1127,25 +1127,6 @@ class TTEService:
         "Device": "DeviceExposure",
         "Death": "Death",
     }
-    STRUCTURED_TARGET_GENERIC_LABELS = {
-        "target cohort",
-        "target population",
-        "target",
-        "population",
-        "cohort",
-    }
-    STRUCTURED_TARGET_OVERLAP_STOPWORDS = {
-        "adult",
-        "adults",
-        "cohort",
-        "group",
-        "patient",
-        "patients",
-        "population",
-        "target",
-        "the",
-        "with",
-    }
     DRUG_LIKE_TARGET_LABEL_FAILURE_MESSAGE = (
         "Target population label appears to be a treatment/drug label; provide a "
         "patient-population target or correct the structured criteria first."
@@ -3792,23 +3773,6 @@ class TTEService:
         text = str(value or "").strip().lower()
         return " ".join(text.split())
 
-    def _normalize_structured_summary_tokens(self, value: Any) -> set[str]:
-        normalized = self._normalize_structured_summary_label(value)
-        if not normalized:
-            return set()
-        tokens = {
-            token
-            for token in re.findall(r"[a-z0-9]+", normalized)
-            if token not in self.STRUCTURED_TARGET_OVERLAP_STOPWORDS
-        }
-        return tokens
-
-    def _structured_target_label_is_clear_signal(self, label: Any) -> bool:
-        normalized = self._normalize_structured_summary_label(label)
-        if not normalized or normalized in self.STRUCTURED_TARGET_GENERIC_LABELS:
-            return False
-        return bool(self._normalize_structured_summary_tokens(normalized))
-
     def _get_primary_criteria_codeset_ids(
         self, structured_expression: dict[str, Any] | None
     ) -> set[int]:
@@ -3827,35 +3791,6 @@ class TTEService:
                 if isinstance(codeset_id, int):
                     codeset_ids.add(codeset_id)
         return codeset_ids
-
-    def _get_structured_target_labels(self, structured_expression: dict[str, Any] | None) -> list[str]:
-        if not structured_expression:
-            return []
-
-        target_codeset_ids = self._get_primary_criteria_codeset_ids(structured_expression)
-        if not target_codeset_ids:
-            return []
-
-        labels: list[str] = []
-        for concept_set in structured_expression.get("ConceptSets") or []:
-            if not isinstance(concept_set, dict):
-                continue
-            if concept_set.get("id") not in target_codeset_ids:
-                continue
-
-            for candidate in (
-                concept_set.get("name"),
-                *[
-                    ((item.get("concept") or {}).get("CONCEPT_NAME"))
-                    for item in (concept_set.get("expression") or {}).get("items") or []
-                    if isinstance(item, dict)
-                ],
-            ):
-                normalized = self._normalize_structured_summary_label(candidate)
-                if normalized and self._structured_target_label_is_clear_signal(normalized):
-                    labels.append(normalized)
-                    break
-        return labels
 
     def _get_structured_inclusion_rule_labels(
         self, structured_expression: dict[str, Any] | None
@@ -3903,34 +3838,6 @@ class TTEService:
         structured_set = set(structured_labels)
         canonical_set = set(canonical_labels)
         return structured_set.isdisjoint(canonical_set)
-
-    def _canonical_target_summary_looks_stale(
-        self, eligibility: dict[str, Any] | None, structured_expression: dict[str, Any] | None
-    ) -> bool:
-        """Compare canonical target copy only to concept sets referenced by PrimaryCriteria."""
-        if not isinstance(eligibility, dict):
-            return False
-
-        canonical_target = self._normalize_structured_summary_label(eligibility.get("targetCohortName"))
-        if not canonical_target:
-            return False
-
-        canonical_tokens = self._normalize_structured_summary_tokens(canonical_target)
-        if not canonical_tokens:
-            return False
-
-        structured_labels = self._get_structured_target_labels(structured_expression)
-        if not structured_labels:
-            return False
-
-        for structured_label in structured_labels:
-            if canonical_target in structured_label or structured_label in canonical_target:
-                return False
-            structured_tokens = self._normalize_structured_summary_tokens(structured_label)
-            if canonical_tokens & structured_tokens:
-                return False
-
-        return True
 
     def _build_structured_eligibility_guardrails(
         self,
@@ -6781,118 +6688,6 @@ class TTEService:
             return None
         return {"name": f"{class_name} (recommended comparator)", "expression": expr}
 
-    def _discover_comparator_candidates(self, treatment_drug_name: str) -> list[dict[str, Any]]:
-        """Data-driven candidate comparator classes from the CDM vocabulary.
-
-        The treatment drug's ATC-4th SIBLINGS (same ATC-3rd pharmacological subgroup)
-        are its candidate comparator classes, each carrying its member RxNorm
-        ingredients present in the CDM. No hardcoded class list. The treatment's own
-        class and ATC catch-all buckets ("Other …", "Combinations …") are excluded.
-
-        Uses the 'RxNorm - ATC pr lat' (primary ATC) relationship to anchor the drug's
-        true class — otherwise combination products (e.g. insulin+GLP-1) would steer
-        discovery into the wrong subgroup. Returns [] on any failure (caller falls back).
-        """
-        drug = (treatment_drug_name or "").strip()
-        if not drug:
-            return []
-        try:
-            import psycopg2
-
-            from src.settings import settings
-
-            conn = psycopg2.connect(settings.DATABASE_URL)
-        except Exception as exc:
-            logging.debug("[TTE] candidate discovery connect failed: %s", exc)
-            return []
-        S = settings.CDM_SCHEMA
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"""SELECT concept_id FROM {S}.concept
-                        WHERE LOWER(concept_name) = LOWER(%s) AND vocabulary_id = 'RxNorm'
-                          AND concept_class_id = 'Ingredient' AND standard_concept = 'S'
-                          AND invalid_reason IS NULL""",
-                    (drug,),
-                )
-                row = cur.fetchone()
-                if not row:
-                    return []
-                ingredient_id = row[0]
-                # Primary ATC (disambiguates combination-product cross-links).
-                cur.execute(
-                    f"""SELECT concept_id_2 FROM {S}.concept_relationship
-                        WHERE concept_id_1 = %s AND relationship_id = 'RxNorm - ATC pr lat'
-                          AND invalid_reason IS NULL""",
-                    (ingredient_id,),
-                )
-                prim = cur.fetchone()
-                if not prim:
-                    return []
-                # Resolve to the drug's own ATC-4th class.
-                cur.execute(f"SELECT concept_class_id FROM {S}.concept WHERE concept_id = %s", (prim[0],))
-                cls_row = cur.fetchone()
-                if cls_row and cls_row[0] == "ATC 4th":
-                    own_atc4 = prim[0]
-                else:
-                    cur.execute(
-                        f"""SELECT c.concept_id FROM {S}.concept_ancestor ca
-                            JOIN {S}.concept c ON c.concept_id = ca.ancestor_concept_id
-                            WHERE ca.descendant_concept_id = %s AND c.vocabulary_id = 'ATC'
-                              AND c.concept_class_id = 'ATC 4th'""",
-                        (prim[0],),
-                    )
-                    r = cur.fetchone()
-                    own_atc4 = r[0] if r else None
-                if not own_atc4:
-                    return []
-                # ATC-3rd parent, then its ATC-4th children (the sibling classes).
-                cur.execute(
-                    f"""SELECT c.concept_id FROM {S}.concept_ancestor ca
-                        JOIN {S}.concept c ON c.concept_id = ca.ancestor_concept_id
-                        WHERE ca.descendant_concept_id = %s AND c.vocabulary_id = 'ATC'
-                          AND c.concept_class_id = 'ATC 3rd'""",
-                    (own_atc4,),
-                )
-                r = cur.fetchone()
-                if not r:
-                    return []
-                atc3 = r[0]
-                cur.execute(
-                    f"""SELECT c.concept_id, c.concept_name FROM {S}.concept_ancestor ca
-                        JOIN {S}.concept c ON c.concept_id = ca.descendant_concept_id
-                        WHERE ca.ancestor_concept_id = %s AND c.vocabulary_id = 'ATC'
-                          AND c.concept_class_id = 'ATC 4th'
-                        ORDER BY c.concept_code""",
-                    (atc3,),
-                )
-                siblings = cur.fetchall()
-                out: list[dict[str, Any]] = []
-                for cid, name in siblings:
-                    if cid == own_atc4:
-                        continue
-                    low = name.lower()
-                    if low.startswith("other") or "combinations" in low:
-                        continue  # ATC catch-all buckets — not real comparator classes
-                    cur.execute(
-                        f"""SELECT DISTINCT c.concept_name FROM {S}.concept_ancestor ca
-                            JOIN {S}.concept c ON c.concept_id = ca.descendant_concept_id
-                            WHERE ca.ancestor_concept_id = %s AND c.vocabulary_id = 'RxNorm'
-                              AND c.concept_class_id = 'Ingredient' AND c.standard_concept = 'S'
-                              AND c.invalid_reason IS NULL
-                            ORDER BY 1""",
-                        (cid,),
-                    )
-                    ings = [x[0] for x in cur.fetchall()]
-                    if ings:
-                        out.append({"drug_class": name, "atc4_id": cid, "ingredients": ings})
-                return out
-        except Exception as exc:
-            logging.debug("[TTE] candidate discovery failed for '%s': %s", drug, exc)
-            return []
-        finally:
-            conn.close()
-
     def _treatment_atc_class(self, drug_name: str) -> str:
         """The treatment drug's own ATC-4th class name (context for the literature query)."""
         drug = (drug_name or "").strip()
@@ -8878,11 +8673,6 @@ class TTEService:
             agent2_empty = True
             agent2_route = str(getattr(mapping_result, "route_path", "") or "")
         except Exception as exc:
-            if self._should_use_placeholder_seeded_mapping(exc):
-                return self._build_placeholder_seeded_concept_set(
-                    normalized_seed,
-                    expected_domain=expected_domain,
-                )
             agent2_exc = exc
             import structlog
             structlog.get_logger().warning(
@@ -8923,19 +8713,11 @@ class TTEService:
         expected_domain: str | None = None,
     ) -> dict[str, Any]:
         """Fallback: ConceptSetRecommender RAG-only path."""
-        try:
-            response = self._get_seeded_concept_set_recommender().recommend(
-                normalized_seed,
-                top_k=5,
-                include_descendants=True,
-            )
-        except Exception as exc:
-            if self._should_use_placeholder_seeded_mapping(exc):
-                return self._build_placeholder_seeded_concept_set(
-                    normalized_seed,
-                    expected_domain=expected_domain,
-                )
-            raise
+        response = self._get_seeded_concept_set_recommender().recommend(
+            normalized_seed,
+            top_k=5,
+            include_descendants=True,
+        )
         recommendations = list(response.include_recommendations or [])
         if expected_domain:
             filtered = [
@@ -9089,116 +8871,6 @@ class TTEService:
         from src.agents.conceptset.recommender import get_recommender
 
         return get_recommender()
-
-    def _should_use_placeholder_seeded_mapping(self, exc: Exception) -> bool:
-        # Always returns False — placeholder concept injection was removed.
-        # ModuleNotFoundError (ChromaDB missing) now propagates so callers
-        # receive a clear failure instead of fake ARTEMIS vocabulary concepts.
-        return False
-
-    def _build_placeholder_seeded_concept_set(
-        self,
-        seed_text: str,
-        *,
-        expected_domain: str | None = None,
-    ) -> dict[str, Any]:
-        domain = self._infer_placeholder_seeded_domain(seed_text, expected_domain=expected_domain)
-        concept_id = self._placeholder_concept_id(seed_text, domain)
-        return {
-            "name": seed_text,
-            "expression": {
-                "items": [
-                    {
-                        "concept": {
-                            "CONCEPT_ID": concept_id,
-                            "CONCEPT_NAME": seed_text,
-                            "DOMAIN_ID": domain,
-                            "VOCABULARY_ID": "ARTEMIS",
-                            "CONCEPT_CLASS_ID": "Placeholder",
-                            "STANDARD_CONCEPT": "S",
-                            "CONCEPT_CODE": f"ARTEMIS-{concept_id}",
-                        },
-                        "includeDescendants": True,
-                        "includeMapped": False,
-                        "isExcluded": False,
-                    }
-                ]
-            },
-            "domain": domain,
-        }
-
-    def _placeholder_concept_id(self, seed_text: str, domain: str) -> int:
-        digest = hashlib.md5(f"{domain}:{seed_text}".encode("utf-8")).hexdigest()
-        return int(digest[:8], 16)
-
-    def _infer_placeholder_seeded_domain(
-        self,
-        seed_text: str,
-        *,
-        expected_domain: str | None = None,
-    ) -> str:
-        if expected_domain:
-            return expected_domain
-
-        normalized = seed_text.lower()
-        if any(
-            token in normalized
-            for token in (
-                "hba1c",
-                "hemoglobin",
-                "blood pressure",
-                "bmi",
-                "egfr",
-                "creatinine",
-                "glucose",
-                ">",
-                "<",
-                ">=",
-                "<=",
-                "%",
-            )
-        ):
-            return "Measurement"
-        if any(
-            token in normalized
-            for token in (
-                "drug",
-                "insulin",
-                "liraglutide",
-                "exenatide",
-                "pramlintide",
-                "agonist",
-                "inhibitor",
-                "medication",
-                "therapy",
-            )
-        ):
-            return "Drug"
-        if any(
-            token in normalized
-            for token in (
-                "angioplasty",
-                "surgery",
-                "procedure",
-                "transplant",
-                "revascularization",
-            )
-        ):
-            return "Procedure"
-        if any(
-            token in normalized
-            for token in (
-                "age",
-                "pregnan",
-                "contraception",
-                "smok",
-                "sex",
-                "male",
-                "female",
-            )
-        ):
-            return "Observation"
-        return "Condition"
 
     def _run_mapping_pipeline_for_query(
         self,

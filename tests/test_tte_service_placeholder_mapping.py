@@ -1,4 +1,4 @@
-"""TDD tests for Instance 4 fix: _should_use_placeholder_seeded_mapping.
+"""TDD tests for Instance 4 fix: no placeholder concept set is ever injected.
 
 RED phase: these tests define the new expected behavior —
 ModuleNotFoundError must re-raise (not silently inject placeholder concepts).
@@ -14,31 +14,6 @@ def _make_service():
     svc = TTEService.__new__(TTEService)
     svc.store = MagicMock()
     return svc
-
-
-class TestShouldUsePlaceholderSeededMapping:
-    """_should_use_placeholder_seeded_mapping must return False for all exceptions."""
-
-    def test_returns_false_for_module_not_found_error(self):
-        """ModuleNotFoundError must not silently trigger placeholder injection."""
-        svc = _make_service()
-        exc = ModuleNotFoundError("No module named 'chromadb'")
-        assert svc._should_use_placeholder_seeded_mapping(exc) is False
-
-    def test_returns_false_for_import_error(self):
-        svc = _make_service()
-        exc = ImportError("chromadb not installed")
-        assert svc._should_use_placeholder_seeded_mapping(exc) is False
-
-    def test_returns_false_for_runtime_error(self):
-        svc = _make_service()
-        exc = RuntimeError("some runtime failure")
-        assert svc._should_use_placeholder_seeded_mapping(exc) is False
-
-    def test_returns_false_for_value_error(self):
-        svc = _make_service()
-        exc = ValueError("bad value")
-        assert svc._should_use_placeholder_seeded_mapping(exc) is False
 
 
 class TestRecommendSeededConceptSetNoPlaceholderFallback:
