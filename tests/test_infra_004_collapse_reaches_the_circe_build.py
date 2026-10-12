@@ -164,18 +164,17 @@ class TestTheGeneralizedCollapseIsEmitted:
         circe = service_build(_eligibility(exclusion=CAROLINA_ALCOHOL))
         (record,) = circe["_restatedDistinctnessCollapse"]
         assert record["role"] == "exclusion"
-        assert record["stem"] == "Alcohol Use Disorder"
+        assert record["distinctnessKey"]["sourceText"] == "Alcohol Use Disorder"
         assert record["survivorId"] == "5"
         assert record["droppedIds"] == ["49"]
         assert record["survivorRule"] == "first-in-document-order"
 
-    def test_should_report_an_intact_category_two_cluster_rather_than_omitting_it(self):
+    def test_should_neither_collapse_nor_group_three_entities_sharing_a_description(self):
+        """Duplicates are decided by structured fields (RFC-016 E6): three different
+        entities under one description are not a candidate group at all."""
         circe = service_build(_eligibility(exclusion=EMPA_REG_CARDIOVASCULAR))
         assert circe["_restatedDistinctnessCollapse"] == []
-        (group,) = circe["_restatedIntactGroups"]
-        assert group["stem"] == "Cardiovascular Disease"
-        assert group["reason"] == "key-distinct"
-        assert len(group["classes"]) == 3
+        assert circe["_restatedIntactGroups"] == []
 
 
 class TestTheDroppedCriteriaNeverReachTheMapper:
@@ -256,13 +255,11 @@ class TestTheDemographicsCollapseIsUnchanged:
         (dropped,) = [r for r in circe["_skippedCriteria"] if r["criterionId"] == "23"]
         assert dropped["reason"] == DEMOGRAPHICS_REASON
 
-    def test_should_report_the_pair_as_demographics_path_territory(self):
-        """REQ-011's reporting still names the group, so a reader sees it was routed rather
-        than missed."""
+    def test_should_leave_the_pair_out_of_the_generalized_report(self):
+        """Restatable demographics are the Demographics path's alone, so the generalized
+        path neither collapses nor reports them."""
         circe = service_build(_eligibility(exclusion=CARMELINA_PREGNANCY))
-        (group,) = circe["_restatedIntactGroups"]
-        assert group["reason"] == "demographics-path"
-        assert group["consideredIds"] == []
+        assert circe["_restatedIntactGroups"] == []
 
 
 class TestTheTwoPathsNeverBothDropOneCriterion:

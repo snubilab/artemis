@@ -108,7 +108,6 @@ from src.services.restated_absence_repair import (
     repair_restated_absences,
 )
 from src.services.contradicted_absence_refusal import refuse_contradicted_absences
-from src.services.restated_clusters import detect_all_restated_clusters
 from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
     collapse_all_restated_demographics,
@@ -5347,9 +5346,9 @@ class TTEService:
         )
 
         # SPEC-INFRA-004 REQ-001 / REQ-007 / REQ-011. The same defect in every other domain,
-        # gated on a distinctness key rather than on a relaxed domain test. Runs here for the
-        # same reason the Demographics collapse does -- it partitions a whole stem group at
-        # once and has no concept-set dependency -- and the two never contend for a criterion
+        # decided on structured fields (RFC-016 §5 E6). Runs here for the same reason the
+        # Demographics collapse does -- it partitions a whole role at once and has no
+        # concept-set dependency -- and the two never contend for a criterion
         # because REQ-013 gates this path on the complement of `is_restatable_demographic`,
         # so the eligible sets are complementary by construction rather than by coincidence.
         (
@@ -5959,28 +5958,19 @@ class TTEService:
                 missing_entity_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
             "_generationCensus": generation_census,
-            # SPEC-INFRA-003 REQ-005. Same present-and-empty contract as the two above.
-            # Detection runs over the criteria as they arrived, not over what survived
-            # mapping: a restatement whose duplicate failed to map is still a
-            # restatement, and the point of this record is to show the duplication that
-            # the concept-set fragmentation in `spec.md` §2.2 is downstream of.
-            "_restatedClusters": detect_all_restated_clusters(
-                inclusion_criteria=inc_criteria,
-                exclusion_criteria=exc_criteria,
-            ),
-            # SPEC-INFRA-003 REQ-001 / REQ-007. Same present-and-empty contract again.
-            # This is a second, independent signal from `_restatedClusters` above, not a
-            # refinement of it: that one reads description stems and so cannot reach
-            # EMPA-REG's pair (`spec.md` §2.5.2), while this one is a cardinality
-            # invariant that never compares descriptions. Each record names its
-            # `survivorRule`, because for EMPA-REG which member should survive is not
-            # settled -- see `restated_demographics.py` and `spec.md` §2.4
-            # ASSUMPTION-1.
+            # SPEC-INFRA-003 REQ-001 / REQ-007. Same present-and-empty contract as the two
+            # above. A cardinality invariant that never compares descriptions. Each record
+            # names its `survivorRule`, because for EMPA-REG which member should survive is
+            # not settled -- see `restated_demographics.py` and `spec.md` §2.4 ASSUMPTION-1.
+            # (The description-stem `_restatedClusters` report was removed with its stem,
+            # RFC-016 §5 E6; `_restatedDistinctnessCollapse` and `_restatedIntactGroups`
+            # below report duplicates on structured fields.)
             "_restatedDemographicsCollapse": restated_demographic_collapses,
             # SPEC-INFRA-004 REQ-007. Same present-and-empty contract again. Kept separate
             # from `_restatedDemographicsCollapse` rather than merged into it: the two paths
-            # use different grouping units -- whole-role against per-(role, domain, stem) --
-            # so a merged list would carry records whose fields mean different things, and a
+            # use different grouping units -- whole-role against per-(role, distinctness key,
+            # place in the rule tree) -- so a merged list would carry records whose fields
+            # mean different things, and a
             # reader could not tell which rule produced which record.
             "_restatedDistinctnessCollapse": restated_distinctness_collapses,
             # SPEC-INFRA-004 REQ-011. The report is the deliverable here, not the collapse.

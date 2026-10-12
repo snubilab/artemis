@@ -1,67 +1,47 @@
-"""SPEC-INFRA-004: collapse restated criteria in every domain, gated on a distinctness key.
+"""SPEC-INFRA-004: collapse restated criteria, decided by structured fields alone.
 
-`SPEC-INFRA-003` fixed restated-cluster duplication for one domain. `restated_demographics.py`
-collapses a whole role's constraint-free Demographics criteria to a single survivor, justified
-by a cardinality argument that only holds where no criterion carries an attribute two distinct
-facts could bind to. The same duplication exists in Condition, Drug, Procedure, Observation,
-and Measurement, where that argument does not hold.
+`SPEC-INFRA-003` fixed restated-cluster duplication for Demographics (`restated_demographics.py`).
+The same duplication exists in Condition, Drug, Procedure, Observation and Measurement: Agent 1
+emits one protocol fact several times, each copy is mapped on its own, and the cohort filters
+on the union of the divergent concept sets.
 
-This module generalizes the fix **by adding a distinctness key, not by relaxing the domain
-gate**. The distinction is the whole content of the SPEC: a naive domain-gate relaxation would
-leave `groupId is None` as the only thing standing between the collapse and EMPA-REG's
-`Cardiovascular Disease` cluster, and `spec.md` §2.3 records grouping state moving between
-regenerations of identical input. The first run that emitted that cluster ungrouped would
-silently and permanently delete `Myocardial Infarction` and `Heart Failure`, admitting patients
-with a history of either into a trial that excludes them.
-
-**The signal.** Within one (study, role, `domain`, description stem) group of two or more
-top-level criteria, partition the members into equivalence classes under
+**Two rows state the same fact when every structured field the cohort is built from is equal**
+(RFC-016 §5, E6). The distinctness key is
 
 ```
-key = ( sourceText , valueConstraint , logicType )
+key = ( domain , sourceText , window , valueConstraint , logicType )
 ```
 
-compared by exact equality on each component, and retain one survivor per class -- the first in
-document order. Classes of one are untouched.
+compared by exact equality on each component. ``sourceText`` is the entity the concept set is
+mapped from, so it stands for the concept set's identity; the collapse runs before mapping.
+Nothing is read out of ``description``: the stem test this replaces grouped rows whose
+descriptions were equal after one trailing parenthetical was stripped.
 
-**Per class, never per group.** This is the property most easily got wrong, and getting it wrong
-re-creates the regression `SPEC-INFRA-003` `AC-004` exists to prevent. EMPA-REG's `Liver disease`
-group holds six criteria forming three classes -- the ALT / AST / ALP triple emitted twice. The
-correct outcome is six to **three**. Any mechanism that reduces a stem group to a single survivor
-yields six to **one** and destroys two real analytes. Partitioning and reducing are different
-operations, and only the first one is a fix.
+**The logic a row sits in is part of the fact.** Two rows with one key collapse only when they
+sit in the same place in the rule tree:
 
-**Three properties make the key safe, and each is load-bearing:**
+* both top-level, or
+* in groups of the same type whose non-label members carry the same multiset of keys -- one
+  group, or a group and its restatement.
 
-1. Different `sourceText` means a different class, so a member is never collapsed into one it
-   does not match -- and this holds regardless of `groupId`, `groupType`, or `isGroupLabel`
-   (REQ-003), which is what `spec.md` §2.3 requires.
-2. Different `valueConstraint` means a different class, preserving `SPEC-INFRA-003` `AC-004`
-   and keeping subgroup-value variants intact.
-3. Per-class partitioning yields three survivors on the liver case rather than one.
+So a member is never moved out of its group into a different group or onto a top-level rule,
+where it would change what the cohort requires. A key class whose members sit in different
+places is reported as intact with reason ``context-distinct``.
 
-It is exact equality throughout: no threshold, no edit distance, no embedding, no synonym table,
-and no criterion-id or study-id special case (REQ-006, REQ-010). The cost of that restraint is a
-small set of recorded false negatives -- CAROLINA `Participation in another trial` {22,59}, whose
-members read `Investigational drug` and `Investigational Medicinal/Medical Product`, and
-EMPA-REG `eGFR` {41,42}, whose constraints differ only in `unitConceptId`. Both are reported
-rather than engineered around (REQ-011), because a genuine duplicate the signal cannot reach must
-be visible in the artifact rather than silently absent.
+Three kinds of row never collapse: a group label (a container that mints no concept set, so it
+cannot stand in for a member), a row with no ``sourceText`` (no concept-set identity to compare),
+and a restatable demographic -- the Demographics path's territory. That last gate is the
+complement of `is_restatable_demographic`, never ``domain != "Demographics"``, so the two paths
+stay disjoint without orphaning a Demographics row that carries a value constraint (REQ-013).
 
-**Disjointness from the Demographics path is by construction, not by coincidence** (REQ-013).
-The generalized path considers a criterion only where `is_restatable_demographic` returns false.
-The two eligible sets are then complementary by definition, so no criterion is ever seen by both
-paths under any `sourceText` state. Gating on the predicate rather than on `domain !=
-"Demographics"` matters: CAROLINA inclusion `Age >= 70 years` {4,33} is Demographics *and*
-carries a non-null `valueConstraint`, so the Demographics path rejects it on gate 2 -- under a
-domain gate that genuine duplicate would be collapsed by neither path.
+Within a class the survivor is the first member in document order and the rest are dropped.
 """
 from __future__ import annotations
 
 import json
+from collections import Counter
 from typing import Any
 
-from src.services.restated_clusters import description_stem
 from src.services.restated_demographics import is_restatable_demographic
 
 #: Recorded on each dropped criterion via `_record_skip`, and on each collapse record. Distinct
@@ -72,141 +52,88 @@ COLLAPSE_REASON = "restated-distinctness-duplicate"
 #: Named on every record rather than left implicit in the iteration order.
 SURVIVOR_RULE = "first-in-document-order"
 
-#: The members' keys differ, so the key would keep them apart whatever `sourceText` becomes.
-WITHHELD_KEY_DISTINCT = "key-distinct"
-
-#: A class of two or more exists but at least one member carries no `sourceText` (REQ-004).
-WITHHELD_EMPTY_SOURCE_TEXT = "empty-sourceText"
-
-#: Fewer than two members survive the REQ-013 gate: the group is the Demographics path's
-#: territory, which is a routing outcome rather than a failure of this signal.
-WITHHELD_DEMOGRAPHICS_PATH = "demographics-path"
-
+#: Rows share a key but sit in different places in the rule tree.
+WITHHELD_CONTEXT_DISTINCT = "context-distinct"
 
 def _canonical(value: Any) -> str:
     """Return a form of `value` that compares equal exactly when `value` does.
 
-    `valueConstraint` is a nested mapping, so identity and `==` are both wrong here -- the
-    former for obvious reasons, the latter because the result has to key a dict. Serializing
-    with sorted keys gives a hashable form whose equality is structural, so two constraints
-    written with their keys in different orders land in one class while any difference in an
-    actual value separates them.
-
-    Args:
-        value: Any JSON-shaped value from a criterion field.
-
-    Returns:
-        A canonical string. Values outside the JSON shapes fall back to `repr` rather than
-        raising, so an unexpected field type degrades to "compares unequal unless identical"
-        instead of breaking the collapse.
+    Nested mappings (``window``, ``valueConstraint``) serialise with sorted keys, so key order
+    does not separate two equal values while any difference in an actual value does. A value
+    outside the JSON shapes falls back to ``repr`` rather than raising.
     """
     return json.dumps(value, sort_keys=True, separators=(",", ":"), default=repr)
 
 
-def distinctness_key(criterion: dict[str, Any]) -> tuple[str, str, str]:
-    """Return the `spec.md` §2.6 distinctness key a criterion partitions under.
+def distinctness_key(criterion: dict[str, Any]) -> tuple[str, str, str, str, str]:
+    """Return the structured key a criterion is compared under.
 
-    Exact equality on each of the three components, with no normalization of any kind. The
-    absence of normalization is deliberate rather than unfinished: `unitConceptId` is plausibly
-    a mapping artifact rather than a semantic component of a threshold, but "plausibly" is the
-    wrong standard when the harm is asymmetric -- a wrong collapse deletes a clinical criterion
-    silently, while a missed collapse leaves a defect that the REQ-011 report keeps visible.
+    Exact equality on each component, with no normalisation: a wrong collapse deletes a
+    criterion silently, while a missed one stays visible in the intact report.
 
     Args:
-        criterion: A top-level IR criterion. Absent keys are treated as empty/null, so a
-            criterion built before a field existed is not mistaken for one that carries it.
+        criterion: A top-level IR criterion. Absent keys read as empty/null.
 
     Returns:
-        `(sourceText, canonical valueConstraint, logicType)`.
+        ``(domain, sourceText, canonical window, canonical valueConstraint, logicType)``.
     """
     return (
+        (criterion.get("domain") or "").strip(),
         criterion.get("sourceText") or "",
+        _canonical(criterion.get("window")),
         _canonical(criterion.get("valueConstraint")),
         criterion.get("logicType") or "",
     )
 
 
-def partition_by_distinctness(
-    members: list[dict[str, Any]],
-) -> dict[tuple[str, str, str], list[dict[str, Any]]]:
-    """Partition criteria into equivalence classes under the distinctness key.
+def considered_by_generalized_path(criteria: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return the criteria this path may act on, in document order.
 
-    Both the class order and the member order within each class are document order, which
-    REQ-005 depends on: the survivor is a class's first member, and "first" is only meaningful
-    because nothing here sorts.
-
-    Args:
-        members: Criteria of one stem group, in document order.
-
-    Returns:
-        A mapping from distinctness key to that class's members, insertion-ordered.
+    Excludes restatable demographics (the Demographics path's own), group labels and rows with
+    no ``sourceText``.
     """
-    classes: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
-    for criterion in members or []:
-        classes.setdefault(distinctness_key(criterion), []).append(criterion)
-    return classes
+    return [
+        c
+        for c in criteria or []
+        if not is_restatable_demographic(c)
+        and not c.get("isGroupLabel")
+        and (c.get("sourceText") or "").strip()
+    ]
 
 
-def _has_source_text(criterion: dict[str, Any]) -> bool:
-    return bool((criterion.get("sourceText") or "").strip())
-
-
-def _describe_class(
-    key: tuple[str, str, str],
-    members: list[dict[str, Any]],
-) -> dict[str, Any]:
-    survivor, *dropped = members
-    collapsible = len(members) >= 2 and all(_has_source_text(c) for c in members)
+def _group_contexts(criteria: list[dict[str, Any]]) -> dict[str, tuple[Any, ...]]:
+    """``groupId`` -> the group's type and the multiset of its non-label members' keys."""
+    members: dict[str, Counter] = {}
+    group_type: dict[str, Any] = {}
+    for c in criteria or []:
+        group_id = c.get("groupId")
+        if group_id is None:
+            continue
+        group_type.setdefault(str(group_id), c.get("groupType"))
+        if not c.get("isGroupLabel"):
+            members.setdefault(str(group_id), Counter())[distinctness_key(c)] += 1
     return {
-        "distinctnessKey": {
-            "sourceText": key[0],
-            "valueConstraint": key[1],
-            "logicType": key[2],
-        },
-        "criterionIds": [c.get("id") for c in members],
-        "survivorId": survivor.get("id"),
-        "droppedIds": [c.get("id") for c in dropped],
-        "collapsible": collapsible,
+        gid: (group_type.get(gid), tuple(sorted(members.get(gid, Counter()).items())))
+        for gid in group_type
     }
 
 
-def _withheld_reason(considered: list[dict[str, Any]], classes: list[dict[str, Any]]) -> str:
-    """Return why a group was left intact, under the `spec.md` §2.6.1 precedence rule.
-
-    `key-distinct` outranks `empty-sourceText` where both apply, and the ordering is not
-    cosmetic. `key-distinct` is a property of the criteria themselves and holds whatever
-    `sourceText` later becomes; `empty-sourceText` is a property of the current store and
-    evaporates the moment the field is populated -- which `plan.md` B-1 records as having
-    already happened once. Reporting the store-independent reason means the label does not
-    churn across regenerations, and a reader learns the stronger fact.
-    """
-    if len(considered) < 2:
-        return WITHHELD_DEMOGRAPHICS_PATH
-    if all(len(cls["criterionIds"]) == 1 for cls in classes):
-        return WITHHELD_KEY_DISTINCT
-    return WITHHELD_EMPTY_SOURCE_TEXT
+def _logic_context(criterion: dict[str, Any], groups: dict[str, tuple[Any, ...]]) -> tuple[Any, ...]:
+    group_id = criterion.get("groupId")
+    if group_id is None:
+        return ("top-level",)
+    return ("group", groups[str(group_id)], criterion.get("parentGroupId") is None)
 
 
-def considered_by_generalized_path(criteria: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return the criteria this path may act on — REQ-013's gate, in one place.
-
-    The gate is the **complement of the predicate**, never `domain != "Demographics"`. Both
-    achieve disjointness, but the domain form over-excludes: CAROLINA inclusion
-    `Age >= 70 years` {4,33} is Demographics *and* carries a non-null `valueConstraint`, so
-    `SPEC-INFRA-003`'s gate 2 rejects it — under a domain exclusion that genuine duplicate
-    would be collapsed by neither path. Disjointness alone is not the requirement;
-    disjointness *without orphans* is.
-
-    Exposed rather than inlined so the disjointness criterion asserts against the gate the
-    collapse actually uses, instead of re-deriving an equivalent one in the test.
-
-    Args:
-        criteria: Top-level criteria, in document order.
-
-    Returns:
-        Those for which `is_restatable_demographic` is false, in document order.
-    """
-    return [c for c in criteria or [] if not is_restatable_demographic(c)]
+def _describe_key(key: tuple[str, str, str, str, str]) -> dict[str, str]:
+    domain, source_text, window, value_constraint, logic_type = key
+    return {
+        "domain": domain,
+        "sourceText": source_text,
+        "window": window,
+        "valueConstraint": value_constraint,
+        "logicType": logic_type,
+    }
 
 
 def analyze_restated_groups(
@@ -214,60 +141,52 @@ def analyze_restated_groups(
     *,
     role: str,
 ) -> list[dict[str, Any]]:
-    """Report every stem group of two or more members, with its partition and verdict.
-
-    This is the measurement, and it is deliberately independent of the collapse: a group is
-    reported whether or not anything is dropped, which is what makes REQ-011 satisfiable. A
-    genuine duplicate the key cannot reach appears here as an intact group carrying its
-    per-member keys, rather than vanishing.
-
-    Grouping happens **before** the REQ-013 gate and the gate is applied inside each group, so
-    a group whose members all belong to the Demographics path is still reported -- as
-    `demographics-path`, which tells a reader it was routed elsewhere rather than missed. A
-    gate applied before grouping would make those groups disappear from the census entirely.
+    """Report every key class of two or more considered rows, with its partition by context.
 
     Args:
         criteria: Top-level criteria for a single role of a single study, in document order.
-        role: "inclusion" or "exclusion". Recorded on each group; a group never spans roles,
-            so one criterion in each role is two singletons rather than a pair.
+        role: "inclusion" or "exclusion"; a class never spans roles.
 
     Returns:
-        One dict per stem group of two or more members, in first-appearance order, each
-        carrying `role`, `domain`, `stem`, `criterionIds` (every member), `consideredIds`
-        (those the REQ-013 gate admits), `classes`, `collapses`, and `reason` -- the last
-        being None where the group collapses.
+        One dict per key class of two or more rows, in first-appearance order, carrying
+        ``role``, ``domain``, ``distinctnessKey``, ``criterionIds``, ``classes`` (one per
+        place in the rule tree: ``criterionIds``, ``survivorId``, ``droppedIds``,
+        ``collapsible``), ``collapses`` and ``reason`` -- None where something collapses.
     """
-    by_stem: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for criterion in criteria or []:
-        key = (
-            (criterion.get("domain") or "").strip(),
-            description_stem(criterion.get("description")),
-        )
-        by_stem.setdefault(key, []).append(criterion)
+    groups = _group_contexts(criteria)
+    by_key: dict[tuple[str, str, str, str, str], list[dict[str, Any]]] = {}
+    for criterion in considered_by_generalized_path(criteria):
+        by_key.setdefault(distinctness_key(criterion), []).append(criterion)
 
-    groups: list[dict[str, Any]] = []
-    for (domain, stem), members in by_stem.items():
+    reports: list[dict[str, Any]] = []
+    for key, members in by_key.items():
         if len(members) < 2:
             continue
-        considered = considered_by_generalized_path(members)
-        classes = [_describe_class(k, v) for k, v in partition_by_distinctness(considered).items()]
+        by_context: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
+        for criterion in members:
+            by_context.setdefault(_logic_context(criterion, groups), []).append(criterion)
+        classes = [
+            {
+                "criterionIds": [c.get("id") for c in same],
+                "survivorId": same[0].get("id"),
+                "droppedIds": [c.get("id") for c in same[1:]],
+                "collapsible": len(same) >= 2,
+            }
+            for same in by_context.values()
+        ]
         collapses = any(cls["collapsible"] for cls in classes)
-        groups.append(
+        reports.append(
             {
                 "role": role,
-                "domain": domain,
-                "stem": stem,
+                "domain": key[0],
+                "distinctnessKey": _describe_key(key),
                 "criterionIds": [c.get("id") for c in members],
-                "consideredIds": [c.get("id") for c in considered],
                 "classes": classes,
                 "collapses": collapses,
-                "reason": None if collapses else _withheld_reason(considered, classes),
+                "reason": None if collapses else WITHHELD_CONTEXT_DISTINCT,
             }
         )
-    return groups
-
-
-_INTACT_FIELDS = ("role", "domain", "stem", "criterionIds", "consideredIds", "classes", "reason")
+    return reports
 
 
 def collapse_restated_criteria(
@@ -275,28 +194,18 @@ def collapse_restated_criteria(
     *,
     role: str,
 ) -> tuple[set[tuple[str, str]], list[dict[str, Any]], list[dict[str, Any]]]:
-    """Collapse one role's restated criteria, one survivor per distinctness class.
-
-    The reduction is **per class**, which is the whole difference between fixing the defect
-    and re-creating `SPEC-INFRA-003`'s regression. A stem group holding N classes yields N
-    survivors: EMPA-REG's `Liver disease` group holds six criteria in three classes and must
-    yield three, not one.
+    """Collapse one role's restated criteria, one survivor per (key, context) class.
 
     Args:
         criteria: Top-level criteria for a single role of a single study, in document order.
-            Order is load-bearing — the survivor is each class's first member, and "first" is
-            only meaningful because nothing here sorts.
-        role: "inclusion" or "exclusion". Recorded on every record and used in the drop keys,
-            so a collapse never spans roles and two criteria carrying the same id in
-            different roles never collide.
+            Order is load-bearing: the survivor is each class's first member.
+        role: "inclusion" or "exclusion". Recorded on every record and used in the drop keys.
 
     Returns:
-        A `(drop_keys, records, intact)` triple. `drop_keys` holds `(role, criterion id as
-        str)` for every criterion to drop, keyed to match `_record_skip`'s string ids.
-        `records` holds one dict per collapsed class. `intact` holds one dict per stem group
-        of two or more members that nothing collapsed, carrying the per-member keys and the
-        withheld reason — REQ-011's deliverable, so a genuine duplicate the key cannot reach
-        is visible in the artifact rather than silently absent.
+        ``(drop_keys, records, intact)``. ``drop_keys`` holds ``(role, criterion id as str)``
+        for every criterion to drop, matching `_record_skip`'s string ids. ``records`` holds
+        one dict per collapsed class. ``intact`` holds one dict per key class that nothing
+        collapsed, so a duplicate the context keeps apart stays visible in the artifact.
     """
     drop_keys: set[tuple[str, str]] = set()
     records: list[dict[str, Any]] = []
@@ -304,11 +213,9 @@ def collapse_restated_criteria(
 
     for group in analyze_restated_groups(criteria, role=role):
         if not group["collapses"]:
-            intact.append({field: group[field] for field in _INTACT_FIELDS})
+            intact.append({k: v for k, v in group.items() if k != "collapses"})
             continue
         for cls in group["classes"]:
-            # A collapsing group may still hold classes of one, or a class withheld under
-            # REQ-004. Those members are untouched rather than swept in with the rest.
             if not cls["collapsible"]:
                 continue
             drop_keys |= {(role, str(i)) for i in cls["droppedIds"]}
@@ -316,8 +223,7 @@ def collapse_restated_criteria(
                 {
                     "role": role,
                     "domain": group["domain"],
-                    "stem": group["stem"],
-                    "distinctnessKey": cls["distinctnessKey"],
+                    "distinctnessKey": group["distinctnessKey"],
                     "survivorId": cls["survivorId"],
                     "droppedIds": cls["droppedIds"],
                     "survivorRule": SURVIVOR_RULE,
@@ -332,16 +238,10 @@ def collapse_all_restated_criteria(
     inclusion_criteria: list[dict[str, Any]],
     exclusion_criteria: list[dict[str, Any]],
 ) -> tuple[set[tuple[str, str]], list[dict[str, Any]], list[dict[str, Any]]]:
-    """Collapse restated criteria across both roles of one study.
+    """Collapse restated criteria across both roles of one study, inclusion first.
 
-    Args:
-        inclusion_criteria: The study's top-level inclusion criteria, in document order.
-        exclusion_criteria: The study's top-level exclusion criteria, in document order.
-
-    Returns:
-        A `(drop_keys, records, intact)` triple merging both roles, inclusion first. The
-        roles are collapsed independently, so a stem shared between an inclusion and an
-        exclusion criterion forms two groups rather than one and never collapses across them.
+    The roles are collapsed independently, so an inclusion and an exclusion row never collapse
+    into each other.
     """
     inc_keys, inc_records, inc_intact = collapse_restated_criteria(
         inclusion_criteria, role="inclusion"
