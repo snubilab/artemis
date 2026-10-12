@@ -16,6 +16,7 @@ from copy import deepcopy
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from collections.abc import Mapping, Sequence
 from typing import Any, Callable
 
 # WebAPI cohort_inclusion.name column is varchar(255).
@@ -79,8 +80,11 @@ from src.services.criterion_annotation import (
     CONDITIONAL_EXPLANATION,
     CONDITIONAL_REASON,
     EXTRACTED_CONDITIONAL_KEY,
+    PLANNER_EXCEPTED_KEY,
     annotate_eligibility,
     conditional_skips,
+    stated_exceptions,
+    stated_exceptions_by_codeset,
 )
 from src.services.entry_exclusion_repair import (
     iter_repair_candidates,
@@ -4856,8 +4860,11 @@ class TTEService:
                 # One chokepoint for all four arm shapes: the entry event is settled
                 # by the branch above, and the repairs need to read it. Placed here
                 # rather than inside each builder so a fifth arm shape cannot be added
-                # without them -- see `_apply_export_repairs`.
-                self._apply_export_repairs(built)
+                # without them -- see `_apply_export_repairs`. The stated exceptions come
+                # from the stored criterion rows, keyed by the concept set each maps to.
+                self._apply_export_repairs(
+                    built, stated_exceptions=stated_exceptions_by_codeset(_elig)
+                )
                 return built
 
             # Label: active comparator uses its own drug; derived uses "No <treatment>"
@@ -7299,6 +7306,25 @@ class TTEService:
             },
         }
 
+    @staticmethod
+    def _stated_entity_exception(criterion: dict[str, Any], seed: str) -> Any:
+        """The exception to hand the mapper for this criterion, or None.
+
+        :param criterion: the store row; its verified ``excepted_entities`` are read by
+            :func:`src.services.criterion_annotation.stated_exceptions`.
+        :param seed: the mapper seed -- the base the exception is subtracted from.
+        """
+        excepted = stated_exceptions(criterion)
+        if not excepted or not seed.strip():
+            return None
+        from src.services.entity_subtraction import EntityException
+
+        return EntityException(
+            text=" ".join(str(criterion.get("description") or seed).split()),
+            base=seed,
+            excepted=[entry["text"] for entry in excepted],
+        )
+
     def _build_seeded_eligibility_rule(
         self,
         *,
@@ -7323,13 +7349,12 @@ class TTEService:
         # Nothing is deleted: the criterion's own fields and this rule's name are
         # untouched. See `src/utils/criterion_seed.py`.
         seed = criterion_mapper_seed(criterion) or label
-        # The seed is the bare entity, so an exception the extraction wrote only into the
-        # description never reached the parser: EMPA-REG exclusion #30 seeds "Endocrine
-        # disorder" under "Endocrine disorder (excluding T2DM)", and codeset 29 shipped
-        # with T2DM inside it -- 0 people on any CDM. See `description_stated_exception`.
-        from src.services.entity_exception import description_stated_exception
-
-        seed_exception = description_stated_exception(seed, criterion.get("description"))
+        # The entities the protocol line leaves out of this criterion's set, as the
+        # planner or the annotation step quoted them (RFC-016) -- never read off the
+        # description or the seed. EMPA-REG exclusion #30 seeds "Endocrine disorder"
+        # under a line that excepts type 2 diabetes; without the subtraction codeset 29
+        # shipped with T2DM inside it -- 0 people on any CDM (2026-09-23 delivery).
+        seed_exception = self._stated_entity_exception(criterion, seed)
         raw_domain = (criterion.get("domain") or "").strip() or None
         # A demographic-domain criterion reaching this function (via the exclusion-
         # loop fallthrough) has no real Age/Gender/etc. rule to build, so its raw
@@ -7953,7 +7978,11 @@ class TTEService:
             if expr and expr.get("items"):
                 cs["expression"] = expr
 
-    def _apply_export_repairs(self, built: dict[str, Any]) -> None:
+    def _apply_export_repairs(
+        self,
+        built: dict[str, Any],
+        stated_exceptions: Mapping[int, Sequence[str]] | None = None,
+    ) -> None:
         """Run the arm-level export repairs on an assembled arm, and on its collapsed rules.
 
         One chokepoint for all four arm shapes (see the arm builder closure in
@@ -7962,8 +7991,17 @@ class TTEService:
         receives the same repairs, in the same order, as the survivor its record names.
 
         :param built: the assembled arm expression, mutated in place.
+        :param stated_exceptions: concept set id -> the excepted entity names its criterion
+            states (`criterion_annotation.stated_exceptions_by_codeset`); what the
+            entry-exclusion repair is triggered by. None means none are known.
         """
-        _rewrite_with_collapsed_rules(built, self._export_repair_chain)
+        stated = dict(stated_exceptions or {})
+
+        def chain(expression: dict[str, Any]) -> None:
+            self._export_repair_chain(expression, stated)
+
+        chain.__name__ = "_export_repair_chain"
+        _rewrite_with_collapsed_rules(built, chain)
         # After every repair, on the file's own rules only: a repair above may already
         # have resolved the contradiction (the over-broad-absence narrowing, the entry
         # mirror), and a carried collapsed rule has no presence partner to contradict.
@@ -8001,14 +8039,18 @@ class TTEService:
             refuse_contradicted_absences(base, lookup)
         )
 
-    def _export_repair_chain(self, built: dict[str, Any]) -> None:
+    def _export_repair_chain(
+        self,
+        built: dict[str, Any],
+        stated_exceptions: Mapping[int, Sequence[str]] | None = None,
+    ) -> None:
         """The arm-level export repairs, in their load-bearing order. Mutates ``built``."""
         # Narrowing runs BEFORE the entry-exclusion mirror: both write to an
         # absence concept set, and the mirror would leave the over-broad member
         # in place and then block the narrowing, which declines on an isExcluded
         # item. See `_repair_overbroad_absence_sets`.
         self._repair_overbroad_absence_sets(built)
-        self._repair_entry_excluded_by_own_rule(built)
+        self._repair_entry_excluded_by_own_rule(built, dict(stated_exceptions or {}))
         # Order is load-bearing: collapsing a two-sided bound into one `bt` is
         # what makes that criterion's unit filter droppable -- the unit repair
         # declines a one-sided bound because an alternative unit can pass it.
@@ -8083,10 +8125,16 @@ class TTEService:
         with PostgresConceptCatalog(settings.DATABASE_URL, settings.CDM_SCHEMA) as catalog:
             repair_overbroad_absence_sets(base, lookup, catalog)
 
-    def _repair_entry_excluded_by_own_rule(self, base: dict[str, Any]) -> None:
-        """Implement the entity exception an inclusion rule's own name already states,
-        when that rule's absence criterion would otherwise remove every patient the
-        entry event admits. Mutates ``base`` in place.
+    def _repair_entry_excluded_by_own_rule(
+        self, base: dict[str, Any], stated_exceptions: Mapping[int, Sequence[str]]
+    ) -> None:
+        """Implement the entity exception a criterion's protocol line states, when the
+        absence over its concept set would otherwise remove every patient the entry event
+        admits. Mutates ``base`` in place.
+
+        ``stated_exceptions`` (concept set id -> excepted entity names) is what triggers
+        it, read from the stored rows' span-checked ``excepted_entities`` (RFC-016). The
+        rule's name is not read.
 
         The sibling of :meth:`_repair_stale_drug_concept_sets`, and the export-time
         counterpart of ``scripts/verify_entry_exclusion_conflict.py`` -- the gate that
@@ -8114,7 +8162,7 @@ class TTEService:
           standing between that and a hospital is the delivery gate -- which needs the
           same vocabulary and would fail for the same reason.
         """
-        if not next(iter_repair_candidates(base), None):
+        if not next(iter_repair_candidates(base, stated_exceptions), None):
             return
 
         from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
@@ -8127,7 +8175,7 @@ class TTEService:
 
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
-        repair_entry_exclusion_conflicts(base, lookup)
+        repair_entry_exclusion_conflicts(base, lookup, stated_exceptions)
 
     def _repair_range_disjunctions(self, base: dict[str, Any]) -> None:
         """Collapse an inclusion rule that offers a range's two bounds as alternatives
@@ -8620,14 +8668,13 @@ class TTEService:
         # Every failure falls back to the single call below rather than
         # half-applying -- see resolve_entity_exception.
         #
-        # `entity_exception` is the one the criterion's description stated about
-        # this seed (`description_stated_exception`); it is only ever supplied when
-        # the seed states none of its own.
+        # `entity_exception` is the one the criterion's protocol line states, as the
+        # planner or the annotation step quoted it (`_stated_entity_exception`). The
+        # seed itself is never parsed for one (RFC-016: no word list reads the text).
         if not resolving_entity_exception:
-            from src.services.entity_exception import detect_entity_exception
             from src.services.entity_subtraction import resolve_entity_exception
 
-            _exception = entity_exception or detect_entity_exception(normalized_seed)
+            _exception = entity_exception
             if _exception is not None:
                 _resolution = resolve_entity_exception(
                     _exception,
@@ -12433,6 +12480,13 @@ class TTEService:
         window_obj = getattr(item, "window", None)
         window = {"start": window_obj.start, "end": window_obj.end} if window_obj is not None else None
         item_logic_type = getattr(item, "logic_type", None) or logic_type
+        # The planner's stated exceptions (RFC-016 §3), already span-checked against the
+        # line there. Written only when present, so every other row keeps its shape.
+        planner_excepted = [
+            {"text": entity.text, "span": entity.span}
+            for entity in getattr(item, "excepted_entities", None) or []
+        ]
+        planner_excepted_field = {PLANNER_EXCEPTED_KEY: planner_excepted} if planner_excepted else {}
         return {
             "id": criterion_id,
             "description": description,
@@ -12460,6 +12514,7 @@ class TTEService:
             # `.get(...)` returning None then means both "top level" and "written by an
             # older build" with nothing to tell them apart.
             CRITERION_PARENT_GROUP_KEY: parent_group_id,
+            **planner_excepted_field,
         }
 
     def _heuristic_draft(self, description: str) -> dict[str, Any]:

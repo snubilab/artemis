@@ -261,7 +261,7 @@ class TestTheArmRepairsReachTheRecord:
                 for criterion in rule["expression"]["CriteriaList"]:
                     criterion["RestrictVisit"] = True
 
-        noop = lambda e: None  # noqa: E731
+        noop = lambda e, *_stated: None  # noqa: E731
         for name in (
             "_repair_overbroad_absence_sets",
             "_repair_entry_excluded_by_own_rule",

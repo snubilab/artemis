@@ -2,7 +2,9 @@
 
 The two halves meet here, the same shape as :mod:`route_subtraction`:
 
-- :mod:`entity_exception` reads what the criterion asked to leave out, off the text.
+- the criterion's annotation says what its protocol line leaves out
+  (:func:`src.services.criterion_annotation.stated_exceptions`, RFC-016 -- each excepted
+  entity quoted with a span that is a substring of the line; no word list reads the text).
 - the mapper says which concepts that entity is.
 
 This decides what the concept set carries as ``isExcluded``. Pure: no LLM, no
@@ -42,6 +44,20 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class EntityException:
+    """What a criterion leaves out of the set it names, ready for the mapper.
+
+    :param text: the name the repaired concept set carries.
+    :param base: the set the criterion names, mapped as usual (the mapper seed).
+    :param excepted: the entities to subtract from it, one mappable name each.
+    """
+
+    text: str
+    base: str = ""
+    excepted: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -196,7 +212,8 @@ def resolve_entity_exception(exception, map_phrase) -> ExceptionResolution:
     :mod:`route_subtraction` states for undecidable forms. A partial subtraction
     would be a claim the pipeline cannot support, not a repair.
 
-    :param exception: from :func:`entity_exception.detect_entity_exception`.
+    :param exception: an :class:`EntityException` built from the criterion's stated
+        exceptions.
     :param map_phrase: maps one phrase to a mapping dict carrying
         ``expression.items``. May raise; a raise is a fallback, not an error.
     :returns: the repaired mapping, or the reason nothing was applied.

@@ -18,6 +18,7 @@ What is pinned:
 * a row Agent 1 flagged ``conditional`` reaches the store and is recorded as a skip instead of
   disappearing in ``_criteria_from_ir``.
 """
+
 from __future__ import annotations
 
 import json
@@ -157,7 +158,9 @@ class TestAnnotatingARow:
 
     def test_should_not_call_the_model_again_when_the_cache_holds_the_answer(self, tmp_path):
         first, second = deepcopy(CARMELINA_7), deepcopy(CARMELINA_7)
-        annotate_row(first, [], "inclusion", model="stub", llm=_StubLLM(_conditional(CARMELINA_SPAN)))
+        annotate_row(
+            first, [], "inclusion", model="stub", llm=_StubLLM(_conditional(CARMELINA_SPAN))
+        )
         again = _StubLLM(_conditional("unused"))
         assert annotate_row(second, [], "inclusion", model="stub", llm=again) == "cached"
         assert again.calls == []
@@ -175,7 +178,10 @@ class TestAnnotatingARow:
         elsewhere = tmp_path / "run_b" / "cache.jsonl"
         monkeypatch.setenv("ARTEMIS_ANNOTATION_CACHE_PATH", str(elsewhere))
         annotate_row(
-            deepcopy(CARMELINA_7), [], "inclusion", model="stub",
+            deepcopy(CARMELINA_7),
+            [],
+            "inclusion",
+            model="stub",
             llm=_StubLLM(_conditional(CARMELINA_SPAN)),
         )
         assert elsewhere.exists()
@@ -217,7 +223,9 @@ def _stub_concept_set(seed: str, domain: str) -> dict[str, Any]:
                         "CONCEPT_CODE": str(concept_id),
                         "DOMAIN_ID": domain,
                         "VOCABULARY_ID": "RxNorm" if domain == "Drug" else "SNOMED",
-                        "CONCEPT_CLASS_ID": "Ingredient" if domain == "Drug" else "Clinical Finding",
+                        "CONCEPT_CLASS_ID": "Ingredient"
+                        if domain == "Drug"
+                        else "Clinical Finding",
                     },
                     "includeDescendants": True,
                     "isExcluded": False,
@@ -360,11 +368,15 @@ class TestProcessEligibilityAnnotatesBeforeMapping:
         section.source, section.fallback_used, section.fragments = "test", False, []
         with (
             patch.object(svc, "_build_seeded_target_circe", side_effect=fake_build),
-            patch.object(svc, "_build_eligibility_suggestion", return_value={
-                "targetCohortName": "Type 2 diabetes",
-                "inclusionCriteria": [deepcopy(CARMELINA_7)],
-                "exclusionCriteria": [],
-            }),
+            patch.object(
+                svc,
+                "_build_eligibility_suggestion",
+                return_value={
+                    "targetCohortName": "Type 2 diabetes",
+                    "inclusionCriteria": [deepcopy(CARMELINA_7)],
+                    "exclusionCriteria": [],
+                },
+            ),
             patch.object(svc, "_build_mapping_quality_signal", return_value=None),
             patch.object(svc, "_get_capability_signal", return_value=None),
             patch.object(svc, "_apply_draft_concept_set_metadata", side_effect=lambda c, *a: c),

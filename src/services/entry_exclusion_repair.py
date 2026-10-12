@@ -21,15 +21,19 @@ of the same trial returned 874 and 786. The rule NAME says what the protocol
 asked for ("excluding T2DM"); the concept set does not implement it.
 
 WHY THIS REPAIRS AT EXPORT TIME. The build already has the answer in front of
-it -- the rule's own name -- and the concept set is data in the payload, not a
-model output. Re-extracting to fix it would re-roll every other criterion (see
-``feedback: prompt edits re-roll a third of criteria``) to change one concept
-set, and would cost an LLM pass for a defect that is a pure set operation.
+it -- the exception the criterion's protocol line states, recorded on the stored row
+-- and the concept set is data in the payload, not a model output. Re-extracting to
+fix it would re-roll every other criterion (see ``feedback: prompt edits re-roll a
+third of criteria``) to change one concept set, and would cost an LLM pass for a
+defect that is a pure set operation.
 
 WHAT IT WILL NOT DO. Three conditions must hold together, and the FIRST is the
 safety one:
 
-1. the rule's own text states an entity exception (:mod:`entity_exception`).
+1. the criterion behind the absence concept set states an entity exception: its
+   protocol line's ``excepted_entities``, quoted with spans the annotation step (or the
+   planner) checked against the line, reach this module as ``stated_exceptions`` keyed
+   by concept set id (RFC-016; no word list reads the rule name any more).
    Overlap alone is NEVER sufficient: a concept set deliberately excluding the
    entry concepts is exactly what a legitimate washout or contraindication rule
    looks like, and repairing it would erase a real exclusion. The repair only
@@ -93,6 +97,7 @@ the tests run the real closure resolver with no database at all.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Iterator
@@ -103,7 +108,6 @@ from src.services.conceptset_closure import (
     iter_items,
     resolve_concept_set,
 )
-from src.services.entity_exception import EntityException, detect_entity_exception
 
 #: Keys of a Circe criterion object that are not a domain criterion.
 _NON_DOMAIN_KEYS = {
@@ -337,7 +341,7 @@ class RepairCandidate:
     rule_name: str
     criterion: dict
     codeset_id: int
-    exception: EntityException
+    excepted: tuple[str, ...]
     window: str
     #: Condition 3's index-day half binds the ENTRY path only; against a mandatory
     #: presence the window condition is :func:`presence_inside_absence`.
@@ -363,25 +367,20 @@ class EntryExclusionRepair:
     target: str = TARGET_ENTRY
 
 
-def _rule_texts(rule: dict, criterion: dict) -> list[str]:
-    """Every text on a rule or its criterion that may carry the exception clause.
-
-    The delivered payloads carry only ``name``; a store-side rule may also carry
-    a description, and the criterion may carry its own. All are read because the
-    clause is the safety condition -- missing it means declining a real repair,
-    never making a wrong one.
-    """
-    candidates = [rule.get("name"), rule.get("description"), criterion.get("description")]
-    return [str(t) for t in candidates if isinstance(t, str) and t.strip()]
-
-
-def iter_repair_candidates(base: dict[str, Any]) -> Iterator[RepairCandidate]:
+def iter_repair_candidates(
+    base: dict[str, Any], stated_exceptions: Mapping[int, Sequence[str]]
+) -> Iterator[RepairCandidate]:
     """Rules this repair could fire on, judged without a vocabulary.
 
-    Applies conditions 1 (an entity exception stated in the rule's own text) and
-    3's all-ALL group path. Whether the window covers index day 0 is recorded rather
-    than filtered on: the entry path needs it, the presence path does not. Condition 2
-    needs the concept closure and is applied by :func:`repair_entry_exclusion_conflicts`.
+    Applies conditions 1 (the criterion behind the absence concept set states an
+    entity exception) and 3's all-ALL group path. Whether the window covers index day 0
+    is recorded rather than filtered on: the entry path needs it, the presence path does
+    not. Condition 2 needs the concept closure and is applied by
+    :func:`repair_entry_exclusion_conflicts`.
+
+    :param base: the cohort expression.
+    :param stated_exceptions: concept set id -> the excepted entity names its criterion
+        states (``criterion_annotation.stated_exceptions_by_codeset``).
     """
     for index, rule in enumerate(base.get("InclusionRules") or []):
         for criterion, conjunctive in iter_absence_criteria(rule.get("expression") or {}):
@@ -394,19 +393,15 @@ def iter_repair_candidates(base: dict[str, Any]) -> Iterator[RepairCandidate]:
             codeset = found[1].get("CodesetId")
             if codeset is None:
                 continue
-            exception = next(
-                (e for e in (detect_entity_exception(t) for t in _rule_texts(rule, criterion))
-                 if e is not None),
-                None,
-            )
-            if exception is None:
+            excepted = tuple(stated_exceptions.get(int(codeset)) or ())
+            if not excepted:
                 continue
             yield RepairCandidate(
                 rule_index=index,
                 rule_name=str(rule.get("name")),
                 criterion=criterion,
                 codeset_id=int(codeset),
-                exception=exception,
+                excepted=excepted,
                 window=window,
                 covers_index=covers,
             )
@@ -471,9 +466,11 @@ def _apply_mirror(
 
 
 def repair_entry_exclusion_conflicts(
-    base: dict[str, Any], lookup: VocabularyLookup
+    base: dict[str, Any],
+    lookup: VocabularyLookup,
+    stated_exceptions: Mapping[int, Sequence[str]],
 ) -> list[EntryExclusionRepair]:
-    """Implement the exception a rule's own name states. Mutates ``base`` in place.
+    """Implement the exception a criterion's protocol line states. Mutates ``base`` in place.
 
     Two targets, one mechanism. The ENTRY path is the module docstring's conditions
     1-3. The PRESENCE path extends 2b -- and only 2b -- to every presence on an all-ALL
@@ -488,10 +485,12 @@ def repair_entry_exclusion_conflicts(
     :param base: a Circe cohort expression (ConceptSets / PrimaryCriteria /
         InclusionRules), mutated in place.
     :param lookup: vocabulary access for resolving concept-set closures.
+    :param stated_exceptions: concept set id -> the excepted entity names its criterion
+        states; see :func:`iter_repair_candidates`.
     :returns: one record per applied repair; empty means nothing satisfied the
         conditions, which is the expected answer for almost every file.
     """
-    candidates = list(iter_repair_candidates(base))
+    candidates = list(iter_repair_candidates(base, stated_exceptions))
     if not candidates:
         return []
 
@@ -540,7 +539,7 @@ def repair_entry_exclusion_conflicts(
                         rule_name=candidate.rule_name,
                         codeset_id=candidate.codeset_id,
                         codeset_name=str(cs.get("name")),
-                        excepted=list(candidate.exception.excepted),
+                        excepted=list(candidate.excepted),
                         excluded_concept_ids=added,
                         path=reading.path,
                     )
@@ -554,10 +553,10 @@ def repair_entry_exclusion_conflicts(
                 )
                 logging.warning(
                     "[TTE] entry-exclusion repair: rule #%d %r requires the absence of "
-                    "concept set %d %r, %s. Its text excepts %s, so concepts %s are marked "
+                    "concept set %d %r, %s. Its criterion excepts %s, so concepts %s are marked "
                     "isExcluded in that set.",
                     candidate.rule_index + 1, candidate.rule_name, candidate.codeset_id,
-                    cs.get("name"), why, ", ".join(candidate.exception.excepted),
+                    cs.get("name"), why, ", ".join(candidate.excepted),
                     ", ".join(str(c) for c in added),
                 )
 
@@ -598,7 +597,7 @@ def repair_entry_exclusion_conflicts(
                     rule_name=candidate.rule_name,
                     codeset_id=candidate.codeset_id,
                     codeset_name=str(cs.get("name")),
-                    excepted=list(candidate.exception.excepted),
+                    excepted=list(candidate.excepted),
                     excluded_concept_ids=added,
                     path=p_reading.path,
                     target=target,
@@ -607,10 +606,10 @@ def repair_entry_exclusion_conflicts(
             logging.warning(
                 "[TTE] entry-exclusion repair: rule #%d %r requires the absence of concept "
                 "set %d %r, which already excepts part of %s (concept set %d) but still "
-                "forbids %d of its %d concepts. Its text excepts %s, so concepts %s are "
+                "forbids %d of its %d concepts. Its criterion excepts %s, so concepts %s are "
                 "marked isExcluded in that set.",
                 candidate.rule_index + 1, candidate.rule_name, candidate.codeset_id,
                 cs.get("name"), target, p_codeset, len(p_reading.overlap), len(p_ids),
-                ", ".join(candidate.exception.excepted), ", ".join(str(c) for c in added),
+                ", ".join(candidate.excepted), ", ".join(str(c) for c in added),
             )
     return applied

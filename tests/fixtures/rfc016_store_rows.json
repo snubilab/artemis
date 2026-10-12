@@ -145,5 +145,110 @@
       "start": -9999,
       "end": 0
     }
+  },
+  "carolina_exclusion_68": {
+    "id": 68,
+    "description": "Cancer other than non-melanoma skin cancer within last 3 years",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "cancer other than non-melanoma skin cancer within last 3 years",
+    "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+    "protocolSpan": "has cancer other than non-melanoma skin cancer within last 3 years",
+    "window": {
+      "start": -9999,
+      "end": 0
+    },
+    "conceptSetId": 80,
+    "conceptSetName": "cancer other than non-melanoma skin cancer",
+    "logicType": "ABSENCE",
+    "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+  },
+  "leader_exclusion_38": {
+    "id": 38,
+    "description": "Use of other insulin within 3 months prior to screening",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "insulin",
+    "protocolLine": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "protocolSpan": "",
+    "window": {
+      "start": -90,
+      "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "5b6dddd4-ab8e-4634-9123-7e5d90d9e15c",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+  },
+  "leader_exclusion_39": {
+    "id": 39,
+    "description": "Insulin other than human NPH insulin",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "insulin other than human NPH insulin",
+    "protocolLine": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "protocolSpan": "insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin",
+    "window": {
+      "start": -90,
+      "end": 0
+    },
+    "conceptSetId": 54,
+    "conceptSetName": "insulin other than human NPH insulin",
+    "logicType": "ABSENCE",
+    "groupId": "5b6dddd4-ab8e-4634-9123-7e5d90d9e15c",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+  },
+  "leader_exclusion_40": {
+    "id": 40,
+    "description": "Insulin other than long-acting insulin analogue",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "insulin other than long-acting insulin analogue",
+    "protocolLine": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "protocolSpan": "insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin",
+    "window": {
+      "start": -90,
+      "end": 0
+    },
+    "conceptSetId": 55,
+    "conceptSetName": "insulin other than long-acting insulin analogue",
+    "logicType": "ABSENCE",
+    "groupId": "5b6dddd4-ab8e-4634-9123-7e5d90d9e15c",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+  },
+  "leader_exclusion_41": {
+    "id": 41,
+    "description": "Insulin other than premixed insulin",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "insulin other than premixed insulin",
+    "protocolLine": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "protocolSpan": "insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin",
+    "window": {
+      "start": -90,
+      "end": 0
+    },
+    "conceptSetId": 56,
+    "conceptSetName": "insulin other than premixed insulin",
+    "logicType": "ABSENCE",
+    "groupId": "5b6dddd4-ab8e-4634-9123-7e5d90d9e15c",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
   }
 }

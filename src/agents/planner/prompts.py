@@ -113,11 +113,19 @@ Source Text is blank, or does not state a threshold for that sub-term, set
 `value_constraint_text` to `null`. Do not use one sub-term's threshold for a different
 sub-term.
 
+`excepted_entities` lists the entities Source Text explicitly removes from the set this
+criterion names, one entry per entity: `text` is the entity's name to look up in a clinical
+vocabulary, and `span` is the fragment of Source Text that names it, copied character for
+character. It is an empty list when Source Text removes nothing from that set.
+
 **Output JSON**:
 ```json
 {{
   "decompose": <true|false>,
   "reasoning": "<brief explanation>",
+  "excepted_entities": [
+    {{"text": "<entity name>", "span": "<verbatim fragment of Source Text>"}}
+  ],
   "sub_criteria": [
     {{
       "name": "<descriptive name>",

@@ -40,6 +40,10 @@ from src.services.entry_exclusion_repair import (  # noqa: E402
 DM, T2DM, MULTI, T2DM_LEAF, PITUITARY, DRUG = 201820, 201826, 44793113, 4000001, 23986, 45774751
 RULE_NAME = "Endocrine disorder (excluding T2DM)"
 
+#: What the criterion behind codeset 29 states (RFC-016): the repair is triggered by this,
+#: keyed by concept set, and no longer by the rule's name.
+STATED = {29: ["T2DM"]}
+
 
 def vocabulary() -> PrefetchedVocabulary:
     return PrefetchedVocabulary(
@@ -126,7 +130,7 @@ def test_should_mirror_the_presence_set_when_a_stated_exception_leaves_a_residua
     lookup = vocabulary()
     assert forbidden_presence(base, lookup) == {MULTI}  # the defect, before
 
-    repairs = repair_entry_exclusion_conflicts(base, lookup)
+    repairs = repair_entry_exclusion_conflicts(base, lookup, STATED)
 
     assert [(r.rule_number, r.codeset_id, r.path, r.target, r.excluded_concept_ids)
             for r in repairs] == [
@@ -140,7 +144,7 @@ def test_should_change_nothing_but_the_absence_set_when_it_repairs_the_residual(
     base = cohort()
     before = copy.deepcopy(base)
 
-    repair_entry_exclusion_conflicts(base, vocabulary())
+    repair_entry_exclusion_conflicts(base, vocabulary(), STATED)
 
     added = [i for i in base["ConceptSets"][2]["expression"]["items"]
              if i not in before["ConceptSets"][2]["expression"]["items"]]
@@ -153,8 +157,8 @@ def test_should_do_nothing_on_a_second_pass_when_it_has_repaired_the_presence_re
     base = cohort()
     lookup = vocabulary()
 
-    assert repair_entry_exclusion_conflicts(base, lookup)
-    assert repair_entry_exclusion_conflicts(base, lookup) == []
+    assert repair_entry_exclusion_conflicts(base, lookup, STATED)
+    assert repair_entry_exclusion_conflicts(base, lookup, STATED) == []
 
 
 def test_should_repair_when_the_absence_window_ends_before_index_but_contains_the_presence():
@@ -163,7 +167,7 @@ def test_should_repair_when_the_absence_window_ends_before_index_but_contains_th
     base = cohort(presence=criterion(2, PRESENT, window=(-9999, -1)),
                   absence=criterion(29, ABSENT, window=(-9999, -1)))
 
-    assert [r.excluded_concept_ids for r in repair_entry_exclusion_conflicts(base, vocabulary())] \
+    assert [r.excluded_concept_ids for r in repair_entry_exclusion_conflicts(base, vocabulary(), STATED)] \
         == [[MULTI]]
 
 
@@ -171,10 +175,10 @@ def test_should_repair_when_the_absence_window_ends_before_index_but_contains_th
 # declines -- one condition false, the rest held true
 # --------------------------------------------------------------------------
 
-def test_should_decline_when_the_rule_name_states_no_exception():
+def test_should_decline_when_the_criterion_states_no_exception():
     base = cohort(rule_name="Endocrine disorder")
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), {}) == []
     assert excluded_ids(base, 29) == {T2DM}
 
 
@@ -183,28 +187,28 @@ def test_should_decline_when_no_excluded_item_reaches_the_presence():
     exception applied incompletely -- the repair implements only what was begun."""
     base = cohort(absence_items=[item(DM), item(PITUITARY)])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == set()
 
 
 def test_should_decline_when_the_presence_sits_under_an_any_group():
     base = cohort(presence_group="ANY")
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == {T2DM}
 
 
 def test_should_decline_when_the_presence_window_reaches_outside_the_absence_window():
     base = cohort(absence=criterion(29, ABSENT, window=(-365, 0)))
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == {T2DM}
 
 
 def test_should_decline_when_the_presence_reads_another_table():
     base = cohort(presence=criterion(2, PRESENT, criteria_type="Observation"))
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == {T2DM}
 
 
@@ -213,14 +217,14 @@ def test_should_decline_when_the_absence_is_narrowed():
     presence through the rest; mirroring would widen the absence's escape hatch."""
     base = cohort(absence=criterion(29, ABSENT, ConditionType=[{"CONCEPT_ID": 32020}]))
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == {T2DM}
 
 
 def test_should_decline_when_the_presence_set_carries_an_excluded_item():
     base = cohort(presence_items=[item(T2DM), item(MULTI), item(T2DM_LEAF, excluded=True)])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == {T2DM}
 
 
@@ -241,7 +245,7 @@ def test_should_fail_the_residual_against_a_mandatory_presence_when_the_entry_is
 
 def test_should_report_nothing_when_the_repair_has_closed_the_residual():
     base = cohort()
-    repair_entry_exclusion_conflicts(base, vocabulary())
+    repair_entry_exclusion_conflicts(base, vocabulary(), STATED)
 
     assert _check(base) == []
 
@@ -300,7 +304,7 @@ def test_should_close_the_dry_rebuild_residual_when_it_repairs_the_treatment_fil
     lookup = _real_lookup(base)
     assert forbidden_presence(base, lookup) == {MULTI}
 
-    repairs = repair_entry_exclusion_conflicts(base, lookup)
+    repairs = repair_entry_exclusion_conflicts(base, lookup, STATED)
 
     assert [(r.rule_number, r.codeset_id, r.path, r.excluded_concept_ids) for r in repairs] == [
         (15, 29, PATH_RESIDUAL_AFTER_EXCEPTION, [MULTI])

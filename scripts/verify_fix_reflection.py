@@ -140,7 +140,14 @@ def _repair_changes(directory: Path, repair, vocab) -> dict[str, int]:
 
 
 def check_entry_absence(baseline: Path, candidate: Path, log_text: str | None, vocab) -> Verdict:
-    from src.services.entry_exclusion_repair import repair_entry_exclusion_conflicts
+    from src.services.entry_exclusion_repair import repair_entry_exclusion_conflicts as _repair
+
+    # RFC-016: the repair is triggered by the exceptions the stored criterion rows state,
+    # not by a rule name. A delivered directory carries no store rows, so no stated
+    # exception is known here and the re-applied repair cannot fire: this check reports
+    # CONTROL-BROKEN rather than guessing an exception from a rule's name.
+    def repair_entry_exclusion_conflicts(base, lookup):
+        return _repair(base, lookup, {})
 
     v = Verdict("B entry-absence", "")
 

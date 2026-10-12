@@ -149,6 +149,16 @@ class ValueConstraint(BaseModel):
         return self
 
 
+class ExceptedEntity(BaseModel):
+    """An entity the protocol line removes from the set a criterion names (RFC-016).
+
+    ``text`` is the name the mapper is asked; ``span`` is the fragment of the line that
+    names it, kept only when it is a substring of the line.
+    """
+    text: str
+    span: str
+
+
 class Criteria(BaseModel):
     """
     Represents a single logical criterion (Inclusion/Exclusion rule).
@@ -220,6 +230,12 @@ class Criteria(BaseModel):
 
     # If True, criterion is gated on a patient subgroup and must be skipped in CIRCE
     conditional: bool = False
+
+    # The entities this criterion's protocol line removes from the set it names, as the
+    # planner stated them (RFC-016 §3), each span already checked against `source_text`.
+    # Empty for every criterion the planner stated none for, and for IR stored before
+    # the field existed; the annotation step fills the store row's equivalent then.
+    excepted_entities: List[ExceptedEntity] = Field(default_factory=list)
 
 class PrimaryCriteria(BaseModel):
     """

@@ -149,10 +149,22 @@ def criterion_mapper_seed(criterion: Mapping[str, Any]) -> str:
     carries the whole protocol sentence, temporal qualifier included, and that qualifier
     is dropped when (and only when) the criterion has a ``window`` that already holds it.
 
+    One case comes ahead of both fields (RFC-016 addendum): when the criterion's
+    annotation states an exception and quotes, as ``base_span``, the fragment of the
+    protocol line naming the set the exception is taken from -- checked to be a substring
+    of that line -- that fragment is the seed. A seed that carries the whole clause
+    ("cancer other than non-melanoma skin cancer within last 3 years") is mapped
+    tail-first, and the subtraction then has no sound base to act on.
+
     :param criterion: a store eligibility-criterion dict.
     :returns: the seed text, whitespace-collapsed; ``""`` when the criterion names
         nothing at all (the caller refuses that, and should).
     """
+    from src.services.criterion_annotation import stated_base
+
+    base = stated_base(criterion)
+    if base:
+        return base
     seed = " ".join(
         ((criterion.get("sourceText") or criterion.get("description") or "").strip()).split()
     )

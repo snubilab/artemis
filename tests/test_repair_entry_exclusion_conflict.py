@@ -35,6 +35,10 @@ UNRELATED = 4030518
 
 RULE_NAME = "Endocrine disorder (excluding T2DM)"
 
+#: What the criterion behind codeset 29 states (RFC-016): the repair is triggered by this,
+#: keyed by concept set, and no longer by the rule's name.
+STATED = {29: ["T2DM"]}
+
 
 def vocabulary() -> PrefetchedVocabulary:
     return PrefetchedVocabulary(
@@ -126,12 +130,12 @@ def excluded_ids(base: dict, codeset_id: int) -> set[int]:
 # fires
 # --------------------------------------------------------------------------
 
-def test_should_exclude_the_entry_concepts_when_the_rule_name_states_the_exception():
+def test_should_exclude_the_entry_concepts_when_the_criterion_states_the_exception():
     """The measured defect: rule 14 says 'excluding T2DM' and codeset 29 does not."""
     base = cohort(concept_sets=[entry_set(), endocrine_set()],
                   rules=[rule(RULE_NAME, absence_criterion(29))])
 
-    repairs = repair_entry_exclusion_conflicts(base, vocabulary())
+    repairs = repair_entry_exclusion_conflicts(base, vocabulary(), STATED)
 
     assert [r.codeset_id for r in repairs] == [29]
     assert repairs[0].rule_number == 1
@@ -149,7 +153,7 @@ def test_should_leave_the_rule_satisfiable_when_it_has_repaired_it():
     lookup = vocabulary()
     entry_closure = resolve_concept_set(base["ConceptSets"][0], lookup).concept_ids
 
-    repair_entry_exclusion_conflicts(base, lookup)
+    repair_entry_exclusion_conflicts(base, lookup, STATED)
 
     absence_closure = resolve_concept_set(base["ConceptSets"][1], lookup).concept_ids
     assert entry_closure & absence_closure == set()
@@ -161,21 +165,21 @@ def test_should_do_nothing_on_a_second_pass():
                   rules=[rule(RULE_NAME, absence_criterion(29))])
     lookup = vocabulary()
 
-    assert repair_entry_exclusion_conflicts(base, lookup)
-    assert repair_entry_exclusion_conflicts(base, lookup) == []
+    assert repair_entry_exclusion_conflicts(base, lookup, STATED)
+    assert repair_entry_exclusion_conflicts(base, lookup, STATED) == []
 
 
 # --------------------------------------------------------------------------
 # declines -- one condition false, the other two held true
 # --------------------------------------------------------------------------
 
-def test_should_decline_when_the_rule_name_states_no_exception():
+def test_should_decline_when_the_criterion_states_no_exception():
     """Condition 1. Overlap alone must never trigger a repair: a set with no
     exception clause may be excluding the entry concepts deliberately."""
     base = cohort(concept_sets=[entry_set(), endocrine_set()],
                   rules=[rule("Endocrine disorder", absence_criterion(29))])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), {}) == []
     assert excluded_ids(base, 29) == set()
 
 
@@ -185,7 +189,7 @@ def test_should_decline_when_the_absence_set_covers_only_part_of_the_entry_closu
     base = cohort(concept_sets=[entry_set(), partial],
                   rules=[rule("Ulcer (excluding T2DM)", absence_criterion(30))])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), {30: ["T2DM"]}) == []
     assert excluded_ids(base, 30) == set()
 
 
@@ -194,7 +198,7 @@ def test_should_decline_when_the_criterion_sits_under_a_non_all_group():
     base = cohort(concept_sets=[entry_set(), endocrine_set()],
                   rules=[rule(RULE_NAME, absence_criterion(29), group_type="ANY")])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == set()
 
 
@@ -204,7 +208,7 @@ def test_should_decline_when_the_window_excludes_index_day():
     base = cohort(concept_sets=[entry_set(), endocrine_set()],
                   rules=[rule(RULE_NAME, absence_criterion(29, start=-7, end=-1))])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == set()
 
 
@@ -216,7 +220,7 @@ def test_should_decline_when_the_entry_set_carries_an_excluded_item():
     base = cohort(concept_sets=[entry, endocrine_set()],
                   rules=[rule(RULE_NAME, absence_criterion(29))])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == set()
 
 
@@ -224,21 +228,21 @@ def test_should_decline_when_the_entry_set_carries_an_excluded_item():
 # the DB-free pre-gate
 # --------------------------------------------------------------------------
 
-def test_should_report_no_candidate_without_a_vocabulary_when_no_rule_names_an_exception():
+def test_should_report_no_candidate_without_a_vocabulary_when_no_criterion_states_an_exception():
     """The service wrapper skips the vocabulary round trip on this answer."""
     base = cohort(concept_sets=[entry_set(), endocrine_set()],
                   rules=[rule("Endocrine disorder", absence_criterion(29))])
 
-    assert list(iter_repair_candidates(base)) == []
+    assert list(iter_repair_candidates(base, {})) == []
 
 
 def test_should_report_a_candidate_without_a_vocabulary_on_the_measured_shape():
     base = cohort(concept_sets=[entry_set(), endocrine_set()],
                   rules=[rule(RULE_NAME, absence_criterion(29))])
 
-    candidates = list(iter_repair_candidates(base))
+    candidates = list(iter_repair_candidates(base, STATED))
     assert len(candidates) == 1
-    assert candidates[0].exception.excepted == ["T2DM"]
+    assert list(candidates[0].excepted) == ["T2DM"]
 
 
 # --------------------------------------------------------------------------
@@ -260,7 +264,7 @@ def test_should_exclude_the_residual_when_the_set_already_excepts_part_of_the_en
     base = cohort(concept_sets=[entry_set(), endocrine_set_excepting_t2dm()],
                   rules=[rule(RULE_NAME, absence_criterion(29))])
 
-    repairs = repair_entry_exclusion_conflicts(base, vocabulary())
+    repairs = repair_entry_exclusion_conflicts(base, vocabulary(), STATED)
 
     assert [(r.codeset_id, r.path, r.excluded_concept_ids) for r in repairs] == [
         (29, "residual-after-exception", [T2DM_OTHER])
@@ -272,7 +276,7 @@ def test_should_not_duplicate_an_entry_concept_when_the_set_already_excludes_it(
     base = cohort(concept_sets=[entry_set(), endocrine_set_excepting_t2dm()],
                   rules=[rule(RULE_NAME, absence_criterion(29))])
 
-    repair_entry_exclusion_conflicts(base, vocabulary())
+    repair_entry_exclusion_conflicts(base, vocabulary(), STATED)
 
     items = base["ConceptSets"][1]["expression"]["items"]
     assert [i["concept"]["CONCEPT_ID"] for i in items].count(T2DM) == 1
@@ -286,7 +290,7 @@ def test_should_leave_no_residual_when_it_has_repaired_the_partial_exception():
     lookup = vocabulary()
     entry_closure = resolve_concept_set(base["ConceptSets"][0], lookup).concept_ids
 
-    repair_entry_exclusion_conflicts(base, lookup)
+    repair_entry_exclusion_conflicts(base, lookup, STATED)
 
     absence_closure = resolve_concept_set(base["ConceptSets"][1], lookup).concept_ids
     assert entry_closure & absence_closure == set()
@@ -298,8 +302,8 @@ def test_should_do_nothing_on_a_second_pass_when_it_has_repaired_the_residual():
                   rules=[rule(RULE_NAME, absence_criterion(29))])
     lookup = vocabulary()
 
-    assert repair_entry_exclusion_conflicts(base, lookup)
-    assert repair_entry_exclusion_conflicts(base, lookup) == []
+    assert repair_entry_exclusion_conflicts(base, lookup, STATED)
+    assert repair_entry_exclusion_conflicts(base, lookup, STATED) == []
 
 
 def test_should_decline_when_the_excluded_item_lies_outside_the_entry_closure():
@@ -310,16 +314,16 @@ def test_should_decline_when_the_excluded_item_lies_outside_the_entry_closure():
     base = cohort(concept_sets=[entry_set(), partial],
                   rules=[rule("Ulcer (excluding T2DM)", absence_criterion(30))])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), {30: ["T2DM"]}) == []
     assert excluded_ids(base, 30) == {UNRELATED}
 
 
-def test_should_decline_the_residual_when_the_rule_name_states_no_exception():
+def test_should_decline_the_residual_when_the_criterion_states_no_exception():
     """Condition 1 still gates the second path."""
     base = cohort(concept_sets=[entry_set(), endocrine_set_excepting_t2dm()],
                   rules=[rule("Endocrine disorder", absence_criterion(29))])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), {}) == []
     assert excluded_ids(base, 29) == {T2DM}
 
 
@@ -371,7 +375,7 @@ def test_should_repair_the_measured_comparator_to_zero_residual_when_t2dm_is_exc
     base = _with_part1_exception(_real("empa-reg_comparator.circe.json"))
     lookup = _real_lookup(base)
 
-    repairs = repair_entry_exclusion_conflicts(base, lookup)
+    repairs = repair_entry_exclusion_conflicts(base, lookup, STATED)
 
     assert [(r.rule_number, r.path, r.excluded_concept_ids) for r in repairs] == [
         (15, "residual-after-exception", [T2DM_OTHER])
@@ -393,7 +397,7 @@ def test_should_leave_the_treatment_file_unchanged_when_nothing_is_excepted_yet(
     base = _real("empa-reg_treatment.circe.json")
     before = json.dumps(copy.deepcopy(base), sort_keys=True)
 
-    assert repair_entry_exclusion_conflicts(base, _real_lookup(base)) == []
+    assert repair_entry_exclusion_conflicts(base, _real_lookup(base), STATED) == []
     assert json.dumps(base, sort_keys=True) == before
 
 
@@ -409,7 +413,7 @@ def test_should_complete_the_exception_against_presence_2_when_t2dm_is_excepted(
     base = _with_part1_exception(_real("empa-reg_treatment.circe.json"))
     before = copy.deepcopy(base)
 
-    repairs = repair_entry_exclusion_conflicts(base, _real_lookup(base))
+    repairs = repair_entry_exclusion_conflicts(base, _real_lookup(base), STATED)
 
     assert [(r.rule_number, r.path, r.target, r.excluded_concept_ids) for r in repairs] == [
         (15, "residual-after-exception", "presence #2 'Type 2 Diabetes Mellitus'", [T2DM_OTHER])
@@ -432,7 +436,7 @@ def test_should_decline_when_the_mirror_would_still_leave_a_residual():
     base = cohort(concept_sets=[entry_set(), narrow],
                   rules=[rule(RULE_NAME, absence_criterion(29))])
 
-    assert repair_entry_exclusion_conflicts(base, vocabulary()) == []
+    assert repair_entry_exclusion_conflicts(base, vocabulary(), STATED) == []
     assert excluded_ids(base, 29) == {T2DM}
     findings, _ = check_cohort(base, vocabulary())
     assert [(f.severity, sorted(f.sample_ids)) for f in findings] == [

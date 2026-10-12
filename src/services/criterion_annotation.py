@@ -35,6 +35,7 @@ and the rendered inputs (protocol line plus the extracted fields). The path is
 ``ARTEMIS_ANNOTATION_CACHE_PATH`` when set, so a run can isolate its cache;
 ``ARTEMIS_ANNOTATION_CACHE=0`` disables it. Failed calls are never cached.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -200,7 +201,9 @@ def _rejection(field: str, value: Any, reason: str) -> dict[str, Any]:
     return {"field": field, "value": value, "reason": reason}
 
 
-def validate_annotation(payload: Any, protocol_line: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def validate_annotation(
+    payload: Any, protocol_line: str
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Keep each field whose evidence is in the line; record why any other was dropped.
 
     :param payload: the model's parsed JSON object.
@@ -224,15 +227,21 @@ def validate_annotation(payload: Any, protocol_line: str) -> tuple[dict[str, Any
     value = raw.strip().casefold() if isinstance(raw, str) else None
     span = payload.get(FIELD_CONDITIONAL_SPAN)
     if value not in _REQUIREMENT_VALUES:
-        rejected.append(_rejection(
-            FIELD_RECORD_REQUIREMENT, raw,
-            f"not one of {sorted(_REQUIREMENT_VALUES)}",
-        ))
+        rejected.append(
+            _rejection(
+                FIELD_RECORD_REQUIREMENT,
+                raw,
+                f"not one of {sorted(_REQUIREMENT_VALUES)}",
+            )
+        )
     elif value == RecordRequirement.CONDITIONAL.value and not span_in_line(span, protocol_line):
-        rejected.append(_rejection(
-            FIELD_RECORD_REQUIREMENT, {FIELD_RECORD_REQUIREMENT: raw, FIELD_CONDITIONAL_SPAN: span},
-            f"{FIELD_CONDITIONAL_SPAN} is not a substring of protocolLine",
-        ))
+        rejected.append(
+            _rejection(
+                FIELD_RECORD_REQUIREMENT,
+                {FIELD_RECORD_REQUIREMENT: raw, FIELD_CONDITIONAL_SPAN: span},
+                f"{FIELD_CONDITIONAL_SPAN} is not a substring of protocolLine",
+            )
+        )
     else:
         fields[FIELD_RECORD_REQUIREMENT] = value
         if value == RecordRequirement.CONDITIONAL.value:
@@ -250,11 +259,17 @@ def validate_annotation(payload: Any, protocol_line: str) -> tuple[dict[str, Any
         if not isinstance(text, str) or not text.strip():
             rejected.append(_rejection(FIELD_EXCEPTED_ENTITIES, entry, f"{FIELD_TEXT} is empty"))
         elif not span_in_line(entry_span, protocol_line):
-            rejected.append(_rejection(
-                FIELD_EXCEPTED_ENTITIES, entry, f"{FIELD_SPAN} is not a substring of protocolLine",
-            ))
+            rejected.append(
+                _rejection(
+                    FIELD_EXCEPTED_ENTITIES,
+                    entry,
+                    f"{FIELD_SPAN} is not a substring of protocolLine",
+                )
+            )
         else:
-            fields[FIELD_EXCEPTED_ENTITIES].append({FIELD_TEXT: text.strip(), FIELD_SPAN: entry_span})
+            fields[FIELD_EXCEPTED_ENTITIES].append(
+                {FIELD_TEXT: text.strip(), FIELD_SPAN: entry_span}
+            )
 
     base = payload.get(FIELD_BASE_SPAN)
     if not fields[FIELD_EXCEPTED_ENTITIES]:
@@ -443,7 +458,9 @@ def _complete(llm: Any, prompt: str) -> Any:
 
     from src.utils.llm import raise_if_truncated
 
-    response = llm.invoke([SystemMessage(content=ANNOTATION_SYSTEM_PROMPT), HumanMessage(content=prompt)])
+    response = llm.invoke(
+        [SystemMessage(content=ANNOTATION_SYSTEM_PROMPT), HumanMessage(content=prompt)]
+    )
     raise_if_truncated(response, what="criterion annotation")
     return _parse(response.content)
 
@@ -488,7 +505,9 @@ def annotate_row(
             }
             row.pop(ANNOTATION_REJECTED_KEY, None)
             return "error"
-        _cache_put(key, {"payload": payload, "model": model, "promptVersion": ANNOTATION_PROMPT_VERSION})
+        _cache_put(
+            key, {"payload": payload, "model": model, "promptVersion": ANNOTATION_PROMPT_VERSION}
+        )
     fields, rejected = validate_annotation(payload, line)
     row[ANNOTATION_KEY] = {"promptVersion": ANNOTATION_PROMPT_VERSION, "model": model, **fields}
     if rejected:
@@ -498,7 +517,9 @@ def annotate_row(
     return outcome
 
 
-def _members_of(label: Mapping[str, Any], rows: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+def _members_of(
+    label: Mapping[str, Any], rows: Sequence[Mapping[str, Any]]
+) -> list[Mapping[str, Any]]:
     group = label.get(_GROUP)
     if not label.get(_IS_LABEL) or not group:
         return []
@@ -510,7 +531,9 @@ def _workers() -> int:
     return max(1, int(raw)) if raw else 4
 
 
-def annotate_eligibility(eligibility: Mapping[str, Any], *, model: str | None = None) -> dict[str, int]:
+def annotate_eligibility(
+    eligibility: Mapping[str, Any], *, model: str | None = None
+) -> dict[str, int]:
     """Annotate every inclusion and exclusion row of an eligibility block, in place.
 
     :param eligibility: carries ``inclusionCriteria`` and ``exclusionCriteria`` rows.
@@ -527,12 +550,16 @@ def annotate_eligibility(eligibility: Mapping[str, Any], *, model: str | None = 
     counts: dict[str, int] = {}
     if not jobs:
         return counts
-    needs_model = any(isinstance(r.get(_LINE), str) and r.get(_LINE).strip() for r, _m, _role in jobs)
+    needs_model = any(
+        isinstance(r.get(_LINE), str) and r.get(_LINE).strip() for r, _m, _role in jobs
+    )
     llm = _build_llm(resolved) if needs_model else None
     with ThreadPoolExecutor(max_workers=_workers()) as pool:
-        outcomes = list(pool.map(
-            lambda job: annotate_row(job[0], job[1], job[2], model=resolved, llm=llm), jobs
-        ))
+        outcomes = list(
+            pool.map(
+                lambda job: annotate_row(job[0], job[1], job[2], model=resolved, llm=llm), jobs
+            )
+        )
     for outcome in outcomes:
         counts[outcome] = counts.get(outcome, 0) + 1
     counts["rejected"] = sum(1 for row, _m, _role in jobs if row.get(ANNOTATION_REJECTED_KEY))
@@ -569,12 +596,16 @@ class ConditionalSkip:
 def _own_conditional(row: Mapping[str, Any]) -> ConditionalSkip | None:
     annotation = _annotation(row)
     span = annotation.get(FIELD_CONDITIONAL_SPAN)
-    if annotation.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value and span_in_line(
-        span, row.get(_LINE)
-    ):
-        return ConditionalSkip(span=span, decided_by=str(row.get(_ID, "")), source=SOURCE_ANNOTATION)
+    if annotation.get(
+        FIELD_RECORD_REQUIREMENT
+    ) == RecordRequirement.CONDITIONAL.value and span_in_line(span, row.get(_LINE)):
+        return ConditionalSkip(
+            span=span, decided_by=str(row.get(_ID, "")), source=SOURCE_ANNOTATION
+        )
     if row.get(EXTRACTED_CONDITIONAL_KEY) is True:
-        return ConditionalSkip(span=None, decided_by=str(row.get(_ID, "")), source=SOURCE_EXTRACTION)
+        return ConditionalSkip(
+            span=None, decided_by=str(row.get(_ID, "")), source=SOURCE_EXTRACTION
+        )
     return None
 
 

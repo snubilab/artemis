@@ -13,11 +13,18 @@ non-melanoma skin cancers was decided by `concept_ancestor` in
 by reading the names. The LEADER ids are codeset 12's 26 members.
 """
 
-from src.services.entity_exception import detect_entity_exception
 from src.services.entity_subtraction import (
+    EntityException,
     ExceptedConcept,
     apply_entity_subtraction,
     resolve_entity_exception,
+)
+
+#: CAROLINA's "cancer other than non-melanoma skin cancer", as the annotation states it.
+CAROLINA_80_EXCEPTION = EntityException(
+    text="cancer other than non-melanoma skin cancer",
+    base="cancer",
+    excepted=["non-melanoma skin cancer"],
 )
 
 # codeset 45, verbatim from output/site_gap/2026-09-14/DELIVERY/carolina_treatment.circe.json
@@ -278,7 +285,7 @@ class TestAnAppendedMemberIsShapedLikeAMapperMember:
         """Through `resolve_entity_exception`, which is the path that shipped:
         `_included_concepts` read the mapper's excepted mapping and kept two of
         its ten fields."""
-        exception = detect_entity_exception("cancer other than non-melanoma skin cancer")
+        exception = CAROLINA_80_EXCEPTION
         table = {
             "cancer": CAROLINA_80_MAPPED,
             "non-melanoma skin cancer": CAROLINA_80_EXCEPTED,
@@ -300,7 +307,7 @@ class TestAnAppendedMemberIsShapedLikeAMapperMember:
     def test_should_match_a_base_member_s_fields_on_every_member_of_the_set(self):
         """Not just the appended ones: after the repair the whole expression is
         uniform, which is what the DataTable needs."""
-        exception = detect_entity_exception("cancer other than non-melanoma skin cancer")
+        exception = CAROLINA_80_EXCEPTION
         table = {
             "cancer": CAROLINA_80_MAPPED,
             "non-melanoma skin cancer": CAROLINA_80_EXCEPTED,
