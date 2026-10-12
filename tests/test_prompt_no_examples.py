@@ -701,17 +701,13 @@ _INVENTORY: list[dict[str, Any]] = json.loads(INVENTORY_PATH.read_text())
 #: yet. Each milestone commit removes its share; ``strict=True`` turns a cleaned prompt that
 #: is still listed into a failure, so an entry cannot outlive its fix. Empty when P1 is done.
 _NOT_YET_CLEANED_FILES: frozenset[str] = frozenset({
-    "src/agents/agent2/reranker.py",
-    "src/agents/agent2/critic.py",
-    "src/agents/conceptset/nlu_router.py",
     "src/agents/comparator/recommender.py",
     "src/services/tte_service.py",
     "src/agents/agent1/threshold_classifier.py",
     "docs/daily_notes/tte_value_taxonomy.prompt.txt",
 })
 _NOT_YET_CLEANED_PROMPTS: frozenset[str] = frozenset({
-    "agent2.reranker_single_select", "agent2.reranker_topn", "agent2.critic",
-    "conceptset.nlu_router", "comparator.classify", "comparator.literature",
+    "comparator.classify", "comparator.literature",
     "tte.report_narrative", "agent1.threshold_classifier",
 })
 _PENDING = pytest.mark.xfail(
@@ -886,7 +882,8 @@ def _prompt_constants() -> Iterator[tuple[str, str, str]]:
                 if not isinstance(node, ast.Assign):
                     continue
                 for target in node.targets:
-                    if isinstance(target, ast.Name) and re.search(r"PROMPT|INSTRUCTION", target.id):
+                    if (isinstance(target, ast.Name) and re.search(r"PROMPT|INSTRUCTION", target.id)
+                            and not re.search(r"VERSION|PATH", target.id)):  # cache keys, files
                         module = ".".join(path.relative_to(ROOT).with_suffix("").parts)
                         holder = importlib.import_module(module)
                         if owner:

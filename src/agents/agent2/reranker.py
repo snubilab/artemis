@@ -13,13 +13,19 @@ logger = logging.getLogger(__name__)
 
 # Domain-specific abbreviation grounding instructions.
 # Toggle: AGENT2_RERANKER_DOMAIN_AWARE (default "true").
+# Stated as a rule with no abbreviation glossary and no counterexample: a list of
+# expansions is an example (AGENTS.md § PROMPTS AND TEXT RULES, rule 1).
 _DOMAIN_GROUNDING_INSTRUCTION = """
-When the domain_hint is provided, interpret all medical abbreviations in the context of that domain:
-- In Condition domain: MI = Myocardial Infarction, TIA = Transient Ischemic Attack, CHF = Congestive Heart Failure, CKD = Chronic Kidney Disease, CAD = Coronary Artery Disease, PAD = Peripheral Artery Disease, CVA = Cerebrovascular Accident
-- In Drug domain: GLP-1 = Glucagon-like peptide-1 receptor agonist, DPP-4 = Dipeptidyl peptidase-4 inhibitor, SGLT2 = Sodium-glucose cotransporter-2 inhibitor
-- In Measurement domain: HbA1c = Hemoglobin A1c, eGFR = estimated Glomerular Filtration Rate, LDL = Low-density lipoprotein
-Do NOT select concepts from an unrelated clinical domain. For example, "MI" in the Condition domain must NOT match "milia" (a skin condition).
+When the domain_hint is provided, interpret every medical abbreviation in the sense it has within that domain.
+Do NOT select concepts from an unrelated clinical domain, even when a candidate's name shares letters or an abbreviation with the term.
 """
+
+#: The single-select output contract, written out instead of LangChain's
+#: ``get_format_instructions()``, which appends a sample object and a counterexample.
+#: Field names and meanings follow ``RerankResult``; ``JsonOutputParser`` still parses.
+_SINGLE_SELECT_OUTPUT = """Return ONLY a JSON object with these keys:
+- selected_concept_id: integer, the ID of the best-matching candidate, or null if none fits.
+- reasoning: string, a brief explanation of why this concept was selected."""
 
 
 # The one authoritative top-N prompt. It used to be written out twice — once in
@@ -29,8 +35,10 @@ Do NOT select concepts from an unrelated clinical domain. For example, "MI" in t
 # The gate is the substantive change. "Select the concepts that BEST match" is a
 # superlative, and a superlative over a non-empty candidate list always has an answer:
 # `qqzzxx nonexistent clinical term` came back with three myocardial-infarction
-# concepts, logged as a successful selection. The prompt already offered an empty
-# answer; what it never showed was an example of taking it.
+# concepts, logged as a successful selection. The prompt states the empty answer as a
+# field rule. A few-shot showing it (b437d20) was removed on 2026-10-12 with every other
+# prompt example, and the JSON template that showed filled values became a description
+# of the two keys.
 #
 # The first two lines are the original prompt, unchanged, and they stay that way. A
 # richer rewrite was measured on ARISTOTLE (2026-08-11) and its extra framing — asking
@@ -44,15 +52,10 @@ TOPN_SYSTEM_PROMPT = (
     "You are an expert medical terminologist.\n"
     "Select up to {top_n} OMOP Concept IDs from the candidates that "
     "best match the user's clinical intent. Order by relevance.\n"
-    "Return ONLY a JSON object: "
-    "{{\"query_has_match\": true, \"selected_ids\": [id1, id2, ...]}}\n"
-    "If none fit, return {{\"query_has_match\": false, \"selected_ids\": []}}. "
-    "Selecting nothing is a correct answer, not a failure.\n"
-    "\n"
-    "Example where none fit:\n"
-    "Clinical term: \"qqzzxx nonexistent clinical term\"\n"
-    "Candidates: Myocardial infarction, Acute coronary syndrome\n"
-    "Answer: {{\"query_has_match\": false, \"selected_ids\": []}}"
+    "Return ONLY a JSON object with two keys: query_has_match, a boolean, and "
+    "selected_ids, an array of the selected candidate IDs, most relevant first.\n"
+    "If none fit, set query_has_match to false and selected_ids to an empty array. "
+    "Selecting nothing is a correct answer, not a failure."
 )
 
 
@@ -93,7 +96,7 @@ class ConceptReranker:
             "that exactly matches the user's clinical intent.\n"
             "If none of the candidates are appropriate, return null for the ID.\n"
             + domain_section + "\n"
-            "\n{format_instructions}"
+            "\n" + _SINGLE_SELECT_OUTPUT
         )
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", system_msg),
@@ -133,7 +136,6 @@ class ConceptReranker:
             result = self.chain.invoke({
                 "user_query": user_query,
                 "candidates_text": candidates_text,
-                "format_instructions": self.parser.get_format_instructions()
             })
             
             selected_id = result.get("selected_concept_id")
@@ -245,7 +247,6 @@ class ConceptReranker:
             batch_inputs.append({
                 "user_query": query,
                 "candidates_text": candidates_text,
-                "format_instructions": self.parser.get_format_instructions()
             })
             original_candidates.append(candidates)
         

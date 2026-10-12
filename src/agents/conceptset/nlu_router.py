@@ -69,6 +69,10 @@ class IntentSeparator:
     RFC-001 Section 2.2.A 구현.
     """
     
+    # No word list and no abbreviation example (AGENTS.md § PROMPTS AND TEXT RULES,
+    # rule 1). The output contract is written out instead of LangChain's
+    # ``get_format_instructions()``, which appends a sample object and a counterexample;
+    # field names and meanings follow ``IntentResult``, and the parser still parses.
     SYSTEM_PROMPT = """You are a medical terminology expert assisting in cohort definition.
 Analyze the user's clinical request and separate it into:
 1. 'include': Conditions/Drugs/Procedures the patient MUST have.
@@ -76,11 +80,15 @@ Analyze the user's clinical request and separate it into:
 
 IMPORTANT:
 - Extract ONLY medical concepts, not logical operators.
-- If the query mentions "exclude", "without", "no", "but not" - put those terms in 'exclude'.
-- Expand abbreviations when possible (e.g., "TZD" → "Thiazolidinediones").
+- Every concept the request says the patient must not have goes in 'exclude', whatever words express the negation.
+- Expand abbreviations to their full clinical names when possible.
 - If no exclusions are mentioned, return an empty list for 'exclude'.
 
-{format_instructions}"""
+Return ONLY a JSON object with these keys:
+- include: array of strings, the conditions/drugs the patient MUST have.
+- exclude: array of strings, the conditions/drugs the patient MUST NOT have.
+- fallback_to: null, or Agent1 when the request carries temporal or other complex logic this separation cannot express.
+- fallback_reason: string or null, the reason for the fallback."""
 
     USER_PROMPT = """User Input: {query}
 
@@ -108,10 +116,7 @@ Extract the include and exclude criteria as JSON."""
             IntentResult with include/exclude lists
         """
         try:
-            result = self.chain.invoke({
-                "query": query,
-                "format_instructions": self.parser.get_format_instructions()
-            })
+            result = self.chain.invoke({"query": query})
             
             return IntentResult(**result)
             

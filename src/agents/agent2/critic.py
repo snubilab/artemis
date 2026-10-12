@@ -5,7 +5,7 @@ After KG expansion returns candidate concepts from Neo4j, the Critic
 evaluates each candidate and selects ALL relevant concepts (multi-select).
 
 Architecture reference: KRAGEN (Bioinformatics, 2024)
-  - Few-shot Chain-of-Thought (CoT) prompting
+  - Chain-of-Thought (CoT) prompting, with no few-shot examples (AGENTS.md rule 1)
   - Multi-select with reasoning
   - JSON structured output
 
@@ -49,7 +49,7 @@ _UNSERVABLE_STATUS = frozenset({401, 403, 404})
 # exact before/after the cache is supposed to make cheap. This was added while trying a
 # grouped output schema (2026-08-11); that schema was measured and reverted, but the
 # hole it exposed is real and the guard stays.
-_CRITIC_PROMPT_VERSION = "2026-10-11-evolved-no-examples"
+_CRITIC_PROMPT_VERSION = "2026-10-12-no-library-format-instructions"
 
 
 def _concept_rows(concept_ids: List[int]) -> Dict[int, tuple]:
@@ -224,6 +224,22 @@ Set confidence (0.0-1.0) after reflection. Use assessment "correct" with recomme
 Concepts with assessment="contradicted" are filtered out."""
 
 
+# The output contract, written out instead of LangChain's ``get_format_instructions()``.
+# That text appended a sample object, a counterexample and this module's own pydantic
+# docstrings to the system prompt. Field names and meanings follow ``CriticSelection`` /
+# ``CriticResult``; ``JsonOutputParser`` still parses the answer.
+_OUTPUT_CONTRACT = """Return ONLY a JSON object with these keys:
+- selected_concepts: an array with one object per candidate you evaluated. Each object has:
+  - concept_id: integer, the candidate's OMOP Concept ID.
+  - relevant: boolean, true if the concept is relevant to the clinical query.
+  - reasoning: string, brief reasoning for inclusion or exclusion.
+  - confidence: number from 0.0 to 1.0, confidence in the relevance judgment.
+  - potential_issue: one of abbreviation_confusion, domain_mismatch, too_specific, vocab_mismatch, none.
+  - assessment: one of correct, partially_supported, contradicted.
+  - recommended_action: one of keep, drop, rerank.
+- overall_reasoning: string, overall reasoning about the clinical query and concept selection."""
+
+
 # ── Critic Class ───────────────────────────────────────────
 class ConceptCritic:
     """
@@ -271,7 +287,7 @@ class ConceptCritic:
              "7. For drugs, prefer ingredient-level concepts over formulation or product concepts.\n"
              "8. If the query states a target domain, prefer candidates from that domain."
              + reflection_section +
-             "\n\n{format_instructions}"),
+             "\n\n" + _OUTPUT_CONTRACT),
             ("user",
              "Clinical Query: {query}\n\n"
              "Candidate Concepts:\n{candidates_text}")
@@ -436,7 +452,6 @@ class ConceptCritic:
             result = chain.invoke({
                 "query": full_query,
                 "candidates_text": candidates_text,
-                "format_instructions": self.parser.get_format_instructions(),
             })
             
             # Extract selected concept IDs

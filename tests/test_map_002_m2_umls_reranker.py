@@ -115,8 +115,12 @@ class TestRerankerDomainAware:
                 reranker_mod._reranker_instance = None
                 reranker = reranker_mod.ConceptReranker()
                 prompt_text = reranker.prompt.messages[0].prompt.template
-                assert "MI = Myocardial Infarction" in prompt_text
-                assert "milia" in prompt_text
+                # The rule, stated without an abbreviation glossary or a counterexample:
+                # both are examples (AGENTS.md § PROMPTS AND TEXT RULES, rule 1).
+                assert "in the sense it has within that domain" in prompt_text
+                assert "Do NOT select concepts from an unrelated clinical domain" in prompt_text
+                assert "MI = Myocardial Infarction" not in prompt_text
+                assert "milia" not in prompt_text
 
     def test_no_domain_grounding_when_disabled(self):
         """When AGENT2_RERANKER_DOMAIN_AWARE=false, prompt has no domain grounding."""
@@ -128,7 +132,7 @@ class TestRerankerDomainAware:
                 reranker_mod._reranker_instance = None
                 reranker = reranker_mod.ConceptReranker()
                 prompt_text = reranker.prompt.messages[0].prompt.template
-                assert "MI = Myocardial Infarction" not in prompt_text
+                assert "in the sense it has within that domain" not in prompt_text
 
 
 class TestCriticInclusivePrompt:

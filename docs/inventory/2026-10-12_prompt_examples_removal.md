@@ -180,3 +180,29 @@ rendered prompt contains one.
 
 Lint-required wording outside the inventory: `"composite"` unquoted; the output schema's `"decompose": true/false`
 and `"reasoning": "brief explanation"` became `<true|false>` / `"<brief explanation>"`.
+
+## Agent 2 and the ConceptSet NLU router (11 rows)
+
+The three LangChain-rendered rows (K1, U3, R6) are removed by no longer passing
+`get_format_instructions()`; each prompt now carries a hand-written output contract naming every field of the
+pydantic model the parser reads (asserted by the guard), with types and allowed values and no sample object.
+`JsonOutputParser` still parses. The library block also leaked `CriticSelection`'s and `IntentResult`'s
+docstrings into the prompts; that is gone with it.
+
+| ID | Prompt | Class | Outcome |
+|---|---|---|---|
+| R1 | TOPN_SYSTEM_PROMPT (production) | SJ | decision kept as: "If none fit, set query_has_match to false and selected_ids to an empty array. Selecting nothing is a correct answer, not a failure." |
+| K1 | critic, rendered (production) | SJ (CX) | decision kept as: "Return ONLY a JSON object with these keys: … recommended_action: one of keep, drop, rerank." (library text deleted) |
+| U1 | IntentSeparator.SYSTEM_PROMPT (production, RAG fallback) | TW | decision kept as: "Every concept the request says the patient must not have goes in 'exclude', whatever words express the negation." |
+| U2 | IntentSeparator.SYSTEM_PROMPT | CE | decision kept as: "Expand abbreviations to their full clinical names when possible." |
+| U3 | NLU router, rendered | SJ (CX) | decision kept as: "Return ONLY a JSON object with these keys: … fallback_reason: string or null, the reason for the fallback." (library text deleted) |
+| R2 | `_DOMAIN_GROUNDING_INSTRUCTION` (side, no caller) | CE | decision kept as: "When the domain_hint is provided, interpret every medical abbreviation in the sense it has within that domain." |
+| R3 | `_DOMAIN_GROUNDING_INSTRUCTION` | CE | decision kept as: the same sentence as R2 |
+| R4 | `_DOMAIN_GROUNDING_INSTRUCTION` | CE | decision kept as: the same sentence as R2 |
+| R5 | `_DOMAIN_GROUNDING_INSTRUCTION` | CX | decision kept as: "Do NOT select concepts from an unrelated clinical domain, even when a candidate's name shares letters or an abbreviation with the term." |
+| R6 | single-select reranker, rendered (side, no caller) | SJ (CX) | decision kept as: "Return ONLY a JSON object with these keys: … reasoning: string, a brief explanation of why this concept was selected." (library text deleted) |
+
+Lint-required wording outside the inventory: TOPN_SYSTEM_PROMPT's JSON template, which showed filled values
+(`true`, `false`), now describes the two keys in prose — its first two lines, which the code comment pins as
+measured, are unchanged. `_CRITIC_PROMPT_VERSION` is bumped to `2026-10-12-no-library-format-instructions`, so
+both critic caches re-key.
