@@ -333,6 +333,25 @@ def _render_criterion_annotation() -> str:
     return _joined(recorder.calls)
 
 
+def _render_specimen_critic() -> str:
+    """Through ``judge_specimen_options`` with the model replaced; the cache is off."""
+    from src.agents.agent2 import specimen_critic
+    from src.services.loinc_specimen import SpecimenOption
+
+    recorder = _Recorder(reply='{"accepted": []}')
+    options = [
+        SpecimenOption(1, f"{STUB} system", None),
+        SpecimenOption(2, f"{STUB} system two", f"{STUB} condition"),
+    ]
+    with patch.object(specimen_critic, "_build_llm", lambda _model: recorder.runnable()), \
+            patch.dict(os.environ, {"ARTEMIS_SPECIMEN_CRITIC_CACHE": "0"}):
+        specimen_critic.judge_specimen_options(
+            protocol_line=f"{STUB} line", analyte=STUB, specimen="any", specimen_span=None,
+            options=options, model="stub-model",
+        )
+    return _joined(recorder.calls)
+
+
 # ---------------------------------------------------------------------------
 # Declarations: what each prompt may quote
 # ---------------------------------------------------------------------------
@@ -473,6 +492,9 @@ PROMPTS: dict[str, PromptSpec] = {
         tokens=frozenset({"restatement", "conjunction_of_alternatives", "negation_of_alternative",
                           "distinct", "verdict", "matched_alternatives", "reason"}),
         placeholders=frozenset({"one short sentence"}),
+    ),
+    "agent2.specimen_critic": PromptSpec(
+        _render_specimen_critic, tokens=frozenset({"accepted", "any"}),
     ),
     "criterion_annotation": PromptSpec(
         _render_criterion_annotation,
@@ -807,6 +829,7 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/planner/decomposer.py": (3, ("planner",)),
     "src/agents/agent2/reranker.py": (3, ("agent2.reranker_single_select", "agent2.reranker_topn")),
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),
+    "src/agents/agent2/specimen_critic.py": (3, ("agent2.specimen_critic",)),
     "src/agents/conceptset/nlu_router.py": (2, ("conceptset.nlu_router",)),
     "src/agents/conceptset/clinical_reranker.py": (2, ("conceptset.clinical_reranker",)),
     "src/agents/comparator/recommender.py": (2, ("comparator.literature",)),

@@ -138,6 +138,7 @@ from src.utils.circe_lint import (
     CRITERION_CONCEPT_SET_REFS_KEY,
     DEFAULTED_WINDOW_CRITERIA_KEY,
     DROPPED_CRITERIA_KEY,
+    SPECIMEN_DECISIONS_KEY,
     VALUE_RANGE_CONVERSIONS_KEY,
     closure_subsumption_codesets,
     confusable_member_ids,
@@ -5451,10 +5452,18 @@ class TTEService:
         ]
 
         # Assign codeset_ids and collect concept sets for all successful results
+        specimen_decisions: list[dict[str, Any]] = []
         for _crit, result, role in ordered_pairs:
             if result is not None:
                 result["conceptSet"]["id"] = next_codeset_id
                 self._patch_codeset_id_in_rule(result["rule"], next_codeset_id)
+                if result.get("_specimen_decision") is not None:
+                    specimen_decisions.append({
+                        "codesetId": next_codeset_id,
+                        "criterionId": str(_crit.get("id", "")),
+                        "role": role,
+                        **result["_specimen_decision"],
+                    })
                 crit_id = str(_crit.get("id", ""))
                 if crit_id:
                     criterion_concept_set_refs[
@@ -5649,6 +5658,10 @@ class TTEService:
             # `window` and the emitter supplied one for. Empty means every emitted
             # criterion carried its own window, which is a different claim from "this
             # artifact predates the record" -- an absent key cannot make either.
+            # The specimen critic's decision per refined Measurement codeset, which gate (u)
+            # re-reads instead of re-deciding (RFC-016 step 4). Present and empty when no
+            # LOINC lab test was refined.
+            SPECIMEN_DECISIONS_KEY: sorted(specimen_decisions, key=lambda r: r["codesetId"]),
             DEFAULTED_WINDOW_CRITERIA_KEY: sorted(
                 defaulted_window_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
@@ -6923,12 +6936,12 @@ class TTEService:
 
         # The mapper only ever sees the bare analyte ("glucose"), so the specimen, the
         # unit's property and the challenge axis are decided here, where the criterion's
-        # own words and emitted Unit are in hand. See `src/services/loinc_specimen.py`.
-        concept_set_expression = self._refine_measurement_specimen(
+        # annotation, protocol line and emitted Unit are in hand. See
+        # `src/services/loinc_specimen.py`.
+        concept_set_expression, specimen_decision = self._refine_measurement_specimen(
             mapped_criterion["expression"],
             criteria_key=criteria_key,
-            seed=seed,
-            description=criterion.get("description"),
+            criterion=criterion,
             value_filter=value_filter,
         )
 
@@ -7024,6 +7037,9 @@ class TTEService:
             # pairs it with the criterion's role and id and writes the rows under
             # `DEFAULTED_WINDOW_CRITERIA_KEY`.
             "_defaulted_window": defaulted_window,
+            # None when no LOINC lab test was refined. Written under `SPECIMEN_DECISIONS_KEY`
+            # with the codeset id it is finally assigned, where gate (u) re-reads it.
+            "_specimen_decision": specimen_decision,
         }
 
     def _lab_test_vocabulary(self) -> Any:
@@ -7057,51 +7073,96 @@ class TTEService:
                 close()
         return {cid: properties.get(cid) for cid in ids}
 
+    def _specimen_judge(self, criterion: Mapping[str, Any]) -> Any:
+        """The judge `loinc_specimen` asks which (System, challenge) options a criterion states.
+
+        The specimen critic, told the criterion's protocol line and its annotation's verified
+        ``specimen`` (``any`` when there is none). Tests replace this method.
+        """
+        from src.agents.agent2.specimen_critic import judge_specimen_options
+        from src.services.criterion_annotation import Specimen, stated_specimen
+
+        statement = stated_specimen(criterion)
+        specimen = statement.specimen.value if statement else Specimen.ANY.value
+        span = statement.span if statement else None
+        line = criterion.get("protocolLine")
+
+        def judge(analyte: str, options: Sequence[Any]) -> Any:
+            return judge_specimen_options(
+                protocol_line=line,
+                analyte=analyte,
+                specimen=specimen,
+                specimen_span=span,
+                options=options,
+            )
+
+        judge.specimen = specimen  # type: ignore[attr-defined]
+        judge.specimen_span = span  # type: ignore[attr-defined]
+        return judge
+
     def _refine_measurement_specimen(
         self,
         expression: dict[str, Any],
         *,
         criteria_key: str,
-        seed: str,
-        description: str | None,
+        criterion: Mapping[str, Any],
         value_filter: dict[str, Any],
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
         """Apply `loinc_specimen.refine_measurement_concept_set` to a Measurement criterion.
 
         Every other criteria type, and every set with no LOINC lab test in it, is returned
-        as mapped without opening the vocabulary. A vocabulary that cannot be reached
-        raises: the criterion is then recorded as unmapped rather than shipped with the
-        wrong-specimen set this step exists to repair.
+        as mapped without opening the vocabulary. Specimen and challenge are the specimen
+        critic's decision (`_specimen_judge`), never read off the criterion's words. A
+        vocabulary that cannot be reached raises: the criterion is then recorded as unmapped
+        rather than shipped with the wrong-specimen set this step exists to repair.
+
+        :returns: the refined expression, and the decision record for gate (u) -- None when
+            nothing was refined.
         """
-        from src.services.loinc_specimen import claims_lab_test, refine_measurement_concept_set
+        from src.services.loinc_specimen import (
+            claims_lab_test,
+            decision_record,
+            refine_measurement_concept_set,
+        )
 
         if criteria_key != "Measurement" or not any(
             claims_lab_test(item) for item in expression.get("items") or []
         ):
-            return expression
+            return expression, None
+        judge = self._specimen_judge(criterion)
         vocabulary = self._lab_test_vocabulary()
         try:
             refined, plan = refine_measurement_concept_set(
                 expression,
-                seed=seed,
-                description=description,
                 value_filter=value_filter,
                 vocabulary=vocabulary,
+                judge=judge,
             )
         finally:
             close = getattr(vocabulary, "close", None)
             if callable(close):
                 close()
+        label = criterion.get("sourceText") or criterion.get("description")
         if plan.declined:
-            logging.info("[TTE] specimen refinement declined for %r: %s", seed, plan.declined)
+            logging.info("[TTE] specimen refinement declined for %r: %s", label, plan.declined)
         elif plan.changed:
             logging.info(
                 "[TTE] specimen refinement for %r (analyte %r): removed %s, added %s",
-                seed, plan.analyte,
+                label, plan.analyte,
                 [(cid, list(reasons)) for cid, reasons in plan.removed],
                 [t.concept_id for t in plan.added],
             )
-        return refined
+        if plan.judged is False:
+            logging.warning(
+                "[TTE] specimen critic gave no judgement for %r: only the unit's property was "
+                "applied", label,
+            )
+        record = {
+            **decision_record(plan),
+            "specimen": getattr(judge, "specimen", None),
+            "specimenSpan": getattr(judge, "specimen_span", None),
+        }
+        return refined, record
 
     def _resolve_ingredient_concept_id(self, seed: str) -> int | None:
         """Resolve a drug name to the single standard Ingredient concept it names.
