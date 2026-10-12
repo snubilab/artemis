@@ -27,11 +27,61 @@ See omx_wiki/route-of-administration-overreach.md.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 
 from src.services.dose_form_route import _SYSTEMIC_BY_ROUTE, classify_dose_form
 from src.services.route_qualifier import RouteQualifier
 
 _SYSTEMIC_ROUTES = frozenset(r for r, systemic in _SYSTEMIC_BY_ROUTE.items() if systemic)
+
+
+class AdministrationRoute(str, Enum):
+    """The routes of administration OMOP attaches to RxNorm dose forms.
+
+    One member per ``Has route of admin`` target of a valid RxNorm / RxNorm Extension Dose
+    Form: 13 concepts, domain ``Route`` (SNOMED, plus OMOP Extension for Injectable and
+    Implant). Measured on synthea23m (2026-10-12): 196 of 218 dose forms carry exactly one,
+    covering 1,792,946 of 1,796,618 product links (99.80%). The values are what the
+    annotation step offers the model (``criterion_annotation``, field ``route``);
+    ``tests/fixtures/rxnorm_dose_form_routes.json`` holds the capture this list is checked
+    against.
+    """
+
+    ORAL = "oral"
+    INJECTABLE = "injectable"
+    TOPICAL = "topical"
+    TRANSDERMAL = "transdermal"
+    RESPIRATORY_TRACT = "respiratory_tract"
+    NASAL = "nasal"
+    OPHTHALMIC = "ophthalmic"
+    OTIC = "otic"
+    RECTAL = "rectal"
+    VAGINAL = "vaginal"
+    BUCCAL = "buccal"
+    SUBLINGUAL = "sublingual"
+    IMPLANT = "implant"
+
+    @property
+    def concept_id(self) -> int:
+        """The OMOP route concept this value stands for."""
+        return _ROUTE_CONCEPT_IDS[self]
+
+
+_ROUTE_CONCEPT_IDS: dict[AdministrationRoute, int] = {
+    AdministrationRoute.ORAL: 4132161,
+    AdministrationRoute.INJECTABLE: 706184,
+    AdministrationRoute.TOPICAL: 4263689,
+    AdministrationRoute.TRANSDERMAL: 4262099,
+    AdministrationRoute.RESPIRATORY_TRACT: 40486069,
+    AdministrationRoute.NASAL: 4262914,
+    AdministrationRoute.OPHTHALMIC: 4184451,
+    AdministrationRoute.OTIC: 4023156,
+    AdministrationRoute.RECTAL: 4290759,
+    AdministrationRoute.VAGINAL: 4057765,
+    AdministrationRoute.BUCCAL: 4181897,
+    AdministrationRoute.SUBLINGUAL: 4292110,
+    AdministrationRoute.IMPLANT: 706185,
+}
 
 
 @dataclass(frozen=True)

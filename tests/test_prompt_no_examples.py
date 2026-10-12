@@ -479,6 +479,13 @@ PROMPTS: dict[str, PromptSpec] = {
         tokens=frozenset({
             "record_requirement", "conditional_span", "excepted_entities", "base_span", "text",
             "span", "required", "forbidden", "conditional",
+            # RFC-016 step 4: route (the OMOP route concepts RxNorm dose forms carry,
+            # `route_subtraction.AdministrationRoute`), specimen and no_entity, with their values.
+            "route", "route_span", "any", "oral", "injectable", "topical", "transdermal",
+            "respiratory_tract", "nasal", "ophthalmic", "otic", "rectal", "vaginal", "buccal",
+            "sublingual", "implant",
+            "specimen", "specimen_span", "blood", "urine", "other",
+            "no_entity", "no_entity_span", "none", "refers_elsewhere", "investigator_judgement",
         }),
     ),
 }

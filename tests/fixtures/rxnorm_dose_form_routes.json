@@ -1,0 +1,1474 @@
+{
+ "about": "OMOP vocabulary capture for RFC-016 step 4: every valid RxNorm / RxNorm Extension Dose Form with its 'Has route of admin' target (null when it has none), and each target route concept with its concept_ancestor ancestors (itself included). Read-only SELECTs.",
+ "schema": "synthea23m",
+ "captured": "2026-10-12",
+ "formsSql": "SELECT f.concept_id, f.vocabulary_id, f.concept_name, r.concept_id_2\n  FROM synthea23m.concept f\n  LEFT JOIN synthea23m.concept_relationship r\n    ON r.concept_id_1 = f.concept_id AND r.relationship_id = 'Has route of admin' AND r.invalid_reason IS NULL\n WHERE f.concept_class_id = 'Dose Form' AND f.vocabulary_id IN ('RxNorm', 'RxNorm Extension')\n   AND f.invalid_reason IS NULL\n ORDER BY f.concept_id",
+ "routesSql": "SELECT c.concept_id, c.concept_name, c.vocabulary_id, c.domain_id,\n       ARRAY(SELECT ca.ancestor_concept_id FROM synthea23m.concept_ancestor ca\n              WHERE ca.descendant_concept_id = c.concept_id ORDER BY 1)\n  FROM synthea23m.concept c WHERE c.concept_id = ANY(%s) ORDER BY 1",
+ "routes": [
+  {
+   "routeId": 706184,
+   "name": "Injectable",
+   "vocabulary": "OMOP Extension",
+   "domain": "Route",
+   "ancestorIds": [
+    706184,
+    4106215,
+    4179874
+   ]
+  },
+  {
+   "routeId": 706185,
+   "name": "Implant",
+   "vocabulary": "OMOP Extension",
+   "domain": "Route",
+   "ancestorIds": [
+    706185,
+    4106215,
+    4179874
+   ]
+  },
+  {
+   "routeId": 4023156,
+   "name": "Otic",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4023156,
+    4106215,
+    4179874
+   ]
+  },
+  {
+   "routeId": 4057765,
+   "name": "Vaginal",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4057765,
+    4106215,
+    4179874,
+    4304882
+   ]
+  },
+  {
+   "routeId": 4132161,
+   "name": "Oral",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4132161,
+    4179874,
+    40487501
+   ]
+  },
+  {
+   "routeId": 4181897,
+   "name": "Buccal",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4179874,
+    4181897,
+    4186839
+   ]
+  },
+  {
+   "routeId": 4184451,
+   "name": "Ophthalmic",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4179874,
+    4184451
+   ]
+  },
+  {
+   "routeId": 4262099,
+   "name": "Transdermal",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4179874,
+    4262099,
+    4263689
+   ]
+  },
+  {
+   "routeId": 4262914,
+   "name": "Nasal",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4179874,
+    4262914,
+    40486069
+   ]
+  },
+  {
+   "routeId": 4263689,
+   "name": "Topical",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4179874,
+    4263689
+   ]
+  },
+  {
+   "routeId": 4290759,
+   "name": "Rectal",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4167540,
+    4179874,
+    4186834,
+    4290759,
+    4292410,
+    4304882,
+    40487501,
+    40489990
+   ]
+  },
+  {
+   "routeId": 4292110,
+   "name": "Sublingual",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4179874,
+    4186839,
+    4292110
+   ]
+  },
+  {
+   "routeId": 40486069,
+   "name": "Respiratory tract",
+   "vocabulary": "SNOMED",
+   "domain": "Route",
+   "ancestorIds": [
+    4106215,
+    4179874,
+    40486069
+   ]
+  }
+ ],
+ "doseForms": [
+  {
+   "doseFormId": 702776,
+   "vocabulary": "RxNorm Extension",
+   "name": "Vaginal Mechanical Pessaries with Substance",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 779945,
+   "vocabulary": "RxNorm",
+   "name": "Drug-Eluting Contact Lens",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 963781,
+   "vocabulary": "RxNorm",
+   "name": "Oral Tablet with Sensor",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 1146250,
+   "vocabulary": "RxNorm",
+   "name": "Powder for Pyelocalyceal Solution",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 1201361,
+   "vocabulary": "RxNorm",
+   "name": "Ophthalmic Spray",
+   "routeId": null
+  },
+  {
+   "doseFormId": 1356078,
+   "vocabulary": "RxNorm",
+   "name": "Inhalation Suspension",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 1356079,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Insert",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 1396583,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Sponge",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 1465278,
+   "vocabulary": "RxNorm",
+   "name": "Otic Gel",
+   "routeId": null
+  },
+  {
+   "doseFormId": 1592486,
+   "vocabulary": "RxNorm",
+   "name": "Tablet for Oral Suspension",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 1718367,
+   "vocabulary": "RxNorm",
+   "name": "Intrauterine System",
+   "routeId": 706185
+  },
+  {
+   "doseFormId": 1834382,
+   "vocabulary": "RxNorm Extension",
+   "name": "siroop susp. (zakjes) Citroen",
+   "routeId": null
+  },
+  {
+   "doseFormId": 1974358,
+   "vocabulary": "RxNorm Extension",
+   "name": "Ophthalmic Gauze or Fleece with Substance",
+   "routeId": 4184451
+  },
+  {
+   "doseFormId": 2008659,
+   "vocabulary": "RxNorm Extension",
+   "name": "Dressing Gauze",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 2008660,
+   "vocabulary": "RxNorm Extension",
+   "name": "Medicated Cottonball",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 2008661,
+   "vocabulary": "RxNorm Extension",
+   "name": "Medicated Gauzeball",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 2008662,
+   "vocabulary": "RxNorm Extension",
+   "name": "Medicated Guaze",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 2008663,
+   "vocabulary": "RxNorm Extension",
+   "name": "Medicated Swab",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 2008664,
+   "vocabulary": "RxNorm Extension",
+   "name": "Tablet for Opthalmic Solution",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 2900820,
+   "vocabulary": "RxNorm Extension",
+   "name": "Plant Bud For Smoking",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19000942,
+   "vocabulary": "RxNorm",
+   "name": "Suppository",
+   "routeId": 4290759
+  },
+  {
+   "doseFormId": 19001144,
+   "vocabulary": "RxNorm",
+   "name": "Suspension",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19001943,
+   "vocabulary": "RxNorm",
+   "name": "Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19001949,
+   "vocabulary": "RxNorm",
+   "name": "Delayed Release Oral Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19008697,
+   "vocabulary": "RxNorm",
+   "name": "Medicated Shampoo",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19009068,
+   "vocabulary": "RxNorm",
+   "name": "Toothpaste",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19010878,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Cream",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19010879,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Foam",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19010880,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Gel",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19010962,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Tablet",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19011167,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Spray",
+   "routeId": 4262914
+  },
+  {
+   "doseFormId": 19011932,
+   "vocabulary": "RxNorm",
+   "name": "Lotion",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19016586,
+   "vocabulary": "RxNorm",
+   "name": "Irrigation Solution",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19018195,
+   "vocabulary": "RxNorm",
+   "name": "Inhalant",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19018708,
+   "vocabulary": "RxNorm",
+   "name": "Elixir",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19021887,
+   "vocabulary": "RxNorm",
+   "name": "Capsule",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19057400,
+   "vocabulary": "RxNorm",
+   "name": "Bar Soap",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19059413,
+   "vocabulary": "RxNorm",
+   "name": "Ophthalmic Irrigation Solution",
+   "routeId": 4184451
+  },
+  {
+   "doseFormId": 19082048,
+   "vocabulary": "RxNorm",
+   "name": "12 hour Extended Release Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082049,
+   "vocabulary": "RxNorm",
+   "name": "16 Hour Transdermal Patch",
+   "routeId": 4262099
+  },
+  {
+   "doseFormId": 19082050,
+   "vocabulary": "RxNorm",
+   "name": "24 Hour Extended Release Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082071,
+   "vocabulary": "RxNorm",
+   "name": "24 Hour Transdermal Patch",
+   "routeId": 4262099
+  },
+  {
+   "doseFormId": 19082072,
+   "vocabulary": "RxNorm",
+   "name": "72 Hour Transdermal Patch",
+   "routeId": 4262099
+  },
+  {
+   "doseFormId": 19082073,
+   "vocabulary": "RxNorm",
+   "name": "Biweekly Transdermal Patch",
+   "routeId": 4262099
+  },
+  {
+   "doseFormId": 19082075,
+   "vocabulary": "RxNorm",
+   "name": "Chewable Bar",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082076,
+   "vocabulary": "RxNorm",
+   "name": "Disintegrating Oral Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082077,
+   "vocabulary": "RxNorm",
+   "name": "Extended Release Oral Capsule",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082079,
+   "vocabulary": "RxNorm",
+   "name": "Extended Release Oral Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082080,
+   "vocabulary": "RxNorm",
+   "name": "Extended Release Suspension",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082101,
+   "vocabulary": "RxNorm",
+   "name": "Oral Flakes",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 19082102,
+   "vocabulary": "RxNorm",
+   "name": "Foam",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19082103,
+   "vocabulary": "RxNorm",
+   "name": "Injectable Solution",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19082104,
+   "vocabulary": "RxNorm",
+   "name": "Injectable Suspension",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19082105,
+   "vocabulary": "RxNorm",
+   "name": "Intraperitoneal Solution",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19082106,
+   "vocabulary": "RxNorm",
+   "name": "Intravenous Solution",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19082107,
+   "vocabulary": "RxNorm",
+   "name": "Liquid Cleanser",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082108,
+   "vocabulary": "RxNorm",
+   "name": "Medicated Bar Soap",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082109,
+   "vocabulary": "RxNorm",
+   "name": "Medicated Liquid Soap",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082110,
+   "vocabulary": "RxNorm",
+   "name": "Mucous Membrane Topical Solution",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082161,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Cream",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082162,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Inhalant",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19082163,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Gel",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082164,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Ointment",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082165,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Solution",
+   "routeId": 4262914
+  },
+  {
+   "doseFormId": 19082166,
+   "vocabulary": "RxNorm",
+   "name": "Ophthalmic Gel",
+   "routeId": 4184451
+  },
+  {
+   "doseFormId": 19082167,
+   "vocabulary": "RxNorm",
+   "name": "Ophthalmic Suspension",
+   "routeId": 4184451
+  },
+  {
+   "doseFormId": 19082168,
+   "vocabulary": "RxNorm",
+   "name": "Oral Capsule",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082169,
+   "vocabulary": "RxNorm",
+   "name": "Oral Cream",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082170,
+   "vocabulary": "RxNorm",
+   "name": "Oral Solution",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082191,
+   "vocabulary": "RxNorm",
+   "name": "Oral Suspension",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082192,
+   "vocabulary": "RxNorm",
+   "name": "Orderable Drug Form",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19082193,
+   "vocabulary": "RxNorm",
+   "name": "Otic Cream",
+   "routeId": 4023156
+  },
+  {
+   "doseFormId": 19082194,
+   "vocabulary": "RxNorm",
+   "name": "Otic Ointment",
+   "routeId": 4023156
+  },
+  {
+   "doseFormId": 19082195,
+   "vocabulary": "RxNorm",
+   "name": "Otic Solution",
+   "routeId": 4023156
+  },
+  {
+   "doseFormId": 19082196,
+   "vocabulary": "RxNorm",
+   "name": "Otic Suspension",
+   "routeId": 4023156
+  },
+  {
+   "doseFormId": 19082197,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Cream",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082198,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Powder",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082199,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Spray",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082200,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Suppository",
+   "routeId": 4290759
+  },
+  {
+   "doseFormId": 19082221,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Suspension",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082222,
+   "vocabulary": "RxNorm",
+   "name": "Sustained Release Buccal Tablet",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 19082223,
+   "vocabulary": "RxNorm",
+   "name": "Syrup",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082224,
+   "vocabulary": "RxNorm",
+   "name": "Topical Cream",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082225,
+   "vocabulary": "RxNorm",
+   "name": "Topical Lotion",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082226,
+   "vocabulary": "RxNorm",
+   "name": "Topical Oil",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082227,
+   "vocabulary": "RxNorm",
+   "name": "Topical Ointment",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082228,
+   "vocabulary": "RxNorm",
+   "name": "Topical Solution",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082229,
+   "vocabulary": "RxNorm",
+   "name": "Transdermal System",
+   "routeId": 4262099
+  },
+  {
+   "doseFormId": 19082230,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Powder",
+   "routeId": 4057765
+  },
+  {
+   "doseFormId": 19082251,
+   "vocabulary": "RxNorm",
+   "name": "Oral Wafer",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082252,
+   "vocabulary": "RxNorm",
+   "name": "Weekly Transdermal Patch",
+   "routeId": 4262099
+  },
+  {
+   "doseFormId": 19082253,
+   "vocabulary": "RxNorm",
+   "name": "Oral Lozenge",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 19082254,
+   "vocabulary": "RxNorm",
+   "name": "Beads",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19082255,
+   "vocabulary": "RxNorm",
+   "name": "Delayed Release Oral Capsule",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082256,
+   "vocabulary": "RxNorm",
+   "name": "24 Hour Extended Release Capsule",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082258,
+   "vocabulary": "RxNorm",
+   "name": "Gas for Inhalation",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19082259,
+   "vocabulary": "RxNorm",
+   "name": "Inhalation Powder",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19082260,
+   "vocabulary": "RxNorm",
+   "name": "Intrathecal Suspension",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19082281,
+   "vocabulary": "RxNorm",
+   "name": "Powder Spray",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082282,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Ointment",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082283,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Solution",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082285,
+   "vocabulary": "RxNorm",
+   "name": "Sublingual Tablet",
+   "routeId": 4292110
+  },
+  {
+   "doseFormId": 19082286,
+   "vocabulary": "RxNorm",
+   "name": "Topical Powder",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082287,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Ointment",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082573,
+   "vocabulary": "RxNorm",
+   "name": "Oral Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082574,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Foam",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082575,
+   "vocabulary": "RxNorm",
+   "name": "Urethral Suppository",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082576,
+   "vocabulary": "RxNorm",
+   "name": "Ophthalmic Cream",
+   "routeId": 4184451
+  },
+  {
+   "doseFormId": 19082627,
+   "vocabulary": "RxNorm",
+   "name": "Enema",
+   "routeId": 4290759
+  },
+  {
+   "doseFormId": 19082628,
+   "vocabulary": "RxNorm",
+   "name": "Topical Cake",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19082630,
+   "vocabulary": "RxNorm",
+   "name": "Disk",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19082651,
+   "vocabulary": "RxNorm",
+   "name": "Oral Granules",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082652,
+   "vocabulary": "RxNorm",
+   "name": "Oral Pellet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082653,
+   "vocabulary": "RxNorm",
+   "name": "Bar",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19082675,
+   "vocabulary": "RxNorm",
+   "name": "Pudding",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19082701,
+   "vocabulary": "RxNorm",
+   "name": "Patch",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19093368,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Suppository",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19095898,
+   "vocabulary": "RxNorm",
+   "name": "Inhalation Solution",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19095899,
+   "vocabulary": "RxNorm",
+   "name": "Spray",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19095900,
+   "vocabulary": "RxNorm",
+   "name": "Mucosal Spray",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 19095911,
+   "vocabulary": "RxNorm",
+   "name": "Oral Spray",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 19095912,
+   "vocabulary": "RxNorm",
+   "name": "Topical Spray",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19095913,
+   "vocabulary": "RxNorm",
+   "name": "Intramuscular Solution",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19095914,
+   "vocabulary": "RxNorm",
+   "name": "Intramuscular Suspension",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19095915,
+   "vocabulary": "RxNorm",
+   "name": "Intravenous Suspension",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19095916,
+   "vocabulary": "RxNorm",
+   "name": "Oral Gel",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 19095917,
+   "vocabulary": "RxNorm",
+   "name": "Rectal Gel",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19095918,
+   "vocabulary": "RxNorm",
+   "name": "Oral Paste",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19095971,
+   "vocabulary": "RxNorm",
+   "name": "Oral Foam",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19095972,
+   "vocabulary": "RxNorm",
+   "name": "Topical Foam",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19095973,
+   "vocabulary": "RxNorm",
+   "name": "Topical Gel",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19095974,
+   "vocabulary": "RxNorm",
+   "name": "Urethral Gel",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19095975,
+   "vocabulary": "RxNorm",
+   "name": "Oral Ointment",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19095976,
+   "vocabulary": "RxNorm",
+   "name": "Oral Powder",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19095977,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Suspension",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19102295,
+   "vocabulary": "RxNorm",
+   "name": "Paste",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19102296,
+   "vocabulary": "RxNorm",
+   "name": "Chewing Gum",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 19103220,
+   "vocabulary": "RxNorm",
+   "name": "12 hour Extended Release Capsule",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19110977,
+   "vocabulary": "RxNorm",
+   "name": "Cream",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19111148,
+   "vocabulary": "RxNorm",
+   "name": "Oral Crystals",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19111155,
+   "vocabulary": "RxNorm",
+   "name": "Solid",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19111276,
+   "vocabulary": "RxNorm",
+   "name": "Solution",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19112544,
+   "vocabulary": "RxNorm",
+   "name": "Gel",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19112648,
+   "vocabulary": "RxNorm",
+   "name": "Douche",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19112649,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Spray",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19124967,
+   "vocabulary": "RxNorm",
+   "name": "Cement",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19124968,
+   "vocabulary": "RxNorm",
+   "name": "Drug Implant",
+   "routeId": 706185
+  },
+  {
+   "doseFormId": 19126590,
+   "vocabulary": "RxNorm",
+   "name": "Mouthwash",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19126918,
+   "vocabulary": "RxNorm",
+   "name": "Metered Dose Inhaler",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19126919,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Inhaler",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19126920,
+   "vocabulary": "RxNorm",
+   "name": "Prefilled Syringe",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 19127579,
+   "vocabulary": "RxNorm",
+   "name": "Dry Powder Inhaler",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 19127776,
+   "vocabulary": "RxNorm",
+   "name": "Pack",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19129139,
+   "vocabulary": "RxNorm",
+   "name": "Prefilled Applicator",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19129401,
+   "vocabulary": "RxNorm",
+   "name": "Ointment",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19129634,
+   "vocabulary": "RxNorm",
+   "name": "Ophthalmic Solution",
+   "routeId": 4184451
+  },
+  {
+   "doseFormId": 19130307,
+   "vocabulary": "RxNorm",
+   "name": "Medicated Pad",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19130329,
+   "vocabulary": "RxNorm",
+   "name": "Medicated Tape",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19135438,
+   "vocabulary": "RxNorm",
+   "name": "Augmented Topical Cream",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19135439,
+   "vocabulary": "RxNorm",
+   "name": "Augmented Topical Lotion",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19135440,
+   "vocabulary": "RxNorm",
+   "name": "Augmented Topical Ointment",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19135446,
+   "vocabulary": "RxNorm",
+   "name": "Augmented Topical Gel",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19135790,
+   "vocabulary": "RxNorm",
+   "name": "Powder",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 19135843,
+   "vocabulary": "RxNorm",
+   "name": "Liquid",
+   "routeId": null
+  },
+  {
+   "doseFormId": 19135866,
+   "vocabulary": "RxNorm",
+   "name": "Chewable Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19135868,
+   "vocabulary": "RxNorm",
+   "name": "Caplet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 19135925,
+   "vocabulary": "RxNorm",
+   "name": "Ophthalmic Ointment",
+   "routeId": 4184451
+  },
+  {
+   "doseFormId": 21014169,
+   "vocabulary": "RxNorm Extension",
+   "name": "Paint",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 21014170,
+   "vocabulary": "RxNorm Extension",
+   "name": "Stick",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 21014172,
+   "vocabulary": "RxNorm Extension",
+   "name": "Impregnated cigarette",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 21014176,
+   "vocabulary": "RxNorm Extension",
+   "name": "Poultice",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 21014179,
+   "vocabulary": "RxNorm Extension",
+   "name": "Vaginal delivery system",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 21014180,
+   "vocabulary": "RxNorm Extension",
+   "name": "Collodion",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 35604393,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal Film",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 35604394,
+   "vocabulary": "RxNorm",
+   "name": "Topical Liquefied Gas",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 35604877,
+   "vocabulary": "RxNorm",
+   "name": "Nasal Powder",
+   "routeId": 4262914
+  },
+  {
+   "doseFormId": 35606051,
+   "vocabulary": "RxNorm",
+   "name": "Intratracheal Suspension",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 35894935,
+   "vocabulary": "RxNorm Extension",
+   "name": "Kit for radiopharmaceutical preparation",
+   "routeId": null
+  },
+  {
+   "doseFormId": 36250064,
+   "vocabulary": "RxNorm",
+   "name": "Metered Dose Nasal Spray",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 36403249,
+   "vocabulary": "RxNorm Extension",
+   "name": "Dental insert",
+   "routeId": null
+  },
+  {
+   "doseFormId": 36949165,
+   "vocabulary": "RxNorm Extension",
+   "name": "Gel for injection",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 36960947,
+   "vocabulary": "RxNorm Extension",
+   "name": "Cutaneous patch",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 37496609,
+   "vocabulary": "RxNorm",
+   "name": "Vaginal System",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 37498346,
+   "vocabulary": "RxNorm",
+   "name": "Chewable Extended Release Oral Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 37498347,
+   "vocabulary": "RxNorm",
+   "name": "Oral Film",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 37498348,
+   "vocabulary": "RxNorm",
+   "name": "Sublingual Film",
+   "routeId": 4292110
+  },
+  {
+   "doseFormId": 37499223,
+   "vocabulary": "RxNorm",
+   "name": "Inhalation Spray",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 37499224,
+   "vocabulary": "RxNorm",
+   "name": "Delayed Release Oral Granules",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 40164192,
+   "vocabulary": "RxNorm",
+   "name": "Buccal Film",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 40175589,
+   "vocabulary": "RxNorm",
+   "name": "Buccal Tablet",
+   "routeId": 4181897
+  },
+  {
+   "doseFormId": 40220762,
+   "vocabulary": "RxNorm",
+   "name": "Sublingual Powder",
+   "routeId": 4292110
+  },
+  {
+   "doseFormId": 40228366,
+   "vocabulary": "RxNorm",
+   "name": "Gas",
+   "routeId": null
+  },
+  {
+   "doseFormId": 40228565,
+   "vocabulary": "RxNorm",
+   "name": "Oil",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 40799200,
+   "vocabulary": "RxNorm Extension",
+   "name": "Unknown Combination Pack Medical Aids",
+   "routeId": null
+  },
+  {
+   "doseFormId": 42615241,
+   "vocabulary": "RxNorm Extension",
+   "name": "Plant Bud For Smoking",
+   "routeId": 40486069
+  },
+  {
+   "doseFormId": 42629089,
+   "vocabulary": "RxNorm",
+   "name": "Medicated Patch",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 43126086,
+   "vocabulary": "RxNorm Extension",
+   "name": "Intrauterine Drug Delivery System",
+   "routeId": 706185
+  },
+  {
+   "doseFormId": 43126087,
+   "vocabulary": "RxNorm Extension",
+   "name": "Medicated Nail Polish",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 43563497,
+   "vocabulary": "RxNorm Extension",
+   "name": "Bath Salts",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 43563498,
+   "vocabulary": "RxNorm Extension",
+   "name": "Nasal Pin",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 43563499,
+   "vocabulary": "RxNorm Extension",
+   "name": "Shower Powder",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 43563500,
+   "vocabulary": "RxNorm Extension",
+   "name": "Variable Drug Form",
+   "routeId": null
+  },
+  {
+   "doseFormId": 43563502,
+   "vocabulary": "RxNorm Extension",
+   "name": "Intravitreal Applicator",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 43563503,
+   "vocabulary": "RxNorm Extension",
+   "name": "Wound Cones",
+   "routeId": null
+  },
+  {
+   "doseFormId": 43563504,
+   "vocabulary": "RxNorm Extension",
+   "name": "Dental Pin",
+   "routeId": null
+  },
+  {
+   "doseFormId": 44784844,
+   "vocabulary": "RxNorm",
+   "name": "Injectable Foam",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 44817840,
+   "vocabulary": "RxNorm",
+   "name": "Effervescent Oral Tablet",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 45775488,
+   "vocabulary": "RxNorm",
+   "name": "Powder for Nasal Solution",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 45775489,
+   "vocabulary": "RxNorm",
+   "name": "Granules for Oral Solution",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 45775490,
+   "vocabulary": "RxNorm",
+   "name": "Granules for Oral Suspension",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 45775491,
+   "vocabulary": "RxNorm",
+   "name": "Powder for Oral Solution",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 45775492,
+   "vocabulary": "RxNorm",
+   "name": "Powder for Oral Suspension",
+   "routeId": 4132161
+  },
+  {
+   "doseFormId": 46234410,
+   "vocabulary": "RxNorm",
+   "name": "Topical Suspension",
+   "routeId": 4263689
+  },
+  {
+   "doseFormId": 46234466,
+   "vocabulary": "RxNorm",
+   "name": "Auto-Injector",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 46234467,
+   "vocabulary": "RxNorm",
+   "name": "Pen Injector",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 46234468,
+   "vocabulary": "RxNorm",
+   "name": "Cartridge",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 46234469,
+   "vocabulary": "RxNorm",
+   "name": "Injection",
+   "routeId": 706184
+  },
+  {
+   "doseFormId": 46275062,
+   "vocabulary": "RxNorm",
+   "name": "Jet Injector",
+   "routeId": 706184
+  }
+ ]
+}
