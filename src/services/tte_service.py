@@ -12023,14 +12023,15 @@ class TTEService:
                 )
             )
 
-        if "new user" not in description.lower():
-            suggestions.append(
-                GenerationSuggestion(
-                    type="info",
-                    icon="clock-o",
-                    text="Defaulted follow-up to 30 days and washout to 180 days.",
-                )
+        # Every draft carries these defaults in `timeParams`. Whether the description
+        # mentions a new-user design is not read: that was a phrase test on free text.
+        suggestions.append(
+            GenerationSuggestion(
+                type="info",
+                icon="clock-o",
+                text="Defaulted follow-up to 30 days and washout to 180 days.",
             )
+        )
 
         return suggestions
 
