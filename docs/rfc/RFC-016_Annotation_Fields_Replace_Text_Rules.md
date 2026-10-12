@@ -5,6 +5,28 @@
 **포함**: RFC-014(결합 관계·시점), RFC-015(기록 요구·예외). 이 문서가 두 RFC의 실행 범위를 합친다.
 **근거**: `docs/inventory/2026-10-12_text_rules.{md,json}`, 가드 `tests/test_no_text_rules.py`(pending 298건), 계획 `todolist/20261012_095201_remove_examples_and_text_rules.md` P3·P4
 
+## 구현 현황 (2026-10-12, `fix/0923-reply` 기준)
+
+6절의 순서로 본 구현·병합 상태다. 각 커밋은 `git log`로 확인했다.
+
+**구현·병합됨**
+
+| 범위 | 커밋 |
+| --- | --- |
+| 1단계 주석 단계 + `record_requirement` + `excepted_entities` | `65f1962`(주석 단계), `fa0c44d`(`excepted_entities`·`base_span`이 예외 차감을 구동), `3ec9e6b`(dose-stability·entity-exception 단어 목록 제거) |
+| 5절 문서 구간 나누기 (S1–S8, A6) | `fe7839e`(분할 단계 도입), `9cf4669`(검증된 fragment가 끝내지 않는 마지막 criterion을 내보내지 않음), `ac638dc`(PDF에서 구간이 나오면 그것을 사용) |
+| 4절 구조적 대체 | `d77d544`부터 `37bd1d8`까지(group label이 자체 Demographic 규칙을 내지 않음, 4634f12 A28, 90313fe A20, 406ab78, 37bd1d8 C8), `10847ec`(A26/A27 repair 모듈에 남은 CIRCE enum 위치를 가드에서 허용) |
+| 5절 교체 없는 삭제 (P5) | `fa7c41a`, `5fbade3`, `266971e`, `54ce6ca` |
+| 병합 | `06862b7`(p5-dead), `67981aa`(p3-structural) |
+
+**진행 중 (병합되지 않음)**
+
+- 2단계 `relation`, `timing`. 브랜치 `p3-relation`에 `8575878`(필드 추가, A4/E3 window 재근거 제거), `8c652cd`(group Type을 stated relation에서, A18 제거), `34fc910`(planner 분할의 group type을 relation이 결정, A9 gate 2 제거), `3023d50`(A2, A10, A14 제거), `72924ee`(게이트 검사 (z)) 가 있고, `67981aa`에는 들어 있지 않다.
+- 3단계 `quantity_kind`, `reference_bound`, `threshold_span`. 브랜치 `p3-quantity`가 있으나 `67981aa` 위에 커밋이 없다.
+- 4단계의 `route`, `specimen`, `no_entity`. 브랜치 `p3-route`가 있으나 `67981aa` 위에 커밋이 없다.
+
+브랜치 상태는 `git log 67981aa..<branch>`로 확인했다. 남은 장부 항목은 `tests/fixtures/text_rule_ledger.json`과 `tests/test_no_text_rules.py`가 센다.
+
 ## 1. 원칙
 
 - 문장의 뜻은 LLM이 정한다. 코드는 LLM이 낸 근거 조각이 `protocolLine`의 부분 문자열인지만 확인한다(`decomposer.py` gate 1과 같은 방식).
