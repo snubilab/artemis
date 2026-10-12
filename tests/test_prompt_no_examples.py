@@ -145,16 +145,6 @@ def _render_agent1_threshold_review() -> str:
     return _joined(recorder.calls)
 
 
-def _render_agent1_threshold_match() -> str:
-    from src.agents.agent1 import prompts
-
-    return prompts.THRESHOLD_MATCH_PROMPT.format(
-        original_text=f"{STUB} criterion",
-        constraints_block=f"0: {STUB}",
-        rules_block=f"0: {STUB}",
-    )
-
-
 def _render_agent1_extraction() -> str:
     """No caller in src/ (inventory §1); linted anyway because it is a prompt constant."""
     from src.agents.agent1 import prompts
@@ -348,7 +338,7 @@ _IR_FIELDS = frozenset({
     "target", "comparator", "outcome", "primary_criteria", "inclusion_rules", "exclusion_rules",
     "name", "domain", "entity_text", "source_text", "logic_type", "window", "start", "end",
     "value_constraint", "op", "value", "unit_text", "group_type", "sub_criteria", "conditional",
-    "limit", "time_at_risk", "[value_constraint]",
+    "limit", "time_at_risk",
 })
 #: OMOP CDM / CIRCE names a prompt may cite as the destination of a field.
 _OMOP_NAMES = frozenset({
@@ -394,18 +384,13 @@ PROMPTS: dict[str, PromptSpec] = {
     ),
     "agent1.parse_nct": PromptSpec(
         _render_agent1_parse_nct,
-        # The annotation line parser.py attaches to a criterion (value_constraint.py).
-        tokens=_IR_ENUMS | _IR_FIELDS | _OMOP_NAMES | frozenset({"[value_constraint] {...}"}),
+        tokens=_IR_ENUMS | _IR_FIELDS | _OMOP_NAMES,
         declared_blocks=_default_window_blocks,
     ),
     "agent1.threshold_review": PromptSpec(
         _render_agent1_threshold_review,
         tokens=frozenset({"misses", "criterion_line", "criterion_text", "reason", "x ULN", "x LLN",
                           "value_constraint", "source_text", "name"}),
-    ),
-    "agent1.threshold_match": PromptSpec(
-        _render_agent1_threshold_match,
-        tokens=frozenset({"mapping", "rule_index", "constraint_index"}),
     ),
     "agent1.extraction_unused": PromptSpec(
         _render_agent1_extraction, tokens=frozenset({"term", "domain", "context", "temporal"}),
@@ -420,6 +405,9 @@ PROMPTS: dict[str, PromptSpec] = {
             "decompose", "reasoning", "sub_criteria", "name", "entity_text", "domain",
             "source_span", "value_constraint_text", "group_type", "logic_type", "null",
             "true", "false",
+            # RFC-016 step 3: the member's threshold as a structure beside its fragment.
+            "value_constraint", "op", "value", "unit_text", "reference_bound", "absolute",
+            "uln", "lln",
         }),
     ),
     "agent2.reranker_single_select": PromptSpec(
@@ -795,8 +783,7 @@ def test_should_describe_every_output_field_where_the_library_schema_was_dropped
 #: A file whose calls carry no prompt of their own says why instead.
 CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/agent1/parser.py": (
-        9, ("agent1.parse", "agent1.parse_nct", "agent1.threshold_review",
-            "agent1.threshold_match"),
+        7, ("agent1.parse", "agent1.parse_nct", "agent1.threshold_review"),
     ),
     "src/agents/agent1/segmentation.py": (3, ("agent1.eligibility_segmentation",)),
     "src/agents/agent1/criteria_dedup_judge.py": (2, ("agent1.dedup_judge",)),

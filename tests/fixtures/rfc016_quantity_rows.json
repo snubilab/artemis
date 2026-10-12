@@ -1,5 +1,5 @@
 {
- "about": "Real rows for the RFC-016 step 3 tests (quantity_kind / reference_bound / threshold_span), copied verbatim from read-only sources. 'candidate' is the 2026-10-12 prompt_f2 store, 'p2_new' the 2026-10-12 P2 NEW store; 'segmentation' is the eligibility segmentation of the production pdftotext rendering of the named PDF with the hand-made truth oracle of tests/fixtures/segmentation/corpus_truth.json (the PDF text is SHA-256 pinned there). leader_exclusion_5 and carmelina_inclusion_16 (candidate) are the rows behind the candidate gate's four former check (j) findings.",
+ "about": "Real rows for the RFC-016 step 3 tests (quantity_kind / reference_bound / threshold_span), copied verbatim from read-only sources. 'candidate' is the 2026-10-12 prompt_f2 store, 'p2_new' the 2026-10-12 P2 NEW store; 'segmentation' is the eligibility segmentation of the production pdftotext rendering of the named PDF with the hand-made truth oracle of tests/fixtures/segmentation/corpus_truth.json (the PDF text is SHA-256 pinned there). leader_exclusion_5 and carmelina_inclusion_16 (candidate) are the rows behind the candidate gate's four former check (j) findings. carmelina_ir_hba1c_band is target/inclusion_rules[4:6] of a shared Agent 1 IR cache file; leader_p2_new_ir holds the first three LEADER inclusion lines Agent 1 was given in the P2 NEW run (its .meta.json) and the source_text the model wrote back for the third.",
  "sources": {
   "candidate": {
    "path": "output/site_gap/2026-10-12_prompt_f2/store/studies.json",
@@ -557,5 +557,59 @@
   "parentGroupId": null,
   "isGroupLabel": false,
   "mappable": true
+ },
+ "carmelina_ir_hba1c_band": {
+  "path": "data/cache/agent1_ir/NCT01897532_vllm_google_gemma-4-E4B-it_97e28790a4d24072.json",
+  "sha256": "cae26063601274edb85a26c2122dd1fb4d34d66bc3b422b20b17000480fe49ae",
+  "inclusion_rules_4_5": [
+   {
+    "name": "HbA1c within target range",
+    "domain": "Measurement",
+    "entity_text": "HbA1c",
+    "source_text": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "logic_type": "PRESENCE",
+    "value_constraint": {
+     "op": "gte",
+     "value": 6.5,
+     "unit_text": "%"
+    },
+    "window": {
+     "start": -180,
+     "end": 0
+    }
+   },
+   {
+    "name": "HbA1c upper limit check",
+    "domain": "Measurement",
+    "entity_text": "HbA1c",
+    "source_text": "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+    "logic_type": "ABSENCE",
+    "value_constraint": {
+     "op": "lte",
+     "value": 10.0,
+     "unit_text": "%"
+    },
+    "window": {
+     "start": -180,
+     "end": 0
+    }
+   }
+  ]
+ },
+ "leader_p2_new_ir": {
+  "meta": {
+   "path": "output/site_gap/2026-10-12_p2_new/agent1_ir/NCT01179048_vllm_google_gemma-4-E4B-it_87669bebfd273995.meta.json",
+   "sha256": "13083237a69dfa07c1ef1d6a80421d4be31545014ca714edf6bcf7dff9de022c"
+  },
+  "ir": {
+   "path": "output/site_gap/2026-10-12_p2_new/agent1_ir/NCT01179048_vllm_google_gemma-4-E4B-it_87669bebfd273995.json",
+   "sha256": "c1bf72a9aee7f2a24490e66a5c38b3ce81870c6463ea9b970be7d4687ed567ad"
+  },
+  "inclusion_criteria_1_3": [
+   "Type 2 diabetes",
+   "Anti-diabetic drug naïve or treated with one or more oral anti-diabetic drugs or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+   "Glycated hemoglobin ≥7.0%"
+  ],
+  "glycated_hemoglobin_source_text": "3. Glycated hemoglobin ≥7.0%\n      [value_constraint] {\"op\": \"gte\", \"value\": 7.0, \"referenceBound\": \"absolute\", \"unitText\": \"%\"}"
  }
 }

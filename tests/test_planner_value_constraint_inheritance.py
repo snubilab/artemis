@@ -6,11 +6,11 @@ onto every sub-criterion. This suite RED/GREENs against that specific line:
 before the fix, this suite's negative case (AC-004a) would show the sub-item
 carrying the parent's value regardless of the mocked LLM response, because the
 pre-fix code never looked at the LLM's per-sub-item threshold at all. After
-the fix, the decomposer reads each sub-item's `value_constraint_text` field
-(LLM-determined, grounded in `criterion.source_text` per the
-DECOMPOSITION_PROMPT grounding requirement, plan-audit D2) and parses it via
-`src.services.value_constraint.parse_value_constraint` -- reusing tested
-machinery rather than trusting the LLM to emit structured numbers directly.
+the fix, the decomposer reads each sub-item's threshold as the planner states
+it: a structured `value_constraint` plus the `value_constraint_text` fragment,
+kept only when that fragment is a substring of `criterion.source_text`
+(`stated_member_value_constraint`). Until RFC-016 step 3 the fragment was parsed
+with English comparator spellings (`parse_value_constraint`, deleted).
 
 The mocked LLM responses below are not invented: GROUNDED_RESPONSE and
 UNGROUNDED_RESPONSE mirror the exact shape captured live against the
@@ -18,7 +18,9 @@ production model (google/gemma-4-E4B-it via vLLM) for CAROLINA's real
 liver-disease protocol sentence -- see the SPEC-INFRA-007 completion report
 for the verbatim live-capture command and output. Mocking here keeps the
 suite fast and deterministic; the live reproduction is the evidence that the
-grounded mechanism actually works end-to-end against a real model.
+grounded mechanism actually works end-to-end against a real model. The structured
+`value_constraint` beside each fragment is the RFC-016 step 3 schema, added here to
+the captured response; the capture predates it.
 """
 from unittest.mock import MagicMock, patch
 
@@ -47,9 +49,9 @@ GROUNDED_RESPONSE = """```json
   "decompose": true,
   "reasoning": "three distinct lab thresholds sharing one comparator",
   "sub_criteria": [
-    {"name": "Elevated ALT", "entity_text": "ALT (SGPT) above 3 x upper limit of normal (ULN)", "domain": "Measurement", "value_constraint_text": "above 3 x upper limit of normal (ULN)"},
-    {"name": "Elevated AST", "entity_text": "AST (SGOT) above 3 x upper limit of normal (ULN)", "domain": "Measurement", "value_constraint_text": "above 3 x upper limit of normal (ULN)"},
-    {"name": "Elevated Alkaline Phosphatase", "entity_text": "alkaline phosphatase above 3 x upper limit of normal (ULN)", "domain": "Measurement", "value_constraint_text": "above 3 x upper limit of normal (ULN)"}
+    {"name": "Elevated ALT", "entity_text": "ALT (SGPT) above 3 x upper limit of normal (ULN)", "domain": "Measurement", "value_constraint_text": "above 3 x upper limit of normal (ULN)", "value_constraint": {"op": "gt", "value": 3.0, "unit_text": null, "reference_bound": "uln"}},
+    {"name": "Elevated AST", "entity_text": "AST (SGOT) above 3 x upper limit of normal (ULN)", "domain": "Measurement", "value_constraint_text": "above 3 x upper limit of normal (ULN)", "value_constraint": {"op": "gt", "value": 3.0, "unit_text": null, "reference_bound": "uln"}},
+    {"name": "Elevated Alkaline Phosphatase", "entity_text": "alkaline phosphatase above 3 x upper limit of normal (ULN)", "domain": "Measurement", "value_constraint_text": "above 3 x upper limit of normal (ULN)", "value_constraint": {"op": "gt", "value": 3.0, "unit_text": null, "reference_bound": "uln"}}
   ]
 }
 ```"""
@@ -80,13 +82,13 @@ MALFORMED_RESPONSE_MISSING_FIELD = """```json
 }
 ```"""
 
-# Field present but the text is not a parseable threshold phrase at all.
+# A structure whose fragment the line does not contain.
 UNPARSEABLE_RESPONSE = """```json
 {
   "decompose": true,
   "reasoning": "field present but not a real threshold phrase",
   "sub_criteria": [
-    {"name": "Elevated ALT", "entity_text": "ALT elevation", "domain": "Measurement", "value_constraint_text": "not a real threshold phrase"}
+    {"name": "Elevated ALT", "entity_text": "ALT elevation", "domain": "Measurement", "value_constraint_text": "not a real threshold phrase", "value_constraint": {"op": "gt", "value": 3.0, "unit_text": null, "reference_bound": "uln"}}
   ]
 }
 ```"""

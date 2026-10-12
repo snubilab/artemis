@@ -709,13 +709,6 @@ def _annotated_count_label() -> dict[str, Any]:
 
 
 class TestAGroupCardinalityStrandsNobody:
-    def test_should_not_produce_the_count_at_all(self):
-        """Root cause. The label never had a threshold to strand its members with."""
-        from src.services.value_constraint import parse_value_constraints
-
-        assert parse_value_constraints("≥2 of the following:") == []
-        assert parse_value_constraints("At least 2 of the following risk factors") == []
-
     @pytest.mark.parametrize(
         "member",
         PLATO_RISK_FACTORS,
