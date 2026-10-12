@@ -28,50 +28,37 @@ The rule
    absence rule is never a candidate: a cohort cannot enter on a condition its own
    criteria exclude. This alone is load-bearing -- ARISTOTLE's ``AF/Flutter due to
    reversible causes`` and CAROLINA's ``Acute coronary syndrome`` are exclusions
-   that would otherwise outscore, or stand in for, the real indication.
-2. **Match** a candidate when one of its texts -- its concept-set name, or any member
-   concept's ``CONCEPT_NAME`` -- carries exactly the registered condition's tokens.
-   ``"Type 2 diabetes mellitus"`` and ``"Diabetes Mellitus, Type 2"`` reduce to the
-   same four tokens, so word order and punctuation do not matter; ``"Type 1 diabetes
-   mellitus"`` does not, because the discriminating token differs. Names are compared,
-   never resolved -- no model, no network, same answer every time.
+   that would otherwise stand in for the real indication.
+2. **Match** a candidate when one of its included members IS a concept the
+   registered condition maps to. The registered strings go through the same Agent 2
+   mapper the criteria do (``TTEService._registered_condition_concept_ids``); this
+   module compares concept ids and reads no name (RFC-016 §4, C8). It used to compare
+   the lowercase word sets of the registered string and of the set's and its members'
+   names. Where ``"Diabetes Mellitus, Type 2"`` maps to 201826, LEADER's
+   ``Type 2 diabetes`` set holds it and its ``Symptomatic coronary heart disease`` set
+   -- whose member is 'Coronary artery disease due to type 2 diabetes mellitus', a
+   different concept -- does not.
 3. **Decide.** Exactly one matching candidate wins. No match at all, or two candidates
-   matching, both raise: both are exactly the arbitrary pick this module exists to stop.
-   The one exception is two candidates holding the *same concepts* under different
-   codeset ids -- CAROLINA carries ``Type 2 diabetes`` twice, both ``[201826]``,
-   ``includeDescendants`` -- where either choice builds the identical cohort, so
-   document order decides nothing and the first is taken.
+   matching with different concepts, both raise: both are exactly the arbitrary pick
+   this module exists to stop. Two candidates holding the *same concepts* under
+   different codeset ids -- CAROLINA carries ``Type 2 diabetes`` twice -- build the
+   identical cohort, so the first is taken.
 4. **No registered condition** is a missing input, not a licence to guess. With one
    candidate there is no choice to make and it is taken; with several, the pick
-   would be arbitrary and it raises.
-
-Why equality rather than a similarity threshold. The first version of this module
-accepted the best partial overlap above zero, and studies 4/5/6 -- LEADER duplicates
-that carry no type-2-diabetes rule at all -- promptly anchored on ``Symptomatic
-coronary heart disease``, scoring 0.444 against ``"Diabetes Mellitus, Type 2"`` on the
-strength of one member named ``Coronary artery disease due to type 2 diabetes
-mellitus``. A comorbidity qualifier inside a concept name is not correspondence, and no
-threshold separates it honestly: it is a coronary set that mentions diabetes. Requiring
-the tokens to match exactly states the claim the anchor rests on -- this concept set
-NAMES what the trial registered -- and turns every weaker resemblance into a refusal,
-which is the outcome those three studies should have. The partial scores are still
-computed, but only to name the closest miss in the refusal message.
+   would be arbitrary and it raises. A registered condition the mapper maps to nothing
+   is not "no registered condition": it raises with the strings.
 """
 
 from __future__ import annotations
 
-import re
-from typing import Any, Iterable, Sequence
+from collections.abc import Collection, Iterable
+from dataclasses import dataclass, field
+from typing import Any
 
-__all__ = [
-    "DiseaseAnchorError",
-    "AnchorCandidate",
-    "anchor_candidates",
-    "select_disease_anchor",
-    "expected_anchor_concept_ids",
-]
-
-_TOKEN = re.compile(r"[a-z0-9]+")
+#: The payload record of the anchor a disease entry was chosen from: the registered
+#: condition strings, the concept ids the mapper gave them, and the chosen codeset. The
+#: delivery gate re-derives the choice from the store expression with those ids.
+DISEASE_ANCHOR_KEY = "_diseaseAnchor"
 
 # An entry criterion reads condition_occurrence, so only Condition-domain sets can
 # anchor one. Kept as a constant so the walk below and any future caller agree.
@@ -88,51 +75,21 @@ class DiseaseAnchorError(ValueError):
     """
 
 
+@dataclass(frozen=True)
 class AnchorCandidate:
     """One Condition concept set a study's presence rules read.
 
     :ivar codeset_id: the ``CodesetId`` an entry criterion would carry.
-    :ivar name: the concept set's name, for the refusal message.
-    :ivar texts: every string the set offers for matching -- its own name and each
-        member's ``CONCEPT_NAME``.
+    :ivar name: the concept set's name, for the refusal message only.
+    :ivar members: the set's included concept ids.
     :ivar fingerprint: the set's items reduced to what changes the cohort, so two
         codeset ids holding the same concepts can be recognised as the same set.
     """
 
-    __slots__ = ("codeset_id", "name", "texts", "fingerprint")
-
-    def __init__(
-        self,
-        codeset_id: int,
-        name: str,
-        texts: Sequence[str],
-        fingerprint: frozenset[tuple[Any, ...]] = frozenset(),
-    ) -> None:
-        self.codeset_id = codeset_id
-        self.name = name
-        self.texts = list(texts)
-        self.fingerprint = fingerprint
-
-    def __repr__(self) -> str:  # pragma: no cover - diagnostic only
-        return f"AnchorCandidate(codeset_id={self.codeset_id!r}, name={self.name!r})"
-
-
-def _tokens(text: Any) -> frozenset[str]:
-    """Lowercased alphanumeric runs of a string, as a set.
-
-    ``"Diabetes Mellitus, Type 2"`` and ``"Type 2 diabetes mellitus"`` reduce to the
-    same four tokens, which is the whole point: the registry's phrasing and the
-    concept set's phrasing differ in word order and punctuation, not in content.
-    """
-    if not isinstance(text, str):
-        return frozenset()
-    return frozenset(_TOKEN.findall(text.lower()))
-
-
-def _jaccard(left: frozenset[str], right: frozenset[str]) -> float:
-    if not left or not right:
-        return 0.0
-    return len(left & right) / len(left | right)
+    codeset_id: int
+    name: str
+    members: frozenset[int] = field(default_factory=frozenset)
+    fingerprint: frozenset[tuple[Any, ...]] = field(default_factory=frozenset)
 
 
 def _is_presence(criterion: dict[str, Any]) -> bool:
@@ -186,16 +143,16 @@ def anchor_candidates(expression: dict[str, Any]) -> list[AnchorCandidate]:
             continue
         concept_set = concept_sets.get(codeset_id) or {}
         name = concept_set.get("name")
-        texts = [name] if isinstance(name, str) else []
+        members: set[int] = set()
         fingerprint: set[tuple[Any, ...]] = set()
         for item in (concept_set.get("expression") or {}).get("items") or []:
             concept = (item or {}).get("concept") or {}
-            concept_name = concept.get("CONCEPT_NAME")
-            if isinstance(concept_name, str):
-                texts.append(concept_name)
+            concept_id = concept.get("CONCEPT_ID")
+            if concept_id is not None and not (item or {}).get("isExcluded"):
+                members.add(int(concept_id))
             fingerprint.add(
                 (
-                    concept.get("CONCEPT_ID"),
+                    concept_id,
                     bool((item or {}).get("includeDescendants")),
                     bool((item or {}).get("includeMapped")),
                     bool((item or {}).get("isExcluded")),
@@ -205,59 +162,26 @@ def anchor_candidates(expression: dict[str, Any]) -> list[AnchorCandidate]:
             AnchorCandidate(
                 codeset_id,
                 name if isinstance(name, str) else "",
-                texts,
+                frozenset(members),
                 frozenset(fingerprint),
             )
         )
     return candidates
 
 
-def _score(candidate: AnchorCandidate, registered: Sequence[frozenset[str]]) -> tuple[float, str]:
-    """Best (similarity, matched text) for one candidate against the registered set.
-
-    Diagnostic only -- the decision below turns on ``_names_registered_condition``.
-    A similarity is what lets the refusal message say what came closest, which is the
-    difference between "this store needs a diabetes rule" and "no idea why it refused".
-    """
-    best = 0.0
-    matched = ""
-    for text in candidate.texts:
-        text_tokens = _tokens(text)
-        for condition_tokens in registered:
-            value = _jaccard(text_tokens, condition_tokens)
-            if value > best:
-                best, matched = value, text
-    return best, matched
-
-
-def _names_registered_condition(
-    candidate: AnchorCandidate, registered: Sequence[frozenset[str]]
-) -> str | None:
-    """The candidate's own text that carries exactly a registered condition's tokens.
-
-    Returns None when nothing the candidate is called reduces to what the trial
-    registered. Partial overlap is deliberately not a match -- see the module docstring
-    for the LEADER-duplicate case that forced this.
-    """
-    for text in candidate.texts:
-        if _tokens(text) in registered:
-            return text
-    return None
-
-
 def select_disease_anchor(
     expression: dict[str, Any],
-    registered_conditions: Sequence[str] | None,
+    registered_concept_ids: Collection[int] | None,
 ) -> int:
     """The ``CodesetId`` a disease entry should anchor on.
 
     :param expression: the study's CIRCE expression, before the entry swap.
-    :param registered_conditions: ``trialMetadata.conditions`` -- the strings
-        ClinicalTrials.gov carries under
-        ``protocolSection.conditionsModule.conditions``.
+    :param registered_concept_ids: the concept ids the trial's registered conditions
+        (``trialMetadata.conditions``) map to through the Agent 2 mapper; None when the
+        trial registers no condition.
     :returns: the winning concept set's ``CodesetId``.
-    :raises DiseaseAnchorError: when no candidate exists, when the registered
-        condition matches none of them, when two match it equally well, or when the
+    :raises DiseaseAnchorError: when no candidate exists, when the registered condition
+        matches none of them, when two holding different concepts match it, or when the
         trial registers no condition and more than one candidate competes.
     """
     candidates = anchor_candidates(expression)
@@ -267,10 +191,7 @@ def select_disease_anchor(
             "Condition concept set under a presence occurrence"
         )
 
-    registered = [_tokens(condition) for condition in registered_conditions or []]
-    registered = [tokens for tokens in registered if tokens]
-
-    if not registered:
+    if registered_concept_ids is None:
         if len(candidates) == 1:
             return candidates[0].codeset_id
         raise DiseaseAnchorError(
@@ -281,44 +202,33 @@ def select_disease_anchor(
             + ". Backfill the store with scripts/backfill_registered_conditions.py"
         )
 
-    registered_set = set(registered)
-    matched = [
-        (candidate, _names_registered_condition(candidate, registered_set))
-        for candidate in candidates
-    ]
-    winners = [(candidate, text) for candidate, text in matched if text is not None]
-    listed = ", ".join(repr(c) for c in registered_conditions or [])
+    registered = {int(cid) for cid in registered_concept_ids}
+    winners = [candidate for candidate in candidates if candidate.members & registered]
+    listed = ", ".join(str(cid) for cid in sorted(registered)) or "none"
 
     if not winners:
-        near = sorted(
-            ((*_score(candidate, registered), candidate) for candidate in candidates),
-            key=lambda row: row[0],
-            reverse=True,
-        )[:3]
         raise DiseaseAnchorError(
-            f"no Condition rule names the trial's registered condition ({listed}); "
-            "closest were "
+            f"no Condition rule holds a concept the trial's registered condition maps to "
+            f"({listed}); the candidates hold "
             + ", ".join(
                 f"{candidate.name!r} (codeset {candidate.codeset_id}, "
-                f"{score:.3f} via {text!r})"
-                for score, text, candidate in near
+                f"{sorted(candidate.members)[:5]})"
+                for candidate in candidates
             )
         )
-    if len(winners) > 1 and len({candidate.fingerprint for candidate, _ in winners}) > 1:
+    if len(winners) > 1 and len({candidate.fingerprint for candidate in winners}) > 1:
         raise DiseaseAnchorError(
-            f"two or more Condition rules name the trial's registered condition ({listed}) "
-            "and they hold different concepts, so the entry would be an arbitrary pick: "
-            + ", ".join(
-                f"{candidate.name!r} (codeset {candidate.codeset_id}, via {text!r})"
-                for candidate, text in winners
-            )
+            f"two or more Condition rules hold a concept the trial's registered condition "
+            f"maps to ({listed}) and they hold different concepts, so the entry would be an "
+            "arbitrary pick: "
+            + ", ".join(f"{c.name!r} (codeset {c.codeset_id})" for c in winners)
         )
-    return winners[0][0].codeset_id
+    return winners[0].codeset_id
 
 
 def expected_anchor_concept_ids(
     expression: dict[str, Any],
-    registered_conditions: Sequence[str] | None,
+    registered_concept_ids: Collection[int] | None,
 ) -> set[int]:
     """The OMOP concept ids a disease-anchored entry built from ``expression`` must carry.
 
@@ -329,11 +239,12 @@ def expected_anchor_concept_ids(
 
     :param expression: the STORE study's CIRCE expression (not the emitted file's --
         codeset ids are renumbered by pruning, concept ids are not).
-    :param registered_conditions: ``trialMetadata.conditions``.
+    :param registered_concept_ids: as :func:`select_disease_anchor` takes them; the gate
+        reads them from the file's :data:`DISEASE_ANCHOR_KEY` record.
     :returns: the winning concept set's ``CONCEPT_ID`` values.
     :raises DiseaseAnchorError: on the same terms as :func:`select_disease_anchor`.
     """
-    codeset_id = select_disease_anchor(expression, registered_conditions)
+    codeset_id = select_disease_anchor(expression, registered_concept_ids)
     for concept_set in expression.get("ConceptSets") or []:
         if isinstance(concept_set, dict) and concept_set.get("id") == codeset_id:
             return {

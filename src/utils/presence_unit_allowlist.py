@@ -46,7 +46,7 @@ decline for the wrong one:
   CAROLINA's LDL set. These are never a one-line addition here: the bound is applied to
   the wrong quantity, so listing one would make the repair drop a unit filter on a set
   that is wrong with or without units. They are recorded with their reasons in
-  :data:`~src.utils.circe_lint.CONFUSABLE_ANALYTES`, which reports them, and
+  :data:`~src.utils.circe_lint.CONFUSABLE_MEMBERS`, which reports them, and
   ``tests/test_confusable_concept_set_lint.py`` gates the two tables against each other
   so a member of one can never be added to the other.
 * **The right analyte on a scale this table does not model** -- ``3035009`` Cholesterol

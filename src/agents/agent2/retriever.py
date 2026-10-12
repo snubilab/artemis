@@ -226,9 +226,8 @@ class ConceptRetriever:
         """
         Searches the vector database with post-retrieval scoring:
         1. Vector semantic search (ChromaDB)
-        2. Vocabulary preference scoring by domain
-        3. Exact substring match boosting
-        4. Re-sort by adjusted_score
+        2. Vocabulary / class / domain preference scoring (machine fields only)
+        3. Re-sort by adjusted_score
         """
         # Fetch more candidates for better post-filtering
         fetch_n = max(n_results * 3, 60)
@@ -282,9 +281,12 @@ class ConceptRetriever:
     ) -> List[CandidateConcept]:
         """Score and rank raw ChromaDB results for a single query.
 
-        The single scoring implementation: vocab preference, exact match boost,
-        class preference, domain mismatch penalty, standard concept preference,
-        and concept weight boost. search() and batch_search() both route here —
+        The single scoring implementation: vocab preference, class preference,
+        domain mismatch penalty, standard concept preference, and concept weight
+        boost. Concept NAMES are not read (RFC-016 §4, C4): an exact / substring /
+        word-prefix match between name and query used to add a boost and lift the
+        class penalty, which is a text rule over vocabulary names.
+        search() and batch_search() both route here —
         search() used to hold a second copy, and the same duplication in
         reranker.py (rerank_topn vs rerank_topn_batch) had already produced a
         green unit test over a prompt the pipeline never called.
@@ -299,7 +301,6 @@ class ConceptRetriever:
         the distance scale. Nothing thresholds it — it is only ever compared
         between candidates of the same query.
         """
-        query_lower = query_text.lower().strip()
         candidates: List[CandidateConcept] = []
         unit = _distance_unit(distances)
 
@@ -322,39 +323,18 @@ class ConceptRetriever:
             vocab_prefs = _VOCAB_PREFERENCE.get(effective_domain, {})
             adj += vocab_prefs.get(vocab, 0.05)
 
-            # 2. Exact / substring match boost
-            name_lower = concept_name.lower()
-            if name_lower == query_lower:
-                adj -= 0.15
-            elif query_lower in name_lower:
-                adj -= 0.08
-            elif name_lower in query_lower:
-                adj -= 0.04
-            else:
-                query_words = set(query_lower.split())
-                name_words = set(name_lower.split())
-                for qw in query_words:
-                    if len(qw) < 5:
-                        continue
-                    prefix = qw[:min(len(qw) - 2, 8)]
-                    for nw in name_words:
-                        if nw.startswith(prefix):
-                            adj -= 0.06
-                            break
-
-            # 3. Concept class preference
+            # 2. Concept class preference
             preferred = _PREFERRED_CLASSES.get(effective_domain, set())
             if concept_class in preferred:
                 adj -= 0.03
             if concept_class in _PENALIZED_CLASSES:
-                if name_lower != query_lower and query_lower not in name_lower:
-                    adj += 0.05
+                adj += 0.05
 
-            # 4. Domain mismatch penalty
+            # 3. Domain mismatch penalty
             if domain_hint and domain != domain_hint:
                 adj += 0.50
 
-            # 5. Standard concept preference
+            # 4. Standard concept preference
             # NOTE: omop_concepts_medcpt carries no standard_concept key, so this
             # branch does not currently run. Left in place for collections that
             # do; re-indexing with the field is what would activate it.
@@ -365,7 +345,7 @@ class ConceptRetriever:
                 elif std is None or std == "":
                     adj += 0.15
 
-            # 6. Common concept boost
+            # 5. Common concept boost
             if int(cid) in self.concept_weights:
                 adj += self.concept_weights[int(cid)]
 

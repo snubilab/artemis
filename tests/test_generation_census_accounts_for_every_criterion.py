@@ -208,11 +208,13 @@ class TestSkippedCriteriaAreRecorded:
         assert circe["_skippedCriteria"] == []
         assert circe["_generationCensus"]["demographicRules"] == 1
 
-    def test_should_classify_by_branch_order_when_a_criterion_is_both_shapes(self, service):
-        """Demographic wins over `isGroupLabel` because its branch runs first.
+    def test_should_classify_as_group_label_when_a_criterion_is_both_shapes(self, service):
+        """`isGroupLabel` wins over the Demographics domain: a label emits no rule of its own.
 
-        Four criteria on the scored store are both. Recording `isGroupLabel` alongside
-        the reason keeps that overlap visible instead of making the bucket look pure.
+        The demographic branch used to run first, so a Demographics label carrying the
+        group's bound built an Age rule from the label (ARISTOTLE inclusion 16, see
+        ``tests/test_group_label_emits_no_demographic_rule.py``). Recording
+        `isGroupLabel` alongside the reason keeps the overlap visible.
         """
         circe = service._build_seeded_target_circe(
             _eligibility(
@@ -228,7 +230,7 @@ class TestSkippedCriteriaAreRecorded:
         )
         skipped = circe["_skippedCriteria"]
         assert len(skipped) == 1
-        assert skipped[0]["reason"] == "demographic-no-rule"
+        assert skipped[0]["reason"] == "group-label"
         assert skipped[0]["isGroupLabel"] is True
 
 

@@ -1,8 +1,8 @@
-"""Export-time repair: drop a member that is not the analyte its concept set names.
+"""Export-time repair: drop a member that is not what its concept set's other members measure.
 
 The defect this repairs is the one ``src.utils.circe_lint.confusable_concept_sets``
-refuses a delivery for: a concept set whose NAME states one analyte holds a concept
-measuring another. Measured instance, ``output/site_gap/2026-09-18_verify3/DELIVERY/
+refuses a delivery for: a concept set measuring one analyte holds a concept measuring
+another. Measured instance, ``output/site_gap/2026-09-18_verify3/DELIVERY/
 empa-reg_treatment.circe.json``::
 
     codeset 3   'Glycosylated haemoglobin (HbA1c)', 6 seeds, ZERO isExcluded,
@@ -15,7 +15,7 @@ is why: ``presence_unit_repair`` classifies codeset 3 as ``unlisted`` because of
 member and therefore declines to drop the ``Unit``. So one confusable member held a
 hospital cohort at zero.
 
-WHY THIS REPAIRS AT EXPORT TIME, reversing what ``CONFUSABLE_ANALYTES`` argued until
+WHY THIS REPAIRS AT EXPORT TIME, reversing what the confusable table argued until
 2026-09-18. The old position was that removing a member changes which patients the
 cohort SELECTS -- a mapping correction, not an export-time repair. The rewritten comment
 block on that table records the reversal and the reasoning; the short form is that
@@ -26,10 +26,12 @@ criteria (see ``feedback: prompt edits re-roll a third of criteria``).
 WHAT IT WILL NOT DO. Five conditions must hold together, and the FOURTH is the safety
 one -- the whole basis for the reversal:
 
-1. the concept set's NAME states the analyte and not the other thing;
-2. the held member is in that analyte's ``confusables`` mapping. 3035009, LDL
-   ``[Units/volume]`` by Electrophoresis, is LDL and is deliberately not in the table,
-   so nothing here ever removes it;
+1. the held member's LOINC ``Has component`` is shared by no other LOINC member of the
+   set, while at least one other member has one -- the other members measure something
+   else. Read off the vocabulary, never off the set's NAME (RFC-016 §4, A28);
+2. the held member is in ``CONFUSABLE_MEMBERS``. 3035009, LDL ``[Units/volume]`` by
+   Electrophoresis, is LDL and is deliberately not in the table, so nothing here ever
+   removes it;
 3. at least one included member remains after the removal. An empty concept set is not a
    narrower cohort -- Circe compiles it to a criterion nothing can satisfy, or to one
    everything does, depending on the domain, and neither is the repair's intent;
@@ -86,17 +88,22 @@ Conditions 1 and 2 are precisely the lint's own predicate, and it lives in
 cannot drift apart -- the same arrangement ``entry_exclusion_repair`` and
 ``scripts/verify_entry_exclusion_conflict.py`` already share their traversal through.
 
-No vocabulary and no database: every condition is readable from the expression itself.
-Nothing else in the payload is touched, and a set the repair declines still fires the
+No database: conditions 2-5 are read off the expression, condition 1 off the LOINC
+components the caller passes in. Nothing else in the payload is touched, and a set the repair declines still fires the
 lint, so the delivery gate keeps refusing exactly the cases removal was not safe for.
 """
 from __future__ import annotations
 
 import logging
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from src.utils.circe_lint import VALUE_RANGE_CONVERSIONS_KEY, iter_confusable_members
+from src.utils.circe_lint import (
+    CONFUSABLE_MEMBERS,
+    VALUE_RANGE_CONVERSIONS_KEY,
+    iter_confusable_members,
+)
 from src.utils.presence_unit_allowlist import CodesetReader, iter_codeset_readers
 
 
@@ -104,7 +111,6 @@ from src.utils.presence_unit_allowlist import CodesetReader, iter_codeset_reader
 class ConfusableMemberRepair:
     codeset_id: int
     codeset_name: str
-    analyte: str
     removed_concept_ids: list[int]
     reasons: list[str]
 
@@ -142,10 +148,15 @@ def _why_not_converted(reader: CodesetReader, bounds: dict[int, list[dict]]) -> 
     return None
 
 
-def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepair]:
+def repair_confusable_members(
+    base: dict[str, Any], components: Mapping[int, Collection[int]]
+) -> list[ConfusableMemberRepair]:
     """Remove confusable members where conditions 1-5 hold. Mutates ``base`` in place.
 
     :param base: a CIRCE cohort expression.
+    :param components: LOINC concept id -> its ``Has component`` concept ids, for at least
+        ``circe_lint.confusable_member_ids(base)`` (condition 1 reads them; the set's name
+        is not read).
     :returns: one record per repaired concept set; empty when nothing qualified.
     """
     readers_by_codeset: dict[int, list] = {}
@@ -155,7 +166,7 @@ def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepa
 
     applied: list[ConfusableMemberRepair] = []
 
-    for concept_set, entry, held in list(iter_confusable_members(base)):
+    for concept_set, held in list(iter_confusable_members(base, components)):
         codeset_id = concept_set.get("id")
         name = str(concept_set.get("name") or "")
         items = (concept_set.get("expression") or {}).get("items") or []
@@ -164,11 +175,11 @@ def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepa
         # else touches the included side.
         if any(item.get("isExcluded") for item in items):
             logging.warning(
-                "[TTE] confusable-member repair declines codeset %s %r (%s): the set "
+                "[TTE] confusable-member repair declines codeset %s %r: the set "
                 "carries an isExcluded item, and an exclusion SUBTRACTS -- removing %s "
                 "from the included side changes what that subtraction lands on, so the "
                 "'can only miss patients' direction is no longer provable",
-                codeset_id, name, entry.analyte, list(held),
+                codeset_id, name, list(held),
             )
             continue
 
@@ -179,10 +190,10 @@ def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepa
         ]
         if not remaining:
             logging.warning(
-                "[TTE] confusable-member repair declines codeset %s %r (%s): removing "
+                "[TTE] confusable-member repair declines codeset %s %r: removing "
                 "%s would leave the set empty -- no included member would remain, and an "
                 "empty concept set is not a narrower cohort",
-                codeset_id, name, entry.analyte, list(held),
+                codeset_id, name, list(held),
             )
             continue
 
@@ -190,10 +201,10 @@ def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepa
         readers = readers_by_codeset.get(int(codeset_id), []) if codeset_id is not None else []
         if not readers:
             logging.warning(
-                "[TTE] confusable-member repair declines codeset %s %r (%s): no "
+                "[TTE] confusable-member repair declines codeset %s %r: no "
                 "criterion in the expression reads it, so removing %s would change "
                 "nothing that can be verified",
-                codeset_id, name, entry.analyte, list(held),
+                codeset_id, name, list(held),
             )
             continue
         blocking = [
@@ -204,36 +215,33 @@ def repair_confusable_members(base: dict[str, Any]) -> list[ConfusableMemberRepa
         ]
         if blocking:
             logging.warning(
-                "[TTE] confusable-member repair declines codeset %s %r (%s): %d of %d "
+                "[TTE] confusable-member repair declines codeset %s %r: %d of %d "
                 "reader(s) are not provably a presence criterion or a converted "
                 "value-range absence -- %s. Removing %s from a set an ABSENCE criterion "
                 "reads makes that absence EASIER to satisfy, so the direction flips from "
                 "'can only miss patients' to 'can wrongly include patients'",
-                codeset_id, name, entry.analyte, len(blocking), len(readers),
+                codeset_id, name, len(blocking), len(readers),
                 "; ".join(f"{reader.locator} ({why})" for reader, why in blocking),
                 list(held),
             )
             continue
 
         concept_set["expression"]["items"] = remaining
-        reasons = [
-            f"{cid} {entry.confusables[cid][0]!r} -- {entry.confusables[cid][1]}"
-            for cid in held
-        ]
+        reasons = [f"{cid} -- {CONFUSABLE_MEMBERS[cid]}" for cid in held]
         applied.append(
             ConfusableMemberRepair(
                 codeset_id=int(codeset_id),
                 codeset_name=name,
-                analyte=entry.analyte,
                 removed_concept_ids=list(held),
                 reasons=reasons,
             )
         )
         logging.warning(
-            "[TTE] confusable-member repair: codeset %s %r names %s -- %s removed, %d "
+            "[TTE] confusable-member repair: codeset %s %r holds a member no other "
+            "member's LOINC component matches -- %s removed, %d "
             "included member(s) remain, read only by presence criteria or converted "
             "value-range absences (%s). %s",
-            codeset_id, name, entry.analyte, list(held), len(remaining),
+            codeset_id, name, list(held), len(remaining),
             "; ".join(
                 f"{reader.locator} [{'presence' if reader.is_presence else 'converted absence'}]"
                 for reader in readers

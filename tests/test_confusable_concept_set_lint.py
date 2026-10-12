@@ -21,6 +21,10 @@ it -- a unit filter is all it touches -- which is what part 3 pins.
 DB-free on the ``PrefetchedVocabulary`` seam, so the real closure resolver runs. Every
 concept id, name and bound below is copied from ``deliveries/2026-09-12/`` or
 ``output/site_gap/2026-09-18_verify/DELIVERY/`` and verified against ``omop_vocab``.
+
+What a member measures is its LOINC ``Has component`` (RFC-016 §4, A28), read from the
+real synthea23m rows in ``tests/fixtures/p3_structural_rows.json``; the set's NAME is not
+read. The rows cover every member of every real set holding a listed concept.
 """
 from __future__ import annotations
 
@@ -38,9 +42,20 @@ from src.services.conceptset_closure import PrefetchedVocabulary  # noqa: E402
 from src.services.presence_unit_repair import repair_presence_unit_filters  # noqa: E402
 from src.utils import circe_lint  # noqa: E402
 from src.utils.circe_lint import (  # noqa: E402
-    CONFUSABLE_ANALYTES,
-    confusable_concept_sets,
+    CONFUSABLE_MEMBERS,
 )
+from src.utils.circe_lint import confusable_concept_sets as _confusable_concept_sets  # noqa: E402
+
+#: LOINC concept id -> its 'Has component' concept ids (synthea23m).
+COMPONENTS: dict[int, set[int]] = {}
+for _cid, _component in json.loads(
+    (REPO_ROOT / "tests" / "fixtures" / "p3_structural_rows.json").read_text()
+)["vocabulary_loinc_components"]["rows"]:
+    COMPONENTS.setdefault(_cid, set()).add(_component)
+
+
+def confusable_concept_sets(expression: dict) -> list[str]:
+    return _confusable_concept_sets(expression, COMPONENTS)
 from src.utils.presence_unit_allowlist import (  # noqa: E402
     CAN_ONLY_MISS,
     PRESENCE_UNIT_ANALYTES,
@@ -174,10 +189,26 @@ def test_should_not_fire_when_ldl_set_holds_only_ldl_variants():
     assert confusable_concept_sets(expression) == []
 
 
-def test_should_not_fire_when_the_name_states_both_analytes():
-    """'LDL/HDL ratio' legitimately holds HDL; only a name claiming LDL ALONE is wrong."""
+def test_should_fire_whatever_the_set_is_called():
+    """The NAME is not read (RFC-016 §4, A28): HDL beside six LDL tests is a different
+    component, so the set measures two things whether or not its name says so."""
     expression = cohort(30, "LDL/HDL cholesterol ratio", LDL_0912 + [HDL],
                         value={"Op": "gte", "Value": 3.0})
+    findings = confusable_concept_sets(expression)
+    assert len(findings) == 1 and "3007070" in findings[0]
+
+
+def test_should_not_fire_when_another_member_measures_the_same_component():
+    """HbA1 total by electrophoresis (3030989) shares 3005446's component: one analyte."""
+    expression = cohort(3, "Glycosylated haemoglobin (HbA1c)", [HBA1_TOTAL, 3030989],
+                        value={"Op": "bt", "Value": 7.0, "Extent": 10.0})
+    assert confusable_concept_sets(expression) == []
+
+
+def test_should_not_fire_when_the_listed_member_is_the_only_lab_test():
+    """Nothing else in the set says what it measures, so nothing contradicts the member."""
+    expression = cohort(3, "Hemoglobin A1", [HBA1_TOTAL],
+                        value={"Op": "gte", "Value": 7.0})
     assert confusable_concept_sets(expression) == []
 
 
@@ -196,7 +227,7 @@ def test_should_report_nothing_when_the_confusable_table_is_empty(monkeypatch):
     """
     expression = json.loads((DELIVERY_0912 / "carolina_treatment.circe.json").read_text())
     assert confusable_concept_sets(expression), "the real file must fire with the real table"
-    monkeypatch.setattr(circe_lint, "CONFUSABLE_ANALYTES", ())
+    monkeypatch.setattr(circe_lint, "CONFUSABLE_MEMBERS", {})
     assert confusable_concept_sets(expression) == []
 
 
@@ -275,12 +306,8 @@ def test_should_not_allowlist_any_confusable_concept():
     set measuring the wrong analyte.
     """
     listed = {cid for analyte in PRESENCE_UNIT_ANALYTES for cid in analyte.concepts}
-    for entry in CONFUSABLE_ANALYTES:
-        overlap = listed & set(entry.confusables)
-        assert overlap == set(), (
-            f"{sorted(overlap)} is both a {entry.analyte} confusable and an allowlisted "
-            f"analyte member"
-        )
+    overlap = listed & set(CONFUSABLE_MEMBERS)
+    assert overlap == set(), f"{sorted(overlap)} is both a confusable and an allowlisted member"
 
 
 # ---------------------------------------------------------------------------

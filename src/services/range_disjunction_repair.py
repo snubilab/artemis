@@ -46,16 +46,16 @@ and another for drug-naive patients -- so all five conditions must hold together
    repair, and the resolved closure -- not the name, which is model-written free text and
    is ``'HbA1c'`` on both of CARMELINA's sets -- is what establishes they are the same
    measurement;
-5. the rule NAME reads as a range over one subject. Decided mechanically, and
-   deliberately conservatively: the name is split on ``" + "`` into exactly two halves
-   (the separator the builder joins group labels with), each half has its bound language
-   removed -- the comparison phrases in :data:`_BOUND_LANGUAGE`, the numbers and their
-   percent sign, and brackets -- and what remains must be identical and non-empty on both
-   sides. ``"HbA1c at least 6.5%"`` and ``"HbA1c at most 10.0%"`` both reduce to
-   ``"hba1c"``; EMPA-REG's two halves reduce to ``"hba1c for patients on background
-   therapy"`` and ``"hba1c for drug naive patients"`` and decline. Additionally both
-   delivered bound values must appear as numbers in the name, so a name describing some
-   other range cannot be read as endorsing this one.
+5. the two criteria come from ONE protocol statement, read off the store rather than off
+   the rule name (RFC-016 §4, A26): some store row mapping to the low side's concept set
+   and some store row mapping to the high side's share one non-empty ``groupId`` and one
+   non-empty ``protocolLine``. The caller supplies that provenance
+   (:func:`codeset_provenance`, keyed by the rows' ``conceptSetId``); a concept set no
+   store row maps to has none and declines. The 2026-09-18 CARMELINA pair (codesets 8 and
+   9) is one group read from "HbA1c of >= 6.5% and <= 10.0% at Visit 1"; its restated
+   absence (codesets 10 and 11) is a second group on the same line, so a pairing across
+   the two groups declines. The rule name was read here until 2026-10-12, with a list of
+   comparison words; the name is model-written free text and decides nothing now.
 
 THE REPAIR ITSELF replaces the rule's expression with the low criterion, its
 ``ValueAsNumber`` rewritten to ``{"Value": low, "Extent": high, "Op": "bt"}``, under
@@ -72,8 +72,7 @@ run the real closure resolver with no database at all.
 from __future__ import annotations
 
 import logging
-import re
-from collections.abc import Mapping
+from collections.abc import Collection, Iterable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Iterator
@@ -88,22 +87,9 @@ _LOW_OPS = {"gte"}
 _HIGH_OPS = {"lte"}
 _STRICT_OPS = {"gt", "lt"}
 
-#: The separator the builder joins per-group labels with when it names an ANY rule.
-_NAME_SEPARATOR = " + "
-
-#: Bound language stripped from a name half before the two halves are compared: the
-#: comparison phrases, a number with an optional percent sign, the comparison symbols,
-#: and brackets. Anything left is the subject the half is about.
-_BOUND_LANGUAGE = re.compile(
-    r"\b(?:at\s+least|at\s+most|no\s+more\s+than|no\s+less\s+than|not\s+more\s+than|"
-    r"greater\s+than|less\s+than|more\s+than|or\s+equal\s+to|up\s+to|and|to|"
-    r"above|below|over|under|from|between)\b"
-    r"|\d+(?:\.\d+)?\s*%?"
-    r"|[<>=≤≥()\[\]]+",
-    re.IGNORECASE,
-)
-
-_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+#: Concept set id -> the ``(groupId, protocolLine)`` of every store criterion row that maps
+#: to it. Built by :func:`codeset_provenance`; read by condition 5.
+CodesetProvenance = Mapping[int, Collection[tuple[str, str]]]
 
 
 @dataclass(frozen=True)
@@ -123,7 +109,7 @@ class RangeCollapse:
 
 @dataclass(frozen=True)
 class RangeDisjunction:
-    """An ``ANY`` rule satisfying conditions 1-3 and 5, before the closure check."""
+    """An ``ANY`` rule satisfying conditions 1, 2, 3 and 5, before the closure check."""
 
     rule_index: int
     rule: dict
@@ -186,32 +172,56 @@ def _bound(entry: dict) -> tuple[str, float] | None:
         return None
 
 
-def _subject(half: str) -> str:
-    """A name half with its bound language removed -- what the half is about."""
-    return " ".join(_BOUND_LANGUAGE.sub(" ", half).lower().split())
+def codeset_provenance(
+    *criterion_rows: Iterable[Mapping[str, Any]] | None,
+) -> dict[int, set[tuple[str, str]]]:
+    """Concept set id -> the ``(groupId, protocolLine)`` of the store rows that map to it.
+
+    :param criterion_rows: the stored criterion row lists (inclusion, exclusion), each row
+        carrying ``conceptSetId``, ``groupId`` and ``protocolLine``. A row without a concept
+        set, a group or a line contributes nothing.
+    :returns: one entry per concept set some grouped row with a line maps to.
+    """
+    found: dict[int, set[tuple[str, str]]] = {}
+    for rows in criterion_rows:
+        for row in rows or []:
+            if not isinstance(row, Mapping):
+                continue
+            group = str(row.get("groupId") or "")
+            line = str(row.get("protocolLine") or "").strip()
+            codeset = row.get("conceptSetId")
+            if codeset is None or not group or not line:
+                continue
+            try:
+                found.setdefault(int(codeset), set()).add((group, line))
+            except (TypeError, ValueError):
+                continue
+    return found
 
 
-def _name_states_one_range(name: str, low: float, high: float) -> str | None:
-    """None when the name reads as one range over one subject; else why it does not."""
-    halves = name.split(_NAME_SEPARATOR)
-    if len(halves) != 2:
-        return f"name {name!r} does not split into exactly two halves on {_NAME_SEPARATOR!r}"
-    subjects = [_subject(h) for h in halves]
-    if not subjects[0] or subjects[0] != subjects[1]:
+def _one_statement(low_id: int, high_id: int, provenance: CodesetProvenance) -> str | None:
+    """Condition 5. None when both concept sets come from one store group and one protocol
+    line; else why they do not."""
+    low_sources = set(provenance.get(low_id) or ())
+    high_sources = set(provenance.get(high_id) or ())
+    if not low_sources or not high_sources:
+        missing = low_id if not low_sources else high_id
         return (
-            f"name {name!r} is about {subjects[0]!r} on one side and {subjects[1]!r} on "
-            f"the other, so it reads as two subjects rather than one bracketed range"
+            f"no grouped store row with a protocolLine maps to codeset {missing}, so nothing "
+            f"shows the two bounds are one protocol statement"
         )
-    mentioned = {float(m) for m in _NUMBER.findall(name)}
-    if not {low, high} <= mentioned:
+    if not low_sources & high_sources:
         return (
-            f"name {name!r} mentions {sorted(mentioned)} but the delivered bounds are "
-            f"{low:g} and {high:g}, so the name describes some other range"
+            f"codesets {low_id} and {high_id} come from different store groups or protocol "
+            f"lines ({sorted(low_sources)} vs {sorted(high_sources)}), so the two bounds are "
+            f"not one stated range"
         )
     return None
 
 
-def iter_range_disjunctions(base: Mapping[str, Any]) -> Iterator[RangeDisjunction]:
+def iter_range_disjunctions(
+    base: Mapping[str, Any], provenance: CodesetProvenance
+) -> Iterator[RangeDisjunction]:
     """Rules this repair could fire on, judged without a vocabulary.
 
     Applies conditions 1, 2, 3 and 5; condition 4 needs the concept closures and is
@@ -282,10 +292,14 @@ def iter_range_disjunctions(base: Mapping[str, Any]) -> Iterator[RangeDisjunctio
             )
             continue
 
-        why_not = _name_states_one_range(name, low, high)
+        why_not = _one_statement(
+            int(low_entry["Criteria"]["Measurement"]["CodesetId"]),
+            int(high_entry["Criteria"]["Measurement"]["CodesetId"]),
+            provenance,
+        )
         if why_not is not None:
             logging.warning(
-                "[TTE] range-disjunction repair declines rule #%d: %s", index + 1, why_not
+                "[TTE] range-disjunction repair declines rule #%d %r: %s", index + 1, name, why_not
             )
             continue
 
@@ -306,17 +320,19 @@ def iter_range_disjunctions(base: Mapping[str, Any]) -> Iterator[RangeDisjunctio
 # --------------------------------------------------------------------------
 
 def repair_range_disjunctions(
-    base: dict[str, Any], lookup: VocabularyLookup
+    base: dict[str, Any], lookup: VocabularyLookup, provenance: CodesetProvenance
 ) -> list[RangeCollapse]:
     """Collapse an ``ANY`` of two bounds into one ``bt`` criterion. Mutates ``base``.
 
     :param base: a Circe cohort expression (ConceptSets / PrimaryCriteria /
         InclusionRules), mutated in place.
     :param lookup: vocabulary access for resolving concept-set closures (condition 4).
+    :param provenance: the store rows' ``(groupId, protocolLine)`` per concept set
+        (condition 5, :func:`codeset_provenance`).
     :returns: one record per collapsed rule; empty means nothing satisfied all five
         conditions, which is the expected answer for almost every file.
     """
-    candidates = list(iter_range_disjunctions(base))
+    candidates = list(iter_range_disjunctions(base, provenance))
     if not candidates:
         return []
 

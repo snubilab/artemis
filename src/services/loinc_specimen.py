@@ -631,6 +631,17 @@ SELECT c.concept_id, MAX(x.concept_name)
 """
 
 
+_COMPONENT_SQL = """
+SELECT c.concept_id, x.concept_id
+  FROM {schema}.concept c
+  JOIN {schema}.concept_relationship r
+    ON r.concept_id_1 = c.concept_id AND r.invalid_reason IS NULL
+   AND r.relationship_id = 'Has component'
+  JOIN {schema}.concept x ON x.concept_id = r.concept_id_2 AND x.vocabulary_id = 'LOINC'
+ WHERE c.concept_id = ANY(%s) AND c.vocabulary_id = 'LOINC'
+"""
+
+
 def _like_prefix(text: str) -> str:
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "^%"
 
@@ -686,6 +697,22 @@ class PostgresLabTestVocabulary:
         with self._conn.cursor() as cur:
             cur.execute(_PROPERTY_SQL.format(schema=self._schema), (ids,))
             return {row[0]: row[1] for row in cur.fetchall() if row[1] is not None}
+
+    def components(self, concept_ids: Iterable[int]) -> dict[int, set[int]]:
+        """LOINC ``Has component`` concept ids per concept, any LOINC concept class.
+
+        What a member of a concept set measures, read off the vocabulary; a non-LOINC id is
+        absent. ``circe_lint.iter_confusable_members`` compares these, never names.
+        """
+        ids = sorted({int(c) for c in concept_ids})
+        if not ids:
+            return {}
+        with self._conn.cursor() as cur:
+            cur.execute(_COMPONENT_SQL.format(schema=self._schema), (ids,))
+            found: dict[int, set[int]] = {}
+            for concept_id, component_id in cur.fetchall():
+                found.setdefault(concept_id, set()).add(component_id)
+            return found
 
     def analyte_lab_tests(self, analyte: str) -> list[LabTest]:
         with self._conn.cursor() as cur:

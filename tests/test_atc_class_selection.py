@@ -37,9 +37,11 @@ THRESHOLD = 0.75
 
 # Ingredient counts from the local vocabulary after combination-partner removal:
 # H02A keeps 20 of H02's 23 (H02 = H02A + the antiadrenals H02C); A10AE keeps 6 of
-# A10A's 29 (one duration among four).
+# A10A's 29 (one duration among four). B01 and B01A hold the same 65; A10X holds 2 and
+# its child A10XX 1 of them (class_ingredients on synthea23m, 2026-10-12).
 SIZES = {"H02": 23, "H02A": 20, "H02B": 0, "H02AB": 17, "A10A": 29, "A10AE": 6,
-         "A10AC": 8, "A10AB": 14, "S01C": 22, "X01": 9, "X01A": 9}
+         "A10AC": 8, "A10AB": 14, "S01C": 22, "X01": 9, "X01A": 9,
+         "B01": 65, "B01A": 65, "B01AX": 3, "A10X": 2, "A10XX": 1}
 
 
 def _share(child, parent):
@@ -56,12 +58,12 @@ def test_should_take_the_closest_class_when_it_is_within_threshold():
     assert _select([B01AX, H02]) == H02
 
 
-def test_should_prefer_the_descendant_whose_name_extends_the_best_hit_when_both_are_within_reach():
+def test_should_prefer_the_descendant_that_keeps_most_ingredients_when_both_are_within_reach():
     chosen = _select([H02, H02A, H02B])
 
     assert chosen.code == "H02A", (
         "H02 'CORTICOSTEROIDS FOR SYSTEMIC USE' also holds the antiadrenals (H02C); its "
-        "child H02A '..., PLAIN' is the same wording made specific and is within threshold"
+        "child H02A keeps 20 of its 23 ingredients and is within threshold"
     )
 
 
@@ -78,9 +80,12 @@ def test_should_keep_the_parent_when_the_extending_child_holds_a_minority_of_its
     assert _select([a10a, a10ae, a10ac, a10ab]) == a10a
 
 
-def test_should_keep_the_best_hit_when_no_descendant_extends_its_name():
-    # H02AB "Glucocorticoids" is a descendant within threshold but names something else.
-    assert _select([H02, H02AB]).code == "H02"
+def test_should_descend_to_a_descendant_that_keeps_most_ingredients_whatever_its_name():
+    # RFC-016 §4 (C5): the ATC code hierarchy and the ingredient share decide, never the
+    # names. H02AB "Glucocorticoids" is an ATC descendant of H02 within threshold holding
+    # 17 of its 23 ingredients (>= 2/3), so it is the narrower class. Its name does not
+    # extend "CORTICOSTEROIDS FOR SYSTEMIC USE", which used to keep H02.
+    assert _select([H02, H02AB]).code == "H02AB"
 
 
 def test_should_not_prefer_an_extending_name_outside_the_best_hit_subtree():
@@ -93,20 +98,32 @@ def test_should_ignore_an_extending_descendant_beyond_threshold():
     assert _select([H02, far]).code == "H02"
 
 
-def test_should_treat_identical_names_in_one_subtree_as_one_candidate():
-    merged = dce.merge_identical_names([B01, B01A, B01AX])
+def test_should_treat_an_ancestor_and_descendant_holding_the_same_ingredients_as_one_candidate():
+    # B01 and B01A both hold the same 65 ingredients (B01A is B01's only child).
+    merged = dce.merge_same_class([B01, B01A, B01AX], _share)
 
     assert [h.code for h in merged] == ["B01", "B01AX"]
 
 
-def test_should_keep_identical_names_in_different_subtrees_apart():
-    merged = dce.merge_identical_names([S02B, S03B])
+def test_should_keep_classes_in_different_subtrees_apart():
+    merged = dce.merge_same_class([S02B, S03B], _share)
 
     assert [h.code for h in merged] == ["S02B", "S03B"]
 
 
-def test_should_measure_the_margin_against_the_next_distinct_class_not_a_duplicate_name():
-    # Rank 1 just over threshold; its identical-name parent sits at the same distance.
+def test_should_keep_identically_named_related_classes_apart_when_their_ingredients_differ():
+    # The real 'oral anti-diabetic drugs' ranking: A10X "OTHER DRUGS USED IN DIABETES" and
+    # its child A10XX "Other drugs used in diabetes" at 0.480. The names differ only in
+    # case, which used to merge them; A10XX holds 1 of A10X's 2 ingredients, so they are
+    # two classes (RFC-016 §4, C5: the ATC names are not read).
+    a10x = AtcHit(21600797, "A10X", "OTHER DRUGS USED IN DIABETES", 0.480)
+    a10xx = AtcHit(955112, "A10XX", "Other drugs used in diabetes", 0.480)
+
+    assert [h.code for h in dce.merge_same_class([a10x, a10xx], _share)] == ["A10X", "A10XX"]
+
+
+def test_should_measure_the_margin_against_the_next_distinct_class_not_a_duplicate():
+    # Rank 1 just over threshold; its same-ingredient child sits at the same distance.
     a = AtcHit(10, "X01", "SOME CLASS", 0.78)
     a_child = AtcHit(11, "X01A", "SOME CLASS", 0.78)
     other = AtcHit(12, "Y02", "ANOTHER", 0.95)

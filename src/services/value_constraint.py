@@ -20,10 +20,14 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any, Literal, NamedTuple
 
 from src.models.ir import ValueConstraint
+
+# Pure functions over LOINC properties and UCUM grammar; the module imports its database
+# driver lazily, so importing it here keeps this module unit-testable without one.
+from src.services.loinc_specimen import verify_members_against_unit
 
 # `criterion_refusal` is a pure constants module with no I/O and no imports of its
 # own, so importing it here keeps this module unit-testable without a database. The
@@ -608,9 +612,9 @@ def refuse_unstated_unit_bound(vc: Any, label: str) -> None:
 
     Converting to the CDM's conventional unit is the alternative, and it was rejected on
     both halves. It needs a per-analyte conversion table -- a clinical decision with
-    nowhere auditable to live, and one this module already refuses to grow for the
-    related question (see :data:`_ANALYTE_CONVENTIONAL_UNITS`, which records units and
-    deliberately records no factors). And on the motivating criterion it buys nothing:
+    nowhere auditable to live, and the related question already needs no table here
+    (:func:`check_analyte_unit` reads a unit's fit off the member concepts' LOINC
+    property and converts nothing). And on the motivating criterion it buys nothing:
     ``/mm3`` resolves to 8785, and ``Unit [8785]`` matches 0 of the same 41,114
     ``synthea_cdm`` platelet rows, because that CDM writes 8848 ``10*3/uL``.
 
@@ -684,7 +688,7 @@ def is_reference_relative(vc: Any) -> bool:
 
 
 # --------------------------------------------------------------------------
-# Which analyte is reported in which unit
+# Which unit a member's concepts are measured in
 # --------------------------------------------------------------------------
 
 # An absolute bound is analyte-specific, but that does not make it useless to every
@@ -692,141 +696,39 @@ def is_reference_relative(vc: Any) -> bool:
 # CAROLINA's exclusion group writes "> 240 mg/dL" once, over Hemoglobin A1c, Fasting
 # Plasma Glucose and Random Plasma Glucose. It is a correct threshold for the two
 # glucoses and meaningless for HbA1c, which is reported in % (or IFCC mmol/mol).
-# Refusing all three loses two real filters; propagating to all three writes a
-# MeasurementOccurrence over HbA1c that matches zero rows. Which of the two a given
-# member is, is a matter of record, so it is recorded here.
 #
-# Values are concept_ids from `_UNIT_CONCEPTS` above, never unit spellings: the unit
-# vocabulary already has one home, and a second copy of "mg/dL" here would be a second
-# place for it to be wrong. An analyte whose conventional unit has no concept in that
-# table therefore cannot be fully expressed -- HbA1c's IFCC mmol/mol has no entry, so a
-# bound written in it refuses instead of propagating on a guessed concept_id. That is
-# the safe direction: this table can only ever be too small, never too permissive.
-#
-# Each row is (spellings, conventional units). The FIRST spelling names the analyte in
-# a refusal message. A row is added only for an analyte whose conventional units are a
-# matter of record; an analyte absent from the table refuses and says so, because
-# guessing here writes a filter that silently matches nothing.
-_ANALYTE_CONVENTIONAL_UNITS: tuple[tuple[tuple[str, ...], frozenset[int]], ...] = (
-    # NGSP percent. "hemoglobin a1c" and "haemoglobin a1c" are listed in full even
-    # though "a1c" alone would match them, because the plain "hemoglobin" row below
-    # is a LONGER match than "a1c" and would otherwise win the tie -- see
-    # `_match_analyte`, which resolves by longest key.
-    (
-        (
-            "hemoglobin a1c",
-            "haemoglobin a1c",
-            "hba1c",
-            "hb a1c",
-            "a1c",
-            "glycated hemoglobin",
-            "glycated haemoglobin",
-            "glycosylated hemoglobin",
-            "glycosylated haemoglobin",
-        ),
-        frozenset({8554}),
-    ),
-    (("glucose",), frozenset({8840, 8753})),
-    (("hemoglobin", "haemoglobin"), frozenset({8713, 8636})),
-    (("platelet", "platelets", "thrombocyte"), frozenset({9444, 8785})),
-    # "creatinine clearance" is a longer key than "creatinine" and resolves to the
-    # clearance row below, which is what stops a mL/min bound reaching serum creatinine.
-    (("creatinine",), frozenset({8840, 8749})),
-    (
-        (
-            "estimated glomerular filtration rate",
-            "glomerular filtration rate",
-            "egfr",
-            "creatinine clearance",
-        ),
-        frozenset({720870, 8795}),
-    ),
-    (("alanine aminotransferase", "alt", "sgpt"), frozenset({8645})),
-    (("aspartate aminotransferase", "ast", "sgot"), frozenset({8645})),
-    (("alkaline phosphatase", "alp"), frozenset({8645})),
-    (("gamma glutamyl transferase", "ggt", "gamma gt"), frozenset({8645})),
-    (("bilirubin",), frozenset({8840, 8749})),
-    (("cholesterol", "ldl", "hdl"), frozenset({8840, 8753})),
-    (("triglyceride", "triglycerides"), frozenset({8840, 8753})),
-    (("blood pressure",), frozenset({8876})),
-    (("body mass index", "bmi"), frozenset({9531})),
-    (("troponin",), frozenset({8842, 8845, 8725})),
-)
+# What a member measures is read off its own concepts (RFC-016 §4, A20): the LOINC
+# ``Has property`` of each, against the property family the bound's UCUM unit names
+# (``loinc_specimen.verify_members_against_unit``). mg/dL names Mass Concentration; the
+# FPG and RPG sets hold Mass Concentration lab tests, the HbA1c set holds Mass fraction
+# ones. Until 2026-10-12 this was a table of analyte NAMES matched against the member's
+# text; no member text is read now. A member whose concepts carry no LOINC property, or
+# whose caller does not know them, refuses -- the safe direction.
 
-#: spelling -> (canonical analyte name, its conventional unit concept_ids).
-_ANALYTE_INDEX: dict[str, tuple[str, frozenset[int]]] = {
-    spelling: (spellings[0], units)
-    for spellings, units in _ANALYTE_CONVENTIONAL_UNITS
-    for spelling in spellings
-}
-
-_ANALYTE_PUNCTUATION_RE = re.compile(r"[^a-z0-9]+")
-
-
-def _normalize_analyte(text: str) -> str:
-    """Reduce a criterion's analyte text to space-separated lowercase tokens.
-
-    "Elevated Alanine aminotransferase (ALT)" and "Hemoglobin A1c" have to reduce to
-    something a fixed key can be found inside, without the parenthesis, the case or
-    the hyphen deciding the answer.
-    """
-    folded = unicodedata.normalize("NFKC", text).lower()
-    return " ".join(_ANALYTE_PUNCTUATION_RE.sub(" ", folded).split())
+MemberProperties = Mapping[int, "str | None"]
 
 
 class AnalyteUnitCheck(NamedTuple):
-    """Whether a bound in one unit may be applied to one analyte, and why not."""
+    """Whether a bound in one unit may be applied to one member, and why not."""
 
     compatible: bool
     explanation: str
 
 
-def _unit_labels(concept_ids: frozenset[int]) -> str:
-    return " or ".join(_unit_label(cid) for cid in sorted(concept_ids))
+def check_analyte_unit(
+    member_properties: MemberProperties | None, unit_concept_id: int | None
+) -> AnalyteUnitCheck:
+    """May a bound written in ``unit_concept_id`` be applied to a member measuring these concepts?
 
+    Compatible only when the unit's LOINC property is verified among the member's own
+    concepts (``loinc_specimen.verify_members_against_unit``). Every other outcome -- an
+    unresolvable unit, no concepts, no LOINC property, a property the unit does not
+    name -- is incompatible WITH ITS REASON, never a fall-through to "probably fine". A
+    wrong propagation writes a value filter that matches no row at all, and inside an
+    ABSENCE exclusion a rule matching no row silently stops excluding anybody.
 
-def _match_analyte(analyte_text: str) -> tuple[str, frozenset[int]] | None:
-    """The table row this text names, or None when the table cannot settle it.
-
-    Keys are matched on whole tokens, so "fasting" never matches "ast" and "salt"
-    never matches "alt". The longest matching key wins, which is what makes
-    "Hemoglobin A1c" resolve to HbA1c rather than to haemoglobin.
-
-    Returns None -- meaning refuse, not guess -- in two cases: nothing matched, or
-    two matched keys name DIFFERENT analytes and neither key contains the other. The
-    second is a text like "haemoglobin and platelet count", which names two analytes
-    with two different units and cannot be filtered by one bound. A shorter key
-    contained in the winner ("hemoglobin" inside "hemoglobin a1c") is a refinement of
-    the same name, not a second analyte, and does not block the match.
-    """
-    normalized = _normalize_analyte(analyte_text)
-    if not normalized:
-        return None
-    padded = f" {normalized} "
-    matched = [key for key in _ANALYTE_INDEX if f" {key} " in padded]
-    if not matched:
-        return None
-    winner = max(matched, key=len)
-    name, units = _ANALYTE_INDEX[winner]
-    for key in matched:
-        other_name, _ = _ANALYTE_INDEX[key]
-        if other_name != name and key not in winner:
-            return None
-    return name, units
-
-
-def check_analyte_unit(analyte_text: str | None, unit_concept_id: int | None) -> AnalyteUnitCheck:
-    """May a bound written in ``unit_concept_id`` be applied to ``analyte_text``?
-
-    Compatible only on a positive answer from :data:`_ANALYTE_CONVENTIONAL_UNITS`.
-    Every other outcome -- no analyte text, an unresolvable unit, an analyte the table
-    does not carry, an analyte that names two things -- is incompatible WITH ITS
-    REASON, never a fall-through to "probably fine". A wrong propagation writes a value
-    filter that matches no row at all, and inside an ABSENCE exclusion a rule matching
-    no row silently stops excluding anybody, which is the failure this whole module
-    exists to prevent.
-
-    :param analyte_text: the member criterion's own text, e.g. "Hemoglobin A1c".
+    :param member_properties: the member's concept ids -> their LOINC ``Has property``
+        name (None for a concept without one), or None when the caller does not know them.
     :param unit_concept_id: the bound's unit, from :func:`absolute_unit_concept_id`.
     :returns: the verdict plus a sentence naming what could not be reconciled.
     """
@@ -834,32 +736,33 @@ def check_analyte_unit(analyte_text: str | None, unit_concept_id: int | None) ->
         return AnalyteUnitCheck(
             False,
             "the group label's bound resolves to no UCUM unit, so there is nothing to "
-            "check the member's analyte against",
+            "check the member's concepts against",
         )
-    if not (analyte_text or "").strip():
-        return AnalyteUnitCheck(
-            False, "the member carries no analyte text to check the label's unit against"
-        )
-    match = _match_analyte(analyte_text)
-    if match is None:
+    if not member_properties:
         return AnalyteUnitCheck(
             False,
-            f"{analyte_text.strip()!r} is not in the analyte/unit table, so whether it "
-            f"is reported in {_unit_label(unit_concept_id)} is unknown; add it to "
-            f"_ANALYTE_CONVENTIONAL_UNITS rather than assuming",
+            f"the member's concepts are not known here, so whether they are measured in "
+            f"{_unit_label(unit_concept_id)} cannot be checked",
         )
-    name, units = match
-    if unit_concept_id in units:
+    ucum_code = _UNIT_CONCEPTS[unit_concept_id][0]
+    verdict = verify_members_against_unit(list(member_properties), member_properties, ucum_code)
+    if verdict.property is not None and verdict.kept:
         return AnalyteUnitCheck(True, "")
+    held = sorted({prop for prop in member_properties.values() if prop})
     return AnalyteUnitCheck(
         False,
-        f"{analyte_text.strip()!r} is {name}, which is reported in "
-        f"{_unit_labels(units)}, not in {_unit_label(unit_concept_id)}",
+        f"the member's concepts carry LOINC propert{'y' if len(held) == 1 else 'ies'} "
+        f"{held or 'none'}, and {_unit_label(unit_concept_id)} is not verified among them "
+        f"({verdict.declined or 'no member in its property'})",
     )
 
 
 def resolve_group_member_constraint(
-    parent_vc: Any, member_vc: Any, *, member_analyte: str | None = None
+    parent_vc: Any,
+    member_vc: Any,
+    *,
+    member_properties: MemberProperties | Callable[[], MemberProperties] | None = None,
+    member_holds_bound: bool = True,
 ) -> GroupConstraintResolution:
     """Decide what one member of a labelled criteria group is measured against.
 
@@ -881,10 +784,11 @@ def resolve_group_member_constraint(
     over-exclusion into a silent no-op, and ``refuse_domain_contradiction`` cannot
     see it because both sides are Measurement. Refusing all three instead was the
     safe answer while nothing could tell them apart -- :func:`check_analyte_unit`
-    now can, from a table, so the two glucoses are filtered and HbA1c alone refuses.
+    now can, from the members' own LOINC properties, so the two glucoses are filtered
+    and HbA1c alone refuses.
 
-    The blanket refusal remains the fallback for everything the table cannot settle,
-    including a caller that passes no ``member_analyte`` at all. This narrows the
+    The blanket refusal remains the fallback for everything the properties cannot settle,
+    including a caller that passes no ``member_properties`` at all. This narrows the
     refusal; it never widens what is emitted.
 
     A label whose number is a group CARDINALITY -- "≥2 of the following:" -- is neither
@@ -900,13 +804,22 @@ def resolve_group_member_constraint(
 
     :param parent_vc: the group label's constraint, or None.
     :param member_vc: the member's own constraint, or None.
-    :param member_analyte: the member's own analyte text ("Hemoglobin A1c"). Omitted,
-        every absolute bound refuses -- the pre-analyte behaviour.
+    :param member_properties: the member's concept ids -> their LOINC ``Has property``,
+        or a zero-argument callable returning them, read only when an absolute bound has
+        to be checked (so a caller pays for the vocabulary only then). Omitted, every
+        absolute bound refuses -- the pre-analyte behaviour.
+    :param member_holds_bound: False when the member's CIRCE criteria type reads none of the
+        value attributes the label's bound would emit (a ConditionOccurrence reads none).
+        The bound is then not about this member: nothing is handed down and nothing is
+        stranded, and the member emits as it would under a label with no bound. Measured
+        on ARISTOTLE's 'AF/Risk Factor Check' (an age bound over the AF and stroke-risk
+        Conditions) and CARMELINA's renal group (an eGFR bound over 'need for maintenance
+        dialysis'), whose Condition members were refused as stranded.
     :returns: the member's effective constraint plus why.
     """
     if member_vc is not None:
         return GroupConstraintResolution(member_vc, False, None)
-    if parent_vc is None:
+    if parent_vc is None or not member_holds_bound:
         return GroupConstraintResolution(None, False, None)
     # A count of the group's own members is not a bound on any of them, so there is
     # nothing to hand down and nothing was stranded: the member emits exactly as it
@@ -916,7 +829,8 @@ def resolve_group_member_constraint(
         return GroupConstraintResolution(None, False, None)
     if is_reference_relative(parent_vc):
         return GroupConstraintResolution(parent_vc, True, None)
-    check = check_analyte_unit(member_analyte, absolute_unit_concept_id(parent_vc))
+    properties = member_properties() if callable(member_properties) else member_properties
+    check = check_analyte_unit(properties, absolute_unit_concept_id(parent_vc))
     if check.compatible:
         return GroupConstraintResolution(parent_vc, True, None)
     return GroupConstraintResolution(
@@ -1508,23 +1422,24 @@ def demo() -> None:
             assert (parsed.op, parsed.value, parsed.reference_bound) == expected
 
     # The real CAROLINA/EMPA-REG group: one absolute bound, three members, two of
-    # which mg/dL measures. Run here so the module's own self-check covers the case
-    # that motivated the analyte table, not only a synthetic one.
+    # which mg/dL measures -- decided by the LOINC properties of each member's concepts
+    # (synthea23m, 2026-10-12); the member's text is not read (RFC-016 §4, A20).
     glucose_label = {"op": "gt", "value": 240.0, "unitText": "mg/dl"}
-    split = {
-        member: resolve_group_member_constraint(
-            glucose_label, None, member_analyte=member
+    fasting_glucose = {3006669: "Substance Concentration", 3019474: "Mass Concentration",
+                       3040820: "Mass Concentration", 46236950: "Substance Concentration"}
+    random_glucose = {3002666: "Mass Concentration", 3004501: "Mass Concentration",
+                      44816672: "Mass Concentration", 46236950: "Substance Concentration"}
+    hba1c = {3004410: "Mass fraction", 3005446: "Mass fraction", 3007263: "Mass fraction"}
+    for properties, expected in ((fasting_glucose, True), (random_glucose, True), (hba1c, False)):
+        resolution = resolve_group_member_constraint(
+            glucose_label, None, member_properties=properties
         )
-        for member in ("Hemoglobin A1c", "Fasting Plasma Glucose", "Random Plasma Glucose")
-    }
-    for member, resolution in split.items():
-        print(f"{member:32} propagated={resolution.propagated} "
+        print(f"{sorted(properties)!s:32} propagated={resolution.propagated} "
               f"{resolution.refusal_explanation or ''}")
-    assert split["Fasting Plasma Glucose"].propagated is True
-    assert split["Random Plasma Glucose"].propagated is True
-    assert split["Hemoglobin A1c"].propagated is False
-    assert split["Hemoglobin A1c"].refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON
-    # No analyte named -> the pre-analyte blanket refusal, unchanged.
+        assert resolution.propagated is expected
+        if not expected:
+            assert resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON
+    # Nothing known about the member -> the blanket refusal, unchanged.
     assert resolve_group_member_constraint(glucose_label, None).propagated is False
 
     assert parse_value_constraint("\\> 3x109/L").unit_concept_id == 9444

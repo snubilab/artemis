@@ -90,15 +90,13 @@ from src.services.entry_exclusion_repair import (
     iter_repair_candidates,
     repair_entry_exclusion_conflicts,
 )
-from src.services.overbroad_absence_repair import (
-    iter_overbroad_candidates,
-    repair_overbroad_absence_sets,
-)
 from src.services.presence_unit_repair import (
     iter_unit_candidates,
     repair_presence_unit_filters,
 )
 from src.services.range_disjunction_repair import (
+    CodesetProvenance,
+    codeset_provenance,
     iter_range_disjunctions,
     repair_range_disjunctions,
 )
@@ -142,6 +140,7 @@ from src.utils.circe_lint import (
     DROPPED_CRITERIA_KEY,
     VALUE_RANGE_CONVERSIONS_KEY,
     closure_subsumption_codesets,
+    confusable_member_ids,
     convert_value_range_inclusions,
     criteria_types_by_codeset,
     default_criterion_window,
@@ -155,6 +154,7 @@ from src.utils.circe_lint import (
     refuse_domain_contradiction,
     refuse_unreadable_value_filter,
     states_flat_disjunction,
+    unreadable_value_attributes,
     value_range_conversion_candidate_ids,
 )
 from src.utils.criterion_refusal import (
@@ -175,7 +175,11 @@ from src.utils.criterion_seed import (
     criterion_mapper_seed,
     missing_entity_record,
 )
-from src.utils.disease_anchor import anchor_candidates, select_disease_anchor
+from src.utils.disease_anchor import (
+    DISEASE_ANCHOR_KEY,
+    anchor_candidates,
+    select_disease_anchor,
+)
 from src.utils.exceptions import DBConnectionError, DBQueryError, LLMConfigurationError
 from src.utils.llm import get_cost_tracker, get_llm
 
@@ -605,55 +609,44 @@ def _group_ancestry_is_cyclic(
 
 
 def _stranded_group_constraint_labels(
-    criteria: list[dict[str, Any]], role: str
+    criteria: list[dict[str, Any]], role: str, stranded_members: set[tuple[str, str]]
 ) -> set[tuple[str, str]]:
     """``(role, id)`` of group labels whose threshold failed to reach some member.
 
     A group label is refused unconditionally (``isGroupLabel``), so when it is the
     only row carrying a ``valueConstraint`` the number leaves the cohort entirely.
     ``resolve_group_member_constraint`` hands it down when it is unit-free, and hands
-    an absolute bound down to the members whose analyte is reported in ITS unit --
+    an absolute bound down to the members whose own concepts are measured in ITS unit --
     "> 240 mg/dL" reaches Fasting and Random Plasma Glucose and stops at HbA1c, which
     is reported in %. A refusal is correct and must not also be silent, so a label
     that lost a member is skipped under its own reason instead of the generic
     ``group-label`` and the census counts it.
 
-    Recomputed here from the criteria as they arrive rather than recorded upstream,
-    so stores generated before this fix surface the loss too.
+    Read off the members' own build outcome, ``stranded_members`` -- the ``(role, id)``
+    of every member the build refused with ``REFUSAL_STRANDED_GROUP_THRESHOLD``. It used
+    to be predicted before mapping from the member's text; whether the bound fits is now
+    read off the member's mapped concepts (RFC-016 §4, A20), which exist only after
+    mapping. A label with no members, or none refused, is not flagged.
 
-    The question is asked of the resolver itself, once per member, never re-derived:
-    "is the member's ``valueConstraint`` null" was the right proxy only while an
-    absolute bound reached nobody. Now that it can reach some members, a null store
-    row is no longer evidence of loss, and a census keyed on it would flag a label
-    whose threshold in fact arrived. A label with no members at all emits no rule to
-    under-filter and is not flagged.
+    :param criteria: one role's stored criterion rows.
+    :param role: ``"inclusion"`` or ``"exclusion"``.
+    :param stranded_members: ``(role, criterionId)`` of the members refused as stranded.
+    :returns: the labels to record under ``STRANDED_GROUP_CONSTRAINT_REASON``.
     """
-    by_group: dict[str, list[dict[str, Any]]] = {}
-    for criterion in criteria:
-        group_id = criterion.get("groupId")
-        if group_id:
-            by_group.setdefault(str(group_id), []).append(criterion)
-
-    stranded: set[tuple[str, str]] = set()
-    for members in by_group.values():
-        for label in members:
-            if not label.get("isGroupLabel"):
-                continue
-            constraint = label.get("valueConstraint")
-            if not constraint:
-                continue
-            for member in members:
-                if member.get("isGroupLabel"):
-                    continue
-                resolution = resolve_group_member_constraint(
-                    constraint,
-                    member.get("valueConstraint"),
-                    member_analyte=member.get("sourceText") or member.get("description"),
-                )
-                if resolution.refusal_reason:
-                    stranded.add((role, str(label.get("id", ""))))
-                    break
-    return stranded
+    stranded_groups = {
+        str(criterion.get("groupId"))
+        for criterion in criteria
+        if criterion.get("groupId")
+        and not criterion.get("isGroupLabel")
+        and (role, str(criterion.get("id", ""))) in stranded_members
+    }
+    return {
+        (role, str(label.get("id", "")))
+        for label in criteria
+        if label.get("isGroupLabel")
+        and label.get("valueConstraint")
+        and str(label.get("groupId")) in stranded_groups
+    }
 
 
 #: Stems that name nothing on their own, so a trailing ordinal after one is an index
@@ -1219,8 +1212,6 @@ class TTEService:
         return self._get_comparison_mode(study) == "explicit_comparator"
 
     # Defect A/C fix (ADR-019): drug-anchored entry + active-comparator design.
-    _PLACEBO_ARM_NAMES = {"sugar pill", "sham"}
-
     def _drug_anchored_entry(self) -> bool:
         """True when drug-anchored entry mode (Defect A / ADR-019) is enabled."""
         return os.environ.get("TTE_DRUG_ANCHORED_ENTRY", "").strip().lower() in ("1", "true", "yes")
@@ -1239,10 +1230,24 @@ class TTEService:
         """:returns: False only when the ablation env var is explicitly set to 1."""
         return os.environ.get(self._EXACT_INGREDIENT_ABLATION_ENV, "").strip() != "1"
 
-    def _is_placebo_arm(self, name: str) -> bool:
-        """True when an arm denotes placebo/no-drug (no real-world cohort possible)."""
-        n = (name or "").strip().lower()
-        return (not n) or ("placebo" in n) or (n in self._PLACEBO_ARM_NAMES)
+    def _comparator_arm_is_placebo(self, study: dict[str, Any]) -> bool | None:
+        """Whether the study's comparator arm delivers no drug, from the trial registry.
+
+        RFC-016 §4 (A22): read off the cached ClinicalTrials.gov ``armGroups[].type``
+        (`ctgov_arm_types.comparator_is_placebo`), never off the arm name. None means the
+        registry does not settle it -- no cached record, or active and placebo comparators
+        side by side -- and the caller then builds neither comparator variant.
+
+        :param study: the stored study, carrying ``nctId``.
+        :returns: True for a placebo/sham/no-intervention comparator, False for an active
+            one, None when undecidable.
+        """
+        from src.services.ctgov_arm_types import (
+            comparator_is_placebo,
+            load_cached_arm_group_types,
+        )
+
+        return comparator_is_placebo(load_cached_arm_group_types(study.get("nctId")))
 
     def apply_artifact(
         self, artifact_id: str, target_sections: list[str], base_study_version: int
@@ -4659,6 +4664,21 @@ class TTEService:
         treatment_arm_name = (
             (treatment_arms[0].get("name") or "").strip() if treatment_arms else ""
         )
+        # Asked once per study, of the trial registry rather than of an arm's name, and
+        # only where the answer chooses the comparator's build.
+        asks_registry = (
+            len(treatment_arms) > 1
+            and not self._uses_explicit_comparator(study)
+            and self._drug_anchored_entry()
+        )
+        comparator_is_placebo = self._comparator_arm_is_placebo(study) if asks_registry else None
+        if asks_registry and comparator_is_placebo is None:
+            logging.warning(
+                "[TTE] study %s (%s): the trial registry does not say whether the "
+                "comparator arm is a placebo, so it is built as the derived disease-based "
+                "comparator, neither active- nor placebo-comparator",
+                study_id, study.get("nctId"),
+            )
         for index, arm in enumerate(treatment_arms):
             arm_name = (arm.get("name") or "").strip()
             role = "treatment" if index == 0 else "comparator" if index == 1 else f"arm_{index + 1}"
@@ -4673,14 +4693,14 @@ class TTEService:
                 is_derived_comparator
                 and self._drug_anchored_entry()
                 and bool(arm_name)
-                and not self._is_placebo_arm(arm_name)
+                and comparator_is_placebo is False
             )
             # ADR-028: placebo arm has no real-world cohort. Recommend a CV-neutral
             # active comparator (mock-approved HITL) instead of the legacy drug-ABSENCE.
             is_placebo_comparator = (
                 is_derived_comparator
                 and self._drug_anchored_entry()
-                and self._is_placebo_arm(arm_name)
+                and comparator_is_placebo is True
             )
 
             arm_key = f"arm_{index}"
@@ -4733,7 +4753,11 @@ class TTEService:
                 # without them -- see `_apply_export_repairs`. The stated exceptions come
                 # from the stored criterion rows, keyed by the concept set each maps to.
                 self._apply_export_repairs(
-                    built, stated_exceptions=stated_exceptions_by_codeset(_elig)
+                    built,
+                    stated_exceptions=stated_exceptions_by_codeset(_elig),
+                    provenance=codeset_provenance(
+                        _elig.get("inclusionCriteria"), _elig.get("exclusionCriteria")
+                    ),
                 )
                 return built
 
@@ -5370,11 +5394,8 @@ class TTEService:
         conditional_inclusions = conditional_skips(inc_criteria)
         conditional_exclusions = conditional_skips(exc_criteria)
 
-        # Same shape and placement as the two drop sets above: decided over the
-        # criteria as they arrived, consumed by the group-label branch in each loop.
-        stranded_constraint_labels = _stranded_group_constraint_labels(
-            inc_criteria, "inclusion"
-        ) | _stranded_group_constraint_labels(exc_criteria, "exclusion")
+        # Group labels, recorded once mapping is done (see after the mapping pool).
+        deferred_labels: list[tuple[dict[str, Any], str]] = []
 
         # `(role, groupId)` -> the group label's own threshold, for the members to
         # inherit through `resolve_group_member_constraint`. Keyed by role because a
@@ -5417,6 +5438,15 @@ class TTEService:
                 _record_conditional_skip(criterion, "inclusion", decision)
                 order += 1
                 continue
+            # Ahead of the demographic branch: a group label emits no rule of its own,
+            # whatever its domain. Checked after it, a Demographics label carrying the
+            # group's `gte 18` built an Age rule from the label (ARISTOTLE inclusion 16).
+            if criterion.get("isGroupLabel"):
+                # Recorded after mapping: whether its threshold was stranded is the
+                # members' own build outcome (see `_stranded_group_constraint_labels`).
+                deferred_labels.append((criterion, "inclusion"))
+                order += 1
+                continue
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
                 demo = self._build_demographic_rule(criterion)
@@ -5428,17 +5458,6 @@ class TTEService:
                         grouped_demographics.append((order, criterion, demo, "inclusion"))
                 else:
                     _record_skip(criterion, "inclusion", "demographic-no-rule")
-                order += 1
-                continue
-            if criterion.get("isGroupLabel"):
-                key = ("inclusion", str(criterion.get("id", "")))
-                _record_skip(
-                    criterion,
-                    "inclusion",
-                    STRANDED_GROUP_CONSTRAINT_REASON
-                    if key in stranded_constraint_labels
-                    else "group-label",
-                )
                 order += 1
                 continue
             mappable_items.append((criterion, False))
@@ -5468,6 +5487,14 @@ class TTEService:
                 _record_conditional_skip(criterion, "exclusion", decision)
                 order += 1
                 continue
+            # Ahead of the demographic branch, as in the inclusion loop: a group label
+            # emits no rule of its own, whatever its domain.
+            if criterion.get("isGroupLabel"):
+                # Recorded after mapping: whether its threshold was stranded is the
+                # members' own build outcome (see `_stranded_group_constraint_labels`).
+                deferred_labels.append((criterion, "exclusion"))
+                order += 1
+                continue
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
                 # Give `_build_demographic_rule` the same chance the inclusion loop
@@ -5492,22 +5519,10 @@ class TTEService:
                     continue
                 # `demo` is None: the domain is demographic but no CIRCE
                 # DemographicCriteriaList rule could be built (no usable
-                # valueConstraint). Group labels are still never directly
-                # mappable, so that carve-out is checked first, below; anything
-                # else falls through to ordinary concept-set mapping exactly
+                # valueConstraint). Group labels were already set aside above;
+                # anything else falls through to ordinary concept-set mapping exactly
                 # like a non-demographic exclusion criterion would, instead of
                 # being unconditionally discarded as "demographic-no-rule".
-            if criterion.get("isGroupLabel"):
-                key = ("exclusion", str(criterion.get("id", "")))
-                _record_skip(
-                    criterion,
-                    "exclusion",
-                    STRANDED_GROUP_CONSTRAINT_REASON
-                    if key in stranded_constraint_labels
-                    else "group-label",
-                )
-                order += 1
-                continue
             mappable_items.append((criterion, True))
             order += 1
 
@@ -5663,6 +5678,28 @@ class TTEService:
             }
             for future in as_completed(futures):
                 mapped_results.append(future.result())
+
+        # A label whose threshold this build refused to hand to one of its members is
+        # recorded under the stranded reason, so the census counts the loss; every other
+        # label is a plain container. Decided from the members' own refusals rather than
+        # predicted before mapping: whether an absolute bound reaches a member is read off
+        # the member's mapped concepts (RFC-016 §4, A20), which exist only now.
+        stranded_members = {
+            (record["role"], record["criterionId"])
+            for record in unmapped_criteria
+            if record.get("refusalCode") == REFUSAL_STRANDED_GROUP_THRESHOLD
+        }
+        stranded_constraint_labels = _stranded_group_constraint_labels(
+            inc_criteria, "inclusion", stranded_members
+        ) | _stranded_group_constraint_labels(exc_criteria, "exclusion", stranded_members)
+        for label_row, label_role in deferred_labels:
+            _record_skip(
+                label_row,
+                label_role,
+                STRANDED_GROUP_CONSTRAINT_REASON
+                if (label_role, str(label_row.get("id", ""))) in stranded_constraint_labels
+                else "group-label",
+            )
 
         # Sort by original order and assign sequential codeset_ids
         mapped_results.sort(key=lambda x: x[0])
@@ -6176,9 +6213,10 @@ class TTEService:
         # rule is `LV systolic or diastolic dysfunction`, one of several ALTERNATIVE
         # cardiovascular-risk qualifiers, so its comparator entered on a fraction of the
         # trial population, and CARMELINA and EMPA-REG were right only because their
-        # diabetes rule happened to be written first. `select_disease_anchor` scores the
-        # study's own presence-rule Condition sets against what the trial registered and
-        # refuses rather than guess -- see `src/utils/disease_anchor.py` for the rule.
+        # diabetes rule happened to be written first. `select_disease_anchor` matches the
+        # study's own presence-rule Condition sets against the concept ids the trial's
+        # registered conditions map to (RFC-016 §4, C8: no name is compared) and refuses
+        # rather than guess -- see `src/utils/disease_anchor.py` for the rule.
         #
         # The pre-existing "nothing to anchor on at all" branch is preserved verbatim,
         # including its warning and its return: a study whose rules read no Condition
@@ -6194,7 +6232,15 @@ class TTEService:
             )
             return base
         registered_conditions = ((study or {}).get("trialMetadata") or {}).get("conditions")
-        disease_cs_id = select_disease_anchor(base, registered_conditions)
+        registered_ids = self._registered_condition_concept_ids(registered_conditions)
+        disease_cs_id = select_disease_anchor(base, registered_ids)
+        # The gate re-derives the choice from the store expression with these ids, so
+        # the mapper's answer travels with the file rather than being re-asked.
+        base[DISEASE_ANCHOR_KEY] = {
+            "registeredConditions": list(registered_conditions or []),
+            "registeredConceptIds": registered_ids,
+            "codesetId": disease_cs_id,
+        }
 
         # Swap PrimaryCriteria to ConditionOccurrence.
         base["PrimaryCriteria"] = {
@@ -6208,6 +6254,41 @@ class TTEService:
             disease_cs_id,
         )
         return base
+
+    def _registered_condition_concept_ids(
+        self, registered_conditions: Sequence[str] | None
+    ) -> list[int] | None:
+        """The concept ids the trial's registered conditions map to, through Agent 2.
+
+        RFC-016 §4 (C8): the disease anchor compares concept ids, never names, so each
+        ``conditionsModule.conditions`` string goes through the same mapper the criteria
+        do, as a Condition. A string the mapper refuses contributes nothing and is said
+        out loud; the anchor then refuses if nothing is left.
+
+        :param registered_conditions: ``trialMetadata.conditions``.
+        :returns: the included concept ids of every mapped condition, sorted; None when
+            the trial registers no condition.
+        """
+        if not registered_conditions:
+            return None
+        found: set[int] = set()
+        for condition in registered_conditions:
+            try:
+                mapped = self._recommend_seeded_concept_set(
+                    str(condition), expected_domain="Condition"
+                )
+            except CriterionRefused as refused:
+                logging.warning(
+                    "[TTE] registered condition %r maps to no concept set (%s); it does "
+                    "not take part in choosing the disease anchor",
+                    condition, refused,
+                )
+                continue
+            for item in (mapped.get("expression") or {}).get("items") or []:
+                concept_id = ((item or {}).get("concept") or {}).get("CONCEPT_ID")
+                if concept_id is not None and not (item or {}).get("isExcluded"):
+                    found.add(int(concept_id))
+        return sorted(found)
 
     @staticmethod
     def _intervention_alias_candidates(study: dict[str, Any] | None) -> list[str] | None:
@@ -7122,11 +7203,24 @@ class TTEService:
         # ABSENCE rule, which excluded every patient inclusion rule 5 required (the two
         # codesets overlap on 4 of 6 presence concepts). The loss WAS recorded -- against
         # the group label, which never emitted -- and the members that actually shipped
-        # carried no record at all. `member_analyte` is what lets the resolver tell the
-        # two Plasma Glucose members (which mg/dL fits) from the HbA1c member (which it
-        # does not), so only the third refuses.
+        # carried no record at all. The LOINC properties of the member's own mapped
+        # concepts are what let the resolver tell the two Plasma Glucose members (Mass
+        # Concentration, which mg/dL measures) from the HbA1c member (Mass fraction), so
+        # only the third refuses (RFC-016 §4, A20: the member's text is not read). Read
+        # lazily: the vocabulary is consulted only for an absolute inherited bound.
+        # A member whose criteria type reads none of the attributes the label's bound
+        # would emit (a ConditionOccurrence) cannot hold it: the bound is about another
+        # member of the group, so this one neither takes it nor is stranded by it.
+        member_holds_bound = parent_value_constraint is None or not unreadable_value_attributes(
+            criteria_key, build_measurement_value_filter(parent_value_constraint)
+        )
         resolution = resolve_group_member_constraint(
-            parent_value_constraint, criterion.get("valueConstraint"), member_analyte=label
+            parent_value_constraint,
+            criterion.get("valueConstraint"),
+            member_properties=lambda: self._concept_set_lab_properties(
+                mapped_criterion.get("expression") or {}
+            ),
+            member_holds_bound=member_holds_bound,
         )
         # Refuse rather than emit, the same choice `refuse_domain_contradiction` above
         # and `refuse_unreadable_value_filter` below both make: the caller records the
@@ -7282,6 +7376,30 @@ class TTEService:
         from src.settings import settings
 
         return PostgresLabTestVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA)
+
+    def _concept_set_lab_properties(self, expression: Mapping[str, Any]) -> dict[int, str | None]:
+        """Concept id -> LOINC ``Has property`` of a concept set's included items.
+
+        What `resolve_group_member_constraint` checks an inherited absolute bound's unit
+        against (RFC-016 §4, A20). A non-LOINC item maps to None.
+        """
+        ids = [
+            int(concept["CONCEPT_ID"])
+            for item in expression.get("items") or []
+            if isinstance(item, Mapping) and not item.get("isExcluded")
+            for concept in [item.get("concept") or {}]
+            if concept.get("CONCEPT_ID") is not None
+        ]
+        if not ids:
+            return {}
+        vocabulary = self._lab_test_vocabulary()
+        try:
+            properties = vocabulary.properties(ids)
+        finally:
+            close = getattr(vocabulary, "close", None)
+            if callable(close):
+                close()
+        return {cid: properties.get(cid) for cid in ids}
 
     def _refine_measurement_specimen(
         self,
@@ -7678,6 +7796,7 @@ class TTEService:
         self,
         built: dict[str, Any],
         stated_exceptions: Mapping[int, Sequence[str]] | None = None,
+        provenance: CodesetProvenance | None = None,
     ) -> None:
         """Run the arm-level export repairs on an assembled arm, and on its collapsed rules.
 
@@ -7690,17 +7809,21 @@ class TTEService:
         :param stated_exceptions: concept set id -> the excepted entity names its criterion
             states (`criterion_annotation.stated_exceptions_by_codeset`); what the
             entry-exclusion repair is triggered by. None means none are known.
+        :param provenance: concept set id -> the ``(groupId, protocolLine)`` of the stored
+            rows that map to it (`range_disjunction_repair.codeset_provenance`); what the
+            range collapse reads instead of a rule's name. None means none are known.
         """
         stated = dict(stated_exceptions or {})
+        sources = dict(provenance or {})
 
         def chain(expression: dict[str, Any]) -> None:
-            self._export_repair_chain(expression, stated)
+            self._export_repair_chain(expression, stated, sources)
 
         chain.__name__ = "_export_repair_chain"
         _rewrite_with_collapsed_rules(built, chain)
         # After every repair, on the file's own rules only: a repair above may already
-        # have resolved the contradiction (the over-broad-absence narrowing, the entry
-        # mirror), and a carried collapsed rule has no presence partner to contradict.
+        # have resolved the contradiction (the entry mirror), and a carried collapsed
+        # rule has no presence partner to contradict.
         self._refuse_contradicted_absences(built)
 
     def _refuse_contradicted_absences(self, base: dict[str, Any]) -> None:
@@ -7739,18 +7862,18 @@ class TTEService:
         self,
         built: dict[str, Any],
         stated_exceptions: Mapping[int, Sequence[str]] | None = None,
+        provenance: CodesetProvenance | None = None,
     ) -> None:
-        """The arm-level export repairs, in their load-bearing order. Mutates ``built``."""
-        # Narrowing runs BEFORE the entry-exclusion mirror: both write to an
-        # absence concept set, and the mirror would leave the over-broad member
-        # in place and then block the narrowing, which declines on an isExcluded
-        # item. See `_repair_overbroad_absence_sets`.
-        self._repair_overbroad_absence_sets(built)
+        """The arm-level export repairs, in their load-bearing order. Mutates ``built``.
+
+        The over-broad-absence narrowing that ran first here matched a concept set's
+        NAME against vocabulary names and is deleted (RFC-016 §4, C7).
+        """
         self._repair_entry_excluded_by_own_rule(built, dict(stated_exceptions or {}))
         # Order is load-bearing: collapsing a two-sided bound into one `bt` is
         # what makes that criterion's unit filter droppable -- the unit repair
         # declines a one-sided bound because an alternative unit can pass it.
-        self._repair_range_disjunctions(built)
+        self._repair_range_disjunctions(built, dict(provenance or {}))
         # Order is load-bearing for the same reason, one link further along: the
         # restated-absence repair looks for a partner presence that states the
         # protocol range as a SINGLE `bt` criterion, which is precisely what the
@@ -7768,58 +7891,6 @@ class TTEService:
         # `_repair_confusable_concept_set_members`.
         self._repair_confusable_concept_set_members(built)
         self._repair_presence_unit_filters(built)
-
-    def _repair_overbroad_absence_sets(self, base: dict[str, Any]) -> None:
-        """Narrow a concept set that an absence rule reads from an over-broad ancestor
-        back to the concept the set's own name states. Mutates ``base`` in place.
-
-        Measured in the 2026-09-18 cold re-extraction: CARMELINA codeset 14 and CAROLINA
-        codeset 34, both named ``'Type 1 diabetes mellitus'``, hold the single member
-        ``4130526 'Disorder of glucose metabolism'`` with ``includeDescendants``. That
-        concept's valid closure is 180 concepts and contains ``201826 Type 2 diabetes
-        mellitus`` -- what the entry event admits on -- so the absence rule removes every
-        patient the cohort enters and the definition is empty on any CDM. The same sets
-        in ``deliveries/2026-09-12/`` hold ``201254 Type 1 diabetes mellitus`` (25
-        concepts, excluding 201826), so this is a regression in one resolution path
-        rather than a long-standing shape.
-
-        Runs FIRST at this chokepoint, before
-        :meth:`_repair_entry_excluded_by_own_rule`. Both repairs write to an absence
-        concept set and they write opposite things -- this one replaces the member, that
-        one appends ``isExcluded`` items mirroring the entry set. In the other order the
-        mirror would paper over the wrong member (still matching the other 179
-        glucose-metabolism disorders) and would then make this repair decline, because an
-        ``isExcluded`` item is one of its declines. Narrowing first also leaves the mirror
-        nothing to do: once codeset 14 resolves to 201254 the entry closure is no longer
-        covered. Order against :meth:`_repair_range_disjunctions` and
-        :meth:`_repair_presence_unit_filters` is free, since both read only
-        ``Measurement`` criteria and a Measurement criterion is a decline here.
-
-        The five conditions, the DOMAIN and direction gates inherited from
-        :meth:`_repair_stale_drug_concept_sets`, and why a PRESENCE criterion declines
-        (EMPA-REG's ``'Dyslipidemia'``) live in
-        :mod:`src.services.overbroad_absence_repair`; this is the wiring.
-
-        Same two properties as its three siblings: a DB-free pre-gate, so a payload with
-        no single-member absence set costs no round trip; and a vocabulary failure that
-        propagates rather than silently shipping the set that empties the cohort.
-        """
-        if not next(iter_overbroad_candidates(base), None):
-            return
-
-        from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
-        from src.services.overbroad_absence_repair import PostgresConceptCatalog
-
-        items = items_of_cohort(base)
-        if not items:
-            return
-
-        from src.settings import settings
-
-        with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
-            lookup = vocab.prefetch(items)
-        with PostgresConceptCatalog(settings.DATABASE_URL, settings.CDM_SCHEMA) as catalog:
-            repair_overbroad_absence_sets(base, lookup, catalog)
 
     def _repair_entry_excluded_by_own_rule(
         self, base: dict[str, Any], stated_exceptions: Mapping[int, Sequence[str]]
@@ -7873,7 +7944,9 @@ class TTEService:
             lookup = vocab.prefetch(items)
         repair_entry_exclusion_conflicts(base, lookup, stated_exceptions)
 
-    def _repair_range_disjunctions(self, base: dict[str, Any]) -> None:
+    def _repair_range_disjunctions(
+        self, base: dict[str, Any], provenance: CodesetProvenance
+    ) -> None:
         """Collapse an inclusion rule that offers a range's two bounds as alternatives
         back into the single ``bt`` criterion the protocol states. Mutates ``base``.
 
@@ -7893,7 +7966,7 @@ class TTEService:
         properties as its two siblings: a DB-free pre-gate, and a vocabulary failure that
         propagates rather than silently shipping the disjunction.
         """
-        if not next(iter_range_disjunctions(base), None):
+        if not next(iter_range_disjunctions(base, provenance), None):
             return
 
         from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
@@ -7906,7 +7979,7 @@ class TTEService:
 
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
-        repair_range_disjunctions(base, lookup)
+        repair_range_disjunctions(base, lookup, provenance)
 
     def _repair_restated_absences(self, base: dict[str, Any]) -> None:
         """Remove an inclusion rule that forbids every value its partner presence
@@ -7927,7 +8000,7 @@ class TTEService:
         not compare unit filters at all, because the finding is that the absence restates
         the presence's bounds in the presence's own polarity, which holds under any unit.
 
-        The five conditions, the three satisfiable shapes that must decline, the
+        The four conditions, the three satisfiable shapes that must decline, the
         deliberate divergence from the gold ``!bt`` shape, and what removing a rule does to
         the delivery gate's rule-multiset check live in
         :mod:`src.services.restated_absence_repair`; this is the wiring. Same two
@@ -7971,13 +8044,24 @@ class TTEService:
 
         The five conditions, the safety one among them, and why the recorded decision
         against removing a member was reversed live in
-        :mod:`src.services.confusable_member_repair`; this is the wiring. Unlike its
-        three siblings it needs NO vocabulary -- every condition is readable from the
-        expression -- so there is no database round trip and no pre-gate to skip it.
+        :mod:`src.services.confusable_member_repair`; this is the wiring. Which member is
+        not what its set measures is read off the LOINC ``Has component`` of the set's
+        members (RFC-016 §4, A28), so the vocabulary is opened -- and only when some set
+        holds a listed concept at all (`circe_lint.confusable_member_ids`).
         """
         from src.services.confusable_member_repair import repair_confusable_members
 
-        repair_confusable_members(base)
+        ids = confusable_member_ids(base)
+        if not ids:
+            return
+        vocabulary = self._lab_test_vocabulary()
+        try:
+            components = vocabulary.components(ids)
+        finally:
+            close = getattr(vocabulary, "close", None)
+            if callable(close):
+                close()
+        repair_confusable_members(base, components)
 
     def _repair_presence_unit_filters(self, base: dict[str, Any]) -> None:
         """Drop the ``Unit`` filter from allowlisted presence Measurement criteria whose
@@ -11928,7 +12012,6 @@ class TTEService:
         parent_group_id: str | None = None,
     ) -> dict[str, Any]:
         domain = (getattr(item, "domain", None) or "").strip()
-        name = (getattr(item, "name", None) or "").strip()
         entity_text = (getattr(item, "entity_text", None) or "").strip()
         source_text = entity_text
         # The protocol's OWN line, kept separate from `source_text` above. The two
@@ -11970,9 +12053,10 @@ class TTEService:
         # honestly measure -- `resolve_group_member_constraint` is the one place that
         # decides, shared with `agent3/assembler.py`. Passing the label's own
         # constraint here (rather than reading only `item.value_constraint`) is what
-        # stops "> 3x ULN" from dying on the refused `isGroupLabel` row; passing the
-        # member's own analyte text is what lets an absolute "> 240 mg/dL" reach the
-        # plasma-glucose sub-items and stop at the HbA1c one.
+        # stops "> 3x ULN" from dying on the refused `isGroupLabel` row. An ABSOLUTE
+        # bound is not copied onto the store row here: whether it fits the member is
+        # read off the member's mapped concepts (RFC-016 §4, A20), which do not exist
+        # yet, so the build re-asks with them (`_build_seeded_eligibility_rule`).
         #
         # `.constraint` alone is CORRECT here and must stay that way, unlike the
         # identical-looking read in `_build_seeded_eligibility_rule`, which now raises
@@ -11986,7 +12070,6 @@ class TTEService:
         vc = resolve_group_member_constraint(
             parent_value_constraint,
             getattr(item, "value_constraint", None),
-            member_analyte=source_text or name or description,
         ).constraint
         value_constraint = None
         if vc is not None:

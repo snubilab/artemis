@@ -629,16 +629,15 @@ class CohortAssembler:
                     # members it can honestly measure. Reading `sc.value_constraint`
                     # alone dropped CAROLINA's "> 3x ULN" from ALT/AST/ALP entirely;
                     # copying it down blindly would put "> 240 mg/dL" on HbA1c, which
-                    # matches zero rows -- so the member's own analyte text goes in
-                    # too, and the same bound reaches the plasma glucoses beside it.
+                    # matches zero rows. Whether an absolute bound fits a member is read
+                    # off the member's concepts' LOINC properties (RFC-016 §4, A20),
+                    # which this legacy path does not hold, so an absolute bound is
+                    # refused here and a unit-free one handed down.
                     # `resolve_group_member_constraint` is the one place that decides,
                     # shared with `services/tte_service.py`.
                     resolution = resolve_group_member_constraint(
                         rule.value_constraint,
                         sc.value_constraint,
-                        member_analyte=(
-                            getattr(sc, "entity_text", None) or getattr(sc, "name", None)
-                        ),
                     )
                     if resolution.refusal_reason:
                         # Logging it and emitting anyway was the defect: an unfiltered

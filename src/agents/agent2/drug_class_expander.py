@@ -26,8 +26,8 @@ _MRCONSO_DB_PATH = os.path.join(
 )
 
 # How many ranked ATC classes `expand_drug_class_via_vocab` considers. Rank 1 is not
-# the only candidate: its parent/child of the same wording, or a descendant whose name
-# makes it specific, may sit right behind it.
+# the only candidate: its parent/child holding the same ingredients, or a descendant
+# holding most of them, may sit right behind it.
 _ATC_CANDIDATES = 5
 
 # The collection the ATC classes are read from. `atc_drug_classes` indexes each class
@@ -40,13 +40,13 @@ _ATC_COLLECTION_DEFAULT = "atc_drug_classes"
 # drugs", 1 ingredient) rather than the class the wording names; its parent is tried.
 _MIN_CLASS_SIZE = 3
 
-# A descendant whose name extends the best hit's ("CORTICOSTEROIDS FOR SYSTEMIC USE" ->
-# "..., PLAIN") replaces it only when it keeps at least this share of the best hit's
-# ingredients: then it is the same class with a residual removed (H02A keeps 20 of H02's
-# 23; the 3 dropped are the antiadrenals). Every child of A10A "INSULINS AND ANALOGUES"
-# also extends that name ("...for injection, long-acting"), and the closest of them,
-# A10AE, keeps 6 of 29 -- a subdivision the wording did not choose. Observed shares:
-# 0.87 for the one case that should descend, at most 0.48 for those that should not.
+# An ATC descendant of the best hit within threshold replaces it only when it keeps at
+# least this share of the best hit's ingredients: then it is the same class with a
+# residual removed (H02A keeps 20 of H02's 23; the 3 dropped are the antiadrenals). The
+# closest child of A10A "INSULINS AND ANALOGUES", A10AE, keeps 6 of 29 -- a subdivision
+# the query did not choose. Observed shares: 0.87 for the one case that should descend,
+# at most 0.48 for those that should not. The ATC code hierarchy and this share decide;
+# the class NAMES are not read (RFC-016 §4, C5).
 _MIN_EXTENSION_SHARE = 2 / 3
 
 # Rank 1 just over the distance threshold is accepted when nothing else is near it.
@@ -74,30 +74,42 @@ class AtcHit:
     distance: float
 
 
-def _norm(name: str) -> str:
-    return " ".join(name.casefold().split())
-
-
 def _related(a: AtcHit, b: AtcHit) -> bool:
-    """True when one class is the other or its ATC ancestor."""
+    """True when one class is the other or its ATC ancestor (an ATC code's prefixes are
+    its ancestors: B01 > B01A > B01AC)."""
     return a.code.startswith(b.code) or b.code.startswith(a.code)
 
 
-def merge_identical_names(hits: List[AtcHit]) -> List[AtcHit]:
-    """Collapse a class and its ancestor when both carry the same name.
+def _same_class(a: AtcHit, b: AtcHit, share_of_parent: Callable[[AtcHit, AtcHit], float]) -> bool:
+    """One concept, or an ATC ancestor and descendant holding the same ingredients."""
+    if a.concept_id == b.concept_id:
+        return True
+    if not _related(a, b):
+        return False
+    parent, child = (a, b) if len(a.code) <= len(b.code) else (b, a)
+    return share_of_parent(child, parent) >= 1.0
 
-    B01 and B01A are both "ANTITHROMBOTIC AGENTS": one class, indexed twice. The
-    shallower code is kept (it holds the deeper one) at the closer distance. Classes
-    that share a name in different subtrees (S02B and S03B, both "CORTICOSTEROIDS")
-    are different classes and stay apart.
+
+def merge_same_class(
+    hits: List[AtcHit], share_of_parent: Callable[[AtcHit, AtcHit], float]
+) -> List[AtcHit]:
+    """Collapse a class and its ATC ancestor when they hold the same ingredients.
+
+    B01 "ANTITHROMBOTIC AGENTS" has the single child B01A, and both hold the same 65
+    ingredients: one class, indexed twice. The shallower code is kept at the closer
+    distance. The same concept indexed twice (the v2 collection's A10BJ at 0.387 and 0.618)
+    is one class too. Classes in different subtrees, and an ancestor/descendant pair whose
+    ingredients differ (A10X and A10XX), stay apart. Names are not compared.
 
     :param hits: ranked hits, closest first.
-    :returns: the hits with same-name ancestor/descendant pairs merged, closest first.
+    :param share_of_parent: (child, parent) -> fraction of the parent's ingredients the
+        child holds.
+    :returns: the hits with same-class pairs merged, closest first.
     """
     merged: List[AtcHit] = []
     for hit in hits:
         for k, kept in enumerate(merged):
-            if _norm(kept.name) == _norm(hit.name) and _related(kept, hit):
+            if _same_class(kept, hit, share_of_parent):
                 shallow = kept if len(kept.code) <= len(hit.code) else hit
                 merged[k] = AtcHit(shallow.concept_id, shallow.code, shallow.name,
                                    min(kept.distance, hit.distance))
@@ -107,11 +119,9 @@ def merge_identical_names(hits: List[AtcHit]) -> List[AtcHit]:
     return sorted(merged, key=lambda h: h.distance)
 
 
-def _extends(child: AtcHit, parent: AtcHit) -> bool:
-    """True when the child is an ATC descendant whose name is the parent's made longer."""
-    return (child.code != parent.code and child.code.startswith(parent.code)
-            and _norm(child.name).startswith(_norm(parent.name))
-            and len(_norm(child.name)) > len(_norm(parent.name)))
+def _narrower(child: AtcHit, parent: AtcHit) -> bool:
+    """True when the child is a proper ATC descendant of the parent."""
+    return child.code != parent.code and child.code.startswith(parent.code)
 
 
 def select_atc_class(
@@ -124,14 +134,13 @@ def select_atc_class(
 ) -> Optional[AtcHit]:
     """Pick the ATC class a drug-class phrase names, or None.
 
-    1. Same-name ancestor/descendant hits count once (`merge_identical_names`).
+    1. Hits of one class count once (`merge_same_class`).
     2. The closest class within ``threshold`` is the best hit. With none within it,
        rank 1 is still accepted when it is at most ``band`` over the threshold and the
        next distinct class exists and is at least ``gap`` further away.
-    3. A descendant of the best hit, within threshold, whose name is the best hit's
-       name made longer and which keeps at least `_MIN_EXTENSION_SHARE` of the best
-       hit's ingredients replaces it ("CORTICOSTEROIDS FOR SYSTEMIC USE" ->
-       "..., PLAIN"), closest first, repeated while one exists.
+    3. An ATC descendant of the best hit, within threshold, which keeps at least
+       `_MIN_EXTENSION_SHARE` of the best hit's ingredients replaces it (H02 -> H02A),
+       closest first, repeated while one exists.
 
     :param hits: ranked hits in any order.
     :param threshold: maximum distance for an ordinary match.
@@ -141,21 +150,28 @@ def select_atc_class(
         the child holds.
     :returns: the chosen hit, or None.
     """
-    ranked = merge_identical_names(sorted(hits, key=lambda h: h.distance))
-    if not ranked:
+    ordered = sorted(hits, key=lambda h: h.distance)
+    if not ordered:
         return None
-    within = [h for h in ranked if h.distance <= threshold]
+    # Ingredients are consulted only where a choice depends on them: among the classes
+    # within threshold, or between rank 1 and the hits behind it in the margin rule. A
+    # class past both is never looked up.
+    within = merge_same_class([h for h in ordered if h.distance <= threshold], share_of_parent)
     if not within:
+        first = ordered[0]
+        same = [h for h in ordered[1:] if _same_class(first, h, share_of_parent)]
+        distinct = [h for h in ordered[1:] if h not in same]
         # Isolation has to be seen: with no runner-up there is no gap to measure.
-        if len(ranked) < 2:
+        if not distinct:
             return None
-        first, runner_up = ranked[0], ranked[1]
+        runner_up = distinct[0]
         if first.distance <= threshold + band and runner_up.distance - first.distance >= gap:
-            return first
+            shallow = min([first, *same], key=lambda h: len(h.code))
+            return AtcHit(shallow.concept_id, shallow.code, shallow.name, first.distance)
         return None
     best = within[0]
     while True:
-        longer = [h for h in within if _extends(h, best)
+        longer = [h for h in within if _narrower(h, best)
                   and share_of_parent(h, best) >= _MIN_EXTENSION_SHARE]
         if not longer:
             return best

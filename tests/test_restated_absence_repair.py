@@ -30,6 +30,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from src.services.conceptset_closure import PrefetchedVocabulary  # noqa: E402
 from src.services.range_disjunction_repair import (  # noqa: E402
+    codeset_provenance,
     repair_range_disjunctions,
 )
 from src.services.restated_absence_repair import (  # noqa: E402
@@ -245,7 +246,12 @@ def test_should_remove_the_absence_when_the_range_collapse_runs_first_on_the_rea
     )
     lookup = vocabulary(*HBA1C, 40239216)
 
-    assert len(repair_range_disjunctions(base, lookup)) == 1
+    provenance = codeset_provenance(
+        json.loads((REPO_ROOT / "tests" / "fixtures" / "p3_structural_rows.json").read_text())[
+            "a26_a27_carmelina"
+        ]["store_rows"]
+    )
+    assert len(repair_range_disjunctions(base, lookup, provenance)) == 1
     assert len(repair_restated_absences(base, lookup)) == 1
     assert rule_names(base) == [PRESENCE_NAME]
     surviving = base["InclusionRules"][0]["expression"]["CriteriaList"][0]
@@ -485,38 +491,28 @@ def test_should_decline_when_the_two_concept_sets_resolve_to_different_closures(
     assert "resolve" in caplog.text
 
 
-def test_should_decline_when_the_absence_name_does_not_contradict_its_operators(caplog):
-    """Condition 5. "HbA1c above upper limit" beside ``gte 6.5`` reads as an ordinary
-    upper-bound exclusion, not as a restatement of the lower bound."""
-    base = cohort(
-        collapsed_presence(),
-        grouped_rule(
-            "HbA1c above upper limit + HbA1c below lower limit",
-            criterion(10, {"Value": 6.5, "Op": "gte"}),
-            criterion(11, {"Value": 10.0, "Op": "lte"}),
-        ),
-    )
-    with caplog.at_level(logging.WARNING):
-        assert repair_restated_absences(base, vocabulary(*HBA1C)) == []
-    assert len(base["InclusionRules"]) == 2
-    assert "does not contradict" in caplog.text
+def test_should_remove_the_absence_when_its_name_states_no_direction():
+    """The rule name decides nothing (RFC-016 §4, A27): the structured operators do.
 
+    The real CARMELINA rule #13 from ``2026-09-18_verify/DELIVERY`` (copied verbatim into
+    ``tests/fixtures/p3_structural_rows.json``), renamed to its own store group label
+    'HbA1c upper limit check' -- one phrase over two criteria, no "below"/"above" pair.
+    The name used to have to split into one direction word per criterion contradicting
+    that criterion's operator; the operators and closures already establish that the
+    absence forbids exactly the presence's ``bt 6.5..10`` in the presence's polarity.
+    """
+    fixture = json.loads(
+        (REPO_ROOT / "tests" / "fixtures" / "p3_structural_rows.json").read_text()
+    )["a26_a27_carmelina"]
+    label = next(r for r in fixture["store_rows"] if r["id"] == 13)
+    absence = deepcopy(fixture["rule_13"])
+    absence["name"] = label["description"]
+    base = cohort(collapsed_presence(), absence)
 
-def test_should_decline_when_the_absence_name_is_about_a_different_subject(caplog):
-    """Condition 5. The name is the only provenance a delivered file carries -- the
-    payloads hold no ``protocolLine`` -- so a name about eGFR declines even when the
-    closures match."""
-    base = cohort(
-        collapsed_presence(),
-        grouped_rule(
-            "eGFR below lower limit + HbA1c above upper limit",
-            criterion(10, {"Value": 6.5, "Op": "gte"}),
-            criterion(11, {"Value": 10.0, "Op": "lte"}),
-        ),
-    )
-    with caplog.at_level(logging.WARNING):
-        assert repair_restated_absences(base, vocabulary(*HBA1C)) == []
-    assert len(base["InclusionRules"]) == 2
+    applied = repair_restated_absences(base, vocabulary(*HBA1C))
+
+    assert [(r.rule_number, r.partner_rule_number) for r in applied] == [(2, 1)]
+    assert rule_names(base) == [PRESENCE_NAME]
 
 
 def test_should_decline_when_the_windows_differ(caplog):

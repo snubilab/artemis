@@ -48,7 +48,7 @@ WHAT IT WILL NOT DO. An absence over a bound is the ORDINARY, CORRECT way to exc
 out-of-range value, and the delivered corpus is full of them: ``deliveries/2026-06-24``
 and ``deliveries/2026-08-31`` CARMELINA rule #5 is ``==0 HbA1c gte 10.0`` sitting beside
 ``>=1 HbA1c gte 6.5``, and that pair is perfectly satisfiable by every patient between 6.5
-and 10. Eating it would be worse than the defect. So all five conditions must hold
+and 10. Eating it would be worse than the defect. So all four conditions must hold
 together:
 
 1. **Absence shape.** A top-level rule whose expression is ``ALL`` and whose criteria --
@@ -93,13 +93,12 @@ together:
    which holds under any unit, and in the ``verify4`` corpus the collapsed presence has
    already had its unit filter dropped while the absence still carries ``[8554]``.
 
-5. **The name says so.** The delivered payloads carry no ``protocolLine``, so the rule
-   name is the only provenance available at export time. It must split on ``" + "`` into
-   one half per criterion; each half must carry a direction word that CONTRADICTS its
-   criterion's operator (``below``/``lower`` against ``gte``, ``above``/``upper`` against
-   ``lte``); and every half must reduce to the same non-empty subject as the partner
-   presence's name. ``"HbA1c below lower limit"`` and ``"HbA1c above upper limit"`` both
-   reduce to ``"hba1c"``, as do ``"HbA1c at least 6.5%"`` and ``"HbA1c at most 10.0%"``.
+**The rule name is not read** (RFC-016 §4, A27). A fifth condition used to require the
+name to split on ``" + "`` into one direction word per criterion contradicting its
+operator. Conditions 1-4 already establish the same fact from the structured operators
+and closures -- the absence forbids exactly the presence's own ``bt`` bounds, in the
+presence's polarity, over the same concepts and window -- and a word list over
+model-written free text is not allowed to decide it.
 
 THE REPAIR ITSELF removes the rule from ``InclusionRules`` and records the removal under
 :data:`RESTATED_ABSENCE_REMOVALS_KEY`. The concept sets are left in place, as every
@@ -130,13 +129,11 @@ run the real closure resolver with no database at all.
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Iterator
 
 from src.services.conceptset_closure import VocabularyLookup, resolve_concept_set
-from src.services.range_disjunction_repair import _BOUND_LANGUAGE, _NAME_SEPARATOR
 from src.utils.circe_lint import (
     DROP_OUTCOME_RULE_REMOVED,
     _member_ids_by_codeset,
@@ -153,30 +150,6 @@ RESTATED_ABSENCE_REMOVALS_KEY = "_restatedAbsenceRemovals"
 _SINGLE_CRITERION_GROUP_TYPES = {"ALL", "ANY"}
 
 _ONE_SIDED_OPS = {"gte", "lte", "gt", "lt"}
-
-#: Direction language, by the side of the range it names. A half carrying words from both
-#: classes is ambiguous and declines.
-_DIRECTION_LOW = re.compile(
-    r"\b(?:below|lower|beneath|less|under|minimum|min|floor)\b", re.IGNORECASE
-)
-_DIRECTION_HIGH = re.compile(
-    r"\b(?:above|upper|higher|greater|over|exceeds?|exceeding|maximum|max|ceiling)\b",
-    re.IGNORECASE,
-)
-
-#: The operator each direction class CONTRADICTS. "below the lower limit" beside a
-#: criterion forbidding ``>= 6.5`` is the contradiction this repair keys on.
-_CONTRADICTED_OP = {"low": "gte", "high": "lte"}
-
-#: Stripped from a name half AFTER its direction class has been read, on top of
-#: :data:`~src.services.range_disjunction_repair._BOUND_LANGUAGE`. What remains is the
-#: subject the half is about.
-_LIMIT_NOUNS = re.compile(
-    r"\b(?:below|lower|beneath|less|under|minimum|min|floor|above|upper|higher|greater|"
-    r"over|exceeds?|exceeding|maximum|max|ceiling|limits?|bounds?|boundary|boundaries|"
-    r"thresholds?|ranges?|values?|cut\s*offs?|cutoffs?)\b",
-    re.IGNORECASE,
-)
 
 
 @dataclass(frozen=True)
@@ -221,7 +194,7 @@ class AbsenceRemoval:
 
 @dataclass(frozen=True)
 class RestatedAbsence:
-    """An absence rule satisfying conditions 1, 2, 3 and 5, before the closure check."""
+    """An absence rule satisfying conditions 1, 2 and 3, before the closure check."""
 
     rule_index: int
     rule: dict
@@ -373,69 +346,10 @@ def _codeset_id(body: Mapping[str, Any]) -> Any:
     return body.get("CodesetId")
 
 
-def _subject(half: str) -> str:
-    """A name half with its bound and direction language removed -- what it is about."""
-    stripped = _LIMIT_NOUNS.sub(" ", _BOUND_LANGUAGE.sub(" ", half))
-    return " ".join(stripped.lower().split())
-
-
-def _name_subject(name: str) -> str | None:
-    """The single subject every ``" + "``-joined half of a rule name reduces to."""
-    subjects = {_subject(half) for half in name.split(_NAME_SEPARATOR)}
-    if len(subjects) != 1:
-        return None
-    subject = subjects.pop()
-    return subject or None
-
-
-def _direction_class(half: str) -> str | None:
-    """``"low"``, ``"high"``, or None when the half names neither or both."""
-    low, high = bool(_DIRECTION_LOW.search(half)), bool(_DIRECTION_HIGH.search(half))
-    if low == high:
-        return None
-    return "low" if low else "high"
-
-
-def _why_name_does_not_restate(
-    name: str, ops: list[str], partner_name: str
-) -> str | None:
-    """Condition 5. None when the name reads as the partner's range restated in the
-    partner's own polarity; else why it does not."""
-    halves = name.split(_NAME_SEPARATOR)
-    if len(halves) != len(ops):
-        return (
-            f"name {name!r} splits into {len(halves)} half/halves on "
-            f"{_NAME_SEPARATOR!r} but the rule holds {len(ops)} criteri"
-            f"{'on' if len(ops) == 1 else 'a'}, so no half can be read against an operator"
-        )
-    for half, op in zip(halves, ops):
-        direction = _direction_class(half)
-        if direction is None:
-            return (
-                f"name half {half!r} names neither one side of a range nor exactly one, "
-                f"so it cannot be read as contradicting {op!r}"
-            )
-        if _CONTRADICTED_OP[direction] != op:
-            return (
-                f"name half {half!r} reads as the {direction} side of the range while its "
-                f"criterion forbids {op!r}, which does not contradict it -- that is an "
-                f"ordinary one-sided exclusion, not a restatement"
-            )
-    subject = _name_subject(name)
-    partner_subject = _name_subject(partner_name)
-    if subject is None or partner_subject is None or subject != partner_subject:
-        return (
-            f"name {name!r} is about {subject!r} while the partner presence "
-            f"{partner_name!r} is about {partner_subject!r}, so the two are not one "
-            f"protocol sentence emitted twice"
-        )
-    return None
-
-
 def iter_restated_absences(base: Mapping[str, Any]) -> Iterator[RestatedAbsence]:
     """Rules this repair could fire on, judged without a vocabulary.
 
-    Applies conditions 1, 2, 3 and 5; condition 4 needs the concept closures and is
+    Applies conditions 1, 2 and 3; condition 4 needs the concept closures and is
     applied by :func:`repair_restated_absences`. A caller can therefore ask whether
     anything could possibly fire before paying for a database round trip -- which is the
     answer for every file under ``data/gold/``, ``deliveries/2026-06-24`` and
@@ -593,16 +507,6 @@ def iter_restated_absences(base: Mapping[str, Any]) -> Iterator[RestatedAbsence]
             )
             continue
 
-        # --- condition 5: the name says so --------------------------------
-        why_not = _why_name_does_not_restate(
-            name, list(ops), str(partner_rule.get("name") or "")
-        )
-        if why_not is not None:
-            logging.warning(
-                "[TTE] restated-absence repair declines rule #%d: %s", index + 1, why_not
-            )
-            continue
-
         yield RestatedAbsence(
             rule_index=index,
             rule=rule,
@@ -636,7 +540,7 @@ def repair_restated_absences(
     :param base: a Circe cohort expression (ConceptSets / PrimaryCriteria /
         InclusionRules), mutated in place.
     :param lookup: vocabulary access for resolving concept-set closures (condition 4).
-    :returns: one record per removed rule; empty means nothing satisfied all five
+    :returns: one record per removed rule; empty means nothing satisfied all four
         conditions, which is the expected answer for every file but the four CARMELINA
         payloads of 2026-09-12 and 2026-09-18.
     """

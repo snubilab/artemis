@@ -33,8 +33,11 @@ Checks per file:
     cardiovascular-risk qualifiers) instead of type 2 diabetes, which is a fraction of
     the trial population. The expected anchor comes from
     ``src.utils.disease_anchor.expected_anchor_concept_ids``, the same function the
-    generator chooses with, against ``trialMetadata.conditions``. A study with no
-    registered condition FAILS rather than passing unchecked -- backfill it with
+    generator chooses with, against the concept ids ``trialMetadata.conditions`` were
+    mapped to -- read from the file's ``_diseaseAnchor`` record, since the match is by
+    concept id and never by name (RFC-016 §4, C8). A file without that record, or a
+    study with no registered condition and competing candidates, FAILS rather than
+    passing unchecked -- backfill the conditions with
     ``scripts/backfill_registered_conditions.py``.
 
 (g) every criterion's concept set shares at least one OMOP domain with the CDM
@@ -213,14 +216,12 @@ Checks per file:
     them: every export-time repair in this pipeline changes how a criterion is COMPARED,
     while dropping HDL from an LDL set changes which patients the cohort SELECTS, so it is
     a mapping correction and this gate refuses instead. ``isExcluded`` members are skipped
-    -- an exclusion removes the concept, so the bound never reaches it. This is the one
-    check here that reads a concept-set NAME, and deliberately: the name is the claim
-    under test, so it cannot be replaced by a concept id the way
-    ``DIMENSIONLESS_VALUE_CONCEPTS`` is. What the free-text problem costs instead is the
-    shape of the match -- every spelling the corpus supplies, plus an escape for a name
-    claiming both analytes ('LDL/HDL ratio' legitimately holds HDL). See
-    ``src.utils.circe_lint.confusable_concept_sets`` and the table
-    ``CONFUSABLE_ANALYTES`` beside it.
+    -- an exclusion removes the concept, so the bound never reaches it. What the set
+    measures is read off the LOINC ``Has component`` of its members (``--dsn``), never off
+    its NAME (RFC-016 §4, A28): a listed concept is confusable where no other LOINC member
+    shares its component. The vocabulary is opened only for a file whose sets hold a
+    listed concept, and an unreachable one then aborts. See
+    ``src.utils.circe_lint.confusable_concept_sets`` and ``CONFUSABLE_MEMBERS`` beside it.
 
 (s) no inclusion rule requires at least one occurrence of criteria that are EVERY ONE of
     them forbidden outright by a mandatory zero-occurrence criterion elsewhere in the
@@ -388,6 +389,7 @@ from src.utils.circe_lint import (  # noqa: E402
     closure_subsumed_presence_criteria,
     closure_subsumption_codesets,
     confusable_concept_sets,
+    confusable_member_ids,
     conjoined_disjunction_rules,
     contradictory_absence_rules,
     contradictory_presence_absence_criteria,
@@ -412,6 +414,7 @@ from src.utils.circe_lint import (  # noqa: E402
 )
 from src.utils.criterion_refusal import (  # noqa: E402
     REFUSAL_CODES,
+    REFUSAL_STRANDED_GROUP_THRESHOLD,
     REFUSAL_UNMAPPABLE_PLACEHOLDER,
 )
 from src.utils.criterion_seed import MISSING_ENTITY_CRITERIA_KEY  # noqa: E402
@@ -419,7 +422,11 @@ from src.utils.delivery_mode import (  # noqa: E402
     DeliveryModeConflictError,
     resolve_drug_anchored_entry,
 )
-from src.utils.disease_anchor import DiseaseAnchorError, expected_anchor_concept_ids
+from src.utils.disease_anchor import (
+    DISEASE_ANCHOR_KEY,
+    DiseaseAnchorError,
+    expected_anchor_concept_ids,
+)
 from src.utils.presence_unit_allowlist import lab_test_axes  # noqa: E402
 from src.utils.store_resolution import StoreMismatchError, resolve_store_path  # noqa: E402
 
@@ -1405,30 +1412,32 @@ def _group_label_violations(
     # cannot slip the loss past this permit, because the decision is re-made rather
     # than read off the record.
     #
-    # Asked PER MEMBER, with that member's own analyte text. `997da1b` gave the
-    # resolver a `member_analyte` keyword and an absolute bound now reaches the members
-    # measured in its unit, so the question "does this threshold strand anything" no
-    # longer has one answer for a whole group. Passing None asked the pre-997da1b
-    # question -- "would this bound reach a member we know nothing about" -- whose
-    # answer is always "no" for an absolute bound. On CAROLINA 44 and EMPA-REG 56 that
-    # happened to give the right verdict (HbA1c genuinely is stranded by "> 240
-    # mg/dL"), so nothing failed; but a group whose members are ALL unit-compatible
-    # would have been reported as a loss the build never incurred.
-    #
-    # The analyte is read the way `TTEService._stranded_group_constraint_labels` reads
-    # it -- `sourceText` then `description` -- because the two must answer alike or the
-    # gate and the producer disagree about the same group.
+    # Asked PER MEMBER. Whether an absolute bound fits a member is read off the
+    # member's mapped concepts' LOINC properties (RFC-016 §4, A20), which this gate does
+    # not re-derive; what it does see is whether the member EMITTED. The builder emits a
+    # member without a threshold of its own under an absolute label only when the bound
+    # was handed down to it, and refuses it otherwise -- so a member that emitted was not
+    # stranded, and one that did not is re-judged by the resolver with nothing known
+    # about its concepts, whose answer for an absolute bound is "stranded". Without the
+    # file's concept-set refs (`emitted` None) every such member is re-judged that way. A
+    # member the file already books as lost for ANOTHER reason (a skip record, or a
+    # refusal under a different code) is that loss, not this one.
     label_constraint = label.get("valueConstraint")
     if label_constraint:
+        refusal_codes = {
+            (record.get("role"), str(record.get("criterionId") or "")): record.get("refusalCode")
+            for record in expression.get("_unmappedCriteria") or []
+            if isinstance(record, dict)
+        }
         stranded = [
             criterion
-            for _key, criterion in members
+            for key, criterion in members
             if criterion.get("valueConstraint") is None
-            and resolve_group_member_constraint(
-                label_constraint,
-                None,
-                member_analyte=criterion.get("sourceText") or criterion.get("description"),
-            ).refusal_reason
+            and (emitted is None or key not in emitted)
+            and key not in skipped_by_key
+            and refusal_codes.get(key, REFUSAL_STRANDED_GROUP_THRESHOLD)
+            == REFUSAL_STRANDED_GROUP_THRESHOLD
+            and resolve_group_member_constraint(label_constraint, None).refusal_reason
             == STRANDED_GROUP_CONSTRAINT_REASON
         ]
         if stranded:
@@ -2667,8 +2676,19 @@ def main(argv: list[str] | None = None) -> int:
             (file_domain, file_concept_ids) != (store_domain, store_concept_ids)
         ):
             registered = (study.get("trialMetadata") or {}).get("conditions")
+            # The concept ids the registered conditions were mapped to travel with the
+            # file (RFC-016 §4, C8: matched by concept id, never by name); the choice is
+            # re-derived here from the STORE expression with them.
+            anchor_record = expression.get(DISEASE_ANCHOR_KEY)
             try:
-                expected_anchor = expected_anchor_concept_ids(store_structured, registered)
+                if not isinstance(anchor_record, dict):
+                    raise DiseaseAnchorError(
+                        f"the file carries no {DISEASE_ANCHOR_KEY} record of the concept ids "
+                        "the trial's registered conditions map to"
+                    )
+                expected_anchor = expected_anchor_concept_ids(
+                    store_structured, anchor_record.get("registeredConceptIds")
+                )
             except DiseaseAnchorError as exc:
                 reasons.append(f"disease anchor unverifiable: {exc}")
             else:
@@ -2803,7 +2823,23 @@ def main(argv: list[str] | None = None) -> int:
         # filter can make 'LDL >= 135 mg/dL' right over an HDL result. Check (m) is the
         # nearest and cannot reach it: it needs TWO sets with identical members, and
         # here ONE set holds members its single name contradicts.
-        confusables = confusable_concept_sets(expression)
+        confusable_ids = confusable_member_ids(expression)
+        member_components: dict[int, set[int]] = {}
+        if confusable_ids:
+            if lab_test_vocabulary is None:
+                try:
+                    lab_test_vocabulary = _open_lab_test_vocabulary(args.dsn, args.vocab_schema)
+                except Exception as exc:  # noqa: BLE001 -- re-raised as a named abort
+                    print(
+                        f"ABORT: vocabulary unreachable at DSN {args.dsn!r} (schema "
+                        f"{args.vocab_schema}): {exc}. Check (r) reads the LOINC components "
+                        f"of the concept-set members and will not pass a file it could not "
+                        f"read.",
+                        file=sys.stderr,
+                    )
+                    return 2
+            member_components = lab_test_vocabulary.components(confusable_ids)
+        confusables = confusable_concept_sets(expression, member_components)
         if confusables:
             reasons.append(
                 f"confusable concept sets ({len(confusables)}): {'; '.join(confusables)}"
