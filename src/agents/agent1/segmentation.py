@@ -39,13 +39,14 @@ import json
 import logging
 import os
 import threading
-import unicodedata
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+from src.utils.span_match import fold, is_space
 
 logger = logging.getLogger(__name__)
 
@@ -233,38 +234,13 @@ class Segmentation:
 # --------------------------------------------------------------------------- #
 
 
-def _is_space(char: str) -> bool:
-    """Whitespace, or a private-use glyph: a PDF symbol font's space or bullet, which a
-    model copying the text cannot see and does not reproduce."""
-    return char.isspace() or unicodedata.category(char) == "Co"
-
-
-def _fold(text: str) -> tuple[str, list[int]]:
-    """The comparison form of ``text`` and, for each of its characters, the offset it came
-    from. Runs of :func:`_is_space` characters become one space, format characters (soft
-    hyphen, zero-width) are dropped, letters are lower-cased."""
-    form: list[str] = []
-    index: list[int] = []
-    pending = False
-    for position, char in enumerate(text):
-        if unicodedata.category(char) == "Cf":
-            continue
-        if _is_space(char):
-            pending = bool(form)
-            continue
-        if pending:
-            form.append(" ")
-            index.append(position)
-            pending = False
-        lower = char.lower()
-        form.append(lower if len(lower) == 1 else char)
-        index.append(position)
-    return "".join(form), index
+# The comparison form (:func:`src.utils.span_match.fold`) is shared with every other span
+# check in the pipeline, so a fragment located here verifies there too.
 
 
 def _one_line(text: str) -> str:
-    """A criterion as one line: :func:`_is_space` runs become one space."""
-    spaced = "".join(" " if _is_space(char) else char for char in text)
+    """A criterion as one line: :func:`src.utils.span_match.is_space` runs become one space."""
+    spaced = "".join(" " if is_space(char) else char for char in text)
     return " ".join(spaced.split())
 
 
@@ -272,7 +248,7 @@ class _Located:
     """The document in comparison form, searched by original offsets."""
 
     def __init__(self, text: str) -> None:
-        self.form, self.index = _fold(text)
+        self.form, self.index = fold(text)
 
     def _at(self, offset: int) -> int:
         return bisect.bisect_left(self.index, offset)
@@ -284,7 +260,7 @@ class _Located:
         """First occurrence of ``fragment`` lying within ``[lo, hi)``, as original offsets."""
         if not isinstance(fragment, str):
             return None
-        probe = _fold(fragment)[0]
+        probe = fold(fragment)[0]
         if not probe:
             return None
         k = self.form.find(probe, self._at(lo), self._at(hi))
@@ -294,7 +270,7 @@ class _Located:
         """Last occurrence of ``fragment`` lying within ``[lo, hi)``."""
         if not isinstance(fragment, str):
             return None
-        probe = _fold(fragment)[0]
+        probe = fold(fragment)[0]
         if not probe:
             return None
         k = self.form.rfind(probe, self._at(lo), self._at(hi))
@@ -307,7 +283,7 @@ class _Located:
         ``latest_start`` (it may run past it)."""
         if not isinstance(fragment, str):
             return None
-        probe = _fold(fragment)[0]
+        probe = fold(fragment)[0]
         if not probe:
             return None
         k = self.form.rfind(probe, self._at(lo), self._at(latest_start) + len(probe))
@@ -459,13 +435,13 @@ def _read_section(
         else:
             marks.ends.append((found[1], end_fragment, chunk.index))
 
-    lines = {_fold(line)[0] for line in chunk.text.split("\n")}
+    lines = {fold(line)[0] for line in chunk.text.split("\n")}
     interruptions = section.get(FIELD_INTERRUPTIONS) or []
     if not isinstance(interruptions, list):
         reject(FIELD_INTERRUPTIONS, interruptions, REASON_INVALID)
         interruptions = []
     for line in interruptions:
-        probe = _fold(line)[0] if isinstance(line, str) else ""
+        probe = fold(line)[0] if isinstance(line, str) else ""
         if probe and probe in lines:
             marks.interruptions.add(probe)
         else:
@@ -536,7 +512,7 @@ def _assemble_kind(text: str, kind: str, marks: _Marks, rejected: list[Rejection
         kept = [
             line
             for line in text[offset:end].split("\n")
-            if _fold(line)[0] not in marks.interruptions
+            if fold(line)[0] not in marks.interruptions
         ]
         criterion = _one_line("\n".join(kept))
         if criterion:

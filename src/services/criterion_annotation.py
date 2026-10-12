@@ -35,7 +35,9 @@ line (inventory A2, A4, A18, E3):
 
 The model decides the meaning and quotes the fragment of ``protocolLine`` that supports
 it. Code checks one thing only: that each quoted fragment is a substring of the line
-(:func:`span_in_line`, the same comparison form as the planner's gate 1). A fragment that
+(:func:`span_in_line`, from :mod:`src.utils.span_match`: the comparison form every span
+check in the pipeline shares, segmentation and the planner included; the planner and the
+delivery gate import it from this module). A fragment that
 is not in the line makes its field absent -- the row then takes the default behaviour --
 and the rejection is recorded on the row under :data:`ANNOTATION_REJECTED_KEY` so it can
 be counted. Nothing here reads the line, the description or the entity as words.
@@ -66,6 +68,7 @@ from typing import Any
 
 from src.services.loinc_specimen import MEASUREMENT_DOMAIN
 from src.services.route_subtraction import AdministrationRoute
+from src.utils.span_match import span_in_line
 
 logger = logging.getLogger(__name__)
 
@@ -382,32 +385,6 @@ Output JSON:
 "threshold_span": "<fragment of the protocol line, or null>", \
 "quantity_kind": "<lab_value|dose|duration|count|statistical|other, or null>", \
 "reference_bound": "<uln|lln|none, or null>"}}"""
-
-
-# --------------------------------------------------------------------------- #
-# The one text check
-# --------------------------------------------------------------------------- #
-
-
-def _comparison_form(text: str) -> str:
-    """Whitespace-folded and case-folded: the planner's gate-1 comparison form."""
-    return " ".join(text.split()).casefold()
-
-
-def span_in_line(span: Any, line: Any) -> bool:
-    """Whether an LLM-quoted fragment occurs in the protocol line.
-
-    The only text test the annotation step makes. Tolerates re-wrapped whitespace and
-    case, never a missing or changed word.
-
-    :param span: the fragment the model returned.
-    :param line: the row's ``protocolLine``.
-    :returns: True when ``span`` is a non-empty substring of ``line`` in comparison form.
-    """
-    if not isinstance(span, str) or not isinstance(line, str):
-        return False
-    probe = _comparison_form(span)
-    return bool(probe) and probe in _comparison_form(line)
 
 
 # --------------------------------------------------------------------------- #

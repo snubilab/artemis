@@ -25,17 +25,7 @@ from src.services.criterion_annotation import (
     declared_group_type,
     span_in_line,
 )
-
-
-def _comparison_form(text: str) -> str:
-    """Comparison form for the substring check: de-escaped, whitespace-folded, lowered.
-
-    De-escaping removes the backslashes ClinicalTrials.gov puts before comparators
-    (``\\>``). Tolerating case and whitespace drift is safe -- a model that re-wraps a
-    line still copied it -- while an analyte the line never mentions is absent under any
-    of these forms.
-    """
-    return " ".join(text.replace("\\", "").split()).lower()
+from src.utils.span_match import comparison_form
 
 
 def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Optional[str]:
@@ -45,8 +35,8 @@ def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Opt
     makes the answer worth anything: the model's own account of where a term came from is
     exactly what cannot be taken on trust, since ``stated: true`` on an invented analyte is
     indistinguishable from the truth. One gate: the span is **really present in the line**,
-    under :func:`_comparison_form`. Not a fuzzy match: fuzz is how an invention scores as a
-    reading.
+    under :func:`src.utils.span_match.span_in_line`, the check every other span gets. Not a
+    fuzzy match: fuzz is how an invention scores as a reading.
 
     The second gate this function used to apply -- the span must share a "naming word"
     with the sub-term, read through an English function-word list -- is removed (RFC-016
@@ -68,9 +58,7 @@ def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Opt
     span = claimed.strip()
     if not span or span.lower() in {"null", "none", "nil"}:
         return None
-    if not source_text:
-        return None
-    if _comparison_form(span) not in _comparison_form(source_text):
+    if not span_in_line(span, source_text):
         return None
     return span
 
@@ -146,10 +134,10 @@ def _member_is_stated_exception(excepted: List[ExceptedEntity], members: list) -
     LEADER's insulin line excepts three insulins and its members are "insulin other than
     X" -- none equals an excepted entity -- so that split is a reading and survives.
     """
-    forms = {_comparison_form(entity.text) for entity in excepted}
+    forms = {comparison_form(entity.text) for entity in excepted}
     return any(
-        _comparison_form(str(member.get("name") or "")) in forms
-        or _comparison_form(str(member.get("entity_text") or "")) in forms
+        comparison_form(str(member.get("name") or "")) in forms
+        or comparison_form(str(member.get("entity_text") or "")) in forms
         for member in members
         if isinstance(member, dict)
     )
@@ -194,7 +182,7 @@ def _torn_range_declined(entity_text: str, members: list[Criteria]) -> Optional[
     ``output/site_gap/2026-09-18_verify4/store/studies.json``, the first two fire
     together on six groups and the third holds five of them:
 
-    1. **Every member names the parent's own entity**, under :func:`_comparison_form`.
+    1. **Every member names the parent's own entity**, under :func:`comparison_form`.
        This is the gate that separates the defect from the thing this module is FOR:
        CAROLINA's liver panel decomposes ``ALT or AST or alkaline phosphatase`` into
        three members whose parent ALSO carries a one-sided bound (``gt 3.0 x ULN``),
@@ -226,7 +214,7 @@ def _torn_range_declined(entity_text: str, members: list[Criteria]) -> Optional[
         reason: what matters is what the member ends up carrying.
     :returns: the reason to record, or None to leave the split alone.
     """
-    parent = _comparison_form(entity_text or "")
+    parent = comparison_form(entity_text or "")
     if not parent or not members:
         # Without the parent's own analyte there is nothing to compare a member to,
         # and declining on that would refuse every split. The safe direction here is
@@ -234,12 +222,12 @@ def _torn_range_declined(entity_text: str, members: list[Criteria]) -> Optional[
         return None
     units: set[str] = set()
     for member in members:
-        if _comparison_form(member.entity_text or "") != parent:
+        if comparison_form(member.entity_text or "") != parent:
             return None
         vc = member.value_constraint
         if vc is None or vc.op not in _ONE_SIDED_OPS:
             return None
-        units.add(_comparison_form(vc.unit_text or ""))
+        units.add(comparison_form(vc.unit_text or ""))
     if len(units) > 1:
         return None
     bounds = ", ".join(
