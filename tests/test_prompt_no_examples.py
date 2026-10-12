@@ -501,6 +501,9 @@ PROMPTS: dict[str, PromptSpec] = {
         tokens=frozenset({
             "record_requirement", "conditional_span", "excepted_entities", "base_span", "text",
             "span", "required", "forbidden", "conditional",
+            # RFC-016 step 2: relation and timing, their spans and their enum values.
+            "relation", "relation_span", "cardinality", "timing", "window_span",
+            "all", "any", "at_least", "prior", "at_index", "prospective",
         }),
     ),
     "agent1.threshold_classifier": PromptSpec(
