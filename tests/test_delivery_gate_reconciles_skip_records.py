@@ -1247,3 +1247,24 @@ class TestAProspectiveSkipIsReDerivedFromTheStore:
         rc, out = gate(records, study)
         assert rc == 1, out
         assert "not a group label whose group contains it" in out
+
+    def test_should_fail_the_file_when_a_prospective_criterion_was_emitted(self, gate):
+        """Check (z) through the gate's own entry point. The file is the real delivered
+        CAROLINA rule 14 ('Pre-planned PCI + Pre-planned CABG', codesets 48/49); the store
+        rows carry those codesets and a label annotated prospective with a span in its line."""
+        from src.services.criterion_annotation import ANNOTATION_KEY, validate_annotation
+
+        rows, _study_unused = self._carolina()
+        label = dict(rows[0])
+        fields, rejected = validate_annotation(
+            {"record_requirement": "required", "timing": "prospective", "window_span": self.SPAN},
+            label["protocolLine"],
+        )
+        assert rejected == []
+        label[ANNOTATION_KEY] = fields
+        study = _study(exclusion=[label, *rows[1:]])
+        records = _records(store_criteria=_store_criteria(study))
+        records["InclusionRules"] = [_RFC016_STEP2["carolina_treatment_inclusion_rule_14"]]
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert "prospective criterion emitted (2)" in out

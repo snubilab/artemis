@@ -749,7 +749,6 @@
     {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"Unit\", \"ValueAsNumber\"]", "kind": "allowed", "inventory_id": "B23", "reason": "CIRCE field / attribute names, op sets, arm roles, store keys (B23)"},
     {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"bt\", \"gt\", \"gte\", \"lt\", \"lte\"]", "kind": "allowed", "inventory_id": "B23", "reason": "CIRCE field / attribute names, op sets, arm roles, store keys (B23)"},
     {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"comparator\", \"treatment\"]", "kind": "allowed", "inventory_id": "B23", "reason": "CIRCE field / attribute names, op sets, arm roles, store keys (B23)"},
-    {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"exclusionCriteria\", \"inclusionCriteria\"]", "kind": "allowed", "inventory_id": "B23", "reason": "CIRCE field / attribute names, op sets, arm roles, store keys (B23)"},
     {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"{\", \"}\"]", "kind": "allowed", "inventory_id": "B23", "reason": "brace escaping for a str.format prompt line"},
     {"file": "src/utils/circe_lint.py", "fingerprint": "strings:[\"{{\", \"}}\"]", "kind": "allowed", "inventory_id": "B23", "reason": "brace escaping for a str.format prompt line"},
     {"file": "src/utils/circe_lint.py", "fingerprint": "re:\\bdiastolic\\b", "kind": "pending", "inventory_id": "A28", "reason": "A28: a concept-set NAME stating LDL / HbA1c / systolic (and not HDL / HbA1 total / diastolic) -> remove confusable member 3007070 / 3005446 / 40758413 (..."},
