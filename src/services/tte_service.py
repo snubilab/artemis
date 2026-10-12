@@ -75,10 +75,12 @@ from src.api.models.tte import (
 )
 from src.models.ir import ProvisionalSectionSource, ProvisionalStudyIR
 from src.pipeline.webapi_client import CohortTableReference, WebAPIClient, WebAPIError
-from src.services.dose_stability import (
-    DOSE_STABILITY_EXPLANATION,
-    DOSE_STABILITY_REASON,
-    dose_stability_criterion_ids,
+from src.services.criterion_annotation import (
+    CONDITIONAL_EXPLANATION,
+    CONDITIONAL_REASON,
+    EXTRACTED_CONDITIONAL_KEY,
+    annotate_eligibility,
+    conditional_skips,
 )
 from src.services.entry_exclusion_repair import (
     iter_repair_candidates,
@@ -4337,6 +4339,10 @@ class TTEService:
             mesh_terms = (study.get("trialMetadata") or {}).get("interventionMeshTerms") or []
             if mesh_terms:
                 eligibility["_interventionAliases"] = list(mesh_terms)
+            # RFC-016 step 1: what each rule's protocol line says about it, recorded on
+            # the row before Agent 2 maps anything. Here rather than in extraction so a
+            # dry rebuild -- no Agent 1, no planner -- reaches it too.
+            self._annotate_eligibility(eligibility)
             structured_expression = self._build_seeded_target_circe(eligibility)
             criterion_mapping_meta = structured_expression.pop("_criterionMappingMetadata", {})
             rule_index_meta = structured_expression.pop("_ruleIndexMeta", {})
@@ -4432,6 +4438,14 @@ class TTEService:
             meta,
             "completed",
         )
+
+    def _annotate_eligibility(self, eligibility: dict[str, Any]) -> dict[str, int]:
+        """Annotate every criterion row in place (``src.services.criterion_annotation``).
+
+        A seam of its own so a caller -- or a test -- can see or replace the one LLM
+        step this capability adds ahead of mapping.
+        """
+        return annotate_eligibility(eligibility)
 
     def _apply_draft_concept_set_metadata(
         self,
@@ -5468,6 +5482,7 @@ class TTEService:
             role: str,
             reason: str,
             explanation: str | None = None,
+            extra: dict[str, Any] | None = None,
         ) -> None:
             skipped_criteria.append({
                 "criterionId": str(criterion.get("id", "")),
@@ -5481,7 +5496,18 @@ class TTEService:
                 "isGroupLabel": bool(criterion.get("isGroupLabel")),
                 "reason": reason,
                 **({"explanation": explanation} if explanation else {}),
+                **(extra or {}),
             })
+
+        def _record_conditional_skip(criterion: dict[str, Any], role: str, decision: Any) -> None:
+            _record_skip(
+                criterion, role, CONDITIONAL_REASON, CONDITIONAL_EXPLANATION,
+                extra={
+                    "conditionalSpan": decision.span,
+                    "conditionalDecidedBy": decision.decided_by,
+                    "conditionalSource": decision.source,
+                },
+            )
 
         # SPEC-INFRA-003 REQ-001 / REQ-007. Decided once, up front, over the criteria as
         # they arrived: the collapse is a cardinality invariant over a structurally
@@ -5510,12 +5536,15 @@ class TTEService:
             exclusion_criteria=exc_criteria,
         )
 
-        # A dose-stability statement about background drug therapy ("Stable antidiabetic
-        # background medication for 8 weeks") has no OMOP expression, and as a presence
-        # rule it drops the drug-naive patients the protocol admits. Decided over the
-        # whole role for the same reason as the drop sets above: a firing group label
-        # takes its members with it. Inclusion only -- see `dose_stability.py`.
-        dose_stability_ids = dose_stability_criterion_ids(inc_criteria)
+        # RFC-016 step 1. A rule its protocol line applies only to patients who already
+        # have the record ("Stable antidiabetic background medication", "WOCBP must use
+        # contraception") has no occurrence expression: as a presence rule it drops every
+        # patient without the record. Decided by the row's annotation (a span checked
+        # against its line) or Agent 1's own `conditional` flag, over the whole role for
+        # the same reason as the drop sets above: a conditional group label takes its
+        # members with it. See `criterion_annotation.conditional_skips`.
+        conditional_inclusions = conditional_skips(inc_criteria)
+        conditional_exclusions = conditional_skips(exc_criteria)
 
         # Same shape and placement as the two drop sets above: decided over the
         # criteria as they arrived, consumed by the group-label branch in each loop.
@@ -5557,12 +5586,11 @@ class TTEService:
                 _record_skip(criterion, "inclusion", RESTATED_DISTINCTNESS_REASON)
                 order += 1
                 continue
-            # Ahead of the group-label branch, so a firing label is recorded under this
-            # reason rather than as a container whose members emitted -- they did not.
-            if str(criterion.get("id", "")) in dose_stability_ids:
-                _record_skip(
-                    criterion, "inclusion", DOSE_STABILITY_REASON, DOSE_STABILITY_EXPLANATION
-                )
+            # Ahead of the group-label branch, so a conditional label is recorded under
+            # this reason rather than as a container whose members emitted -- they did not.
+            decision = conditional_inclusions.get(str(criterion.get("id", "")))
+            if decision is not None:
+                _record_conditional_skip(criterion, "inclusion", decision)
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
@@ -5607,6 +5635,13 @@ class TTEService:
             # sibling clusters and EMPA-REG's six-member liver group are all exclusions.
             if ("exclusion", str(criterion.get("id", ""))) in restated_distinctness_drops:
                 _record_skip(criterion, "exclusion", RESTATED_DISTINCTNESS_REASON)
+                order += 1
+                continue
+            # Same placement as the inclusion loop: an exclusion that applies only to
+            # patients with the record would, emitted, exclude everyone with it.
+            decision = conditional_exclusions.get(str(criterion.get("id", "")))
+            if decision is not None:
+                _record_conditional_skip(criterion, "exclusion", decision)
                 order += 1
                 continue
             domain = (criterion.get("domain") or "").strip()
@@ -12232,10 +12267,17 @@ class TTEService:
         flattened: list[dict[str, Any]] = []
         counter = itertools.count(1)
 
-        def emit(item: Any, parent_group_id: str | None) -> None:
-            # Skip conditional criteria (subgroup-gated, e.g., "females must have pregnancy test")
-            if getattr(item, "conditional", False):
-                return
+        def flag_conditional(row: dict[str, Any], item: Any, inherited: bool) -> dict[str, Any]:
+            # Agent 1's subgroup flag used to drop the item here with no record anywhere
+            # (ARISTOTLE's "WOCBP must be using an adequate method of contraception").
+            # RFC-016 folds it into `record_requirement`: the row is kept, flagged, and
+            # `_build_seeded_target_circe` records it as a conditional skip.
+            if inherited or getattr(item, "conditional", False):
+                row[EXTRACTED_CONDITIONAL_KEY] = True
+            return row
+
+        def emit(item: Any, parent_group_id: str | None, inherited: bool = False) -> None:
+            inherited = inherited or bool(getattr(item, "conditional", False))
             sub_items = getattr(item, "sub_criteria", []) or []
             name = (getattr(item, "name", None) or "").strip()
             entity_text = (getattr(item, "entity_text", None) or "").strip()
@@ -12256,7 +12298,7 @@ class TTEService:
                         parent_group_id=parent_group_id,
                     )
                     parent_dict["isGroupLabel"] = True
-                    flattened.append(parent_dict)
+                    flattened.append(flag_conditional(parent_dict, item, inherited))
 
                 for sub in sub_items:
                     sub_name = (getattr(sub, "name", None) or "").strip()
@@ -12264,35 +12306,35 @@ class TTEService:
                     sub_desc = sub_name or sub_entity
                     if not sub_desc:
                         continue
-                    # `conditional` is checked here rather than inside `emit`, so a
-                    # conditional member keeps exactly the row it had before: `emit`
-                    # would drop it, and this function is not the place to change
-                    # which criteria a subgroup gate removes.
-                    if getattr(sub, "sub_criteria", None) and not getattr(sub, "conditional", False):
+                    if getattr(sub, "sub_criteria", None):
                         # A group inside a group. Its rows belong to a group of their
                         # own; the link back is `parentGroupId`, carried on every one
                         # of them so a reader holding any member row can find the
                         # enclosing group without holding the label.
-                        emit(sub, group_id)
+                        emit(sub, group_id, inherited)
                         continue
-                    flattened.append(
+                    flattened.append(flag_conditional(
                         self._criterion_dict_from_ir_item(
                             sub, next(counter), sub_desc,
                             group_id=group_id, group_type=group_type,
                             logic_type=parent_logic_type,
                             parent_value_constraint=getattr(item, "value_constraint", None),
                             parent_group_id=parent_group_id,
-                        )
-                    )
+                        ),
+                        sub,
+                        inherited,
+                    ))
             else:
                 # Standalone criterion (no sub_criteria)
                 if description:
-                    flattened.append(
+                    flattened.append(flag_conditional(
                         self._criterion_dict_from_ir_item(
                             item, next(counter), description,
                             parent_group_id=parent_group_id,
-                        )
-                    )
+                        ),
+                        item,
+                        inherited,
+                    ))
 
         for item in criteria:
             emit(item, None)

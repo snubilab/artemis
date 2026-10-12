@@ -329,6 +329,28 @@ def _render_threshold_classifier() -> str:
     return _joined(recorder.calls)
 
 
+def _render_criterion_annotation() -> str:
+    """Through ``annotate_eligibility`` with the model replaced, over a group label (so the
+    members block is rendered) and its member; the cache is off so nothing is written."""
+    from src.services import criterion_annotation
+
+    recorder = _Recorder(reply='{"record_requirement": "required", "conditional_span": null, '
+                               '"excepted_entities": [], "base_span": null}')
+    common = {"domain": "Drug", "protocolLine": f"{STUB} line", "logicType": "PRESENCE",
+              "window": {"start": -56, "end": 0}, "valueConstraint": None, "groupId": "g"}
+    rows = [
+        {"id": 1, "description": STUB, "sourceText": STUB, "isGroupLabel": True, **common},
+        {"id": 2, "description": f"{STUB} member", "sourceText": STUB, "isGroupLabel": False,
+         **common},
+    ]
+    with patch.object(criterion_annotation, "_build_llm", lambda _model: recorder.runnable()), \
+            patch.dict(os.environ, {"ARTEMIS_ANNOTATION_CACHE": "0"}):
+        criterion_annotation.annotate_eligibility(
+            {"inclusionCriteria": rows, "exclusionCriteria": []}, model="stub-model",
+        )
+    return _joined(recorder.calls)
+
+
 # ---------------------------------------------------------------------------
 # Declarations: what each prompt may quote
 # ---------------------------------------------------------------------------
@@ -473,6 +495,13 @@ PROMPTS: dict[str, PromptSpec] = {
         tokens=frozenset({"restatement", "conjunction_of_alternatives", "negation_of_alternative",
                           "distinct", "verdict", "matched_alternatives", "reason"}),
         placeholders=frozenset({"one short sentence"}),
+    ),
+    "criterion_annotation": PromptSpec(
+        _render_criterion_annotation,
+        tokens=frozenset({
+            "record_requirement", "conditional_span", "excepted_entities", "base_span", "text",
+            "span", "required", "forbidden", "conditional",
+        }),
     ),
     "agent1.threshold_classifier": PromptSpec(
         _render_threshold_classifier,
@@ -803,6 +832,7 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/conceptset/clinical_reranker.py": (2, ("conceptset.clinical_reranker",)),
     "src/agents/comparator/recommender.py": (3, ("comparator.classify", "comparator.literature")),
     "src/services/tte_service.py": (6, ("tte.analysis_finalizer", "tte.report_narrative")),
+    "src/services/criterion_annotation.py": (3, ("criterion_annotation",)),
     "src/utils/llm.py": (6, "transport: builds the chat client get_llm returns and appends "
                             "/no_think to the caller's last message; carries no prompt of its own"),
 }

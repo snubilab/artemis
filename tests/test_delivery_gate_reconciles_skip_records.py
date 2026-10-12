@@ -44,13 +44,14 @@ reconciliation adds no failure the batch did not already carry.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
 
 # The producer's own spelling, imported and never retyped (AGENTS.md, wire-format
 # constants): a guessed reason string silently reconciles nothing.
-from src.services.dose_stability import DOSE_STABILITY_REASON
+from src.services.criterion_annotation import CONDITIONAL_REASON
 from src.services.restated_demographics import COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON
 from src.services.restated_distinctness import COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON
 from src.services.value_constraint import STRANDED_GROUP_CONSTRAINT_REASON, is_reference_relative
@@ -1065,81 +1066,96 @@ class TestTheExporterRefusesToShipAnUnreconciledSkip:
         assert (out_dir / "manifest.json").exists()
 
 
-class TestADoseStabilitySkipIsReDerivedFromTheStore:
-    """`dose-stability-not-representable` is a permit like the others: re-judged with the
-    producer's own predicate on the store row, so it cannot carry an arbitrary criterion
-    out of the cohort. CARMELINA inclusion 7 is the row it exists for."""
+#: The real rows (2026-10-12 prompt_f2 candidate store), verbatim.
+_RFC016 = json.loads(
+    (Path(__file__).resolve().parent / "fixtures" / "rfc016_store_rows.json").read_text()
+)
+
+
+class TestAConditionalSkipIsReDerivedFromTheStore:
+    """`conditional-on-existing-record` is a permit like the others. The gate does not
+    re-decide what the annotation model decided; it checks the evidence: the recorded
+    span is a substring of the deciding row's `protocolLine`, and the deciding row is the
+    criterion or a group label containing it. CARMELINA inclusion 7 is the row it exists
+    for."""
+
+    CARMELINA_SPAN = "Stable antidiabetic background medication (unchanged daily dose)"
+    CAROLINA_SPAN = "Stable anti-diabetic background medication (unchanged daily dose)"
 
     @staticmethod
-    def _dose_skip(criterion_id: str, label: str, **kwargs: Any) -> dict[str, Any]:
+    def _conditional_skip(
+        criterion_id: str, label: str, span: Any, *, decided_by: str | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         kwargs = {"role": "inclusion", "domain": "Drug", "is_group_label": False, **kwargs}
-        return _skip(criterion_id, label, DOSE_STABILITY_REASON, **kwargs)
+        record = _skip(criterion_id, label, CONDITIONAL_REASON, **kwargs)
+        record.update(
+            conditionalSpan=span,
+            conditionalDecidedBy=decided_by or criterion_id,
+            conditionalSource="annotation" if span else "extraction",
+        )
+        return record
 
-    def test_should_pass_when_the_skip_names_a_stable_background_medication_row(self, gate):
-        label = "Stable antidiabetic background medication for 8 weeks"
-        study = _study(inclusion=[_criterion(7, label)])
+    def _carmelina(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        row = _RFC016["carmelina_inclusion_7"]
+        return row, _study(inclusion=[row])
+
+    def test_should_pass_when_the_span_is_in_the_rows_protocol_line(self, gate):
+        row, study = self._carmelina()
         records = _records(
-            skipped=[self._dose_skip("7", label)], store_criteria=_store_criteria(study)
+            skipped=[self._conditional_skip("7", row["description"], self.CARMELINA_SPAN)],
+            store_criteria=_store_criteria(study),
         )
         rc, out = gate(records, study)
         assert rc == 0, out
 
-    def test_should_pass_when_a_member_goes_out_with_its_dose_stability_label(self, gate):
-        study = _study(
-            inclusion=[
-                _criterion(
-                    37,
-                    "Stable anti-diabetic background medication",
-                    is_group_label=True,
-                    group_id="g-background",
-                ),
-                _criterion(38, "Anti-diabetic medication", group_id="g-background"),
-            ]
+    def test_should_fail_when_the_span_is_not_in_the_rows_protocol_line(self, gate):
+        row, study = self._carmelina()
+        records = _records(
+            skipped=[self._conditional_skip("7", row["description"], "Stable dose of metformin")],
+            store_criteria=_store_criteria(study),
         )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert f"recorded as {CONDITIONAL_REASON} but its span" in out
+
+    def test_should_fail_when_no_span_supports_the_skip(self, gate):
+        """Agent 1's `conditional` flag alone: a recorded skip, but not a permitted one."""
+        row, study = self._carmelina()
+        records = _records(
+            skipped=[self._conditional_skip("7", row["description"], None)],
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert f"recorded as {CONDITIONAL_REASON} but its span None" in out
+
+    def test_should_pass_when_a_member_goes_out_on_its_group_labels_decision(self, gate):
+        label, member = _RFC016["carolina_inclusion_37"], _RFC016["carolina_inclusion_38"]
+        study = _study(inclusion=[label, member])
         records = _records(
             skipped=[
-                self._dose_skip(
-                    "37", "Stable anti-diabetic background medication", is_group_label=True
-                ),
-                self._dose_skip("38", "Anti-diabetic medication"),
+                self._conditional_skip("37", label["description"], self.CAROLINA_SPAN,
+                                       is_group_label=True),
+                self._conditional_skip("38", member["description"], self.CAROLINA_SPAN,
+                                       decided_by="37"),
             ],
             store_criteria=_store_criteria(study),
         )
         rc, out = gate(records, study)
         assert rc == 0, out
 
-    def test_should_fail_when_the_reason_is_attached_to_a_criterion_that_states_no_dose_stability(
-        self, gate
-    ):
-        """The misuse: a real drug-presence requirement carried out under the permit."""
-        study = _study(inclusion=[_criterion(6, "Metformin")])
+    def test_should_fail_when_the_deciding_row_is_not_the_members_group_label(self, gate):
+        """The misuse: a real presence requirement carried out on another row's span."""
+        carolina_41, carmelina_7 = _RFC016["carolina_inclusion_41"], _RFC016["carmelina_inclusion_7"]
+        study = _study(inclusion=[carmelina_7, carolina_41])
         records = _records(
-            skipped=[self._dose_skip("6", "Metformin")], store_criteria=_store_criteria(study)
-        )
-        rc, out = gate(records, study)
-        assert rc == 1, out
-        assert f"recorded as {DOSE_STABILITY_REASON}" in out
-
-    @pytest.mark.parametrize("text", ["Stable angina", "Stable coronary artery disease"])
-    def test_should_fail_when_the_reason_is_attached_to_a_stable_condition(self, gate, text):
-        study = _study(inclusion=[_criterion(4, text, domain="Condition")])
-        records = _records(
-            skipped=[self._dose_skip("4", text, domain="Condition")],
+            skipped=[
+                self._conditional_skip("7", carmelina_7["description"], self.CARMELINA_SPAN),
+                self._conditional_skip("41", carolina_41["description"], self.CARMELINA_SPAN,
+                                       decided_by="7"),
+            ],
             store_criteria=_store_criteria(study),
         )
         rc, out = gate(records, study)
         assert rc == 1, out
-        assert f"recorded as {DOSE_STABILITY_REASON}" in out
-
-    def test_should_fail_when_the_reason_is_attached_to_an_exclusion(self, gate):
-        """Exclusions are out of scope: the forbidden-drug exclusions stay as they are."""
-        label = "Stable antidiabetic background medication for 8 weeks"
-        study = _study(inclusion=[], exclusion=[_criterion(30, label)])
-        records = _records(
-            skipped=[self._dose_skip("30", label, role="exclusion")],
-            demographic_rules=0,
-            store_criteria=_store_criteria(study),
-        )
-        rc, out = gate(records, study)
-        assert rc == 1, out
-        assert f"recorded as {DOSE_STABILITY_REASON}" in out
+        assert "not a group label whose group contains it" in out

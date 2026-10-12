@@ -1,0 +1,149 @@
+{
+  "about": "Real rows for the RFC-016 step 1 tests, copied verbatim (read-only sources). Store rows from the 2026-10-12 prompt_f2 candidate store; the conditional IR item from ARISTOTLE's Agent 1 IR cache.",
+  "store": {
+    "path": "output/site_gap/2026-10-12_prompt_f2/store/studies.json",
+    "sha256": "07db37f85d13003dbe72d0c9b07bcab1784baf9c37aeb2af6b1b0c46dfc41917"
+  },
+  "ir_cache": {
+    "path": "data/cache/agent1_ir/NCT00412984_vllm_google_gemma-4-E4B-it_d77066e245698c81.json",
+    "sha256": "8ebcaaffeb101c81fb60eb3c42a279ba663cc819cda3d7a139d6e61f36412bb5"
+  },
+  "carmelina_inclusion_7": {
+    "id": 7,
+    "description": "Stable antidiabetic background medication for 8 weeks",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "",
+    "protocolLine": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+      "start": -56,
+      "end": 0
+    },
+    "conceptSetId": 6,
+    "conceptSetName": "Stable antidiabetic background medication",
+    "logicType": "PRESENCE",
+    "groupId": null,
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+  },
+  "carolina_inclusion_37": {
+    "id": 37,
+    "description": "Stable anti-diabetic background medication",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+    "protocolSpan": "",
+    "window": {
+      "start": -56,
+      "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "dd6fa83b-9e7b-4e93-bf43-a0deef399326",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+  },
+  "carolina_inclusion_38": {
+    "id": 38,
+    "description": "Anti-diabetic medication",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+    "protocolSpan": "",
+    "window": {
+      "start": -56,
+      "end": 0
+    },
+    "conceptSetId": 32,
+    "conceptSetName": "Anti-diabetic medication",
+    "logicType": "PRESENCE",
+    "groupId": "dd6fa83b-9e7b-4e93-bf43-a0deef399326",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+  },
+  "carolina_inclusion_41": {
+    "id": 41,
+    "description": "Stable anti-diabetic background for 8 weeks",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "stable anti-diabetic background for at least 8 wks before study start",
+    "protocolSpan": "",
+    "window": {
+      "start": -56,
+      "end": 0
+    },
+    "conceptSetId": 33,
+    "conceptSetName": "Anti-diabetic medication",
+    "logicType": "PRESENCE",
+    "groupId": null,
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+  },
+  "empareg_exclusion_29": {
+    "id": 29,
+    "description": "Uncontrolled endocrine disorder (other than T2DM)",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Endocrine disorder",
+    "protocolLine": "Any uncontrolled endocrine disorder except type 2 diabetes",
+    "protocolSpan": "",
+    "window": {
+      "start": -9999,
+      "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "0103a07a-e9bd-4ffe-97ba-590b478404a5",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+  },
+  "empareg_exclusion_30": {
+    "id": 30,
+    "description": "Endocrine disorder (excluding T2DM)",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Endocrine disorder",
+    "protocolLine": "Any uncontrolled endocrine disorder except type 2 diabetes",
+    "protocolSpan": "Endocrine disorder",
+    "window": {
+      "start": -9999,
+      "end": 0
+    },
+    "conceptSetId": 29,
+    "conceptSetName": "Endocrine disorder (excluding T2DM)",
+    "logicType": "ABSENCE",
+    "groupId": "0103a07a-e9bd-4ffe-97ba-590b478404a5",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true
+  },
+  "aristotle_ir_wocbp": {
+    "name": "WOCBP contraception",
+    "domain": "Condition",
+    "entity_text": "Contraception",
+    "source_text": "Women of childbearing potential (WOCBP) must be using an adequate method of contraception to avoid pregnancy throughout the",
+    "logic_type": "PRESENCE",
+    "conditional": true,
+    "window": {
+      "start": -9999,
+      "end": 0
+    }
+  }
+}
