@@ -2,6 +2,8 @@
 
 > 최종 업데이트: 2026-03-04  
 > 상태: Living Document — 질문에 따라 지속 업데이트
+>
+> **2026-10-12 정정 (`fe7839e`, `266971e`)**: eligibility 구간·항목을 regex로 나누던 코드(`_parse_criteria_text`, `_parse_items`, `extract_eligibility_from_text`, `_regex_parse_criteria`, `_llm_parse_criteria`, `_merge_parsed_items`, `eligibility_section.py`)는 삭제되었고 `agent1/segmentation.py`의 LLM 분할 단계(RFC-016 §5)가 대신한다. `_normalize_entity_text`와 `_normalize_drug_entity_text`는 `266971e`에서 삭제되었다. 해당 절에 삭제 표시를 달았다.
 
 ---
 
@@ -68,7 +70,8 @@ graph TD
 | [prompts.py](../src/agents/agent1/prompts.py)               | LLM 프롬프트 정의 (System, Decomposition, NCT, Extraction)         | 294L |
 | [nct_fetcher.py](../src/agents/agent1/nct_fetcher.py)       | ClinicalTrials.gov API v2 데이터 수집 + 로컬 JSON 캐시             | 275L |
 | [pubmed_linker.py](../src/agents/agent1/pubmed_linker.py)   | NCT → PubMed PMID 연결 (referencesModule + esearch)                | 118L |
-| [pubmed_fetcher.py](../src/agents/agent1/pubmed_fetcher.py) | PubMed Abstract 가져오기 + eligibility regex 추출                  | 167L |
+| [pubmed_fetcher.py](../src/agents/agent1/pubmed_fetcher.py) | PubMed Abstract 가져오기 (criteria 추출은 segmentation.py)         | 167L |
+| [segmentation.py](../src/agents/agent1/segmentation.py)     | 문서에서 inclusion/exclusion 구간과 criterion 경계를 LLM이 인용, 코드는 슬라이스 | -    |
 | [enricher.py](../src/agents/agent1/enricher.py)             | TrialData 보강 (replace/merge 전략)                                | 95L  |
 
 ---
@@ -124,7 +127,7 @@ result = decomposer.parse_nct(
 2. `protocol`
 3. `main paper` → 가장 낮은 우선순위
 
-PDF에서 `pdftotext`로 전문 추출 후, eligibility section을 regex로 파싱한다.
+PDF에서 `pdftotext`로 전문 추출 후, eligibility section은 segmentation 단계(`segment_eligibility`)가 나눈다.
 
 ---
 
@@ -138,8 +141,7 @@ ClinicalTrials.gov API v2에서 시험 데이터를 수집한다.
 | --------------------------------- | --------------------------------------------------------------- |
 | `fetch_or_load_trial_data()`      | 캐시 확인 → miss 시 API fetch (timeout: 30s)                    |
 | `_parse_protocol_to_trial_data()` | API JSON → `TrialData` Pydantic 모델 변환                       |
-| `_parse_criteria_text()`          | `"Inclusion Criteria: ... Exclusion Criteria: ..."` 텍스트 분리 |
-| `_parse_items()`                  | 번호/불릿 항목 파싱 (inline dash `- item1 - item2` 포함 처리)   |
+| `segment_eligibility()` 호출      | eligibility 텍스트의 구간·항목 분리 (`_parse_criteria_text`, `_parse_items`는 `fe7839e`에서 삭제) |
 
 **캐시**: `data/nct_cache/{nct_id}.json`에 원본 API 응답 저장
 
@@ -174,7 +176,7 @@ NCT API 기준만으로는 부족할 수 있어, PubMed 논문에서 더 상세�
 
 - E-utilities `efetch`로 XML abstract 가져오기
 - `<ArticleTitle>`, `<AbstractText>` 파싱
-- `extract_eligibility_from_text()`: Regex 기반 inclusion/exclusion 섹션 추출
+- criteria 추출은 `segment_eligibility()`가 한다 (`extract_eligibility_from_text`는 `fe7839e`에서 삭제)
 
 #### ③ Enricher — 기준 보강
 
@@ -227,8 +229,6 @@ LLM 응답에서 JSON을 추출하고 `ARTEMISRequest`를 구성한다.
 
 | 메서드                          | 역할                                                                      |
 | ------------------------------- | ------------------------------------------------------------------------- |
-| `_normalize_entity_text()`      | 일반적인 entity_text 정규화                                               |
-| `_normalize_drug_entity_text()` | Drug entity_text에서 괄호 내용/불필요한 일반화 제거 (Agent 2 과확장 방지) |
 | `_normalize_operator()`         | 연산자 문자열 정규화 (`>=` → `gte`, `<` → `lt` 등)                        |
 
 ---

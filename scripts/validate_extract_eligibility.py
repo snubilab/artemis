@@ -1,4 +1,8 @@
 """
+STALE since fe7839e: extract_eligibility_from_text and _regex_parse_criteria were deleted
+(segmentation step, RFC-016 §5), so this script no longer runs. See
+tests/test_eligibility_segmentation.py for the replacement checks.
+
 Validate extract_eligibility_from_text against real clinical trial supplement PDFs.
 
 Trials:

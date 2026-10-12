@@ -7,7 +7,7 @@ which answers with DROP, KEEP or UNDECIDED over the two predicates below --
 existed before, all whole-string difflib ratios, none able to see a containment
 relation:
 
-    pubmed_fetcher._merge_parsed_items      (>= 0.7 duplicate)
+    pubmed_fetcher._merge_parsed_items      (>= 0.7 duplicate; deleted in fe7839e)
     enricher._merge_criteria                (>= 0.7 duplicate)
     enricher._supplement_priority_merge     (< 0.5 means missing)
     enricher._pick_richer                   (raw count comparison)
@@ -50,8 +50,9 @@ def dedup_enabled() -> bool:
     """:returns: False only when the ablation env var is explicitly set to 1."""
     return os.environ.get(_ABLATION_ENV, "").strip() != "1"
 
-# The OR-GROUP wire format, defined once. _collapse_hierarchical_groups emits
-# it, _parse_criteria_items splits it out, and this module reads it back.
+# The OR-GROUP wire format, defined once. pubmed_fetcher._collapse_hierarchical_groups
+# emitted it and _parse_criteria_items split it out (both deleted in fe7839e, RFC-016 §5);
+# this module and any stored item that still carries it read it back.
 # tests/test_dry_or_group_contract.py fails if any other module re-types it.
 OR_GROUP_PREFIX = "[OR-GROUP] "
 OR_GROUP_JOIN = " with any of: "

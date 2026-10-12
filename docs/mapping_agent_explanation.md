@@ -2,6 +2,8 @@
 
 > 최종 업데이트: 2026-03-04  
 > 상태: Living Document — 질문에 따라 지속 업데이트
+>
+> **2026-10-12 정정 (`fa7c41a`)**: Fast Path, Complexity Router(`complexity_router.py`), Rule Extractor(`rule_extractor.py`), 배치 API(`process_batch`, `batch_classify`, `_slow_path_batch`)는 삭제되었다. 운영 경로 밖에 있던 코드이고, 모든 쿼리는 Slow Path 하나를 탄다 (`workflow.py`의 `route_path`는 `"slow"` 또는 `"atc"`). 아래 서술 중 Fast/Slow 분기를 전제한 부분은 2026-03-04 시점의 기록이며, 각 절에 삭제 표시를 달았다.
 
 ---
 
@@ -36,19 +38,12 @@ Agent 2는 **6단계 파이프라인**으로 구성된다:
 ```mermaid
 graph TD
     INPUT["🧠 IR (ARTEMISRequest)"] --> PREPROC["Step 0: Pre-processing<br/>(Abbreviation · Drug Class · Code Pattern)"]
-    PREPROC --> ROUTER["Complexity Router (SpaCy)"]
-
-    ROUTER -->|"FAST"| RULE["Rule Extractor"]
-    ROUTER -->|"SLOW"| UMLS["UMLS Synonym Expander"]
-
-    RULE --> VS1["Vector Search (ChromaDB)"]
-    VS1 --> TOP1["Top-1 Direct"]
+    PREPROC --> UMLS["UMLS Synonym Expander"]
 
     UMLS --> VS2["Multi-query Vector Search"]
     VS2 --> RERANK["LLM Reranker (Top-3)"]
 
-    TOP1 --> LOGICIAN["Logician (decompose + prune)"]
-    RERANK --> LOGICIAN
+    RERANK --> LOGICIAN["Logician (decompose + prune)"]
 
     LOGICIAN --> KG["KG Expander (Neo4j)<br/>descendants · siblings · maps_to"]
     KG --> CLIMB["Ancestor Climb (IC-based)"]
@@ -57,9 +52,6 @@ graph TD
     CONSOLIDATOR --> REGISTRY["Registry"]
     REGISTRY --> OUTPUT["📄 ConceptSets"]
 
-    style RULE fill:#E3F2FD,stroke:#1565C0
-    style VS1 fill:#E3F2FD,stroke:#1565C0
-    style TOP1 fill:#E3F2FD,stroke:#1565C0
     style UMLS fill:#FFF3E0,stroke:#E65100
     style VS2 fill:#FFF3E0,stroke:#E65100
     style RERANK fill:#FFF3E0,stroke:#E65100
@@ -71,8 +63,7 @@ graph TD
 
 | 파일                                                                      | 역할                                                            | 크기 |
 | ------------------------------------------------------------------------- | --------------------------------------------------------------- | ---- |
-| [workflow.py](../src/agents/agent2/workflow.py)                           | **메인 오케스트레이터** — Fast/Slow Path 분기 및 전체 흐름 제어 | 717L |
-| [complexity_router.py](../src/agents/agent2/complexity_router.py)         | 복잡도 분류 (SpaCy NLP 기반 Fast/Slow 결정)                     | 363L |
+| [workflow.py](../src/agents/agent2/workflow.py)                           | **메인 오케스트레이터** — Slow Path 및 전체 흐름 제어 (Fast/Slow 분기는 `fa7c41a`에서 삭제) | 717L |
 | [retriever.py](../src/agents/agent2/retriever.py)                         | ChromaDB 벡터 검색 + 도메인별 보정 점수                         | 224L |
 | [reranker.py](../src/agents/agent2/reranker.py)                           | LLM 기반 Top-N 리랭킹 (single + batch)                          | 327L |
 | [kg_expander.py](../src/agents/agent2/kg_expander.py)                     | **Neo4j KG-RAG** — IC 기반 Ancestor Climbing + 개념 확장        | 657L |
@@ -80,7 +71,6 @@ graph TD
 | [umls_synonym_expander.py](../src/agents/agent2/umls_synonym_expander.py) | UMLS 동의어 확장 (로컬 MRCONSO SQLite)                          | 256L |
 | [abbreviation_expander.py](../src/agents/agent2/abbreviation_expander.py) | 의학 약어 사전 기반 확장 (150+ 약어)                            | 244L |
 | [drug_class_expander.py](../src/agents/agent2/drug_class_expander.py)     | 약물 클래스 → 개별 성분 확장 (ATC 기반, RFC-006)                | 301L |
-| [rule_extractor.py](../src/agents/agent2/rule_extractor.py)               | Rule-based 추출기 (Demographics, Measurements)                  | 242L |
 | [logic.py](../src/agents/agent2/logic.py)                                 | Logician — 복합 개념 분해 + pruning                             | 82L  |
 | [regex_rules.py](../src/agents/agent2/regex_rules.py)                     | Regex 패턴 정의                                                 | 30L  |
 | [agent2_cache.py](../src/agents/agent2/agent2_cache.py)                   | 캐시 관리 (디스크 기반)                                         | 95L  |
@@ -101,53 +91,17 @@ graph TD
 
 > **Drug Class Expander**는 RFC-006에 의해 **ATC Vocabulary 기반**으로 전환되었다. 하드코딩된 사전은 fallback으로만 사용.
 
-### 4.2 Complexity Router
+### 4.2 Complexity Router (삭제됨, `fa7c41a`)
 
-**SpaCy NLP**를 사용하여 각 기준(criteria)의 복잡도를 판단하고, **Fast Path** 또는 **Slow Path**로 분기한다.
+`complexity_router.py`는 쿼리를 Fast/Slow로 나눴지만 운영 경로에서는 항상 Slow로 고정되어 있었다. 모듈과 SpaCy 분석, 트리거 패턴 표는 삭제되었고, 모든 쿼리가 Slow Path로 간다.
 
-#### 분류 기준
+### 4.3 Fast Path (삭제됨, `fa7c41a`)
 
-| 경로          | 조건                                                 | 소요 시간 |
-| ------------- | ---------------------------------------------------- | --------- |
-| **Fast Path** | 단일 noun phrase, 명확한 의학 용어, 논리 연산자 없음 | <100ms    |
-| **Slow Path** | 복합 조건, 부정 표현, 시간 제약, 다의어 등           | 1-3s      |
-
-#### Slow Path 트리거 패턴
-
-```python
-# complexity_router.py 내 주요 복잡도 지표
-COMPLEX_PATTERNS = {
-    "negation": ["no history of", "without", "absence of"],
-    "exception": ["unless", "except", "other than"],
-    "temporal": ["within 30 days", "prior to", "during"],
-    "quantitative": [">= 6.5%", "between X and Y"],
-    "ambiguous_terms": ["insult", "culture", "discharge", "block"],
-}
-```
-
-#### SpaCy 분석
-
-- **Noun chunk 수** > 3 → 복합 표현 가능성
-- **ROOT verb 수** ≥ 2 → 복잡한 문장 구조
-- **NER entity 수** → 다중 의학 개념 포함 여부
-
-### 4.3 Fast Path (단순 용어)
-
-LLM을 사용하지 않는 빠른 경로:
-
-```
-Query Text → Rule Extractor → Vector Search (ChromaDB) → Top-1 Direct → Logician → KG-RAG Post-processing
-```
-
-1. **Rule Extractor**: Regex 기반으로 나이, 성별, 측정값 등 구조화된 정보 추출
-2. **Vector Search**: ChromaDB에서 의미적 유사도 기반 후보 검색 (fetch=60, return=20)
-3. **Post-retrieval Scoring**: 벡터 거리(distance)를 기본으로 5단계 보정 점수 적용
-4. **Top-1 선택**: 가장 낮은 adjusted_score를 가진 단일 후보 선택
-5. **Logician**: 복합 개념 분해 + pruning (상세 아래)
+`rule_extractor.py` + Top-1 직접 선택 경로는 삭제되었다. 아래 Logician은 Slow Path의 후처리로 남아 있다.
 
 #### Logician (ConceptLogician) 상세
 
-Fast/Slow 양쪽에서 KG-RAG 전에 실행되는 후처리 모듈.
+KG-RAG 전에 실행되는 후처리 모듈.
 
 **① `decompose_combination(concept_id)`** — 복합 약물 → 개별 성분 분해
 
@@ -237,11 +191,11 @@ Query Text → UMLS Synonym Expansion → Multi-query Vector Search → LLM Rera
 
 4. **Force Top-1 Inclusion**: 항상 최소 1개의 seed concept을 보장
 
-5. **Logician**: Fast Path와 동일한 후처리
+5. **Logician**: 복합 개념 분해 + pruning (위 상세)
 
 ### 4.5 KG-RAG Post-processing
 
-Fast/Slow Path 결과(seed IDs)를 **Knowledge Graph**를 통해 확장한다.
+Slow Path 결과(seed IDs)를 **Knowledge Graph**를 통해 확장한다.
 
 ```
 Seed IDs → KG Expander (Neo4j) → LLM Critic (Multi-select) → Final Concept IDs
@@ -331,7 +285,7 @@ class ARTEMISRequest:
 class MappingResult:
     concept_ids: List[int]         # 매핑된 OMOP Concept IDs
     gap_report: GapReport          # 매핑 실패 보고서
-    routing_stats: Dict            # Fast/Slow 경로 통계
+    route_path: str                # 'slow' 또는 'atc'
     processing_time: float         # 처리 시간
     confidence: float              # 신뢰도 점수
 ```
@@ -366,7 +320,6 @@ FAILURE_REASONS = [
 | **PostgreSQL** (Broadsea)    | IC 계산용 descendant count 조회        | ✅ 필수                              |
 | **UMLS SQLite** (MRCONSO)    | 동의어 확장                            | ⚠️ 선택 (없으면 graceful degrade)    |
 | **LLM** (Claude/GPT)         | Reranker + Critic                      | ✅ 필수                              |
-| **SpaCy** (`en_core_web_sm`) | Complexity Router NLP 분석             | ⚠️ 선택 (없으면 rule-based fallback) |
 
 ---
 
@@ -385,27 +338,9 @@ FAILURE_REASONS = [
 
 ---
 
-## 8. 배치 처리 (Batch Processing)
+## 8. 배치 처리 (삭제됨, `fa7c41a`)
 
-Agent 2는 **Pattern 4: Batch Processing**을 지원한다:
-
-```python
-# 배치 API
-workflow = Agent2Workflow()
-result = workflow.process_batch(
-    queries=["Type 2 diabetes", "Metformin", "HbA1c"],
-    contexts=["diabetes trial", "diabetes trial", "lab test"]
-)
-```
-
-배치 처리 흐름:
-
-1. 전체 쿼리를 `batch_classify()`로 Fast/Slow 분류
-2. Fast Path 쿼리: 순차 처리 (LLM 호출 없으므로 빠름)
-3. Slow Path 쿼리: `_slow_path_batch()`로 **병렬** 처리
-   - UMLS 확장 + Vector 검색 병렬화
-   - `rerank_topn_batch()` — LLM 리랭킹 병렬 호출 (max_concurrency=5)
-   - KG 확장 + Critic 평가도 쿼리별 병렬
+`process_batch`, `batch_classify`, `_slow_path_batch`는 삭제되었다. 호출자는 `process_with_details`를 쿼리마다 호출한다.
 
 ---
 
@@ -500,22 +435,7 @@ Reranker와 Critic의 차이:
 
 ### Q2. Fast Path에서는 KG expansion 안 하나요?
 
-**합니다.** KG-RAG Post-processing은 Fast/Slow **양쪽 모두**에 적용된다.
-
-```python
-# workflow.py (process_with_details 내부)
-if route_path == "fast":
-    concept_ids = self._fast_path(query_text, ...)
-else:
-    concept_ids = self._slow_path(query_text, ...)
-
-# ── KG-RAG Post-processing (both fast & slow) ──
-concept_ids = self._kg_expand_and_critique(
-    concept_ids, query_text, context, domain_hint
-)
-```
-
-Fast/Slow의 차이는 **seed concept을 찾는 방식**뿐이고, seed를 찾은 이후의 KG 확장 + Critic 평가는 동일하게 수행된다.
+Fast Path는 `fa7c41a`에서 삭제되었다. 현재는 Slow Path로 seed를 찾은 뒤 `_kg_expand_and_critique`가 KG 확장과 Critic 평가를 수행한다.
 
 ---
 

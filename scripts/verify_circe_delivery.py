@@ -1360,8 +1360,8 @@ def _restatement_survivor(
     if member is None or distinctness_key(member) != distinctness_key(survivor):
         return None, (
             f"#{key[1]} was collapsed onto survivor #{survivor_id}, which does not "
-            "carry the same sourceText and valueConstraint: the collapse is booked but "
-            "the surviving row states a different fact"
+            "carry the same domain, sourceText, window, valueConstraint and logicType: "
+            "the collapse is booked but the surviving row states a different fact"
         )
     return survivor_key, None
 

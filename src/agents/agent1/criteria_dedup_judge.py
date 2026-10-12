@@ -342,7 +342,8 @@ def _build_llm(model: str):
 
     Separate from :func:`_get_llm` so tests can substitute a stub without a
     network, and so the json_mode/temperature choices live in one place. Mirrors
-    ``pubmed_fetcher._get_criteria_llm``.
+    ``pubmed_fetcher._get_criteria_llm`` (deleted in ``fe7839e``; see
+    ``segmentation._build_llm``).
     """
     from src.utils.llm import get_llm
 

@@ -4,10 +4,12 @@ A criterion asserts its temporal scope TWICE: once in ``window``, as days relati
 index, and once in the prose of ``description`` -- "... within 3 years", "(7 days)",
 "for 8 weeks prior to randomization". Only the first assertion is read by Circe. The
 second is inert everywhere except one place, where it does real damage: the text handed
-to the concept mapper. :func:`src.agents.conceptset.nlu_router.detect_temporal_negation`
-scans that text for ``within`` / ``prior`` / ``days`` / ``months`` / ``years`` and, on a
-hit, refuses to route the seed at all -- the criterion is then recorded as
-``intent-unparsed`` and never becomes a rule.
+to the concept mapper. ``nlu_router.detect_temporal_negation`` scanned that text for
+``within`` / ``prior`` / ``days`` / ``months`` / ``years`` and, on a hit, refused to route
+the seed at all -- the criterion was then recorded as ``intent-unparsed`` and never became a
+rule. That router word list was deleted in ``266971e`` (RFC-016 §5 A15): the intent
+separator now sees such a seed and its own ``fallback_to`` field decides. The measurement
+below was taken while the refusal still existed.
 
 Measured on the 2026-09-09 six-study delivery: four CARMELINA criteria were lost that
 way, every one of them with a CORRECT window already holding the number the prose

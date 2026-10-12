@@ -1,4 +1,7 @@
 """
+STALE since fe7839e: it imports pubmed_fetcher.extract_eligibility_from_text, which was
+deleted (RFC-016 §5), so it no longer runs.
+
 LEADER E2E Integration Test — Full Pipeline.
 Tests: Agent 1 (PubMed enrichment) → Planner → Agent 2 (mock) → Consolidator → TROY comparison.
 

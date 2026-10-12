@@ -13,14 +13,15 @@ It lives here rather than in the decomposer because ``circe_lint`` is deliberate
 module scope. Importing the helper from there would drag the model stack into every
 lint.
 
-Escapes are not stripped here, and do not need to be. ``deescape`` (the one home for
-that decision, in ``src.agents.agent1.threshold_classifier``) matters for the *substring*
-half of ``_grounded_span``, where a stray ``\\>`` breaks a comparison that must hold
-character for character. Word splitting is escape-insensitive by construction: the split
-pattern below treats a backslash as a separator like any other non-alphanumeric. Measured
-over the 1,910 ``protocolLine`` / ``description`` / ``sourceText`` / ``conceptSetName`` /
-``protocolSpan`` strings of the 2026-09-14 store, routing through ``deescape`` first
-changes zero of them, and none of the 1,910 contains a backslash at all.
+Escapes are not stripped here, and do not need to be. ``deescape`` (which lived in
+``src.agents.agent1.threshold_classifier`` and was deleted with that module in ``fa7c41a``)
+only removed backslashes; the *substring* half of ``_grounded_span`` is where a stray
+``\\>`` breaks a comparison that must hold character for character. Word splitting is
+escape-insensitive by construction: the split pattern below treats a backslash as a
+separator like any other non-alphanumeric. Measured over the 1,910 ``protocolLine`` /
+``description`` / ``sourceText`` / ``conceptSetName`` / ``protocolSpan`` strings of the
+2026-09-14 store, routing through ``deescape`` first changed zero of them, and none of the
+1,910 contains a backslash at all.
 """
 
 from __future__ import annotations

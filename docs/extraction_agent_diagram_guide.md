@@ -189,7 +189,7 @@
 │  Parse ConceptSets                                    │
 │                                                       │
 │  _extract_drug_concepts(circe_json)                   │
-│  _extract_outcome_concepts(circe_json)                │
+│  (outcome ids: outcome_concept_ids argument)          │
 │                                                       │
 │  ┌──────────────────────┐ ┌──────────────────────┐   │
 │  │ Target Drug IDs      │ │ Comparator Drug IDs  │   │

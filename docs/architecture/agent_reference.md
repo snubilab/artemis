@@ -19,7 +19,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 1 | Trial Agent | Logic Decomposer | `agent1/` | `get_agent1().parse()` / `parse_nct()` | ✅ |
 | 1.5 | Planner | Criteria Decomposer | `planner/` | `get_planner().plan(ir)` | ✅ |
-| 1.x | Threshold Classifier | Value/span classifier (ADR-032) | `agent1/threshold_classifier.py` | `classify_*` | ✅ |
+| 1.x | Eligibility Segmentation | 문서에서 inclusion/exclusion 구간과 criterion 경계를 표시 (RFC-016 §5) | `agent1/segmentation.py` | `segment_eligibility()` | ✅ |
 | 2 | Mapping Agent (Mapper) | Intelligent Mapper | `agent2/` | `get_agent2().process(_with_details)` | ✅ (rerank/critic) |
 | 2.5 | Consolidator | ConceptSet LCA merger | `consolidator/` | `ConceptSetConsolidator.consolidate()` | ❌ |
 | 3 | Assembly Agent | Circe Assembler | `agent3/` | `agent3.assemble(ir, concept_sets)` | ❌ |
@@ -27,7 +27,7 @@
 | — | Extraction Agent | Cohort Executor | `pipeline/` (+ `analysis/omop_connector.py`) | WebAPI / CohortExecutor | ❌ |
 | 5 | Analysis Agent | Causal Analysis | `agent5/` | `Agent5Workflow.configure(...).run()` | ❌ |
 | 6 | Reporting Agent | Report Generator | `agent6/` | `Agent6Workflow.set_results(...).generate_report()` | △ (요약 경로 확장 가능) |
-| — | Comparator Recommender | Active-comparator proposal | `comparator/` | `recommend_comparator(...)` | ✅ (vLLM, degradable) |
+| — | Comparator Recommender | Active-comparator proposal | `comparator/` | `recommend_from_literature(...)` | ✅ (vLLM, degradable) |
 | — | ConceptSet Recommender | Standalone CS recommender | `conceptset/` | `get_recommender().recommend()` / FastAPI | ✅ |
 
 파이프라인 순서 (Supervisor LangGraph):
@@ -135,7 +135,7 @@ Enrichment 우선순위 (`parse_nct`):
 | `pmc_fetcher.py` / `pmc_supplement.py` | PMC / supplement |
 | `enricher.py` | PDF 텍스트 enrichment |
 | `paper_url_mapper.py` | 논문 URL 매핑 |
-| `threshold_classifier.py` | ADR-032 span 분류 (별도 단계, 아래 §3.1) |
+| `segmentation.py` | 문서에서 criteria 구간·경계를 LLM이 인용한 fragment로 표시하고 코드는 슬라이스만 수행 (RFC-016 §5, `fe7839e`; 아래 §3.1) |
 
 ### LLM / 의존성
 
@@ -144,16 +144,17 @@ Enrichment 우선순위 (`parse_nct`):
 
 ---
 
-### 3.1 Threshold Classifier (ADR-032)
+### 3.1 Eligibility Segmentation (RFC-016 §5)
 
 | 항목 | 내용 |
 | --- | --- |
-| **역할** | eligibility 문장에서 수치/기간/용량 등 **span**을 분류해 Circe 구조화에 넘김 |
-| **위치** | `agent1/threshold_classifier.py` |
-| **파이프라인** | (1) Agent1 decompose → (2) **classify spans** → (3) `value_constraint` 구조화 |
-| **입력** | criterion / source_text (+ taxonomy prompt) |
-| **출력** | span list: class ∈ `{MEASUREMENT_VALUE, AGE, TEMPORAL_WINDOW, STATE_DURATION, DRUG_DOSE, SCORE_GRADE, EVENT_QUANTITY, REVIEW, NON_CRITERION}` |
-| **설계 포인트** | 모델 self-confidence 폐기; 게이트 실패는 전부 `REVIEW`. numeral recall이 load-bearing |
+| **역할** | 문서에서 inclusion/exclusion 구간이 어디이고 criterion이 어디서 끝나는지를 LLM이 인용한 fragment로 표시한다. 코드는 fragment가 본문에 존재하는지만 확인하고 그 위치로 자른다 |
+| **위치** | `agent1/segmentation.py` (`fe7839e`, 보완 `9cf4669`, `ac638dc`) |
+| **대체한 것** | `eligibility_section.py`(제목·종결어 사전)와 `pubmed_fetcher`의 항목 분리·`[OR-GROUP]` 규칙 (인벤토리 S1-S8, A6) |
+| **실패 처리** | fragment가 본문에 없으면 사용하지 않고 `Segmentation.rejected`에 기록한다. 규칙으로의 fallback은 없다 |
+
+ADR-032의 `threshold_classifier.py`(span 분류기)는 운영 경로 밖에 있어 `fa7c41a`에서 삭제되었다.
+이전 설명은 `docs/adr/ADR-032_Criterion_Classifier.md`에 기록으로 남아 있다.
 
 ---
 
@@ -189,7 +190,7 @@ Enrichment 우선순위 (`parse_nct`):
 | **제품 capability** | `suggest_eligibility`, `suggest_treatment`, `suggest_outcomes` (IR + Mapping) |
 | **클래스** | `src.agents.agent2.workflow.Agent2Workflow` |
 | **팩토리** | `get_agent2()` |
-| **단건 래퍼** | `map_entity.py` — supervisor selective retry / `force_slow_path` |
+| **단건 래퍼** | `map_entity.py` — supervisor selective retry (`force_slow_path`는 받지만 효과가 없다) |
 
 ### 입력
 
@@ -197,7 +198,6 @@ Enrichment 우선순위 (`parse_nct`):
 | --- | --- | --- |
 | `process(query_text, context=None, domain_hint=None)` | 임상 용어 | `List[int]` concept IDs |
 | `process_with_details(..., force_slow_path=False, pre_fetched_candidates=None)` | 동일 + 옵션 | `MappingResult` |
-| `process_batch(queries, contexts=None)` | 배치 | 집계 `MappingResult` |
 
 `domain_hint`: Agent 1이 준 OMOP domain (`Drug`, `Condition`, …). ATC expansion 게이트·retriever 필터에 사용.
 
@@ -208,7 +208,7 @@ Enrichment 우선순위 (`parse_nct`):
 | `concept_ids` | 최종 OMOP IDs |
 | `overbroad_concept_ids` | Assembler가 `includeDescendants=false`로 둬야 하는 ID |
 | `gap_report` | 매핑 실패 항목 |
-| `route_path` | `'fast'` / `'slow'` / `'atc'` (현재 기본은 slow 강제) |
+| `route_path` | `'slow'` / `'atc'` (fast path는 `fa7c41a`에서 삭제; `'fast'`는 기록된 과거 결과에만 남음) |
 | `atc_expanded` | ATC early-return 여부 |
 | `critic_skipped` | Critic LLM skip 여부 |
 | `domain_overridden` | domain pre-check가 힌트를 바꿨을 때 원본 |
@@ -219,9 +219,8 @@ Enrichment 우선순위 (`parse_nct`):
 1. (옵션) Domain pre-check — `DOMAIN_PRECHECK=1`일 때만; 기본 OFF
 2. Abbreviation expansion → UMLS query pre-expansion (`AGENT2_QUERY_EXPAND`)
 3. **ATC drug-class expansion** — `domain_hint == "Drug"`이면 vocab lookup 후 early return
-4. Complexity router — **현재 fast path 비활성**, 항상 slow
-5. Slow path: ChromaDB retrieve → LLM rerank → (UMLS synonyms) → Neo4j KG expand → Critic → ConceptSet refiner
-6. Drug (또는 domain unknown)면 RxNorm ingredient roll-up
+4. Slow path (유일한 경로; complexity router는 `fa7c41a`에서 삭제): ChromaDB retrieve → LLM rerank → (UMLS synonyms) → Neo4j KG expand → Critic → ConceptSet refiner
+5. Drug (또는 domain unknown)면 RxNorm ingredient roll-up
 
 ### 서브모듈
 
@@ -236,9 +235,8 @@ Enrichment 우선순위 (`parse_nct`):
 | `drug_class_expander.py` | ATC class → ingredients |
 | `drug_name_normalizer.py` | 약물명 정규화 |
 | `concept_set_refiner.py` | overbroad 감지 |
-| `complexity_router.py` | fast/slow (현재 slow 고정) |
 | `abbreviation_expander.py` | 약어 사전 |
-| `rule_extractor.py` / `regex_rules.py` | 규칙·코드 패턴 |
+| `regex_rules.py` | 코드 패턴 (`CodePatternMatcher`). `complexity_router.py`와 `rule_extractor.py`는 `fa7c41a`에서 삭제됨 — fast path 없이 모든 쿼리가 LLM 경로를 탄다 |
 | `logic.py` | combination drug / ingredient roll-up |
 | `agent2_cache.py` / `criterion_cache.py` | 결과 캐시 |
 | `map_entity.py` | entity 단위 진입 + retry hooks |
@@ -434,25 +432,25 @@ LLM 없음. 통계는 `src/analysis/{propensity,balance,cox}.py`.
 | --- | --- |
 | **역할** | Placebo-controlled trial을 RWD에서 에뮬할 때 **CV-neutral active comparator** 제안 (HITL only) |
 | **ADR** | ADR-027 / ADR-028 |
-| **진입점** | `recommend_comparator(treatment_drug, indication, outcome, candidates, trial_name=?)` |
+| **진입점** | `recommend_from_literature(treatment_drug, treatment_class, indication, outcome, ...)` (`recommend_comparator`는 `5fbade3`에서 삭제됨) |
 | **위치** | `comparator/recommender.py`, `literature.py` |
 
 ### 입력
 
-- treatment / indication / outcome
-- `candidates: list[{drug_class, ingredients}]` — CDM ATC siblings 등 **필수** (내장 리스트 없음)
+- treatment_drug / treatment_class / indication / outcome (+ `trial_name`, `use_cache`, `save`)
+- CDM ATC 형제 목록 같은 `candidates` 입력은 없다. 후보는 PubMed 문헌에서 LLM이 이름 붙이고, 호출자가 CDM에서 ingredient를 확인한다 (`5fbade3`에서 candidate-first 경로 삭제)
 
-### 출력 (`RecommendationArtifact`)
+### 출력 (`dict`)
 
 | 필드 | 의미 |
 | --- | --- |
-| `status` | 항상 `"proposed"` (auto-apply 금지) |
-| `candidates` | `ClassVerdict` (verdict, confidence, PMIDs, caveat) |
-| `recommendation` | top neutral class + rationale + alternatives |
-| `evidence` | PubMed `LiteratureBundle` provenance |
-| `caveats` | vLLM down 시 evidence-only 등 |
+| `trigger` / `queries` | 호출 입력과 PubMed 질의 |
+| `documents` / `n_papers` / `source` | 검색한 문헌과 출처(`pubmed` 또는 `cache`). 스냅샷은 `data/comparator_literature/<key>.json` |
+| `candidates` | 후보 class (`drug_class`, `ingredients`, `verdict`, `same_setting`, `rationale`) |
+| `recommendation` | neutral, same-setting이고 ingredient가 있는 첫 후보. 없으면 `None` (auto-apply 금지, HITL 제안) |
+| `caveat` | vLLM 불가 또는 추출 실패 시 |
 
-vLLM 불가 시 verdict=`unknown`으로 degrade, evidence는 유지.
+vLLM 불가 시 `candidates`가 비고 문헌만 반환한다.
 
 ---
 
@@ -503,7 +501,7 @@ Supervisor 노드: `trial_node` → `mapping_node` → `assembly_node` → `extr
 | Capability (FE) | Backend owners |
 | --- | --- |
 | `generate_draft` | Trial Agent + Planner |
-| `suggest_eligibility` | Trial IR + Mapping Agent (+ threshold classifier 경로) |
+| `suggest_eligibility` | Trial IR + Mapping Agent |
 | `suggest_treatment` / `suggest_treatment_arms` | Trial IR + Mapping (+ Comparator Recommender when placebo) |
 | `suggest_outcomes` | Trial IR + Mapping |
 | `validate_design` | Assembly + Validator + Supervisor signals |
@@ -534,7 +532,7 @@ FE는 agent 번호를 알지 않는다 (`docs/tte_agent/05_agent_role_aligned_pl
 
 ```text
 agents/
-├── agent1/          # Trial / Logic Decomposer (+ threshold_classifier)
+├── agent1/          # Trial / Logic Decomposer (+ segmentation)
 ├── planner/         # Criteria decomposition (1.5)
 ├── agent2/          # OMOP Intelligent Mapper
 ├── consolidator/    # Post-mapping LCA merge

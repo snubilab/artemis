@@ -1,3 +1,7 @@
+"""STALE since fe7839e: extract_eligibility_from_text was deleted (RFC-016 §5).
+
+This script no longer runs.
+"""
 import subprocess, sys, os, importlib
 
 # Direct import of the module to avoid __init__.py pulling in settings

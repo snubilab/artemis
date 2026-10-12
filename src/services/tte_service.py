@@ -3436,11 +3436,14 @@ class TTEService:
     ) -> None:
         """Refuse an apply that would leave a populated study with no criteria.
 
-        ``run_generate_from_nct`` falls back to ``_heuristic_draft`` on any exception
-        from the trial agent and still returns ``status="completed"``, and
-        ``_merge_eligibility_section`` replaces rather than merges. Together they turn
+        ``run_generate_from_nct`` fell back to ``_heuristic_draft`` on any exception
+        from the trial agent and still returned ``status="completed"``, and
+        ``_merge_eligibility_section`` replaces rather than merges. Together they turned
         a truncated LLM response into a silent deletion: measured 2026-07-31,
         ARISTOTLE went from 31 criteria to 0 while every status field read healthy.
+        ``_heuristic_draft`` was deleted in ``266971e`` (RFC-016 §5 A24), so the trial
+        agent's failure is now surfaced; the guard stays because
+        ``_merge_eligibility_section`` still replaces.
 
         Emptying is only ever refused when there was something to lose, so first
         population of a new study and any genuinely richer draft are unaffected.

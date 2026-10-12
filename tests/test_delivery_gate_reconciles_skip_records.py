@@ -857,7 +857,10 @@ class TestAGroupLabelIsCarriedByAnEmittedRestatementSurvivor:
         study = _restated_hypertension(swap_survivor_bounds=True)
         rc, out = gate(_restated_hypertension_records(study, refs=dict(HYPERTENSION_REFS)), study)
         assert rc == 1, out
-        assert "does not carry the same sourceText and valueConstraint" in out
+        assert (
+            "does not carry the same domain, sourceText, window, valueConstraint and logicType"
+            in out
+        )
         assert "none of its 2 member(s) emitted" in out
 
     def test_should_fail_when_the_file_records_no_concept_set_links_at_all(self, gate):

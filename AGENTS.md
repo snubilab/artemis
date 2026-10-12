@@ -115,17 +115,19 @@ patients the protocol keeps.
 `src/services/route_subtraction.py` turns a route qualifier into `isExcluded` items and
 its docstring records the measurement — 139 subtractions against gold's 136 on CAROLINA's
 corticosteroid criterion. But it is called from `_recommend_seeded_concept_set`
-(`tte_service.py:7753`), on the fresh-recommendation path, and studies 1/8/9/10 carry a
+(`tte_service.py:8592`, inside `_recommend_seeded_concept_set`), on the fresh-recommendation path, and studies 1/8/9/10 carry a
 prebuilt `structuredExpression` that the arm builders deepcopy, so that path never runs on
-delivery (`tte_service.py:4718` records this for a different repair). CAROLINA's delivery
+delivery (`tte_service.py:4875` records this for a different repair). CAROLINA's delivery
 has no corticosteroid concept set at all, while gold's `[CKim] systemic glucocorticoid`
 holds 231 items with 136 excluded. A module measured against gold in isolation is
 producing nothing in the shipped artifact — check where a fix lands on the delivery path
 before believing it ships.
 
-`src/agents/agent2/complexity_router.py:62-67` already routes `other than` / `except` /
-`excluding` to the slow LLM path, so the phrase is recognised. What is missing is
-downstream of that: nothing ever sets `isExcluded` on a mapped item.
+`src/agents/agent2/complexity_router.py` (which routed `other than` / `except` /
+`excluding` to the slow LLM path) was deleted in `fa7c41a`: the fast path was off the
+production path, and every query now takes the one LLM path. The phrase reaches the
+mapper unchanged; what is missing is downstream of that: nothing ever sets `isExcluded`
+on a mapped item.
 
 Score **per eligibility criterion, 1:1, macro-averaged**. Never lead with a micro
 average over pooled concept ids. On this corpus the two disagree in DIRECTION, not just
@@ -460,7 +462,7 @@ Settled, do not re-litigate:
   headings (`Natriuretic Peptide, Brain`) recovers 0 and is not implemented. Re-measure
   with `scripts/analyze_alias_tier_refusals.py`.
 - **The mapping seed is `sourceText or description`, not `conceptSetName`.**
-  `_build_seeded_eligibility_rule` (`tte_service.py:5827`) builds the label that way, and
+  `_build_seeded_eligibility_rule` (`tte_service.py:7105`) builds the label that way, and
   `queryUsed` in the recorded metadata equals `sourceText` for 323 of 351 generated sets.
   A blast-radius measurement taken over `conceptSetName` is measuring the wrong column —
   that error was made once already in this session and named the wrong seed. The scored
@@ -511,7 +513,7 @@ writes no manifest.
   worth +0.0003 macro here, i.e. nothing. Fixing this criterion means generating a set
   for it; do not reach for the scorer again.
 - Do not compare a macro across a change that alters *pairing*. `per_criterion_macro`
-  (`scripts/conceptset_overlap_eval.py:497`) averages over `outcome.startswith("matched")`
+  (`scripts/conceptset_overlap_eval.py:571`) averages over `outcome.startswith("matched")`
   only, so a gold set with no generated counterpart leaves the denominator entirely
   rather than scoring 0. Any change to the scorer's name matching therefore moves the
   macro without moving quality — dropping three badly-scoring pairs out of `matched`

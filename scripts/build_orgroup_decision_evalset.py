@@ -99,7 +99,9 @@ alternatives, and "Aspirin" or "pioglitazone" carry no negation -- but it does
 mean this table cannot certify inclusion-side over-deletion at all.
 
 NO PAID CALL. The builder reads CIRCE JSON and the vocabulary only; it never
-runs the extractor. ``pubmed_fetcher._llm_parse_criteria`` is nonetheless
+runs the extractor. (``pubmed_fetcher._llm_parse_criteria`` was deleted in ``fe7839e``,
+so :func:`no_paid_llm` below, which patches it, needs repointing at the segmentation
+step's model call before this builder is run again.) It is nonetheless
 stubbed to ``[]`` for the whole build (:func:`no_paid_llm`) and the stub asserts
 it was never reached, so "no LLM was billed" is enforced rather than asserted in
 prose.

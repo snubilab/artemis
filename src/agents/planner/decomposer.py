@@ -61,9 +61,9 @@ def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Opt
 
     Gate 2 also subsumes the operand case. ``> 2X ULN`` is a real substring of a line
     that states a threshold and names nothing; it shares no word with the analyte. (The
-    obvious alternative, :func:`~src.agents.agent1.threshold_classifier.is_headless`,
-    does NOT catch it -- measured: it returns False, because ``ULN`` is not a unit
-    ``normalize_unit`` recognises.)
+    obvious alternative, ``threshold_classifier.is_headless`` (the module was deleted in
+    ``fa7c41a``; the measurement was taken before that), did NOT catch it -- measured: it
+    returned False, because ``ULN`` is not a unit ``normalize_unit`` recognises.)
 
     Known and deliberate false negative: a line that names the sub-term by a synonym
     the sub-term does not repeat -- ``SGPT`` decomposed into ``Alanine

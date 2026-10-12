@@ -109,10 +109,11 @@ ignore an unused set.
 delivered file with one fewer rule than the store's ``structuredExpression``. Nothing in
 the payload keys on a rule index -- ``_generationCensus`` counts criteria and is left
 untouched for the same reason ``drop_unreadable_value_criteria`` leaves it alone, and every
-other record key (``_skippedCriteria``, ``_restatedClusters``, ...) keys on
-``criterionId``. What DOES notice is the delivery gate: ``scripts/verify_circe_delivery.py``
-check (b) compares the file's rule-name multiset against the store's, adjusted ONLY by
-``_droppedCriteria`` records, and ``_rule_multiset_check`` requires ``missing_count == 0``.
+other record key (``_skippedCriteria``, ``_restatedDistinctnessCollapse``, ...) keys on
+criterion ids (the stem-keyed ``_restatedClusters`` report was removed in ``54ce6ca``). What
+DOES notice is the delivery gate: ``scripts/verify_circe_delivery.py`` check (b) compares
+the file's rule-name multiset against the store's, adjusted ONLY by ``_droppedCriteria``
+records, and ``_rule_multiset_check`` requires ``missing_count == 0``.
 A removal this repair performs is therefore a rule-set mismatch the gate cannot attribute.
 Laundering it through ``_droppedCriteria`` is not available: ``dropped_criteria_violations``
 re-judges every record against ``unreadable_value_attributes``, and a removal for this

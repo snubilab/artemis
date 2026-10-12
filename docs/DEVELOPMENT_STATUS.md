@@ -55,7 +55,7 @@ NL Query ──▶ [Trial Agent] ──▶ [Mapping Agent] ──▶ [Extraction
 > **텍스트 용어 → OMOP Standard Concept IDs**
 
 ### ✅ 완료된 것
-- **Complexity Router**: 난이도 판별 → Fast Path (규칙 기반) / Slow Path (LLM)
+- ~~**Complexity Router**: 난이도 판별 → Fast Path (규칙 기반) / Slow Path (LLM)~~ — `fa7c41a`에서 삭제됨. 모든 쿼리가 Slow Path(LLM)를 탄다
 - **Vector Search**: ChromaDB retriever + BioLinkBERT 임베딩
 - **LLM Reranker**: Top-N 후보 재평가 (The Judge)
 - **KG-RAG Expansion**: Neo4j 그래프 탐색 → 관련 concept 확장 + LLM Critic

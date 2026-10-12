@@ -166,8 +166,8 @@
 │  │ 1. Check cache: data/nct_cache/{nct_id}.json│   │
 │  │ 2. If miss → fetch from API (timeout: 30s) │   │
 │  │ 3. _parse_protocol_to_trial_data()         │   │
-│  │ 4. _parse_criteria_text()                  │   │
-│  │    → split "Inclusion/Exclusion Criteria:"  │   │
+│  │ 4. segment_eligibility() (LLM, RFC-016 §5) │   │
+│  │    → slice by the fragments it quoted      │   │
 │  └─────────────────────────────────────────────┘   │
 │                                                    │
 │  Output: TrialData (Pydantic)                     │
@@ -450,7 +450,7 @@ class PubMedPaper:
     title: str = ""
     abstract: str = ""
 
-# extract_eligibility_from_text() 출력:
+# Segmentation.criteria() 출력 (extract_eligibility_from_text는 fe7839e에서 삭제):
 {
     "inclusion": ["criterion 1", "criterion 2", ...],
     "exclusion": ["criterion 1", ...]

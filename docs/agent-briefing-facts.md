@@ -85,7 +85,7 @@ Baseline arms are the single largest repeated cost. Use
 ## Reading the corpus
 
 - **Production converts PDFs with plain `pdftotext`, no `-layout`**
-  (`src/agents/agent1/parser.py:879`). The two renderings differ *structurally*,
+  (`src/agents/agent1/parser.py:1007`, in `_enrich_from_pdf`). The two renderings differ *structurally*,
   not cosmetically: `-layout` has indentation and marker hierarchy, production has
   neither. A diagnosis reproduced with `-layout` can be a complete no-op on the
   path production runs. Reuse the harness in `tests/test_corpus_regression.py`.
@@ -93,40 +93,33 @@ Baseline arms are the single largest repeated cost. Use
   with both operators across runs. `source_text` is copied verbatim from the
   document and is.
 
-## Document order is destroyed before extraction
+## Document order reaches the extraction model (fixed in `a2fb858`)
 
-`src/agents/agent1/parser.py:80` sorts the criteria list alphabetically, inside a
-function named `_normalize_trial_data_for_stable_hash`. Line 289 **rebinds**
-`trial_data` to that sorted copy, and lines 302-307 build the model prompt from it —
-so the alphabetised list is what the model actually sees, not just what gets hashed.
-Deduplication is done by the `seen` set and does not need the sort.
+Until `a2fb858` (2026-09-12), `_normalize_trial_data_for_stable_hash` in
+`src/agents/agent1/parser.py` sorted the criteria list alphabetically and
+`parse_nct` built the model prompt from that sorted copy, so the model saw the
+list alphabetised, not only the hash. The function now cleans whitespace and
+removes exact repeats in place, each survivor keeping its position (its docstring
+records the reasoning). Document order upstream is the segmentation step's:
+`src/agents/agent1/segmentation.py` (`fe7839e`, RFC-016 §5) slices the document at the
+offsets of the fragments the model quoted, in ascending offset order. The
+pubmed_fetcher block-sort and `_merge_parsed_items` this section used to discuss
+were deleted in that commit.
 
-Upstream, `pubmed_fetcher.py:202` sorts blocks by character offset, so the enriched
-list reaches line 80 **in document order**. The sort is where that order is lost.
+The cost of the sort, measured on LEADER's IR cache
+(`NCT01179048_..._53197d558aff3e94.json`) before the fix: 20 top-level inclusion
+rules in alphabetical `source_text` order, of which eleven are members of an "≥1 of
+the following" list and two are the orphaned list headers whose `source_text` still
+ends in `of the following criteria:`. Circe AND-combines top-level InclusionRules,
+so the delivered cohort demanded ankle-brachial index **and** asymptomatic ischemia
+**and** heart failure **and** renal failure **and** eight more, simultaneously. It
+was empty. That line accounted for four of the twelve cohort-blocking findings in
+`output/site_gap/2026-09-14/conversion_audit.json` (that audit predates the fix).
 
-The cost, measured on LEADER's IR cache (`NCT01179048_..._53197d558aff3e94.json`):
-20 top-level inclusion rules in alphabetical `source_text` order, of which eleven are
-members of an "≥1 of the following" list and two are the orphaned list headers whose
-`source_text` still ends in `of the following criteria:`. Circe AND-combines top-level
-InclusionRules, so the delivered cohort demands ankle-brachial index **and**
-asymptomatic ischemia **and** heart failure **and** renal failure **and** eight more,
-simultaneously. It is empty.
-
-This one line accounts for four of the twelve cohort-blocking findings in
-`output/site_gap/2026-09-14/conversion_audit.json`.
-
-Two things follow for anyone working here:
-
-- **A criterion's position is evidence and the pipeline throws it away.** A list header
-  ends in a colon and names its cardinality ("≥1 of the following", "at least two of").
-  Its members are the items that followed it in the document — a relationship that exists
-  only in the order.
-- **Removing the sort changes the prompt, so it changes the Agent-1 IR cache key.** Budget
-  the full six-study re-extraction (~132 min). Any fix here pays that once; there is no
-  variant that avoids it.
-
-Not verified: whether `_merge_parsed_items` preserves order when it folds a lighter block
-into the heaviest one. Only the heaviest block's own order was confirmed.
+What stays true for anyone working here: a criterion's position is evidence (a list
+header ends in a colon and names its cardinality; its members are the items that
+followed it), and a change to what order reaches the prompt changes the Agent-1 IR
+cache key, so budget a full six-study re-extraction (~132 min).
 
 ## Reading the gold standard
 

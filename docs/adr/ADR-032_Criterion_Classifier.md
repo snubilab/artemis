@@ -1,6 +1,7 @@
 # ADR-032: Criterion Classifier (기준 문장 임계값 분류기)
 
 **상태**: 제안됨 (Proposed) — 설계만, 구현 없음
+**갱신 2026-10-12**: 이 ADR이 가리키던 `src/agents/agent1/threshold_classifier.py`는 운영 경로에 연결되지 않은 채 `fa7c41a`에서 삭제되었다. 아래 본문은 당시 설계 기록이다.
 **날짜**: 2026-07-29
 **의사결정자**: @kyh
 **관련**: ADR-031(값 조건 의미 보존), ADR-031-A(이환 기간), ADR-030(사이트별 적응 계층), ADR-016(ThreadPoolExecutor 결정적 순서), ADR-017(Agent1 역할 축소), `docs/daily_notes/tte_value_taxonomy.json`, `docs/daily_notes/tte_related_work.json`
