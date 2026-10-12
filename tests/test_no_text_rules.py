@@ -9,7 +9,7 @@ is not covered by the rule.
 
 The rules that existed on 2026-10-12 are inventoried in
 ``docs/inventory/2026-10-12_text_rules.{md,json}``. Each site they produce is listed in
-``tests/data/text_rule_ledger.json`` as ``pending`` (scheduled for removal) and every
+``tests/fixtures/text_rule_ledger.json`` as ``pending`` (scheduled for removal) and every
 machine-format site as ``allowed`` with a one-line reason.
 
 WHAT IS COLLECTED
@@ -23,8 +23,13 @@ with ``ast``. A *text-rule site* is one of:
     module-level constant is fingerprinted by its text. An argument that cannot be
     resolved is fingerprinted by its source, in braces.
 (b) ``strings:`` -- a set, list or tuple literal holding two or more string constants,
-    at module, class or function level; ``keys:`` -- a dict literal with two or more
-    string-constant keys.
+    at module, class or function level, except a LangChain chat message
+    ``(role, "...")`` whose role is system / user / human / ai / assistant (prompts have
+    their own guard); ``keys:`` -- a dict literal with two or more string-constant keys
+    whose values are all constant: a str / number / bool / None, constant arithmetic on
+    numbers, or a tuple / list / set / frozenset / dict of those. That is a lookup
+    table, the shape a word-to-meaning rule takes; a dict with a computed value is a
+    record being built (a JSON payload) and is not collected.
 (c) ``in: / startswith: / endswith: / eq:`` -- a literal test on normalised text:
     ``"lit" in X``, ``X.startswith(lit)``, ``X.endswith(lit)`` and ``X == "lit"``
     (or ``!=`` / ``not in``), where ``X`` is a ``.lower() / .casefold() / .upper() /
@@ -32,6 +37,10 @@ with ``ast``. A *text-rule site* is one of:
     call in the same or an enclosing scope. Normalising case or whitespace is what code
     does to free text before testing it for words; a dict-key test (``"CodesetId" in
     payload``) is not normalised and is not collected.
+(d) ``split: / rsplit: / replace: / find: / rfind: / count: / partition: /
+    rpartition: / index: / rindex:`` -- that string method called on normalised text
+    (the condition of (c)) with a first argument that is a string literal containing a
+    letter.
 
 A site is keyed by ``(file, fingerprint)``. The fingerprint is the pattern text, the
 sorted string members, or the tested literal -- never a line number, so editing
@@ -39,10 +48,11 @@ unrelated code does not churn the ledger.
 
 WHAT IT MISSES
 --------------
-Word tests through other string methods (``.split``, ``.replace``, ``.find``,
-``.count``, ``.partition``) and tests on text that was not normalised first are not
-collected; a word list held as a single delimited string and split at run time is
-collected only when it reaches ``re`` or a collection literal.
+Literal tests and string-method calls on text that was not normalised first; a lookup
+table whose values are names or attributes rather than constants; a word list held as a
+single delimited string and split at run time, unless it reaches ``re``, a collection
+literal or a (d) call; names imported from another module, which a pattern argument
+does not resolve (fingerprinted as ``{NAME}``).
 
 THE THREE CHECKS
 ----------------
@@ -63,7 +73,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LEDGER_PATH = ROOT / "tests" / "data" / "text_rule_ledger.json"
+LEDGER_PATH = ROOT / "tests" / "fixtures" / "text_rule_ledger.json"
 SCAN_DIRECTORY = ROOT / "src"
 EXTRA_FILES = (ROOT / "scripts" / "verify_circe_delivery.py",)
 
@@ -71,11 +81,18 @@ RE_FUNCTIONS = frozenset(
     {"compile", "search", "match", "fullmatch", "sub", "subn", "findall", "finditer", "split"}
 )
 NORMALISERS = frozenset({"lower", "casefold", "upper", "strip", "lstrip", "rstrip", "title"})
+SEARCH_METHODS = frozenset(
+    {"split", "rsplit", "replace", "find", "rfind", "count", "partition", "rpartition"}
+    | {"index", "rindex"}
+)
+CHAT_ROLES = frozenset({"system", "user", "human", "ai", "assistant"})
+CONSTANT_CONTAINERS = frozenset({"frozenset", "set", "tuple"})
 KINDS = frozenset({"allowed", "pending"})
 
 # Modules whose only role is a text rule of inventory class A, S or C (or a dead
-# Class-A-shaped rule). Nothing in them is machine-format parsing worth keeping on its
-# own, so none of their sites may be ``allowed``.
+# Class-A-shaped rule), so none of their sites may be ``allowed``. Some hold machine-format
+# sites as well; those stay ``pending`` until the module's rule is replaced, and the module
+# leaves this list then.
 RULE_MODULES = frozenset(
     {
         "src/services/dose_stability.py",
@@ -89,7 +106,6 @@ RULE_MODULES = frozenset(
         "src/services/restated_absence_repair.py",
         "src/services/dose_form_route.py",
         "src/utils/disease_anchor.py",
-        "src/agents/agent2/logic.py",
         "src/agents/agent2/complexity_router.py",
         "src/agents/agent2/rule_extractor.py",
         "src/services/emission_stability.py",
@@ -132,6 +148,40 @@ def _is_text_expression(node: ast.AST | None) -> bool:
         _is_str(node)
         or isinstance(node, (ast.Name, ast.JoinedStr))
         or (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add))
+    )
+
+
+def _is_constant(node: ast.AST | None) -> bool:
+    """A value a lookup table could hold: a literal, or a container of literals."""
+    if isinstance(node, ast.Constant):
+        return not isinstance(node.value, bytes)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+        return _is_constant(node.operand)
+    if isinstance(node, ast.BinOp) and isinstance(
+        node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow)
+    ):
+        return _is_constant(node.left) and _is_constant(node.right)
+    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+        return all(_is_constant(element) for element in node.elts)
+    if isinstance(node, ast.Dict):
+        return all(_is_constant(value) for value in node.values)
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in CONSTANT_CONTAINERS
+        and not node.keywords
+    ):
+        return all(_is_constant(argument) for argument in node.args)
+    return False
+
+
+def _is_chat_message(node: ast.Tuple) -> bool:
+    """A LangChain ``(role, "text")`` message tuple."""
+    return (
+        len(node.elts) == 2
+        and _is_str(node.elts[0])
+        and node.elts[0].value in CHAT_ROLES  # type: ignore[attr-defined]
+        and _is_str(node.elts[1])
     )
 
 
@@ -290,7 +340,7 @@ class _Collector(ast.NodeVisitor):
             expr.id in info.normalised for info in self.scopes
         )
 
-    # -- (a) regex and (c) prefix tests --------------------------------------------
+    # -- (a) regex, (c) prefix tests and (d) string-method calls --------------------
     def visit_Call(self, node: ast.Call) -> None:
         func = node.func
         is_re = (
@@ -320,6 +370,16 @@ class _Collector(ast.NodeVisitor):
                     f"{func.attr}:"
                     + _fingerprint_list(e.value for e in argument.elts if _is_str(e)),  # type: ignore[attr-defined]
                 )
+        # -- (d) string-method calls with a word on normalised text --------------------
+        if (
+            isinstance(func, ast.Attribute)
+            and func.attr in SEARCH_METHODS
+            and node.args
+            and _is_str(node.args[0])
+            and any(character.isalpha() for character in node.args[0].value)  # type: ignore[attr-defined]
+            and self._normalised(func.value)
+        ):
+            self._add(node, f"{func.attr}:" + json.dumps(node.args[0].value, ensure_ascii=False))  # type: ignore[attr-defined]
         self.generic_visit(node)
 
     # -- (c) membership and equality tests -----------------------------------------
@@ -337,7 +397,7 @@ class _Collector(ast.NodeVisitor):
     # -- (b) literal collections ---------------------------------------------------
     def _sequence(self, node: ast.Set | ast.List | ast.Tuple) -> None:
         members = [e.value for e in node.elts if _is_str(e)]  # type: ignore[attr-defined]
-        if len(members) >= 2:
+        if len(members) >= 2 and not (isinstance(node, ast.Tuple) and _is_chat_message(node)):
             self._add(node, "strings:" + _fingerprint_list(members))
         self.generic_visit(node)
 
@@ -352,7 +412,7 @@ class _Collector(ast.NodeVisitor):
 
     def visit_Dict(self, node: ast.Dict) -> None:
         keys = [k.value for k in node.keys if _is_str(k)]  # type: ignore[attr-defined]
-        if len(keys) >= 2:
+        if len(keys) >= 2 and all(_is_constant(value) for value in node.values):
             self._add(node, "keys:" + _fingerprint_list(keys))
         self.generic_visit(node)
 
