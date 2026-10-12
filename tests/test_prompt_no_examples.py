@@ -479,6 +479,9 @@ PROMPTS: dict[str, PromptSpec] = {
         tokens=frozenset({
             "record_requirement", "conditional_span", "excepted_entities", "base_span", "text",
             "span", "required", "forbidden", "conditional",
+            # RFC-016 step 3: the threshold fields and their enum values.
+            "threshold_span", "quantity_kind", "reference_bound", "lab_value", "dose",
+            "duration", "count", "statistical", "other", "uln", "lln", "none",
         }),
     ),
 }

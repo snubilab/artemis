@@ -54,7 +54,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever either prompt below changes meaning; part of the cache key.
-ANNOTATION_PROMPT_VERSION = "rfc016-step1-v1"
+ANNOTATION_PROMPT_VERSION = "rfc016-step3-quantity-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -73,6 +73,10 @@ FIELD_EXCEPTED_ENTITIES = "excepted_entities"
 FIELD_BASE_SPAN = "base_span"
 FIELD_TEXT = "text"
 FIELD_SPAN = "span"
+#: RFC-016 step 3. The three stand or fall together (:func:`validate_annotation`).
+FIELD_THRESHOLD_SPAN = "threshold_span"
+FIELD_QUANTITY_KIND = "quantity_kind"
+FIELD_REFERENCE_BOUND = "reference_bound"
 
 #: Store row keys the inputs are read from.
 _LINE = "protocolLine"
@@ -113,10 +117,37 @@ class RecordRequirement(str, Enum):
 _REQUIREMENT_VALUES = frozenset(member.value for member in RecordRequirement)
 
 
+class QuantityKind(str, Enum):
+    """What the number in ``threshold_span`` measures (RFC-016 §3)."""
+
+    LAB_VALUE = "lab_value"
+    DOSE = "dose"
+    DURATION = "duration"
+    COUNT = "count"
+    STATISTICAL = "statistical"
+    OTHER = "other"
+
+
+class StatedReferenceBound(str, Enum):
+    """What that number is compared against, as the annotation states it.
+
+    ``none`` is the store's ``referenceBound: "absolute"``; :class:`StatedThreshold`
+    carries the store's spelling so its readers need no second vocabulary.
+    """
+
+    ULN = "uln"
+    LLN = "lln"
+    NONE = "none"
+
+
+_KIND_VALUES = frozenset(member.value for member in QuantityKind)
+_BOUND_VALUES = frozenset(member.value for member in StatedReferenceBound)
+
+
 ANNOTATION_SYSTEM_PROMPT = """You annotate one eligibility criterion of a clinical trial protocol.
 
 The criterion has already been extracted from a line of the protocol, and you do not change \
-any extracted field. You read that protocol line and record two facts about the criterion, \
+any extracted field. You read that protocol line and record facts about the criterion, \
 each together with the fragment of the protocol line that states it.
 
 Every fragment you return is copied from the protocol line character for character: no \
@@ -160,11 +191,34 @@ protocol line that names it. It is an empty list when the line removes nothing f
 `base_span` is the fragment of the protocol line that names the set the excepted entities \
 are removed from. It is required when `excepted_entities` is not empty and null otherwise.
 
+`threshold_span` is the fragment of the protocol line that states the numeric threshold this \
+criterion compares its own entity against: the comparison, the number, and the unit or the \
+reference limit, as written. It is null when the line states no numeric threshold for this \
+criterion's entity.
+
+`quantity_kind` states what the number in `threshold_span` measures. One of:
+- `lab_value`: a value that a laboratory test or a clinical measurement records for the patient.
+- `dose`: an amount of a drug that is given, taken or prescribed.
+- `duration`: how long a condition, a treatment or a state has lasted or must last.
+- `count`: a number of events, of episodes, or of listed items that must hold.
+- `statistical`: a quantity of the trial's statistical design rather than of the patient.
+- `other`: any other quantity.
+It is null when `threshold_span` is null.
+
+`reference_bound` states what the number in `threshold_span` is compared against. One of:
+- `uln`: a multiple of the upper limit of the normal range of the laboratory that measured it.
+- `lln`: a multiple of the lower limit of the normal range of the laboratory that measured it.
+- `none`: the number itself, in the unit that `threshold_span` states.
+It is null when `threshold_span` is null.
+
 Output JSON:
 {{"record_requirement": "<required|forbidden|conditional>", \
 "conditional_span": "<fragment of the protocol line, or null>", \
 "excepted_entities": [{{"text": "<entity name>", "span": "<fragment of the protocol line>"}}], \
-"base_span": "<fragment of the protocol line, or null>"}}"""
+"base_span": "<fragment of the protocol line, or null>", \
+"threshold_span": "<fragment of the protocol line, or null>", \
+"quantity_kind": "<lab_value|dose|duration|count|statistical|other, or null>", \
+"reference_bound": "<uln|lln|none, or null>"}}"""
 
 
 # --------------------------------------------------------------------------- #
@@ -209,9 +263,10 @@ def validate_annotation(
 
     :param payload: the model's parsed JSON object.
     :param protocol_line: the row's ``protocolLine``.
-    :returns: ``(fields, rejections)``. ``fields`` always carries the four output keys;
-        a rejected field is None (``record_requirement``, ``base_span``) or left out of
-        the list (``excepted_entities``), which is the default behaviour downstream.
+    :returns: ``(fields, rejections)``. ``fields`` always carries the seven output keys;
+        a rejected field is None (``record_requirement``, ``base_span``, the three
+        threshold fields) or left out of the list (``excepted_entities``), which is the
+        default behaviour downstream.
     """
     fields: dict[str, Any] = {
         FIELD_RECORD_REQUIREMENT: None,
@@ -280,7 +335,66 @@ def validate_annotation(
         rejected.append(_rejection(FIELD_BASE_SPAN, base, "not a substring of protocolLine"))
     else:
         fields[FIELD_BASE_SPAN] = " ".join(base.split())
+
+    fields.update(_validate_threshold(payload, protocol_line, rejected))
     return fields, rejected
+
+
+def _enum_value(raw: Any, values: frozenset[str]) -> str | None:
+    """``raw`` case- and whitespace-folded when it is one of ``values``, else None."""
+    value = raw.strip().casefold() if isinstance(raw, str) else None
+    return value if value in values else None
+
+
+def _validate_threshold(
+    payload: Mapping[str, Any], protocol_line: str, rejected: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """The three threshold fields, all set or all None (RFC-016 step 3).
+
+    They are one statement: a kind or a bound says nothing without the fragment it
+    describes, and a fragment whose kind is unknown cannot decide whether a value filter
+    belongs on the criterion. So the span must be a substring of the line AND both enums
+    must hold a value of their own list, or none of the three is kept and the reason is
+    appended to ``rejected``.
+    """
+    fields: dict[str, Any] = {
+        FIELD_THRESHOLD_SPAN: None,
+        FIELD_QUANTITY_KIND: None,
+        FIELD_REFERENCE_BOUND: None,
+    }
+    span = payload.get(FIELD_THRESHOLD_SPAN)
+    kind_raw = payload.get(FIELD_QUANTITY_KIND)
+    bound_raw = payload.get(FIELD_REFERENCE_BOUND)
+    answer = {
+        FIELD_THRESHOLD_SPAN: span,
+        FIELD_QUANTITY_KIND: kind_raw,
+        FIELD_REFERENCE_BOUND: bound_raw,
+    }
+    if span is None or (isinstance(span, str) and not span.strip()):
+        if kind_raw is not None or bound_raw is not None:
+            rejected.append(
+                _rejection(FIELD_QUANTITY_KIND, answer, f"given without a {FIELD_THRESHOLD_SPAN}")
+            )
+        return fields
+    if not span_in_line(span, protocol_line):
+        rejected.append(
+            _rejection(FIELD_THRESHOLD_SPAN, answer, "not a substring of protocolLine")
+        )
+        return fields
+    kind = _enum_value(kind_raw, _KIND_VALUES)
+    if kind is None:
+        rejected.append(_rejection(FIELD_QUANTITY_KIND, answer, f"not one of {sorted(_KIND_VALUES)}"))
+        return fields
+    bound = _enum_value(bound_raw, _BOUND_VALUES)
+    if bound is None:
+        rejected.append(
+            _rejection(FIELD_REFERENCE_BOUND, answer, f"not one of {sorted(_BOUND_VALUES)}")
+        )
+        return fields
+    fields[FIELD_THRESHOLD_SPAN] = span
+    fields[FIELD_QUANTITY_KIND] = kind
+    fields[FIELD_REFERENCE_BOUND] = bound
+    return fields
 
 
 # --------------------------------------------------------------------------- #
@@ -716,3 +830,44 @@ def stated_exceptions_by_codeset(eligibility: Mapping[str, Any]) -> dict[int, li
             names = found.setdefault(codeset_id, [])
             names += [e[FIELD_TEXT] for e in excepted if e[FIELD_TEXT] not in names]
     return found
+
+
+# --------------------------------------------------------------------------- #
+# The stated threshold (RFC-016 step 3)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class StatedThreshold:
+    """A threshold the row's own protocol line states, verified against that line.
+
+    :param span: the fragment of ``protocolLine`` stating it.
+    :param kind: what its number measures.
+    :param bound: what the number is compared against, in the store's ``referenceBound``
+        spelling: ``absolute``, ``uln`` or ``lln``.
+    """
+
+    span: str
+    kind: QuantityKind
+    bound: str
+
+
+def stated_threshold(row: Mapping[str, Any]) -> StatedThreshold | None:
+    """The threshold the row's accepted annotation states, its span re-checked here.
+
+    Checked against the row's line again, as :func:`stated_exceptions` does, so a row
+    edited after it was annotated cannot carry an unchecked threshold into the build or
+    the delivery gate.
+
+    :param row: the store criterion row.
+    :returns: the verified threshold, or None when the annotation states none, was
+        rejected, or no longer matches the row's line.
+    """
+    annotation = _annotation(row)
+    span = annotation.get(FIELD_THRESHOLD_SPAN)
+    kind = _enum_value(annotation.get(FIELD_QUANTITY_KIND), _KIND_VALUES)
+    bound = _enum_value(annotation.get(FIELD_REFERENCE_BOUND), _BOUND_VALUES)
+    if kind is None or bound is None or not span_in_line(span, row.get(_LINE)):
+        return None
+    store_bound = "absolute" if bound == StatedReferenceBound.NONE.value else bound
+    return StatedThreshold(span=span, kind=QuantityKind(kind), bound=store_bound)
