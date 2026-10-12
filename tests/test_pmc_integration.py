@@ -4,6 +4,10 @@ Integration tests: PMC enrichment pipeline across multiple preset NCT trials.
 Covers the full priority chain:
     PMC supplements -> PMC full-text eligibility -> PubMed abstract fallback
 
+Which text is a criterion is decided by the segmentation step and is stubbed here at that
+boundary; the step itself is tested on the real corpus in
+tests/test_eligibility_segmentation.py.
+
 All HTTP calls are mocked — no real network requests are made.
 
 Preset trials tested:
@@ -19,6 +23,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.agents.agent1.nct_fetcher import TrialData
+from src.agents.agent1.segmentation import Segmentation
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +88,17 @@ PMC_OA_XML_EMPTY = """<?xml version="1.0" encoding="UTF-8"?>
   </records>
 </OA>
 """
+
+
+def _segmented_stub(text: str) -> Segmentation:
+    """The segmentation step's answer, stubbed: which text is a criterion is the model's
+    decision (tests/test_eligibility_segmentation.py covers it on the real corpus); these
+    tests cover what the enrichment chain does with the answer."""
+    assert text.strip(), "the article body reaches the step"
+    return Segmentation(items={
+        "inclusion": ["STUB inclusion one", "STUB inclusion two"],
+        "exclusion": ["STUB exclusion one"],
+    })
 
 
 def _make_tgz_bytes(members: dict) -> bytes:
@@ -156,7 +172,8 @@ class TestPmcFullTextEnrichment:
         idconv_resp = _make_idconv_response("23953384", "PMC3901982")
         fulltext_resp = _make_fulltext_response(LEADER_PMC_FULLTEXT)
 
-        with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]):
+        with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]), \
+                patch("src.agents.agent1.pmc_fetcher.segment_eligibility", _segmented_stub):
             result = get_pmc_eligibility("23953384")
 
         assert result is not None
@@ -199,7 +216,9 @@ class TestPmcFullTextEnrichment:
         )
         fulltext_resp = _make_fulltext_response(results_only_body)
 
-        with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]):
+        with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]), \
+                patch("src.agents.agent1.pmc_fetcher.segment_eligibility",
+                      lambda text: Segmentation(items={"inclusion": [], "exclusion": []})):
             result = get_pmc_eligibility("12345678")
 
         assert result is None
@@ -399,38 +418,6 @@ class TestEnrichmentPriorityChain:
         assert len(supplements) >= 1
         assert supplements[0]["role"] == "supplement"
 
-    def test_falls_back_to_abstract_when_no_pmc(self):
-        """
-        Given: PMID has no PMC version (pmid_to_pmcid returns None)
-        When:  fetch_pubmed_abstract is called as fallback and abstract contains criteria
-        Then:  extract_eligibility_from_text produces usable criteria from the abstract
-        """
-        from src.agents.agent1.pmc_fetcher import get_pmc_eligibility
-        from src.agents.agent1.pubmed_fetcher import extract_eligibility_from_text, fetch_pubmed_abstract
-
-        # PMC lookup returns None — no open access version
-        no_pmc_resp = _make_idconv_no_pmc_response("17312968")
-
-        # Abstract fallback returns the PLATO abstract
-        abstract_xml = _make_pubmed_abstract_xml("17312968", PLATO_ABSTRACT)
-        abstract_resp = MagicMock()
-        abstract_resp.status_code = 200
-        abstract_resp.text = abstract_xml
-
-        with patch("requests.get", return_value=no_pmc_resp):
-            pmc_result = get_pmc_eligibility("17312968")
-
-        assert pmc_result is None  # confirms PMC path yields nothing
-
-        with patch("requests.get", return_value=abstract_resp):
-            paper = fetch_pubmed_abstract("17312968")
-
-        assert paper is not None
-        criteria = extract_eligibility_from_text(paper.abstract)
-        # PLATO abstract contains "key inclusion"/"key exclusion" sections
-        total = len(criteria["inclusion"]) + len(criteria["exclusion"])
-        assert total > 0
-
     def test_full_pipeline_leader_trial(self):
         """
         Given: LEADER trial (NCT01179048) — PMC full-text available with eligibility section
@@ -443,7 +430,8 @@ class TestEnrichmentPriorityChain:
         idconv_resp = _make_idconv_response("23953384", "PMC3901982")
         fulltext_resp = _make_fulltext_response(LEADER_PMC_FULLTEXT)
 
-        with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]):
+        with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]), \
+                patch("src.agents.agent1.pmc_fetcher.segment_eligibility", _segmented_stub):
             pmc_criteria = get_pmc_eligibility("23953384")
 
         assert pmc_criteria is not None
@@ -460,129 +448,3 @@ class TestEnrichmentPriorityChain:
         assert enriched.nct_id == "NCT01179048"
         # After enrichment from the richer PMC source, inclusion count must have grown
         assert len(enriched.inclusion_criteria) >= len(leader_trial.inclusion_criteria)
-
-    def test_full_pipeline_plato_trial_no_pmc(self):
-        """
-        Given: PLATO trial (NCT00391872) — no PMC OA version, falls back to abstract
-        When:  Full pipeline runs with mocked responses
-        Then:  Criteria are extracted from PubMed abstract and used to enrich TrialData
-        """
-        from src.agents.agent1.enricher import enrich_trial_data
-        from src.agents.agent1.pmc_fetcher import get_pmc_eligibility
-        from src.agents.agent1.pubmed_fetcher import extract_eligibility_from_text, fetch_pubmed_abstract
-
-        # Step 1: PMC lookup → no version
-        no_pmc_resp = _make_idconv_no_pmc_response("17384741")
-        with patch("requests.get", return_value=no_pmc_resp):
-            pmc_criteria = get_pmc_eligibility("17384741")
-
-        assert pmc_criteria is None
-
-        # Step 2: Abstract fallback
-        abstract_xml = _make_pubmed_abstract_xml("17384741", PLATO_ABSTRACT)
-        abstract_resp = MagicMock()
-        abstract_resp.status_code = 200
-        abstract_resp.text = abstract_xml
-
-        with patch("requests.get", return_value=abstract_resp):
-            paper = fetch_pubmed_abstract("17384741")
-
-        assert paper is not None
-        abstract_criteria = extract_eligibility_from_text(paper.abstract)
-
-        # Step 3: Enrich PLATO TrialData with abstract criteria
-        plato_trial = TrialData(
-            nct_id="NCT00391872",
-            title="PLATO",
-            inclusion_criteria=[],
-            exclusion_criteria=[],
-        )
-        enriched = enrich_trial_data(plato_trial, abstract_criteria)
-
-        assert enriched.nct_id == "NCT00391872"
-        total = len(enriched.inclusion_criteria) + len(enriched.exclusion_criteria)
-        assert total > 0
-
-    def test_full_pipeline_empareg_trial(self):
-        """
-        Given: EMPA-REG trial (NCT01131676) — DERIVED PMIDs only, falls back to abstract
-        When:  Full pipeline runs with mocked abstract response
-        Then:  Criteria are extracted from abstract and TrialData is enriched
-        """
-        from src.agents.agent1.enricher import enrich_trial_data
-        from src.agents.agent1.pmc_fetcher import get_pmc_eligibility
-        from src.agents.agent1.pubmed_fetcher import extract_eligibility_from_text, fetch_pubmed_abstract
-
-        # Step 1: No PMC version
-        no_pmc_resp = _make_idconv_no_pmc_response("26378978")
-        with patch("requests.get", return_value=no_pmc_resp):
-            pmc_criteria = get_pmc_eligibility("26378978")
-
-        assert pmc_criteria is None
-
-        # Step 2: Abstract fallback
-        abstract_xml = _make_pubmed_abstract_xml("26378978", EMPA_REG_ABSTRACT)
-        abstract_resp = MagicMock()
-        abstract_resp.status_code = 200
-        abstract_resp.text = abstract_xml
-
-        with patch("requests.get", return_value=abstract_resp):
-            paper = fetch_pubmed_abstract("26378978")
-
-        assert paper is not None
-        abstract_criteria = extract_eligibility_from_text(paper.abstract)
-
-        # Step 3: Enrich EMPA-REG TrialData
-        empareg_trial = TrialData(
-            nct_id="NCT01131676",
-            title="EMPA-REG OUTCOME",
-            inclusion_criteria=[],
-            exclusion_criteria=[],
-        )
-        enriched = enrich_trial_data(empareg_trial, abstract_criteria)
-
-        assert enriched.nct_id == "NCT01131676"
-        total = len(enriched.inclusion_criteria) + len(enriched.exclusion_criteria)
-        assert total > 0
-
-    def test_full_pipeline_declare_trial(self):
-        """
-        Given: DECLARE-TIMI 58 trial (NCT01730534) — DERIVED PMIDs only, falls back to abstract
-        When:  Full pipeline runs with mocked abstract response
-        Then:  Criteria are extracted from abstract and TrialData is enriched
-        """
-        from src.agents.agent1.enricher import enrich_trial_data
-        from src.agents.agent1.pmc_fetcher import get_pmc_eligibility
-        from src.agents.agent1.pubmed_fetcher import extract_eligibility_from_text, fetch_pubmed_abstract
-
-        # Step 1: No PMC version for this PMID
-        no_pmc_resp = _make_idconv_no_pmc_response("30191099")
-        with patch("requests.get", return_value=no_pmc_resp):
-            pmc_criteria = get_pmc_eligibility("30191099")
-
-        assert pmc_criteria is None
-
-        # Step 2: Abstract fallback
-        abstract_xml = _make_pubmed_abstract_xml("30191099", DECLARE_ABSTRACT)
-        abstract_resp = MagicMock()
-        abstract_resp.status_code = 200
-        abstract_resp.text = abstract_xml
-
-        with patch("requests.get", return_value=abstract_resp):
-            paper = fetch_pubmed_abstract("30191099")
-
-        assert paper is not None
-        abstract_criteria = extract_eligibility_from_text(paper.abstract)
-
-        # Step 3: Enrich DECLARE-TIMI TrialData
-        declare_trial = TrialData(
-            nct_id="NCT01730534",
-            title="DECLARE-TIMI 58",
-            inclusion_criteria=[],
-            exclusion_criteria=[],
-        )
-        enriched = enrich_trial_data(declare_trial, abstract_criteria)
-
-        assert enriched.nct_id == "NCT01730534"
-        total = len(enriched.inclusion_criteria) + len(enriched.exclusion_criteria)
-        assert total > 0

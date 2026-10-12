@@ -14,10 +14,10 @@ The log those nine produced could not be read:
   unconfigured logging (measured: module logger effective level WARNING, root
   handlers `[]`) the reader saw only the failures — a log biased toward
   breakage;
-- the 20000-char section cap fired silently, the printed length being the only,
-  unlabelled, hint that a tail had been dropped;
-- falling back to whole-paper text was printed as a neutral note, though it is
-  precisely the degradation the section extractor exists to prevent.
+- the 20000-char section cap fired silently, and falling back to whole-paper text
+  was printed as a neutral note (both went with the heading extractor when the
+  segmentation step replaced it; its own announcements are tested in
+  tests/test_eligibility_segmentation.py).
 
 These tests fix the reader-facing contract, not the wording: every per-PDF
 outcome names its PDF, is emitted exactly once, reaches the same stream whether
@@ -31,8 +31,8 @@ from dataclasses import dataclass, field
 import pytest
 
 from src.agents.agent1 import parser as parser_module
-from src.agents.agent1.eligibility_section import Truncated, extract_eligibility_section
 from src.agents.agent1.parser import LogicDecomposer
+from src.agents.agent1.segmentation import Segmentation
 
 PDF_PATH = "/app/data/papers/NCT00412984/nejmoa1107039_appendix.pdf"
 PDF_NAME = "nejmoa1107039_appendix.pdf"
@@ -50,17 +50,6 @@ EXCLUSION CRITERIA
 
 References
 """
-
-# "inclusion criteria" appears, but never at the start of a line, so the section
-# extractor finds no heading to anchor on and the caller must fall back to the
-# whole paper.
-NO_SECTION_TEXT = (
-    "Background. The trial enrolled patients across 39 countries. Patients were "
-    "eligible if they met the inclusion criteria: age 18 or older with documented "
-    "atrial fibrillation. Exclusion criteria: severe renal impairment or active "
-    "bleeding at screening. Randomisation was stratified by site."
-)
-
 
 class _FakeCompleted:
     def __init__(self, stdout="", returncode=0, stderr=""):
@@ -105,18 +94,9 @@ def _enrich(monkeypatch, *, stdout="", returncode=0, stderr="", raises=None,
             criteria=None, pdf_path=PDF_PATH, role="supplement"):
     """Drive `_enrich_from_pdf` with pdftotext and its two collaborators pinned.
 
-    The criteria extractor and the merge are stubbed rather than run live, both
-    because what is under test here is the reporting and because
-    `tests/test_parser_paper_status.py` replaces
-    `pubmed_fetcher.extract_eligibility_from_text`, `enricher.enrich_trial_data`
-    and `nct_fetcher.TrialData` with MagicMocks at *import* time and never
-    restores them. A test using the live functions therefore passes or fails by
-    collection order — which is how these tests first went green alone and red
-    in the suite. That pollution is a pre-existing defect in that file and is
-    reported, not fixed, here.
-
-    `_extract_eligibility_section` is deliberately NOT stubbed: whether a
-    section is found is what selects the fallback branch under test.
+    The segmentation step and the merge are stubbed rather than run live: what is
+    under test here is the reporting, and the step's own behaviour is tested on the
+    real corpus in tests/test_eligibility_segmentation.py.
     """
     def fake_run(*_args, **_kwargs):
         if raises is not None:
@@ -124,9 +104,10 @@ def _enrich(monkeypatch, *, stdout="", returncode=0, stderr="", raises=None,
         return _FakeCompleted(stdout=stdout, returncode=returncode, stderr=stderr)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
+    found = criteria if criteria is not None else CRITERIA_FOUND
     monkeypatch.setattr(
-        parser_module, "extract_eligibility_from_text",
-        lambda _text: criteria if criteria is not None else CRITERIA_FOUND,
+        parser_module, "segment_eligibility",
+        lambda _text: Segmentation(items={kind: list(found[kind]) for kind in found}, parts=1),
     )
     monkeypatch.setattr(parser_module, "enrich_trial_data", _fake_enrich_trial_data)
 
@@ -237,52 +218,3 @@ class TestSuccessAndFailureShareOneChannel:
             "the failure reached the reader on a stream the success did not, so "
             "an unconfigured run shows only breakage"
         )
-
-
-class TestTheSectionCapIsAnnounced:
-    """A4 — ARISTOTLE's protocol hits the 20000-char cap exactly, and the log
-    said `20000 chars` with nothing to say a tail had been discarded."""
-
-    def test_should_report_the_dropped_tail_when_the_section_cap_fires(
-        self, monkeypatch, capsys
-    ):
-        # No end-of-section heading anywhere, so the section is the whole text
-        # and the arithmetic below is exact. The heading module returns
-        # Truncated without printing; `_enrich_from_pdf` is who announces it.
-        filler = "\n1. A criterion that is repeated to overflow the cap." * 900
-        text = "INCLUSION CRITERIA\n1. Age 18 or older" + filler
-        result = extract_eligibility_section(text)
-        assert isinstance(result, Truncated)
-
-        _enrich(monkeypatch, stdout=text)
-
-        emitted = capsys.readouterr().out
-        assert "truncat" in emitted.lower(), "the cap fired silently"
-        assert PDF_NAME in emitted
-        assert str(result.dropped) in emitted, (
-            f"the log does not say how much was dropped ({result.dropped} chars)"
-        )
-
-    def test_should_stay_quiet_when_the_section_fits_under_the_cap(
-        self, monkeypatch, capsys
-    ):
-        _enrich(monkeypatch, stdout=GOOD_TEXT)
-        assert "truncat" not in capsys.readouterr().out.lower()
-
-
-class TestTheWholePaperFallbackIsADegradation:
-    """A5 — the fallback is exactly the case the section extractor exists to
-    prevent (its own comment: tables, figures and author lists parsed as
-    criteria), yet it was printed as a neutral note, at up to 153431 chars."""
-
-    def test_should_mark_the_whole_paper_fallback_as_a_degradation(
-        self, monkeypatch, capsys
-    ):
-        _enrich(monkeypatch, stdout=NO_SECTION_TEXT)
-        lines = [line for line in capsys.readouterr().out.splitlines()
-                 if "no eligibility section" in line.lower()]
-        assert lines, "the fallback was not reported at all"
-        assert any("⚠" in line for line in lines), (
-            f"the fallback reads as a neutral note, not a degradation: {lines}"
-        )
-        assert any(PDF_NAME in line for line in lines)

@@ -6,6 +6,8 @@ import re
 import pytest
 from unittest.mock import patch, MagicMock
 
+from src.agents.agent1.segmentation import Segmentation
+
 
 SAMPLE_IDCONV_JSON = """
 {
@@ -239,94 +241,6 @@ class TestFetchPmcFulltext:
         assert result is None
 
 
-class TestExtractEligibilitySection:
-    """Tests for extracting eligibility/methods sections from PMC full-text."""
-
-    def test_extracts_eligibility_criteria_section(self):
-        """
-        Given: Full-text with explicit 'Eligibility Criteria' section
-        When:  extract_eligibility_section is called
-        Then:  Returns the eligibility section text
-        """
-        from src.agents.agent1.pmc_fetcher import extract_eligibility_section, fetch_pmc_fulltext
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = SAMPLE_PMC_XML
-
-        with patch("requests.get", return_value=mock_response):
-            fulltext = fetch_pmc_fulltext("PMC3901982")
-
-        assert fulltext is not None
-        section = extract_eligibility_section(fulltext)
-        assert "type 2 diabetes" in section.lower()
-
-    def test_extracts_study_population_section(self):
-        """
-        Given: Full-text with 'Study Population' section (no Eligibility header)
-        When:  extract_eligibility_section is called
-        Then:  Returns the study population section text
-        """
-        from src.agents.agent1.pmc_fetcher import extract_eligibility_section, fetch_pmc_fulltext
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = SAMPLE_PMC_XML_STUDY_POPULATION
-
-        with patch("requests.get", return_value=mock_response):
-            fulltext = fetch_pmc_fulltext("PMC0000001")
-
-        assert fulltext is not None
-        section = extract_eligibility_section(fulltext)
-        assert len(section) > 0
-        assert "eligible" in section.lower() or "excluded" in section.lower()
-
-    def test_falls_back_to_methods_section(self):
-        """
-        Given: Full-text with no eligibility/population section, but methods section exists
-        When:  extract_eligibility_section is called
-        Then:  Returns the methods section text as fallback
-        """
-        from src.agents.agent1.pmc_fetcher import extract_eligibility_section, fetch_pmc_fulltext
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = SAMPLE_PMC_XML_METHODS_FALLBACK
-
-        with patch("requests.get", return_value=mock_response):
-            fulltext = fetch_pmc_fulltext("PMC0000002")
-
-        assert fulltext is not None
-        section = extract_eligibility_section(fulltext)
-        assert len(section) > 0
-
-    def test_returns_empty_string_when_no_relevant_section(self):
-        """
-        Given: Full-text with only a results section (no methods, no patient criteria)
-        When:  extract_eligibility_section is called
-        Then:  Returns empty string
-        """
-        from src.agents.agent1.pmc_fetcher import extract_eligibility_section
-
-        results_only_text = (
-            "The primary endpoint was met in 80% of patients. "
-            "Secondary outcomes showed significant improvement. "
-            "Adverse events were reported in 12% of the treatment group."
-        )
-        result = extract_eligibility_section(results_only_text)
-        assert result == ""
-
-    def test_returns_empty_string_on_empty_input(self):
-        """
-        Given: Empty string input
-        When:  extract_eligibility_section is called
-        Then:  Returns empty string
-        """
-        from src.agents.agent1.pmc_fetcher import extract_eligibility_section
-
-        assert extract_eligibility_section("") == ""
-
-
 class TestGetPmcEligibility:
     """Tests for the high-level convenience function combining all steps."""
 
@@ -349,12 +263,19 @@ class TestGetPmcEligibility:
         fulltext_response.status_code = 200
         fulltext_response.text = SAMPLE_PMC_XML
 
-        with patch("requests.get", side_effect=[idconv_response, fulltext_response]):
+        seen = []
+
+        def segmented(text):
+            seen.append(text)
+            return Segmentation(items={"inclusion": ["STUB inclusion"], "exclusion": ["STUB exclusion"]})
+
+        with patch("requests.get", side_effect=[idconv_response, fulltext_response]), \
+                patch("src.agents.agent1.pmc_fetcher.segment_eligibility", segmented):
             result = get_pmc_eligibility("23953384")
 
-        assert result is not None
-        assert "inclusion" in result
-        assert "exclusion" in result
+        # The article body reaches the segmentation step, and its criteria are returned.
+        assert len(seen) == 1 and "<" not in seen[0]
+        assert result == {"inclusion": ["STUB inclusion"], "exclusion": ["STUB exclusion"]}
 
     def test_get_pmc_eligibility_returns_none_when_no_pmc(self):
         """
@@ -378,7 +299,7 @@ class TestGetPmcEligibility:
 
     def test_get_pmc_eligibility_returns_none_when_no_eligibility_section(self):
         """
-        Given: PMC article with no eligibility-relevant sections
+        Given: PMC article in which the segmentation step finds no criteria
         When:  get_pmc_eligibility is called
         Then:  Returns None
         """
@@ -395,7 +316,9 @@ class TestGetPmcEligibility:
         fulltext_response.status_code = 200
         fulltext_response.text = SAMPLE_PMC_XML_NO_ELIGIBILITY
 
-        with patch("requests.get", side_effect=[idconv_response, fulltext_response]):
+        with patch("requests.get", side_effect=[idconv_response, fulltext_response]), \
+                patch("src.agents.agent1.pmc_fetcher.segment_eligibility",
+                      lambda text: Segmentation(items={"inclusion": [], "exclusion": []})):
             result = get_pmc_eligibility("12345678")
 
         assert result is None

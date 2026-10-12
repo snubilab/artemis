@@ -50,6 +50,7 @@ import pytest
 # through `monkeypatch`.
 
 from src.agents.agent1.parser import LogicDecomposer
+from src.agents.agent1.segmentation import Segmentation
 from src.api.models.tte import PaperStatus
 
 
@@ -152,8 +153,8 @@ def _stub_enrichment_paths(monkeypatch):
         "get_design_paper_pmids": MagicMock(return_value=[]),
         "search_pubmed_for_nct": MagicMock(return_value=[]),
         "fetch_pubmed_abstract": MagicMock(return_value=None),
-        "extract_eligibility_from_text": MagicMock(
-            return_value={"inclusion": [], "exclusion": []}
+        "segment_eligibility": MagicMock(
+            return_value=Segmentation(items={"inclusion": [], "exclusion": []})
         ),
         "enrich_trial_data": MagicMock(side_effect=lambda td, *a, **kw: td),
     }.items():

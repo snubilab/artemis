@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+from src.agents.agent1.segmentation import SectionKind, segment_eligibility
+
 
 # Default cache directory (relative to project root)
 DEFAULT_CACHE_DIR = Path(__file__).resolve().parents[3] / "data" / "nct_cache"
@@ -74,9 +76,17 @@ def _parse_protocol_to_trial_data(data: dict, nct_id: str) -> TrialData:
     # --- Parse eligibility criteria ---
     eligibility = protocol.get("eligibilityModule", {})
     criteria_text = eligibility.get("eligibilityCriteria", "")
-    
-    inclusion, exclusion = _parse_criteria_text(criteria_text)
-    
+
+    # Which text is an inclusion or an exclusion criterion is decided by the
+    # segmentation step (RFC-016 §5), not by splitting on headers and bullets.
+    segmented = segment_eligibility(eligibility_source_text(criteria_text))
+    if segmented.failures:
+        print(f"[Agent 1] ⚠ {nct_id}: registry eligibility segmentation: "
+              f"{segmented.describe_rejections(segmented.failures)}")
+    criteria = segmented.criteria()
+    inclusion = criteria[SectionKind.INCLUSION.value]
+    exclusion = criteria[SectionKind.EXCLUSION.value]
+
     return TrialData(
         nct_id=nct_id,
         title=title,
@@ -203,72 +213,15 @@ def fetch_or_load_trial_data(
     return fetch_trial_data(nct_id, timeout=timeout, cache_dir=str(cache))
 
 
-def _parse_criteria_text(text: str) -> tuple[List[str], List[str]]:
+def eligibility_source_text(raw: str) -> str:
+    """The registry's eligibility text as the segmentation step reads it.
+
+    ClinicalTrials.gov API v2 returns the field as Markdown, which escapes the comparison
+    signs (``=\\>`` for ``=>``). Unescaping them is reading a machine format, and it is done
+    before the model sees the text so that the fragments it quotes are substrings of what
+    is sliced.
+
+    :param raw: ``eligibilityModule.eligibilityCriteria``.
+    :returns: the same text with the Markdown escapes of ``>`` and ``<`` removed.
     """
-    Parse raw eligibility criteria text into inclusion/exclusion lists.
-    
-    Handles common ClinicalTrials.gov formatting:
-    - "Inclusion Criteria:" / "Exclusion Criteria:" headers
-    - Numbered items (1., 2., ...) or bullet points (-, *, •)
-    """
-    if not text:
-        return [], []
-    
-    # Split by exclusion/non-inclusion header
-    parts = re.split(
-        r'(?:exclusion|non-inclusion)\s*criteria\s*:?',
-        text,
-        flags=re.IGNORECASE
-    )
-    
-    inc_text = parts[0]
-    exc_text = parts[1] if len(parts) > 1 else ""
-    
-    # Remove "Inclusion Criteria:" header
-    inc_text = re.sub(r'^inclusion\s*criteria\s*:?\s*', '', inc_text, flags=re.IGNORECASE)
-    
-    inclusion = _parse_items(inc_text)
-    exclusion = _parse_items(exc_text)
-    
-    return inclusion, exclusion
-
-
-def _parse_items(text: str) -> List[str]:
-    """Parse numbered/bulleted items from criteria text.
-    
-    Handles both:
-    - Newline-separated items (standard format)
-    - Inline dash-separated items: "- item1 - item2 - item3" (common in API v2)
-    
-    Codex-reviewed: regex uses negative lookaround for digits to avoid
-    splitting numeric ranges like "18 - 60 years".
-    """
-    items = []
-    
-    # Check if text has newlines with bullets/numbers
-    has_newline_items = bool(re.search(r'\n\s*[\d•\-\*]', text))
-    
-    if has_newline_items:
-        # Standard: split by newline + number/bullet
-        lines = re.split(r'\n\s*\d+\.?\s*|\n\s*[•\-\*]\s*', text)
-    else:
-        # Inline: split on spaced dashes that are list markers, not numeric ranges.
-        # (?<!\d) = not preceded by digit, (?!\d) = not followed by digit
-        # This correctly splits "Type 2 diabetes - Age min. 50 years"
-        # but preserves "18 - 60 years" and "long-acting" (no spaces around hyphen).
-        lines = re.split(r'(?<!\d)\s+-\s+(?!\d)', text)
-    
-    for line in lines:
-        line = line.strip()
-        # Clean up escaped characters
-        line = line.replace('\\>', '>').replace('\\<', '<')
-        # Remove sub-bullets content (keep only main item)
-        line = re.sub(r'\n\s*\*\s*.*', '', line, flags=re.DOTALL)
-        # Keep items with meaningful content (lowered from 10 to avoid dropping
-        # short but valid criteria like "Male only" or "Age 18+")
-        if line and len(line) > 5:
-            items.append(line)
-    
-    return items
-
-
+    return (raw or "").replace("\\>", ">").replace("\\<", "<")

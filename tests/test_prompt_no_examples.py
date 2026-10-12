@@ -162,12 +162,15 @@ def _render_agent1_extraction() -> str:
     return prompts.EXTRACTION_PROMPT.format(text=STUB)
 
 
-def _render_pubmed_criteria_split() -> str:
-    from src.agents.agent1 import pubmed_fetcher
+def _render_eligibility_segmentation() -> str:
+    """Through ``segment_eligibility`` with the model replaced; the cache is off so
+    nothing is written."""
+    from src.agents.agent1 import segmentation
 
-    recorder = _Recorder(reply='{"criteria": []}')
-    with patch.object(pubmed_fetcher, "_get_criteria_llm", recorder.runnable):
-        pubmed_fetcher._llm_parse_criteria(f"{STUB} eligibility text")
+    recorder = _Recorder(reply='{"inclusion": null, "exclusion": null}')
+    with patch.object(segmentation, "_build_llm", lambda _model: recorder.runnable()), \
+            patch.dict(os.environ, {"ARTEMIS_SEGMENTATION_CACHE": "0"}):
+        segmentation.segment_eligibility(f"{STUB} eligibility text", model="stub-model")
     return _joined(recorder.calls)
 
 
@@ -428,8 +431,9 @@ PROMPTS: dict[str, PromptSpec] = {
     "agent1.extraction_unused": PromptSpec(
         _render_agent1_extraction, tokens=frozenset({"term", "domain", "context", "temporal"}),
     ),
-    "agent1.pubmed_criteria_split": PromptSpec(
-        _render_pubmed_criteria_split, tokens=frozenset({"criteria"}),
+    "agent1.eligibility_segmentation": PromptSpec(
+        _render_eligibility_segmentation,
+        tokens=frozenset({"inclusion", "exclusion", "start", "end", "items", "interruptions"}),
     ),
     "planner": PromptSpec(
         _render_planner,
@@ -822,7 +826,7 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
         9, ("agent1.parse", "agent1.parse_nct", "agent1.threshold_review",
             "agent1.threshold_match"),
     ),
-    "src/agents/agent1/pubmed_fetcher.py": (2, ("agent1.pubmed_criteria_split",)),
+    "src/agents/agent1/segmentation.py": (3, ("agent1.eligibility_segmentation",)),
     "src/agents/agent1/criteria_dedup_judge.py": (2, ("agent1.dedup_judge",)),
     "src/agents/agent1/threshold_classifier.py": (4, ("agent1.threshold_classifier",)),
     "src/agents/planner/decomposer.py": (3, ("planner",)),

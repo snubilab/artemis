@@ -121,10 +121,11 @@ def test_the_shared_names_are_actually_owned_by_the_module():
                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
         assert not (PREDICATE_NAMES & local), f"{relative} re-defines {PREDICATE_NAMES & local}"
 
+# pubmed_fetcher._merge_parsed_items was the fourth site; it went with the section
+# union it served when the segmentation step replaced S1-S8 (RFC-016 §5).
 MERGE_SITES = {
     "agents/agent1/enricher.py": ["_merge_criteria", "_supplement_priority_merge",
                                   "_pick_richer"],
-    "agents/agent1/pubmed_fetcher.py": ["_merge_parsed_items"],
 }
 
 

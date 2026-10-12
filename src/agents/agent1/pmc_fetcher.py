@@ -2,33 +2,19 @@
 Agent 1 - PMC Full-Text Fetcher.
 Converts PMIDs to PMCIDs and fetches full-text XML from PubMed Central Open Access.
 
-Extracts eligibility/methods sections from article body text to enrich
-eligibility criteria beyond what is available in PubMed abstracts.
+The article body is handed to the eligibility segmentation step (RFC-016 §5), which
+finds the inclusion and exclusion criteria in it; nothing here reads the text for
+section headings.
 """
 import re
 import requests
 from typing import Dict, List, Optional
 
+from src.agents.agent1.segmentation import segment_eligibility
+
 
 PMC_IDCONV_URL = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/"
 PMC_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-
-# Section title keywords that indicate eligibility content
-ELIGIBILITY_KEYWORDS = [
-    "eligibility",
-    "inclusion",
-    "exclusion",
-    "study population",
-    "patient selection",
-    "participants",
-    "subject selection",
-]
-
-METHODS_KEYWORDS = [
-    "methods",
-    "study design",
-    "materials and methods",
-]
 
 
 def pmid_to_pmcid(pmid: str, timeout: int = 10) -> Optional[str]:
@@ -113,85 +99,12 @@ def fetch_pmc_fulltext(pmcid: str, timeout: int = 30) -> Optional[str]:
         return None
 
 
-def extract_eligibility_section(fulltext: str) -> str:
-    """
-    Extract eligibility/methods section from PMC full-text.
-
-    Search strategy (in order of priority):
-    1. Locate a heading that contains an eligibility keyword and return all
-       text from just after that heading up to the next heading or end of text.
-    2. Fall back to the methods section if it contains any eligibility keywords.
-    3. Return empty string if nothing relevant is found.
-
-    The input is expected to be plain text (XML tags already stripped).
-    Section headings are short title-case phrases (under 60 chars) that appear
-    at word boundaries in the text.
-
-    Args:
-        fulltext: Plain text extracted from PMC article body
-
-    Returns:
-        Relevant section text, or empty string if not found
-    """
-    if not fulltext:
-        return ""
-
-    text_lower = fulltext.lower()
-
-    # Strategy 1: Find a heading containing an eligibility keyword.
-    # A heading is a short phrase that immediately precedes the section body.
-    # We look for: <heading> <body up to next heading or end>
-    # where <heading> is up to 60 non-sentence-ending chars containing a keyword.
-    eligibility_pattern = "|".join(re.escape(kw) for kw in ELIGIBILITY_KEYWORDS)
-
-    # Match a short heading that contains an eligibility keyword, followed by body text.
-    # The heading is captured in group 1; the body (section content) in group 2.
-    heading_body_re = re.compile(
-        rf"(?:(?:^|\s)([A-Za-z][^.!?]{{0,58}})?\b(?:{eligibility_pattern})\b[^.!?]{{0,58}})\s+((?:.|\n)+?)(?=(?:\s[A-Z][a-z]+(?:\s+[A-Z][a-z]+){{0,3}}\s)|\Z)",
-        re.IGNORECASE,
-    )
-    for m in heading_body_re.finditer(fulltext):
-        body = m.group(2).strip() if m.group(2) else ""
-        if len(body) > 20:
-            return body
-
-    # Strategy 2: Keyword present anywhere — return context window around first hit
-    for kw in ELIGIBILITY_KEYWORDS:
-        idx = text_lower.find(kw)
-        if idx >= 0:
-            # Find the sentence/phrase start: scan back to nearest period or start
-            start = max(0, text_lower.rfind(".", 0, idx) + 1)
-            end = min(len(fulltext), idx + 1500)
-            snippet = fulltext[start:end].strip()
-            if len(snippet) > 20:
-                return snippet
-
-    # Strategy 3: Fall back to methods section, but only if it contains
-    # eligibility-related content (inclusion/exclusion/eligible/excluded keywords)
-    methods_pattern = "|".join(re.escape(kw) for kw in METHODS_KEYWORDS)
-    methods_eligibility_keywords = ["inclusion", "exclusion", "eligible", "excluded", "criteria", "enroll"]
-
-    methods_match = re.search(
-        rf"(?:^|\s)(?:{methods_pattern})\b[^.!?]{{0,30}}\s+((?:.|\n)+?)(?=\Z)",
-        fulltext,
-        re.IGNORECASE,
-    )
-    if methods_match:
-        methods_text = methods_match.group(1).strip()
-        methods_lower = methods_text.lower()
-        has_eligibility = any(kw in methods_lower for kw in methods_eligibility_keywords)
-        if has_eligibility and len(methods_text) > 20:
-            return methods_text
-
-    return ""
-
-
 def get_pmc_eligibility(pmid: str, timeout: int = 30) -> Optional[Dict[str, List[str]]]:
     """
     High-level function: fetch PMC full-text and extract eligibility criteria.
 
-    Combines pmid_to_pmcid, fetch_pmc_fulltext, extract_eligibility_section, and
-    the standard extract_eligibility_from_text parser into a single call.
+    Combines pmid_to_pmcid, fetch_pmc_fulltext and the eligibility segmentation step
+    into a single call.
 
     Args:
         pmid: PubMed ID string
@@ -201,7 +114,7 @@ def get_pmc_eligibility(pmid: str, timeout: int = 30) -> Optional[Dict[str, List
         Dict with "inclusion" and "exclusion" lists, or None if:
         - No PMC version exists for the PMID
         - Full-text is unavailable
-        - No eligibility section could be found
+        - The segmentation step found no criteria in it
     """
     # Step 1: Convert PMID -> PMCID
     pmcid = pmid_to_pmcid(pmid, timeout=10)
@@ -213,14 +126,13 @@ def get_pmc_eligibility(pmid: str, timeout: int = 30) -> Optional[Dict[str, List
     if not fulltext:
         return None
 
-    # Step 3: Extract eligibility section
-    section = extract_eligibility_section(fulltext)
-    if not section:
-        print(f"[PMC Fetcher] No eligibility section found for {pmcid} (PMID {pmid})")
+    # Step 3: The segmentation step finds and slices the criteria
+    segmented = segment_eligibility(fulltext)
+    if segmented.failures:
+        print(f"[PMC Fetcher] ⚠ {pmcid} eligibility segmentation: "
+              f"{segmented.describe_rejections(segmented.failures)}")
+    criteria = segmented.criteria()
+    if not any(criteria.values()):
+        print(f"[PMC Fetcher] No eligibility criteria found for {pmcid} (PMID {pmid})")
         return None
-
-    # Step 4: Parse criteria using the shared eligibility extractor
-    from src.agents.agent1.pubmed_fetcher import extract_eligibility_from_text
-
-    criteria = extract_eligibility_from_text(section)
     return criteria

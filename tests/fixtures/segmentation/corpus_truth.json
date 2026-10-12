@@ -1,0 +1,1550 @@
+{
+ "about": "The fragments a correct reader returns for every source parse_nct reads on a reingest of the six evaluated trials (NCT record eligibilityCriteria, and each PDF under data/papers/<NCT> that parse_nct does not skip). Written by hand from the production rendering -- plain pdftotext without -layout, form feeds as newlines; for NCT records eligibilityCriteria with the Markdown escapes of > and < removed (nct_fetcher.eligibility_source_text) -- and checked against it; sha256 and chars are of that text, span is the located [start, end) of each section. Fragments use single spaces where the source breaks a line. Read by tests/test_eligibility_segmentation.py, whose oracle answers each part of a document from these fragments.",
+ "sources": [
+  {
+   "id": "ARISTOTLE.nct",
+   "trial": "ARISTOTLE",
+   "kind": "nct",
+   "path": "data/nct_cache/NCT00412984.json",
+   "sha256": "dd1752e47b965ea2e474a1ef8ca898d7817af27d176b4977ff6eb1a06381490b",
+   "chars": 421,
+   "inclusion": [
+    {
+     "start": "Inclusion Criteria:",
+     "end": "Diabetes mellitus or hypertension requiring pharmacological treatment",
+     "items": [
+      {
+       "start": "Males and females ≥ 18 yrs with atrial fibrillation",
+       "end": "one or more of the following risk factors for stroke:"
+      },
+      {
+       "start": "Age ≥ 75, previous stroke",
+       "end": "Age ≥ 75, previous stroke"
+      },
+      {
+       "start": "transient ischemic attack (TIA) or Systemic Embolism (SE)",
+       "end": "transient ischemic attack (TIA) or Systemic Embolism (SE)"
+      },
+      {
+       "start": "Symptomatic congestive heart failure",
+       "end": "(LVEF) ≤ 40%"
+      },
+      {
+       "start": "Diabetes mellitus or hypertension requiring pharmacological treatment",
+       "end": "Diabetes mellitus or hypertension requiring pharmacological treatment"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      0,
+      421
+     ]
+    }
+   ],
+   "exclusion": []
+  },
+  {
+   "id": "PLATO.nct",
+   "trial": "PLATO",
+   "kind": "nct",
+   "path": "data/nct_cache/NCT00391872.json",
+   "sha256": "bc45bd96b1cc7f7c9db75b47982bf7bc4a2621feb9101dfae3fdd9f0aa32fab7",
+   "chars": 523,
+   "inclusion": [
+    {
+     "start": "Inclusion Criteria:",
+     "end": "willing to use 2 methods of reliable contraception",
+     "items": [
+      {
+       "start": "Male or female 18 years or older",
+       "end": "chest pain and potential ACS"
+      },
+      {
+       "start": "Females of child-bearing potential must have a negative pregnancy test",
+       "end": "willing to use 2 methods of reliable contraception"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      0,
+      259
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Exclusion Criteria:",
+     "end": "blood clotting agents that cannot be stopped",
+     "items": [
+      {
+       "start": "Persons with moderate or severe liver disease",
+       "end": "Persons with moderate or severe liver disease"
+      },
+      {
+       "start": "Persons who have already been treated with an invasive (angioplasty) procedure",
+       "end": "for the current episode of ACS"
+      },
+      {
+       "start": "Persons who are being treated with blood clotting agents",
+       "end": "blood clotting agents that cannot be stopped"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      261,
+      523
+     ]
+    }
+   ]
+  },
+  {
+   "id": "LEADER.nct",
+   "trial": "LEADER",
+   "kind": "nct",
+   "path": "data/nct_cache/NCT01179048.json",
+   "sha256": "68d9e298c807a428c8cc22289c9ecb47b21ed024f35ab1904adc0d3bc0b1130a",
+   "chars": 1039,
+   "inclusion": [
+    {
+     "start": "Inclusion Criteria:",
+     "end": "alone or in combination with OAD(s)",
+     "items": [
+      {
+       "start": "Type 2 diabetes",
+       "end": "Type 2 diabetes"
+      },
+      {
+       "start": "Age min. 50 years at screening and concomitant",
+       "end": "other specified risk factors of cardiovascular disease"
+      },
+      {
+       "start": "HbA1c: 7.0% or above",
+       "end": "HbA1c: 7.0% or above"
+      },
+      {
+       "start": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs",
+       "end": "alone or in combination with OAD(s)"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      0,
+      525
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Exclusion Criteria:",
+     "end": "at Investigator's discretion",
+     "items": [
+      {
+       "start": "Type 1 diabetes",
+       "end": "Type 1 diabetes"
+      },
+      {
+       "start": "Use of a glucagon-like peptide-1 (GLP-1) receptor agonist",
+       "end": "prior to screening (trial start)"
+      },
+      {
+       "start": "Use of insulin other than human NPH insulin",
+       "end": "at Investigator's discretion"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      526,
+      1039
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CAROLINA.nct",
+   "trial": "CAROLINA",
+   "kind": "nct",
+   "path": "data/nct_cache/NCT01243424.json",
+   "sha256": "eb2da11210d66b1e00aeafc3e2418f2a921148ec0776c92c487054828d880bd9",
+   "chars": 2184,
+   "inclusion": [
+    {
+     "start": "Inclusion criteria:",
+     "end": "for at least 8 wks before study start",
+     "items": [
+      {
+       "start": "Type 2 diabetes",
+       "end": "Type 2 diabetes"
+      },
+      {
+       "start": "Elevated glycosylated haemoglobin (HbA1c): 6.5 - 8.5%",
+       "end": "OR an alpha-glucosidase inhibitor) therapy)"
+      },
+      {
+       "start": "Pre-existing cardiovascular disease OR specified diabetes end-organ damage",
+       "end": "two or more specified cardiovascular risk factor"
+      },
+      {
+       "start": "BMI =< 45kg/m²",
+       "end": "BMI =< 45kg/m²"
+      },
+      {
+       "start": "age between >= 40 and =< 85 years",
+       "end": "age between >= 40 and =< 85 years"
+      },
+      {
+       "start": "signed and dated written International Conference of Harmonisation( ICF)",
+       "end": "signed and dated written International Conference of Harmonisation( ICF)"
+      },
+      {
+       "start": "stable anti-diabetic background for at least 8 wks before study start",
+       "end": "stable anti-diabetic background for at least 8 wks before study start"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      0,
+      696
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Exclusion criteria:",
+     "end": "=< 3 months prior to ICF",
+     "items": [
+      {
+       "start": "Type 1 diabetes",
+       "end": "Type 1 diabetes"
+      },
+      {
+       "start": "Treatment with other antidiabetic drugs (e.g. rosiglitazone",
+       "end": "taken at least 8 weeks prior informed consent)"
+      },
+      {
+       "start": "treatment with any anti-obesity drug less than 3 months before ICF",
+       "end": "treatment with any anti-obesity drug less than 3 months before ICF"
+      },
+      {
+       "start": "uncontrolled hyperglycemia",
+       "end": "uncontrolled hyperglycemia"
+      },
+      {
+       "start": "previous or planned bariatric surgery or intervention",
+       "end": "previous or planned bariatric surgery or intervention"
+      },
+      {
+       "start": "current or planned system corticoid treatment",
+       "end": "current or planned system corticoid treatment"
+      },
+      {
+       "start": "change in thyroid hormones treatment",
+       "end": "change in thyroid hormones treatment"
+      },
+      {
+       "start": "acute liver disease or impaired hepatic function",
+       "end": "acute liver disease or impaired hepatic function"
+      },
+      {
+       "start": "pre-planned coronary artery revascularization within 6 months of ICF",
+       "end": "pre-planned coronary artery revascularization within 6 months of ICF"
+      },
+      {
+       "start": "known hypersensitivity to any of the components",
+       "end": "known hypersensitivity to any of the components"
+      },
+      {
+       "start": "Inappropriateness of glimepiride treatment",
+       "end": "according to local prescribing information"
+      },
+      {
+       "start": "congestive heart failure class III or IV",
+       "end": "congestive heart failure class III or IV"
+      },
+      {
+       "start": "acute or chronic metabolic acidosis",
+       "end": "acute or chronic metabolic acidosis"
+      },
+      {
+       "start": "hereditary galactose intolerance",
+       "end": "hereditary galactose intolerance"
+      },
+      {
+       "start": "alcohol or drug abuse",
+       "end": "alcohol or drug abuse"
+      },
+      {
+       "start": "participation in another trail with IMP",
+       "end": "Medicinal/Medical Product (IMP) start"
+      },
+      {
+       "start": "pre-menopausal women who are nursing or pregnant",
+       "end": "acceptable method of birth control"
+      },
+      {
+       "start": "patients considered reliable by the investigator",
+       "end": "patients considered reliable by the investigator"
+      },
+      {
+       "start": "acute coronary syndrome =< 6 wks before ICF",
+       "end": "acute coronary syndrome =< 6 wks before ICF"
+      },
+      {
+       "start": "stroke or Transient Ischemic Attack (TIA) =< 3 months prior to ICF",
+       "end": "stroke or Transient Ischemic Attack (TIA) =< 3 months prior to ICF"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      698,
+      2184
+     ]
+    }
+   ]
+  },
+  {
+   "id": "EMPA-REG.nct",
+   "trial": "EMPA-REG",
+   "kind": "nct",
+   "path": "data/nct_cache/NCT01131676.json",
+   "sha256": "34d9721a8386bb66b40d001730b4db4afc5fa20d1680358a6f7c13593dfa2b89",
+   "chars": 3239,
+   "inclusion": [
+    {
+     "start": "Inclusion criteria:",
+     "end": "High cardiovascular risk",
+     "items": [
+      {
+       "start": "Diagnosis of type 2 diabetes mellitus prior to informed consent",
+       "end": "Diagnosis of type 2 diabetes mellitus prior to informed consent"
+      },
+      {
+       "start": "Male or female patients on diet and exercise regimen",
+       "end": "unchanged for 12 weeks prior to randomization."
+      },
+      {
+       "start": "Glycosylated haemoglobin (HbA1c) of >= 7.0%",
+       "end": "<= 9.0% for drug naive patients"
+      },
+      {
+       "start": "Age >= 18 years",
+       "end": "Age >= 18 years"
+      },
+      {
+       "start": "Body Mass index <= 45 at Visit 1",
+       "end": "Body Mass index <= 45 at Visit 1"
+      },
+      {
+       "start": "Signed and dated informed consent",
+       "end": "Signed and dated informed consent"
+      },
+      {
+       "start": "High cardiovascular risk",
+       "end": "High cardiovascular risk"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      0,
+      549
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Exclusion criteria:",
+     "end": "TIA within 2 months prior to informed consent",
+     "items": [
+      {
+       "start": "Uncontrolled hyperglycaemia with a glucose level >240 mg/dl",
+       "end": "(not on the same day)"
+      },
+      {
+       "start": "Indication of liver disease",
+       "end": "at screening and/or run in."
+      },
+      {
+       "start": "Planned cardiac surgery or angioplasty within 3 months",
+       "end": "Planned cardiac surgery or angioplasty within 3 months"
+      },
+      {
+       "start": "Impaired renal function, defined as Glomerular Filtration Rate",
+       "end": "during screening or run in."
+      },
+      {
+       "start": "Bariatric surgery within the past two years",
+       "end": "induce chronic malabsorption"
+      },
+      {
+       "start": "Blood dyscrasias or any disorders causing haemolysis",
+       "end": "haemolytic anemia)"
+      },
+      {
+       "start": "Medical history of cancer (except for basal cell carcinoma)",
+       "end": "within the last 5 years"
+      },
+      {
+       "start": "Contraindications to background therapy according to the local label",
+       "end": "Contraindications to background therapy according to the local label"
+      },
+      {
+       "start": "Treatment with anti-obesity drugs (e.g. sibutramine, orlistat)",
+       "end": "leading to unstable body weight"
+      },
+      {
+       "start": "Current treatment with systemic steroids at time of informed consent",
+       "end": "except type 2 diabetes mellitus"
+      },
+      {
+       "start": "Pre-menopausal women (last menstruation <+ 1 year prior to informed consent) who:",
+       "end": "double barrier method and vasectomised partner"
+      },
+      {
+       "start": "Alcohol or drug abuse within the 3 months prior to informed consent",
+       "end": "to study procedures or study drug intake"
+      },
+      {
+       "start": "Participation in another trial with an investigational drug within 30 days",
+       "end": "within 30 days prior to informed consent"
+      },
+      {
+       "start": "Any other clinical condition that would jeopardize patients safety",
+       "end": "while participating in this clinical trial"
+      },
+      {
+       "start": "Acute coronary syndrome, stroke or TIA within 2 months prior to informed consent",
+       "end": "Acute coronary syndrome, stroke or TIA within 2 months prior to informed consent"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      551,
+      3239
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CARMELINA.nct",
+   "trial": "CARMELINA",
+   "kind": "nct",
+   "path": "data/nct_cache/NCT01897532.json",
+   "sha256": "410c0e66a8f95ee9bb8bdec0c7951a0dca6a3883f303cc82e104ec840272988e",
+   "chars": 3973,
+   "inclusion": [
+    {
+     "start": "Inclusion criteria:",
+     "end": "predefined Urine Albumin Creatinine Ratio (UACR)",
+     "items": [
+      {
+       "start": "Documented diagnosis of T2DM before visit 1(screening).",
+       "end": "Documented diagnosis of T2DM before visit 1(screening)."
+      },
+      {
+       "start": "Male or female patients who are drug-naïve",
+       "end": "inhibitors if => consecutive 7 days."
+      },
+      {
+       "start": "Stable antidiabetic background medication (unchanged daily dose)",
+       "end": "compared with the daily insulin dose at randomization."
+      },
+      {
+       "start": "HbA1c of => 6.5% and <= 10.0% at Visit 1 (screening)",
+       "end": "HbA1c of => 6.5% and <= 10.0% at Visit 1 (screening)"
+      },
+      {
+       "start": "Age => 18 years at Visit 1(screening).",
+       "end": "Age => 20 years at Visit 1"
+      },
+      {
+       "start": "Body Mass Index (BMI) <= 45 kg/m2 at Visit 1 (screening)",
+       "end": "Body Mass Index (BMI) <= 45 kg/m2 at Visit 1 (screening)"
+      },
+      {
+       "start": "Signed and dated written informed consent by date of Visit 1(screening)",
+       "end": "prior to any study related procedure"
+      },
+      {
+       "start": "High risk of cardiovascular (CV) events defined by:",
+       "end": "predefined Urine Albumin Creatinine Ratio (UACR)"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      0,
+      1309
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Exclusion criteria:",
+     "end": "TIA) <= 3 months prior to visit 1 (screening).",
+     "items": [
+      {
+       "start": "Type 1 diabetes mellitus.",
+       "end": "Type 1 diabetes mellitus."
+      },
+      {
+       "start": "Treatment (=> 7 consecutive days) with GLP-1 receptor agonists",
+       "end": "have been provided to the patient."
+      },
+      {
+       "start": "Active liver disease or impaired hepatic function",
+       "end": "as determined at Visit 1."
+      },
+      {
+       "start": "Estimated Glomerular filtration Rate (eGFR) <15 ml/min/1.73 m2",
+       "end": "the need for maintenance dialysis."
+      },
+      {
+       "start": "Any previous (or planned within next 12 months) bariatric surgery",
+       "end": "intervention (gastric sleeve)."
+      },
+      {
+       "start": "Pre-planned coronary artery re-vascularisation (PCI, CABG)",
+       "end": "<= 2 months prior informed consent."
+      },
+      {
+       "start": "Known hypersensitivity or allergy to the investigational products",
+       "end": "or its excipients."
+      },
+      {
+       "start": "Any previous or current alcohol or drug abuse",
+       "end": "in the opinion of the investigator."
+      },
+      {
+       "start": "Participation in another trial with an investigational drug ongoing",
+       "end": "within 2 months prior to visit 1 (screening)."
+      },
+      {
+       "start": "Pre-menopausal women (last menstruation = 1 year prior to informed consent)",
+       "end": "pregnancy testing during participation in the trial."
+      },
+      {
+       "start": "Patients considered unreliable by the investigator",
+       "end": "would not allow safe participation in the study."
+      },
+      {
+       "start": "Acute coronary syndrome (ACS), diagnosed <= 2 months prior to visit 1 (screening).",
+       "end": "Acute coronary syndrome (ACS), diagnosed <= 2 months prior to visit 1 (screening)."
+      },
+      {
+       "start": "Stroke or Transient Ischemic Attack (TIA) <= 3 months prior to visit 1 (screening).",
+       "end": "Stroke or Transient Ischemic Attack (TIA) <= 3 months prior to visit 1 (screening)."
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      1311,
+      3973
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ARISTOTLE.protocol",
+   "trial": "ARISTOTLE",
+   "kind": "pdf",
+   "path": "data/papers/NCT00412984/nejmoa1107039_protocol.pdf",
+   "sha256": "82ead0d37ae6f2729ab3fc796fb73da04ef769de2c299596b15aef52247c3461",
+   "chars": 401091,
+   "inclusion": [
+    {
+     "start": "Inclusion criteria",
+     "end": "All subjects must provide signed written informed consent.",
+     "items": [
+      {
+       "start": "Age ≥ 18 years",
+       "end": "Age ≥ 18 years"
+      },
+      {
+       "start": "In atrial fibrillation or atrial flutter not due to a reversible cause",
+       "end": "(from an implanted pacemaker or defibrillator)."
+      },
+      {
+       "start": "One or more of the following risk factor(s) for stroke:",
+       "end": "Hypertension requiring pharmacological treatment"
+      },
+      {
+       "start": "Women of childbearing potential (WOCBP) must be using an adequate method",
+       "end": "within 48 hours prior to the start of investigational product."
+      },
+      {
+       "start": "All subjects must provide signed written informed consent.",
+       "end": "All subjects must provide signed written informed consent."
+      }
+     ],
+     "interruptions": [
+      "Revised Protocol No.: 04",
+      "Date: 04-Aug-2010",
+      "Approved v 8.0",
+      "930018272 6.0",
+      "Apixaban",
+      "BMS-562247",
+      "CV185030",
+      "Clinical Protocol",
+      "37"
+     ],
+     "span": [
+      83232,
+      85747
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Exclusion criteria",
+     "end": "prior to administration of investigational product.",
+     "items": [
+      {
+       "start": "Atrial fibrillation or flutter due to reversible causes",
+       "end": "(e.g. thyrotoxicosis, pericarditis)"
+      },
+      {
+       "start": "Clinically significant (moderate or severe) mitral stenosis",
+       "end": "Clinically significant (moderate or severe) mitral stenosis"
+      },
+      {
+       "start": "Increased bleeding risk that is believed to be a contraindication",
+       "end": "(e.g. previous intracranial hemorrhage)"
+      },
+      {
+       "start": "Conditions other than atrial fibrillation that require chronic anticoagulation",
+       "end": "prosthetic mechanical heart valve)"
+      },
+      {
+       "start": "Persistent, uncontrolled hypertension",
+       "end": "> 100 mm Hg)"
+      },
+      {
+       "start": "Active infective endocarditis",
+       "end": "Active infective endocarditis"
+      },
+      {
+       "start": "Planned major surgery",
+       "end": "Planned major surgery"
+      },
+      {
+       "start": "Planned atrial fibrillation or flutter ablation procedure",
+       "end": "Planned atrial fibrillation or flutter ablation procedure"
+      },
+      {
+       "start": "Use of an unapproved, investigational drug or device within the past 30 days",
+       "end": "Use of an unapproved, investigational drug or device within the past 30 days"
+      },
+      {
+       "start": "Required treatment with aspirin > 165 mg/day",
+       "end": "Required treatment with aspirin > 165 mg/day"
+      },
+      {
+       "start": "Simultaneous treatment with both aspirin and a thienopyridine",
+       "end": "ticlopidine)"
+      },
+      {
+       "start": "Severe comorbid condition with life expectancy of ≤ 1 year",
+       "end": "Severe comorbid condition with life expectancy of ≤ 1 year"
+      },
+      {
+       "start": "Active alcohol or drug abuse, or psychosocial reasons",
+       "end": "study participation impractical"
+      },
+      {
+       "start": "Recent ischemic stroke (within 7 days)",
+       "end": "Recent ischemic stroke (within 7 days)"
+      },
+      {
+       "start": "Severe renal insufficiency (serum creatinine > 2.5 mg/dL",
+       "end": "See Section 6.3.2.2)"
+      },
+      {
+       "start": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN",
+       "end": "[e.g., Gilbert’s syndrome] is identified)"
+      },
+      {
+       "start": "Platelet count ≤ 100,000/ mm",
+       "end": "Platelet count ≤ 100,000/ mm"
+      },
+      {
+       "start": "Hemoglobin < 9 g/dL",
+       "end": "Hemoglobin < 9 g/dL"
+      },
+      {
+       "start": "Inability to comply with INR monitoring",
+       "end": "Inability to comply with INR monitoring"
+      },
+      {
+       "start": "Prior randomization into an apixaban clinical study",
+       "end": "Prior randomization into an apixaban clinical study"
+      },
+      {
+       "start": "Prisoners or subjects who are involuntarily incarcerated",
+       "end": "Prisoners or subjects who are involuntarily incarcerated"
+      },
+      {
+       "start": "Subjects who are compulsorily detained for treatment",
+       "end": "(e.g., infectious disease) illness"
+      },
+      {
+       "start": "Women of child bearing potential (WOCBP) unwilling or unable",
+       "end": "prior to administration of investigational product."
+      }
+     ],
+     "interruptions": [
+      "Revised Protocol No.: 04",
+      "Date: 04-Aug-2010",
+      "Approved v 8.0",
+      "930018272 6.0",
+      "Apixaban",
+      "BMS-562247",
+      "CV185030",
+      "Clinical Protocol",
+      "39"
+     ],
+     "span": [
+      85755,
+      88826
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ARISTOTLE.appendix",
+   "trial": "ARISTOTLE",
+   "kind": "pdf",
+   "path": "data/papers/NCT00412984/nejmoa1107039_appendix.pdf",
+   "sha256": "86b7473908a326b7222504711c199bb2bb37d20de52fa2c59fc8f9266c49819d",
+   "chars": 24887,
+   "inclusion": [],
+   "exclusion": []
+  },
+  {
+   "id": "PLATO.main",
+   "trial": "PLATO",
+   "kind": "pdf",
+   "path": "data/papers/NCT00391872/NEJMoa0904327.pdf",
+   "sha256": "a733f8fa2e21714081e419b3ba6801399c6ab55f28feec313b09544cb2520dfc",
+   "chars": 60711,
+   "inclusion": [
+    {
+     "start": "Patients were eligible for enrollment if they were",
+     "end": "and the intention to perform primary PCI.",
+     "items": [
+      {
+       "start": "hospitalized for an acute coronary syndrome, with or without ST-segment elevation",
+       "end": "with an onset of symptoms during the previous 24 hours."
+      },
+      {
+       "start": "For patients who had an acute coronary syndrome without ST-segment elevation",
+       "end": "per 1.73 m2 of bodysurface area)."
+      },
+      {
+       "start": "For patients who had an acute coronary syndrome with ST-segment elevation",
+       "end": "and the intention to perform primary PCI."
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      6772,
+      7992
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Major exclusion criteria were",
+     "end": "P-450 3A inhibitor or inducer.",
+     "items": [
+      {
+       "start": "any contraindication against the use of clopido",
+       "end": "grel,"
+      },
+      {
+       "start": "fibrinolytic therapy within 24 hours before",
+       "end": "randomization,"
+      },
+      {
+       "start": "a need for oral anticoagulation",
+       "end": "therapy,"
+      },
+      {
+       "start": "an increased risk of bradycardia,",
+       "end": "an increased risk of bradycardia,"
+      },
+      {
+       "start": "concomitant therapy with a strong cytochrome",
+       "end": "P-450 3A inhibitor or inducer."
+      }
+     ],
+     "interruptions": [
+      "Me thods",
+      "Study Design"
+     ],
+     "span": [
+      7993,
+      8456
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PLATO.supplement",
+   "trial": "PLATO",
+   "kind": "pdf",
+   "path": "data/papers/NCT00391872/nejm_wallentin_1045sa1.pdf",
+   "sha256": "bf38545364b097296e0b612f3e4b15b0bbfb27ff9f9a2028849731c906452a14",
+   "chars": 75541,
+   "inclusion": [],
+   "exclusion": []
+  },
+  {
+   "id": "PLATO.design",
+   "trial": "PLATO",
+   "kind": "pdf",
+   "path": "data/papers/NCT00391872/plato_design_ahj2009.pdf",
+   "sha256": "6afa67dfffe304360e494139c6b93ba8b5f44397b9aece7dec63e6c6db83b259",
+   "chars": 35666,
+   "inclusion": [
+    {
+     "start": "Table I. Inclusion criteria",
+     "end": "including one barrier method.",
+     "items": [
+      {
+       "start": "Hospitalized for potential ST-segment elevation or non–STsegment elevation ACS",
+       "end": "and with informed consent"
+      },
+      {
+       "start": "And: ≥2 of the following:",
+       "end": "(g) Chronic renal dysfunction"
+      },
+      {
+       "start": "Urinary and/or blood pregnancy tests are to be performed",
+       "end": "including one barrier method."
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      16307,
+      17605
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Table II. Exclusion criteria",
+     "end": "Previous enrollment or randomization in this study",
+     "items": [
+      {
+       "start": "Contraindication to clopidogrel or other reason",
+       "end": "major surgery within 30 d)"
+      },
+      {
+       "start": "Oral anticoagulation therapy that cannot be stopped",
+       "end": "Oral anticoagulation therapy that cannot be stopped"
+      },
+      {
+       "start": "Fibrinolytic therapy planned or within the previous 24 h",
+       "end": "Fibrinolytic therapy planned or within the previous 24 h"
+      },
+      {
+       "start": "Concomitant oral or IV therapy with strong CYP3A",
+       "end": "phenytoin, carbamazepine)"
+      },
+      {
+       "start": "Index event is an acute complication of PCI",
+       "end": "Index event is an acute complication of PCI"
+      },
+      {
+       "start": "PCI after index event and before first study dose",
+       "end": "PCI after index event and before first study dose"
+      },
+      {
+       "start": "Increased risk of bradycardiac events",
+       "end": "Increased risk of bradycardiac events"
+      },
+      {
+       "start": "Dialysis required",
+       "end": "Dialysis required"
+      },
+      {
+       "start": "Known clinically important thrombocytopenia⁎",
+       "end": "Known clinically important thrombocytopenia⁎"
+      },
+      {
+       "start": "Known clinically important anemia⁎",
+       "end": "Known clinically important anemia⁎"
+      },
+      {
+       "start": "Any other condition that may put the patient at risk",
+       "end": "active cancer)"
+      },
+      {
+       "start": "Participant in another investigational drug or device study",
+       "end": "within 30 d"
+      },
+      {
+       "start": "Pregnancy or lactation",
+       "end": "Pregnancy or lactation"
+      },
+      {
+       "start": "Any condition that increases the risk for noncompliance",
+       "end": "being lost to follow-up"
+      },
+      {
+       "start": "Involvement in the planning or conduct of the study",
+       "end": "Involvement in the planning or conduct of the study"
+      },
+      {
+       "start": "Previous enrollment or randomization in this study",
+       "end": "Previous enrollment or randomization in this study"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      17669,
+      19189
+     ]
+    }
+   ]
+  },
+  {
+   "id": "LEADER.appendix",
+   "trial": "LEADER",
+   "kind": "pdf",
+   "path": "data/papers/NCT01179048/nejmoa1603827_appendix.pdf",
+   "sha256": "d0046de1fb49e9c0d81da289b83485e92705f1c714e7e99275d60b0e00507d4a",
+   "chars": 196261,
+   "inclusion": [
+    {
+     "start": "Inclusion criteria",
+     "end": "Ankle-brachial index <0.9",
+     "items": [
+      {
+       "start": "Type 2 diabetes",
+       "end": "Type 2 diabetes"
+      },
+      {
+       "start": "Anti-diabetic drug naïve or treated with one or more oral anti-diabetic drugs",
+       "end": "alone or in combination with OAD(s)"
+      },
+      {
+       "start": "Glycated hemoglobin ≥7.0%",
+       "end": "Glycated hemoglobin ≥7.0%"
+      },
+      {
+       "start": "Prior cardiovascular disease cohort: age ≥50",
+       "end": "eGFR <60 mL/min (Cockcroft-Gault formula)"
+      },
+      {
+       "start": "No Prior cardiovascular disease group: Age ≥60 y",
+       "end": "Ankle-brachial index <0.9"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      158376,
+      159600
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Exclusion criteria",
+     "end": "Personal history of non-familial medullary thyroid carcinoma",
+     "items": [
+      {
+       "start": "Type 1 diabetes",
+       "end": "Type 1 diabetes"
+      },
+      {
+       "start": "Calcitonin ≥50 ng/L",
+       "end": "Calcitonin ≥50 ng/L"
+      },
+      {
+       "start": "Use of a GLP-1 receptor agonist",
+       "end": "within the 3 months prior to screening"
+      },
+      {
+       "start": "Use of insulin other than human NPH insulin",
+       "end": "at Investigator’s discretion"
+      },
+      {
+       "start": "Acute decompensation of glycemic control",
+       "end": "Acute decompensation of glycemic control"
+      },
+      {
+       "start": "Acute coronary or cerebrovascular event in the previous 14 days",
+       "end": "Acute coronary or cerebrovascular event in the previous 14 days"
+      },
+      {
+       "start": "Currently planned coronary, carotid, or peripheral artery revascularization",
+       "end": "Currently planned coronary, carotid, or peripheral artery revascularization"
+      },
+      {
+       "start": "Chronic heart failure (NYHA class IV)",
+       "end": "Chronic heart failure (NYHA class IV)"
+      },
+      {
+       "start": "Current continuous renal replacement therapy",
+       "end": "Current continuous renal replacement therapy"
+      },
+      {
+       "start": "End-stage liver disease",
+       "end": "End-stage liver disease"
+      },
+      {
+       "start": "History of solid organ transplant or awaiting solid organ transplant",
+       "end": "History of solid organ transplant or awaiting solid organ transplant"
+      },
+      {
+       "start": "Malignant neoplasm",
+       "end": "Malignant neoplasm"
+      },
+      {
+       "start": "Family or personal history of multiple endocrine neoplasia type 2",
+       "end": "familial medullary thyroid carcinoma"
+      },
+      {
+       "start": "Personal history of non-familial medullary thyroid carcinoma",
+       "end": "Personal history of non-familial medullary thyroid carcinoma"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      159601,
+      160633
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CAROLINA.supplement",
+   "trial": "CAROLINA",
+   "kind": "pdf",
+   "path": "data/papers/NCT01243424/jama_2019_carolina_supplement.pdf",
+   "sha256": "f85b10693cd9d7a7107333556e4430192878690b53bb82d9049b1e358952cd95",
+   "chars": 395796,
+   "inclusion": [
+    {
+     "start": "Inclusion criteria:",
+     "end": "eligible for randomisation.",
+     "items": [
+      {
+       "start": "Documented diagnosis of T2DM and concurrently insufficient glycaemic control and",
+       "end": "a high risk of CV events prior to informed consent:"
+      },
+      {
+       "start": "Insufficient glycaemic control (at Visit 1a) defined as:",
+       "end": "alpha-glucosidase inhibitor + glinide (combination maximal up to 5 years)"
+      },
+      {
+       "start": "High risk of CV events defined as any one (or more) of A), B), C) or D):",
+       "end": "LDL cholesterol measurement < 6 months prior V1a."
+      },
+      {
+       "start": "Body Mass Index (BMI) ≤ 45 kg/m2 at Visit 1b",
+       "end": "Body Mass Index (BMI) ≤ 45 kg/m2 at Visit 1b"
+      },
+      {
+       "start": "Age ≥ 40 and ≤ 85 years at Visit 1a",
+       "end": "Age ≥ 40 and ≤ 85 years at Visit 1a"
+      },
+      {
+       "start": "Signed and dated written informed consent at the latest by the date of Visit",
+       "end": "in accordance with GCP and local legislation"
+      },
+      {
+       "start": "Stable anti-diabetic background medication (unchanged daily dose) for at",
+       "end": "to allow randomisation"
+      },
+      {
+       "start": "Treatment compliance in the placebo run-in should be between 80% and 120%",
+       "end": "eligible for randomisation."
+      }
+     ],
+     "interruptions": [
+      "Proprietary confidential information.",
+      "! 2016 Boehringer Ingelheim International GmbH or one or more of its affiliated companies. All rights reserved.",
+      "This document may not - in full or in part - be passed on, reproduced, published or otherwise used without prior written permission.",
+      "Boehringer Ingelheim",
+      "BI Trial No.: 1218.74",
+      "Doc No.: c01618200-19",
+      "20 April 2016",
+      "Protocol Revision 6",
+      "Name of company:",
+      "Page 6 of 172",
+      "Tabulated",
+      "Trial Protocol",
+      "Name of finished product",
+      "Not applicable",
+      "Name of active ingredient:",
+      "Linagliptin",
+      "Protocol date:",
+      "17 August 2010",
+      "Trial number:",
+      "1218.74",
+      "Inclusion criteria:",
+      "∀",
+      "Revision date:"
+     ],
+     "span": [
+      6065,
+      10929
+     ]
+    },
+    {
+     "start": "Inclusion criteria",
+     "end": "should be stable during screening/run-in phase to allow randomisation.",
+     "items": [
+      {
+       "start": "Documented diagnosis of T2DM and concurrently 2)",
+       "end": "3) prior to informed consent."
+      },
+      {
+       "start": "Insufficient glycaemic control (at Visit 1a) defined as:",
+       "end": "glinide + alpha-glucosidase inhibitor (combination maximal up to 5 years)"
+      },
+      {
+       "start": "High risk of CV events defined as any one (or more) of A), B), C) or D):",
+       "end": "LDL cholesterol measurement < 6 months prior V1a."
+      },
+      {
+       "start": "Body Mass Index (BMI) ≤ 45 kg/m2 at Visit 1b.",
+       "end": "Body Mass Index (BMI) ≤ 45 kg/m2 at Visit 1b."
+      },
+      {
+       "start": "Age ≥ 40 and ≤ 85 years at Visit 1a",
+       "end": "Age ≥ 40 and ≤ 85 years at Visit 1a"
+      },
+      {
+       "start": "Signed and dated written informed consent at the latest by the date of Visit 1a, in",
+       "end": "accordance with GCP and local legislation"
+      },
+      {
+       "start": "Stable anti-diabetic background medication (unchanged daily dose) for at least 8",
+       "end": "should be stable during screening/run-in phase to allow randomisation."
+      }
+     ],
+     "interruptions": [
+      "Proprietary confidential information.",
+      "! 2016 Boehringer Ingelheim International GmbH or one or more of its affiliated companies. All rights reserved.",
+      "This document may not - in full or in part - be passed on, reproduced, published or otherwise used without prior written permission.",
+      "Boehringer Ingelheim",
+      "BI Trial No.: 1218.74",
+      "Doc No.: c01618200-19",
+      "20 April 2016",
+      "Protocol Revision 6",
+      "Page 37 of 172"
+     ],
+     "span": [
+      91649,
+      98335
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "Criteria for exclusion:",
+     "end": "Stroke or TIA ≤ 3 months prior to informed consent",
+     "items": [
+      {
+       "start": "Type 1 diabetes mellitus",
+       "end": "Type 1 diabetes mellitus"
+      },
+      {
+       "start": "Any history and/or current treatment with other antidiabetic drugs",
+       "end": "if taken at least 8 weeks prior informed consent"
+      },
+      {
+       "start": "Treatment with anti-obesity drugs within 3 months prior to informed consent",
+       "end": "Treatment with anti-obesity drugs within 3 months prior to informed consent"
+      },
+      {
+       "start": "Uncontrolled hyperglycaemia with a glucose level >240 mg/dl",
+       "end": "(not on the same day)"
+      },
+      {
+       "start": "Any previous (or planned within next 12 months) bariatric surgery",
+       "end": "intervention (gastric sleeve)"
+      },
+      {
+       "start": "Current treatment with systemic corticosteroids at time of informed consent",
+       "end": "does not cause systemic steroid action"
+      },
+      {
+       "start": "Change in dose of thyroid hormones within 6 weeks prior informed consent",
+       "end": "Change in dose of thyroid hormones within 6 weeks prior informed consent"
+      },
+      {
+       "start": "Active liver disease or impaired hepatic function",
+       "end": "as determined at visit 1a"
+      },
+      {
+       "start": "Pre-planned coronary artery re-vascularisation (PCI, CABG)",
+       "end": "≤ 6 weeks prior informed consent"
+      },
+      {
+       "start": "Known hypersensitivity or allergy to the investigational product",
+       "end": "glimepiride (or the SU class)"
+      },
+      {
+       "start": "Inappropriateness of glimepiride treatment for renal safety issues",
+       "end": "according to local prescribing information"
+      },
+      {
+       "start": "Congestive heart failure of NYHA class III or IV",
+       "end": "Congestive heart failure of NYHA class III or IV"
+      },
+      {
+       "start": "Acute or chronic metabolic acidosis",
+       "end": "(present condition in patient history)"
+      },
+      {
+       "start": "Hereditary galactose intolerance",
+       "end": "Hereditary galactose intolerance"
+      },
+      {
+       "start": "Alcohol or drug abuse within the 3 months prior to informed consent",
+       "end": "would interfere with trial participation"
+      },
+      {
+       "start": "Participation in another trial with an investigational drug given within 2",
+       "end": "months prior to informed consent"
+      },
+      {
+       "start": "Pre-menopausal women (last menstruation # 1 year prior to informed",
+       "end": "pregnancy testing during participation in the trial."
+      },
+      {
+       "start": "Patients considered unreliable by the investigator concerning the",
+       "end": "would not allow safe participation in the study"
+      },
+      {
+       "start": "Acute coronary syndrome ≤ 6 weeks prior to informed consent",
+       "end": "Acute coronary syndrome ≤ 6 weeks prior to informed consent"
+      },
+      {
+       "start": "Stroke or TIA ≤ 3 months prior to informed consent",
+       "end": "Stroke or TIA ≤ 3 months prior to informed consent"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      12136,
+      16265
+     ]
+    },
+    {
+     "start": "Exclusion criteria",
+     "end": "Stroke or TIA ≤ 3 months prior to informed consent",
+     "items": [
+      {
+       "start": "Type 1 diabetes mellitus",
+       "end": "Type 1 diabetes mellitus"
+      },
+      {
+       "start": "Any history and/or current treatment with other antidiabetic drugs",
+       "end": "if taken at least 8 weeks prior informed consent"
+      },
+      {
+       "start": "Treatment with anti-obesity drugs 3 months prior to informed consent",
+       "end": "Treatment with anti-obesity drugs 3 months prior to informed consent"
+      },
+      {
+       "start": "Uncontrolled hyperglycaemia with a glucose level >240 mg/dl",
+       "end": "(not on the same day)."
+      },
+      {
+       "start": "Active liver disease or impaired hepatic function",
+       "end": "as determined at Visit 1a."
+      },
+      {
+       "start": "Any previous (or planned within next 12 months) bariatric surgery",
+       "end": "intervention (gastric sleeve)"
+      },
+      {
+       "start": "Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months",
+       "end": "≤ 6 weeks prior informed consent"
+      },
+      {
+       "start": "Known hypersensitivity or allergy to the investigational product or its excipients,",
+       "end": "glimepiride (or the SU class)."
+      },
+      {
+       "start": "Inappropriateness of glimepiride treatment for renal safety issues",
+       "end": "according to local prescribing information"
+      },
+      {
+       "start": "Congestive heart failure of NYHA class III or IV",
+       "end": "Congestive heart failure of NYHA class III or IV"
+      },
+      {
+       "start": "Acute or chronic metabolic acidosis",
+       "end": "(present condition in patient history)"
+      },
+      {
+       "start": "Hereditary galactose intolerance",
+       "end": "Hereditary galactose intolerance"
+      },
+      {
+       "start": "Alcohol or drug abuse within the 3 months prior to informed consent",
+       "end": "interfere with trial participation"
+      },
+      {
+       "start": "Current treatment with systemic corticosteroids at time of informed consent",
+       "end": "does not cause systemic steroid action."
+      },
+      {
+       "start": "Change in dose of thyroid hormones within 6 weeks prior informed consent",
+       "end": "Change in dose of thyroid hormones within 6 weeks prior informed consent"
+      },
+      {
+       "start": "Participation in another trial with an investigational drug given within 2 months",
+       "end": "prior to informed consent"
+      },
+      {
+       "start": "Pre-menopausal women (last menstruation # 1 year prior to informed consent)",
+       "end": "pregnancy testing during participation in the trial."
+      },
+      {
+       "start": "Patients considered unreliable by the investigator concerning the requirements",
+       "end": "would not allow safe participation in the study"
+      },
+      {
+       "start": "Acute coronary syndrome ≤ 6 weeks prior to informed consent",
+       "end": "Acute coronary syndrome ≤ 6 weeks prior to informed consent"
+      },
+      {
+       "start": "Stroke or TIA ≤ 3 months prior to informed consent",
+       "end": "Stroke or TIA ≤ 3 months prior to informed consent"
+      }
+     ],
+     "interruptions": [
+      "Proprietary confidential information.",
+      "! 2016 Boehringer Ingelheim International GmbH or one or more of its affiliated companies. All rights reserved.",
+      "This document may not - in full or in part - be passed on, reproduced, published or otherwise used without prior written permission.",
+      "Boehringer Ingelheim",
+      "BI Trial No.: 1218.74",
+      "Doc No.: c01618200-19",
+      "20 April 2016",
+      "Protocol Revision 6",
+      "Page 40 of 172"
+     ],
+     "span": [
+      98746,
+      102604
+     ]
+    }
+   ]
+  },
+  {
+   "id": "EMPA-REG.appendix",
+   "trial": "EMPA-REG",
+   "kind": "pdf",
+   "path": "data/papers/NCT01131676/nejmoa1504720_appendix.pdf",
+   "sha256": "b8f3030095e718107336bb4d2e209597c591875e78de8c3f7469b36957130232",
+   "chars": 100363,
+   "inclusion": [],
+   "exclusion": [
+    {
+     "start": "Section D. Exclusion criteria",
+     "end": "blood pressure >160/100 mmHg at screening",
+     "items": [
+      {
+       "start": "Uncontrolled hyperglycemia with glucose >240 mg/dL",
+       "end": "(not on the same day)"
+      },
+      {
+       "start": "Indication of liver disease, defined by serum levels",
+       "end": "during screening or run-in phase"
+      },
+      {
+       "start": "Planned cardiac surgery or angioplasty within 3 months",
+       "end": "Planned cardiac surgery or angioplasty within 3 months"
+      },
+      {
+       "start": "Estimated glomerular filtration rate <30 ml/min/1.73 m2",
+       "end": "at screening or during run-in phase"
+      },
+      {
+       "start": "Bariatric surgery within the past two years",
+       "end": "induce chronic malabsorption"
+      },
+      {
+       "start": "Blood dyscrasias or any disorders causing hemolysis or unstable red blood cells",
+       "end": "Blood dyscrasias or any disorders causing hemolysis or unstable red blood cells"
+      },
+      {
+       "start": "Medical history of cancer (except for basal cell carcinoma)",
+       "end": "within the last 5 years"
+      },
+      {
+       "start": "Contraindications to background therapy according to the local label",
+       "end": "Contraindications to background therapy according to the local label"
+      },
+      {
+       "start": "Treatment with anti-obesity drugs 3 months prior to informed consent",
+       "end": "leading to unstable body weight"
+      },
+      {
+       "start": "Treatment with systemic steroids at time of informed consent",
+       "end": "within 6 weeks prior to informed consent"
+      },
+      {
+       "start": "Any uncontrolled endocrine disorder except type 2 diabetes",
+       "end": "Any uncontrolled endocrine disorder except type 2 diabetes"
+      },
+      {
+       "start": "Pre-menopausal women (last menstruation ≤1 year prior to informed consent)",
+       "end": "vasectomy of partner"
+      },
+      {
+       "start": "Alcohol or drug abuse within 3 months of informed consent",
+       "end": "study drug intake"
+      },
+      {
+       "start": "Intake of an investigational drug in another trial",
+       "end": "and/or follow-up"
+      },
+      {
+       "start": "Any clinical condition that would jeopardize patient safety",
+       "end": "within 2 weeks prior to informed consent)"
+      },
+      {
+       "start": "Acute coronary syndrome, stroke, or transient ischemic attack within 2 months prior to",
+       "end": "informed consent"
+      },
+      {
+       "start": "In South Africa: blood pressure >160/100 mmHg at screening",
+       "end": "In South Africa: blood pressure >160/100 mmHg at screening"
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      43362,
+      46111
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CARMELINA.supplement",
+   "trial": "CARMELINA",
+   "kind": "pdf",
+   "path": "data/papers/NCT01897532/jama_2019_carmelina_supplement.pdf",
+   "sha256": "97596c2b17401b49aec86f5f09fe57fb6f50430bd03b4b156bda43eb0cc3cefa",
+   "chars": 153431,
+   "inclusion": [
+    {
+     "start": "eAppendix 3. Inclusion Criteria",
+     "end": "demonstrated in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization.",
+     "items": [
+      {
+       "start": "Documented diagnosis of type 2 diabetes before visit 1 (screening).",
+       "end": "Documented diagnosis of type 2 diabetes before visit 1 (screening)."
+      },
+      {
+       "start": "Male or female patients who are drug-naïve or pre-treated",
+       "end": "if ≥ 7 consecutive days."
+      },
+      {
+       "start": "Stable antidiabetic background medication (unchanged daily dose)",
+       "end": "compared with the daily insulin dose at randomization."
+      },
+      {
+       "start": "HbA1c of ≥ 6.5% and ≤ 10.0% at visit 1 (screening).",
+       "end": "HbA1c of ≥ 6.5% and ≤ 10.0% at visit 1 (screening)."
+      },
+      {
+       "start": "Age ≥ 18 years at visit 1 (screening).",
+       "end": "Age ≥ 20 years at Visit 1."
+      },
+      {
+       "start": "Body Mass Index (BMI) ≤ 45 kg/m at visit 1 (screening).",
+       "end": "Body Mass Index (BMI) ≤ 45 kg/m at visit 1 (screening)."
+      },
+      {
+       "start": "Signed and dated written informed consent by date of visit 1 (screening) in",
+       "end": "prior to any study related procedure."
+      },
+      {
+       "start": "High risk of CV events (I and/or II):",
+       "end": "demonstrated in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization."
+      }
+     ],
+     "interruptions": [
+      "© 2018 American Medical Association. All rights reserved."
+     ],
+     "span": [
+      76725,
+      81530
+     ]
+    }
+   ],
+   "exclusion": [
+    {
+     "start": "eAppendix 4. Exclusion Criteria",
+     "end": "Stroke or TIA ≤ 3 months prior to visit 1 (screening).",
+     "items": [
+      {
+       "start": "Type 1 diabetes mellitus.",
+       "end": "Type 1 diabetes mellitus."
+      },
+      {
+       "start": "Treatment (≥ 7 consecutive days) with GLP-1 receptor agonists",
+       "end": "have been provided to the patient."
+      },
+      {
+       "start": "Active liver disease or impaired hepatic function",
+       "end": "determined at Visit 1."
+      },
+      {
+       "start": "eGFR <15 ml/min/1.73 m (severe renal impairment",
+       "end": "the need for maintenance dialysis."
+      },
+      {
+       "start": "Any previous (or planned within next 12 months) bariatric surgery",
+       "end": "intervention (gastric sleeve)."
+      },
+      {
+       "start": "Pre-planned coronary artery re-vascularisation (PCI, CABG)",
+       "end": "≤ 2 months prior informed consent"
+      },
+      {
+       "start": "Known hypersensitivity or allergy to the investigational products or its excipients.",
+       "end": "Known hypersensitivity or allergy to the investigational products or its excipients."
+      },
+      {
+       "start": "Any previous or current alcohol or drug abuse",
+       "end": "in the opinion of the investigator."
+      },
+      {
+       "start": "Participation in another trial with an investigational drug ongoing",
+       "end": "prior to visit 1 (screening)*."
+      },
+      {
+       "start": "Pre-menopausal women (last menstruation ≤ 1 year prior to informed consent) who:",
+       "end": "participation in the trial."
+      },
+      {
+       "start": "Patients considered unreliable by the investigator",
+       "end": "would not allow safe participation in the study."
+      },
+      {
+       "start": "Acute coronary syndrome (ACS), diagnosed ≤ 2 months prior to visit 1 (screening).",
+       "end": "Acute coronary syndrome (ACS), diagnosed ≤ 2 months prior to visit 1 (screening)."
+      },
+      {
+       "start": "Stroke or TIA ≤ 3 months prior to visit 1 (screening).",
+       "end": "Stroke or TIA ≤ 3 months prior to visit 1 (screening)."
+      }
+     ],
+     "interruptions": [],
+     "span": [
+      81592,
+      84085
+     ]
+    }
+   ]
+  }
+ ]
+}
