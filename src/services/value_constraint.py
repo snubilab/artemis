@@ -38,6 +38,9 @@ from src.utils.criterion_refusal import REFUSAL_UNSTATED_UNIT_BOUND, CriterionRe
 
 ReferenceBound = Literal["absolute", "uln", "lln"]
 
+#: Expression key: the criteria whose unit was restored from a dropped trailing exponent.
+RESTORED_UNIT_CRITERIA_KEY = "_restoredUnitCriteria"
+
 # Circe accepts these operator tokens verbatim; the IR Literal already matches.
 # "bt" is an inclusive range and is the only one that reads a SECOND number: Circe's
 # NumericRange carries it as `Extent`, alongside `Value` as the low bound.
@@ -314,17 +317,6 @@ _UNIT_ALIASES: dict[str, int] = {
     "mL·min-1·1.73m-2": 720870,
 }
 
-# "x ULN", "xULN", "times the upper limit of normal", "ULN" — the reference bound
-# used to land in unit_text because ADR-031 D1's field did not exist yet.
-_REFERENCE_BOUND_RE = re.compile(
-    r"(?:[x×*]\s*|times\s+)?(?:the\s+)?"
-    r"(?:(?P<upper>upper|uln)|(?P<lower>lower|lln))"
-    r"(?:\s*limits?\s+of\s+normal)?"
-    r"(?:\s*\(\s*(?:uln|lln)\s*\))?",
-    re.IGNORECASE,
-)
-
-
 def _clean(text: str) -> str:
     """Reduce a protocol unit spelling to its comparison form.
 
@@ -424,24 +416,6 @@ def unit_concepts(concept_id: int) -> list[dict[str, Any]]:
     return items
 
 
-def split_reference_bound(unit_text: str | None) -> tuple[ReferenceBound, str | None]:
-    """Recover a reference bound that legacy IR stored inside ``unit_text``.
-
-    Stored studies carry ``unit_text: "x ULN"`` because extraction captured it
-    correctly and the builder had nowhere to put it. Returns the bound plus what
-    remains of the unit; the residual must replace ``unit_text`` so a later
-    ``normalize_unit`` is not still trying to resolve "x ULN" as a unit.
-    """
-    if not unit_text:
-        return "absolute", unit_text
-    match = _REFERENCE_BOUND_RE.search(unit_text)
-    if match is None:
-        return "absolute", unit_text
-    bound: ReferenceBound = "uln" if match.group("upper") else "lln"
-    residual = (unit_text[: match.start()] + unit_text[match.end() :]).strip(" \t()x×*")
-    return bound, residual or None
-
-
 def _field(vc: Any, *names: str) -> Any:
     """Read a field from either a ValueConstraint model or a raw IR dict.
 
@@ -459,19 +433,18 @@ def _field(vc: Any, *names: str) -> Any:
 
 
 def resolve_reference_bound(vc: Any) -> tuple[ReferenceBound, str | None]:
-    """The bound a constraint really carries, plus what is left of its unit.
+    """The bound a constraint carries, plus its unit text.
 
-    Reads the ADR-031 D1 field, and falls back to :func:`split_reference_bound`
-    when it says ``absolute``, because legacy IR parked the bound in ``unit_text``
-    and every study in the current store still does: study 10's liver group is
-    written ``{referenceBound: "absolute", unitText: "x ULN"}``. Reading the field
-    alone would call that constraint absolute, which is exactly backwards.
+    Reads the ADR-031 D1 field and nothing else. A store row that parked "x ULN" in
+    ``unitText`` under ``referenceBound: "absolute"`` is an absolute bound in an
+    unresolvable unit here, and is refused as one (:func:`refuse_unstated_unit_bound`):
+    whether its number is a multiple of the upper limit of normal is the annotation's
+    ``reference_bound`` (RFC-016 step 3), which the build passes in as this field
+    (:func:`src.services.criterion_annotation.applied_value_constraint`). Reading the
+    bound out of the unit text was a word rule (A21) and is gone.
     """
     bound: ReferenceBound = _field(vc, "reference_bound", "referenceBound") or "absolute"
-    unit_text = _field(vc, "unit_text", "unitText")
-    if bound == "absolute":
-        return split_reference_bound(unit_text)
-    return bound, unit_text
+    return bound, _field(vc, "unit_text", "unitText")
 
 
 def absolute_unit_concept_id(vc: Any) -> int | None:
@@ -639,6 +612,68 @@ def refuse_unstated_unit_bound(vc: Any, label: str) -> None:
     )
 
 
+class RestoredUnit(NamedTuple):
+    """An absolute bound whose unit was restored, and the record of why."""
+
+    constraint: dict[str, Any]
+    record: dict[str, Any]
+
+
+def restore_dropped_unit_exponent(
+    vc: Any, member_properties: MemberProperties | Callable[[], MemberProperties] | None
+) -> RestoredUnit | None:
+    """Resolve a unit whose trailing exponent the PDF text lost, from the member concepts.
+
+    ``pdftotext`` lifts a superscript off its line, so a protocol's "100,000/mm³",
+    "45 kg/m²" and "ml/min/1.73 m²" reach extraction as "/ mm", "kg/m" and
+    "ml/min/1.73 m" (ARISTOTLE exclusion 17, CARMELINA inclusion 6 and exclusion 4 in the
+    production rendering). Each is then an absolute bound in an unresolvable unit and is
+    refused (:func:`refuse_unstated_unit_bound`).
+
+    Machine format only, no words: the candidates are the UCUM spellings in
+    :data:`_UNIT_ALIASES` that equal the stated unit (in :func:`_clean` form, case folded)
+    with one trailing digit added -- the exponent of the unit's last atom. A candidate is
+    accepted only when its LOINC property is verified among the member concepts
+    (:func:`check_analyte_unit`, the check a group label's absolute bound already passes),
+    and only when exactly one candidate is. Anything else returns None and the refusal
+    stands.
+
+    :param vc: the constraint about to be emitted, as a store row's camelCase mapping.
+    :param member_properties: the member's concept ids -> LOINC ``Has property``, or a
+        zero-argument callable returning them; read only when a candidate exists.
+    :returns: the constraint with ``unitConceptId`` set plus the record, or None.
+    """
+    stated = unstated_absolute_unit(vc)
+    if stated is None or not isinstance(vc, Mapping):
+        return None
+    folded = _clean(stated).lower()
+    candidates = sorted(
+        {
+            concept_id
+            for alias, concept_id in _UNIT_ALIASES.items()
+            if alias[-1:].isdigit() and alias[:-1].lower() == folded
+        }
+    )
+    if not candidates:
+        return None
+    properties = member_properties() if callable(member_properties) else member_properties
+    verified = [cid for cid in candidates if check_analyte_unit(properties, cid).compatible]
+    if len(verified) != 1:
+        return None
+    concept_id = verified[0]
+    code = _UNIT_CONCEPTS[concept_id][0]
+    verdict = verify_members_against_unit(list(properties or {}), properties or {}, code)
+    return RestoredUnit(
+        constraint={**vc, "unitConceptId": concept_id},
+        record={
+            "statedUnit": stated,
+            "unitConceptId": concept_id,
+            "unitCode": code,
+            "property": verdict.property,
+        },
+    )
+
+
 # --------------------------------------------------------------------------
 # Group-label threshold propagation
 # --------------------------------------------------------------------------
@@ -792,11 +827,11 @@ def resolve_group_member_constraint(
     refusal; it never widens what is emitted.
 
     A label whose number is a group CARDINALITY -- "≥2 of the following:" -- is neither
-    of those. It is not a bound at all, so no member is measured against it and no
-    member is stranded by it; see :func:`is_item_count`. The parser stopped producing
-    these, and this branch is what keeps a store already holding one from losing its
-    members: PLATO's group ``8e787307`` shipped on 2026-09-10 with all four of
-    Hypertension / Diabetes Mellitus / Current smoker / Obesity refused.
+    of those, and is not decided here: the label's annotation says its quantity is a
+    count, and :func:`src.services.criterion_annotation.applied_value_constraint` then
+    hands the label's constraint to nobody (``parent_vc`` arrives as None). Without that
+    annotation a count left in a stored label reads as an absolute bound in an
+    unresolvable unit, and strands every member that could hold a value.
 
     A member that carries its own constraint always keeps it: SPEC-INFRA-007
     REQ-004/REQ-005 made the decomposer ground each sub-item's threshold in its
@@ -820,12 +855,6 @@ def resolve_group_member_constraint(
     if member_vc is not None:
         return GroupConstraintResolution(member_vc, False, None)
     if parent_vc is None or not member_holds_bound:
-        return GroupConstraintResolution(None, False, None)
-    # A count of the group's own members is not a bound on any of them, so there is
-    # nothing to hand down and nothing was stranded: the member emits exactly as it
-    # would under a label carrying no constraint at all. Not a refusal -- refusing here
-    # is what cost PLATO all four of its risk factors.
-    if is_item_count(parent_vc):
         return GroupConstraintResolution(None, False, None)
     if is_reference_relative(parent_vc):
         return GroupConstraintResolution(parent_vc, True, None)
@@ -1066,19 +1095,6 @@ def _is_item_count(unit_text: str | None) -> bool:
     itself (see :data:`_ITEM_COUNT_UNIT_RE`).
     """
     return bool(unit_text) and _ITEM_COUNT_UNIT_RE.match(unit_text.strip()) is not None
-
-
-def is_item_count(vc: Any) -> bool:
-    """True when a constraint already in a store counts members rather than measuring.
-
-    The same predicate :func:`parse_value_constraint` applies, asked of a stored row so
-    that :func:`resolve_group_member_constraint` has one home for the question rather
-    than two. Every store written before the parser declined this family still carries
-    the count -- PLATO's label #38 in `output/site_gap/2026-09-10/store/studies.json` is
-    ``{gte 2.0, unitText "of the following:"}`` -- and a re-extraction is not the only
-    thing that should stop those deliveries losing four criteria each.
-    """
-    return _is_item_count(_field(vc, "unit_text", "unitText"))
 
 
 def _is_unmeasurable(unit_text: str | None, phrase: str) -> bool:
@@ -1376,7 +1392,7 @@ def demo() -> None:
     rows = [
         ("absolute + unit resolves", {"op": "gte", "value": 7.0, "unitText": "%"}),
         ("absolute + unit unresolvable", {"op": "gt", "value": 110.0, "unitText": "bpm"}),
-        ("uln (legacy unit_text)", {"op": "gt", "value": 3.0, "unitText": "x ULN"}),
+        ("uln (first-class field)", {"op": "gt", "value": 3.0, "reference_bound": "uln"}),
         ("lln (first-class field)", {"op": "lt", "value": 0.8, "reference_bound": "lln"}),
     ]
     for label, vc in rows:

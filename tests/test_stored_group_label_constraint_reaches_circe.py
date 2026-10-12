@@ -45,13 +45,17 @@ import pytest
 
 from src.services.value_constraint import STRANDED_GROUP_CONSTRAINT_REASON
 
-# Transcribed from tmp/tte_cold6_32k_20260907/studies.json, study 10, group 5bb178d2.
+# Transcribed from tmp/tte_cold6_32k_20260907/studies.json, study 10, group 5bb178d2,
+# except `referenceBound`: the store row says "absolute" and parks "x ULN" in `unitText`.
+# Reading the ratio out of that text was a word rule (A21) and is gone; the build reads it
+# only from this field, which the row's annotation sets (RFC-016 step 3 -- the annotation
+# side is tests/test_quantity_thresholds_in_build.py). So the fixture states it here.
 LIVER_GROUP_ID = "5bb178d2"
 LIVER_LABEL_CONSTRAINT = {
     "op": "gt",
     "value": 3.0,
     "unitText": "x ULN",
-    "referenceBound": "absolute",
+    "referenceBound": "uln",
     "unitConceptId": None,
 }
 # study 8's group, same shape but an absolute bound: mg/dL fits a plasma glucose and
@@ -248,7 +252,7 @@ class TestStoreRowsInheritTheLabelThresholdAtBuildTime:
         rows = [dict(row) for row in LIVER_ROWS]
         rows[1] = dict(rows[1], valueConstraint={
             "op": "gt", "value": 5.0, "unitText": "x ULN",
-            "referenceBound": "absolute", "unitConceptId": None,
+            "referenceBound": "uln", "unitConceptId": None,
         })
 
         built = service._build_seeded_target_circe(_eligibility(rows))

@@ -118,10 +118,12 @@ def _real_ir_module():
 # Fixtures transcribed verbatim from the 2026-09-07 store.
 # ---------------------------------------------------------------------------
 
-# study 10 exclusion group: the SAFE case. `referenceBound` is "absolute" in the
-# store and the bound lives in `unitText` -- `split_reference_bound` recovers it,
-# which is why the predicate has to ask the builder rather than read the field.
-LIVER_LABEL_CONSTRAINT = _VC(op="gt", value=3.0, unit_text="x ULN")
+# study 10 exclusion group: the SAFE case. The store row parks "x ULN" in `unitText`
+# under `referenceBound: "absolute"`; reading the bound out of that text was a word rule
+# (A21) and is gone. The ratio reading is the annotation's `reference_bound` (RFC-016
+# step 3), which reaches the resolver as this field -- so the reference-relative label
+# here carries it there.
+LIVER_LABEL_CONSTRAINT = _VC(op="gt", value=3.0, reference_bound="uln", unit_text="x ULN")
 LIVER_MEMBER_NAMES = (
     "Alanine aminotransferase level",
     "Aspartate aminotransferase level",
@@ -448,7 +450,8 @@ class TestTheBoundsKindDecidesBeforeTheAnalyteIsConsulted:
     @pytest.mark.parametrize(
         "constraint,expected_propagation",
         [
-            (_VC(op="gt", value=3.0, unit_text="x ULN"), True),
+            # "x ULN" in the unit slot alone is no longer read as a ratio (A21 deleted).
+            (_VC(op="gt", value=3.0, unit_text="x ULN"), False),
             (_VC(op="gt", value=3.0, reference_bound="uln"), True),
             (_VC(op="lt", value=0.8, reference_bound="lln"), True),
             (_VC(op="gt", value=240.0, unit_text="mg/dL"), False),
@@ -580,7 +583,7 @@ class TestStandInsMatchTheRealIR:
         from src.services.value_constraint import resolve_group_member_constraint
 
         ir = _real_ir_module()
-        relative = ir.ValueConstraint(op="gt", value=3.0, unit_text="x ULN")
+        relative = ir.ValueConstraint(op="gt", value=3.0, reference_bound="uln")
         absolute = ir.ValueConstraint(op="gt", value=240.0, unit_text="mg/dL")
 
         assert resolve_group_member_constraint(relative, None).propagated is True

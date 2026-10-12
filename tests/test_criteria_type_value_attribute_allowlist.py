@@ -641,7 +641,8 @@ class TestAssemblerCompositeBranchRefuses:
             name="Elevated liver enzymes",
             domain="Measurement",
             entity_text="liver enzymes",
-            value_constraint=_VC(op="gt", value=3.0, unit_text="x ULN"),
+            # The ratio in its field (A21, reading it out of `unit_text`, is deleted).
+            value_constraint=_VC(op="gt", value=3.0, unit_text="x ULN", reference_bound="uln"),
             sub_criteria=[
                 _Crit(name=name, domain="Measurement", entity_text=name)
                 for name in ("ALT", "AST", "ALP")

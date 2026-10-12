@@ -51,6 +51,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from src.services.loinc_specimen import MEASUREMENT_DOMAIN
+
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever either prompt below changes meaning; part of the cache key.
@@ -59,6 +61,8 @@ ANNOTATION_PROMPT_VERSION = "rfc016-step3-quantity-v1"
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
 ANNOTATION_REJECTED_KEY = "_annotationRejected"
+#: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
+UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
 #: Agent 1's own subgroup flag (``Criteria.conditional``), carried onto the store row by
 #: ``TTEService._criteria_from_ir`` instead of the row being dropped.
 EXTRACTED_CONDITIONAL_KEY = "conditional"
@@ -871,3 +875,93 @@ def stated_threshold(row: Mapping[str, Any]) -> StatedThreshold | None:
         return None
     store_bound = "absolute" if bound == StatedReferenceBound.NONE.value else bound
     return StatedThreshold(span=span, kind=QuantityKind(kind), bound=store_bound)
+
+
+class ThresholdUse(str, Enum):
+    """How the build uses a row's threshold, decided by its verified annotation.
+
+    * ``default`` -- no verified threshold (no annotation, a rejected one, or a line that
+      states none): the row's own ``valueConstraint`` is used exactly as before.
+    * ``measured`` -- a verified lab value, or an ``other`` quantity on a Measurement row
+      (the case the build already supports): applied as a value filter, compared against
+      the annotation's ``reference_bound``.
+    * ``not-representable`` -- a verified dose, duration, count, statistical quantity, or
+      an ``other`` quantity outside Measurement: no value filter is emitted for it, and it
+      is recorded under :data:`UNREPRESENTABLE_THRESHOLDS_KEY`.
+    """
+
+    DEFAULT = "default"
+    MEASURED = "measured"
+    NOT_REPRESENTABLE = "not-representable"
+
+
+def threshold_use(row: Mapping[str, Any]) -> tuple[ThresholdUse, StatedThreshold | None]:
+    """Decide how the build uses this row's threshold, from its verified annotation only.
+
+    :param row: the store criterion row.
+    :returns: the decision and the verified threshold it rests on (None for ``default``).
+    """
+    stated = stated_threshold(row)
+    if stated is None:
+        return ThresholdUse.DEFAULT, None
+    if stated.kind is QuantityKind.LAB_VALUE or (
+        stated.kind is QuantityKind.OTHER and row.get("domain") == MEASUREMENT_DOMAIN
+    ):
+        return ThresholdUse.MEASURED, stated
+    return ThresholdUse.NOT_REPRESENTABLE, stated
+
+
+def applied_value_constraint(row: Mapping[str, Any]) -> Any:
+    """The value constraint the build applies for this row (RFC-016 step 3).
+
+    The one place every reader asks -- the member build, the group label's hand-down and
+    the delivery gate's re-derivation -- so none of them can read ``valueConstraint``
+    differently from another.
+
+    :param row: the store criterion row.
+    :returns: None for a threshold no CIRCE value filter represents; the row's own
+        constraint with ``referenceBound`` taken from the annotation for a measured one;
+        the row's own constraint unchanged otherwise.
+    """
+    constraint = row.get("valueConstraint")
+    use, stated = threshold_use(row)
+    if use is ThresholdUse.NOT_REPRESENTABLE:
+        return None
+    if use is ThresholdUse.MEASURED and isinstance(constraint, Mapping):
+        return {**constraint, "referenceBound": stated.bound}
+    return constraint
+
+
+def unrepresentable_threshold_records(
+    rows: Iterable[Any], role: str
+) -> list[dict[str, Any]]:
+    """One record per row whose verified threshold no CIRCE value filter represents.
+
+    Written into the expression under :data:`UNREPRESENTABLE_THRESHOLDS_KEY` whether or not
+    the row emitted, so a reader sees every threshold the protocol states that the file does
+    not carry. The delivery gate permits an emitted criterion without a value filter only
+    when it finds the record AND re-derives the decision from the store row.
+
+    :param rows: one role's store rows.
+    :param role: ``inclusion`` or ``exclusion``.
+    :returns: the records, in row order.
+    """
+    records = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        use, stated = threshold_use(row)
+        if use is not ThresholdUse.NOT_REPRESENTABLE:
+            continue
+        records.append(
+            {
+                "criterionId": str(row.get(_ID, "")),
+                "role": role,
+                "label": (row.get("sourceText") or row.get("description") or "").strip(),
+                "isGroupLabel": bool(row.get(_IS_LABEL)),
+                "quantityKind": stated.kind.value,
+                "thresholdSpan": stated.span,
+                "valueConstraint": row.get("valueConstraint"),
+            }
+        )
+    return records

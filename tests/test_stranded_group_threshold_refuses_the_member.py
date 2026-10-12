@@ -113,12 +113,14 @@ CAROLINA_GLUCOSE_LABEL_CONSTRAINT = {
 }
 # The same shape with a unit-free bound. This one IS handed down, so it must NOT refuse
 # -- a fix that refuses both directions has only traded a silent over-exclusion for a
-# silently missing rule.
+# silently missing rule. The ratio is stated in `referenceBound`, the only place the
+# build reads it since A21 (reading "x ULN" out of `unitText`) was deleted; the
+# annotation's `reference_bound` sets it (RFC-016 step 3).
 RATIO_LABEL_CONSTRAINT = {
     "op": "gt",
     "value": 3.0,
     "unitText": "x ULN",
-    "referenceBound": "absolute",
+    "referenceBound": "uln",
     "unitConceptId": None,
 }
 
@@ -494,7 +496,9 @@ class TestTheAssemblerDropsTheMemberRatherThanEmittingItUnfiltered:
                 domain="Measurement",
                 entity_text="Liver enzymes",
                 logic_type="ABSENCE",
-                value_constraint=_VC(op="gt", value=3.0, unit_text="x ULN"),
+                value_constraint=_VC(
+                    op="gt", value=3.0, unit_text="x ULN", reference_bound="uln"
+                ),
                 sub_criteria=[
                     _Crit(name=n, domain="Measurement", entity_text=n, logic_type="ABSENCE")
                     for n in ("ALT", "AST", "ALP")
@@ -589,6 +593,12 @@ class TestTheTemporalSeedIsAlreadyClassifiedAsIntentUnparsed:
 # `Diabetes Mellitus` (concept set 8) emitted as a plain ConditionOccurrence.
 #
 # Rows transcribed verbatim from `output/site_gap/2026-09-10/store/studies.json`.
+#
+# What decides now (RFC-016 step 3): the label's own annotation says the number in its
+# line is a `count`, so `applied_value_constraint` hands it to no member and nobody is
+# stranded. The 2026-09-10 rows carry no `protocolLine`; the annotated label below takes
+# the line the 2026-10-12 candidate store's own PLATO label for this list carries
+# (inclusion 32, "≥2 of the following:"), which the annotation's span is checked against.
 
 PLATO_RISK_FACTOR_GROUP_ID = "8e787307-e68e-49c6-9318-2203dc47dde2"
 PLATO_COUNT_LABEL_CONSTRAINT = {
@@ -669,6 +679,35 @@ def domain_echoing_service():
     return svc
 
 
+PLATO_COUNT_LINE = "≥2 of the following:"
+
+
+def _criteria_bodies(expression: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every ``Criteria`` object in a rule expression, nested groups included."""
+    bodies = [entry["Criteria"] for entry in expression.get("CriteriaList") or []]
+    for group in expression.get("Groups") or []:
+        bodies += _criteria_bodies(group)
+    return bodies
+
+
+def _annotated_count_label() -> dict[str, Any]:
+    from src.services.criterion_annotation import ANNOTATION_KEY, validate_annotation
+
+    label = dict(PLATO_COUNT_LABEL, protocolLine=PLATO_COUNT_LINE)
+    fields, rejected = validate_annotation(
+        {
+            "record_requirement": "required",
+            "threshold_span": "≥2",
+            "quantity_kind": "count",
+            "reference_bound": "none",
+        },
+        PLATO_COUNT_LINE,
+    )
+    assert rejected == []
+    label[ANNOTATION_KEY] = {"promptVersion": "test", "model": "stub", **fields}
+    return label
+
+
 class TestAGroupCardinalityStrandsNobody:
     def test_should_not_produce_the_count_at_all(self):
         """Root cause. The label never had a threshold to strand its members with."""
@@ -685,23 +724,44 @@ class TestAGroupCardinalityStrandsNobody:
     def test_should_emit_a_member_whose_label_carries_only_a_count(
         self, domain_echoing_service, member
     ):
-        """Second line of defence, for the stores already written with the count in them.
-
-        A count is not a bound, so there is nothing to hand down and nothing was lost --
-        the member emits exactly as it would with no label constraint at all.
-        """
-        built = domain_echoing_service._build_seeded_eligibility_rule(
-            criterion=member,
-            codeset_id=member["id"],
-            exclusion=False,
-            parent_value_constraint=PLATO_COUNT_LABEL_CONSTRAINT,
+        """For the stores already written with the count in them: the label's annotation
+        says its number is a count, so there is nothing to hand down and nothing was lost
+        -- the member emits exactly as it would with no label constraint at all."""
+        built = domain_echoing_service._build_seeded_target_circe(
+            {
+                "targetCohortName": "ticagrelor",
+                "inclusionCriteria": [_annotated_count_label(), member],
+                "exclusionCriteria": [],
+            }
         )
 
-        body = built["rule"]["expression"]["CriteriaList"][0]["Criteria"]
+        [rule] = built["InclusionRules"]
+        [body] = _criteria_bodies(rule["expression"])
         assert list(body) == [
             "ConditionOccurrence" if member["domain"] == "Condition" else "Observation"
         ]
         assert "ValueAsNumber" not in next(iter(body.values()))
+
+    def test_should_strand_the_observation_member_when_the_label_is_not_annotated(
+        self, domain_echoing_service
+    ):
+        """The cost of deleting the `^of` unit test (A5b) for a store nobody annotated: the
+        count reads as an absolute bound in an unresolvable unit, and the one member whose
+        table can hold a value is stranded. The three Condition members cannot hold it and
+        still emit (406ab78)."""
+        built = domain_echoing_service._build_seeded_target_circe(
+            {
+                "targetCohortName": "ticagrelor",
+                "inclusionCriteria": [PLATO_COUNT_LABEL, *PLATO_RISK_FACTORS],
+                "exclusionCriteria": [],
+            }
+        )
+        stranded = [
+            record["criterionId"]
+            for record in built.get("_unmappedCriteria") or []
+            if record.get("refusalCode") == REFUSAL_STRANDED_GROUP_THRESHOLD
+        ]
+        assert stranded == ["41"]
 
     def test_should_build_all_four_risk_factors_from_the_real_store_rows(
         self, domain_echoing_service
@@ -711,7 +771,7 @@ class TestAGroupCardinalityStrandsNobody:
         built = domain_echoing_service._build_seeded_target_circe(
             {
                 "targetCohortName": "ticagrelor",
-                "inclusionCriteria": [PLATO_COUNT_LABEL, *PLATO_RISK_FACTORS],
+                "inclusionCriteria": [_annotated_count_label(), *PLATO_RISK_FACTORS],
                 "exclusionCriteria": [],
             }
         )
@@ -732,7 +792,7 @@ class TestAGroupCardinalityStrandsNobody:
         built = domain_echoing_service._build_seeded_target_circe(
             {
                 "targetCohortName": "ticagrelor",
-                "inclusionCriteria": [PLATO_COUNT_LABEL, *PLATO_RISK_FACTORS],
+                "inclusionCriteria": [_annotated_count_label(), *PLATO_RISK_FACTORS],
                 "exclusionCriteria": [],
             }
         )

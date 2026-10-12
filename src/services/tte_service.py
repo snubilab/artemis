@@ -81,10 +81,13 @@ from src.services.criterion_annotation import (
     CONDITIONAL_REASON,
     EXTRACTED_CONDITIONAL_KEY,
     PLANNER_EXCEPTED_KEY,
+    UNREPRESENTABLE_THRESHOLDS_KEY,
     annotate_eligibility,
+    applied_value_constraint,
     conditional_skips,
     stated_exceptions,
     stated_exceptions_by_codeset,
+    unrepresentable_threshold_records,
 )
 from src.services.entry_exclusion_repair import (
     iter_repair_candidates,
@@ -127,10 +130,12 @@ from src.agents.agent2.criterion_cache import (
 )
 from src.services.tte_store import TTEStore
 from src.services.value_constraint import (
+    RESTORED_UNIT_CRITERIA_KEY,
     STRANDED_GROUP_CONSTRAINT_REASON,
     build_measurement_value_filter,
     refuse_unstated_unit_bound,
     resolve_group_member_constraint,
+    restore_dropped_unit_exponent,
 )
 from src.utils.circe_lint import (
     CONTRADICTED_ABSENCE_REFUSALS_KEY,
@@ -5394,15 +5399,27 @@ class TTEService:
         conditional_inclusions = conditional_skips(inc_criteria)
         conditional_exclusions = conditional_skips(exc_criteria)
 
+        # RFC-016 step 3. A threshold the row's annotation verifies as a dose, a duration,
+        # a count or a statistical quantity has no CIRCE value filter: the criterion is
+        # built without it (`applied_value_constraint`) and every such threshold is listed
+        # here, emitted or not, so the file says what it leaves out. Replaces the English
+        # word lists that used to reject these numbers before extraction (A5b).
+        unrepresentable_thresholds = unrepresentable_threshold_records(
+            inc_criteria, "inclusion"
+        ) + unrepresentable_threshold_records(exc_criteria, "exclusion")
+
         # Group labels, recorded once mapping is done (see after the mapping pool).
         deferred_labels: list[tuple[dict[str, Any], str]] = []
 
         # `(role, groupId)` -> the group label's own threshold, for the members to
         # inherit through `resolve_group_member_constraint`. Keyed by role because a
         # group id is only unique within one; read here, where the whole role is in
-        # hand, rather than re-derived per criterion inside the mapping threads.
+        # hand, rather than re-derived per criterion inside the mapping threads. The
+        # threshold is the one the label's annotation says is applied (RFC-016 step 3):
+        # a count or a dose on the label hands nothing down and strands nobody, and a
+        # multiple of the upper limit of normal reaches every member as a ratio.
         group_label_constraints = {
-            (role, str(criterion.get("groupId"))): criterion.get("valueConstraint")
+            (role, str(criterion.get("groupId"))): applied_value_constraint(criterion)
             for role, criteria in (("inclusion", inc_criteria), ("exclusion", exc_criteria))
             for criterion in criteria
             if criterion.get("isGroupLabel") and criterion.get("groupId")
@@ -5744,6 +5761,7 @@ class TTEService:
         # the criterion and role it came from, so there is no second walk to fall out of
         # step with the first.
         defaulted_window_criteria: list[dict[str, Any]] = []
+        restored_unit_criteria: list[dict[str, Any]] = []
         for criterion, result, role in ordered_pairs:
             if result and result.get("_mapping_metadata") is not None:
                 crit_id = str(criterion.get("id", ""))
@@ -5761,6 +5779,12 @@ class TTEService:
                         or ""
                     ).strip(),
                     **result["_defaulted_window"],
+                })
+            if result and result.get("_restored_unit") is not None:
+                restored_unit_criteria.append({
+                    "criterionId": str(criterion.get("id", "")),
+                    "role": role,
+                    **result["_restored_unit"],
                 })
 
         # Every criterion that reached the mapper on a seed that is NOT its own
@@ -5993,6 +6017,15 @@ class TTEService:
             # predates the record, and only one of those can be read off a missing key.
             MISSING_ENTITY_CRITERIA_KEY: sorted(
                 missing_entity_criteria, key=lambda r: (r["role"], r["criterionId"])
+            ),
+            # RFC-016 step 3, same present-and-empty contract. The thresholds a verified
+            # annotation says no value filter represents (see
+            # `criterion_annotation.unrepresentable_threshold_records`) ...
+            UNREPRESENTABLE_THRESHOLDS_KEY: unrepresentable_thresholds,
+            # ... and the units restored from a dropped trailing exponent, with the LOINC
+            # property of the criterion's own concepts that verified each one.
+            RESTORED_UNIT_CRITERIA_KEY: sorted(
+                restored_unit_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
             "_generationCensus": generation_census,
             # SPEC-INFRA-003 REQ-001 / REQ-007. Same present-and-empty contract as the two
@@ -7216,7 +7249,10 @@ class TTEService:
         )
         resolution = resolve_group_member_constraint(
             parent_value_constraint,
-            criterion.get("valueConstraint"),
+            # The constraint the row's annotation says is applied (RFC-016 step 3): None
+            # for a threshold no value filter represents, and the annotation's
+            # `reference_bound` on a measured one.
+            applied_value_constraint(criterion),
             member_properties=lambda: self._concept_set_lab_properties(
                 mapped_criterion.get("expression") or {}
             ),
@@ -7240,6 +7276,15 @@ class TTEService:
                 detail=resolution.refusal_reason,
             )
         effective_constraint = resolution.constraint
+        # A unit whose trailing exponent the PDF text lost ("/ mm", "kg/m") resolves when
+        # exactly one UCUM unit differing from it by that digit is the LOINC property of
+        # this criterion's own concepts; read only when the unit does not resolve.
+        restored_unit = restore_dropped_unit_exponent(
+            effective_constraint,
+            lambda: self._concept_set_lab_properties(mapped_criterion.get("expression") or {}),
+        )
+        if restored_unit is not None:
+            effective_constraint = restored_unit.constraint
 
         # Flat merge, so Unit lands as a sibling of ValueAsNumber rather than
         # nested inside it, where Circe ignores it.
@@ -7368,6 +7413,9 @@ class TTEService:
             # pairs it with the criterion's role and id and writes the rows under
             # `DEFAULTED_WINDOW_CRITERIA_KEY`.
             "_defaulted_window": defaulted_window,
+            # The same, for a unit restored from a dropped exponent
+            # (`RESTORED_UNIT_CRITERIA_KEY`).
+            "_restored_unit": restored_unit.record if restored_unit is not None else None,
         }
 
     def _lab_test_vocabulary(self) -> Any:

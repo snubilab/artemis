@@ -176,7 +176,11 @@ class TestAC004IsNotBrokenByTheWiring:
                 "domain": "Measurement",
                 "description": desc,
                 "sourceText": desc,
-                "valueConstraint": {"op": "gte", "value": 3.0, "unitText": "x ULN"},
+                # The ratio in its field: "x ULN" in `unitText` alone is not read as one
+                # since A21 was deleted (RFC-016 step 3).
+                "valueConstraint": {
+                    "op": "gte", "value": 3.0, "unitText": "x ULN", "referenceBound": "uln",
+                },
                 "groupId": None,
                 "isGroupLabel": False,
                 "logicType": "ABSENCE",

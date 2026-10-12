@@ -75,6 +75,9 @@ def _production_service() -> Any:
         "domain": "Measurement",
         "expression": {"items": [{"concept": {"CONCEPT_ID": 3024929}}]},
     }
+    # No vocabulary here: the member's LOINC property is unknown, so a unit whose exponent
+    # was lost is not restored (`restore_dropped_unit_exponent`) and still refuses.
+    service._concept_set_lab_properties = lambda expression: {}
     return service
 
 
@@ -121,10 +124,20 @@ class TestUnstatedUnitBound:
 
     def test_should_stay_silent_for_a_reference_relative_bound(self):
         """"3 x ULN" is unit-free by construction -- it emits ``RangeHighRatio``, which
-        Circe divides by the row's own ``range_high``. There is no unit to state."""
+        Circe divides by the row's own ``range_high``. There is no unit to state.
+
+        The ratio is read from ``referenceBound`` only (the annotation's
+        ``reference_bound``, RFC-016 step 3). "x ULN" left in the unit slot of an absolute
+        bound is an unresolvable unit, and is named as one (A21 deleted)."""
         from src.services.value_constraint import unstated_absolute_unit
 
-        assert unstated_absolute_unit({"op": "gt", "value": 3.0, "unitText": "x ULN"}) is None
+        assert (
+            unstated_absolute_unit(
+                {"op": "gt", "value": 3.0, "unitText": "x ULN", "referenceBound": "uln"}
+            )
+            is None
+        )
+        assert unstated_absolute_unit({"op": "gt", "value": 3.0, "unitText": "x ULN"}) == "x ULN"
 
     def test_should_stay_silent_when_the_constraint_emits_no_value_at_all(self):
         """Half a range emits ``{}``; there is no bound to refuse."""
@@ -333,9 +346,10 @@ class TestProseInTheUnitFieldStillRefuses:
                 "2 contiguous leads",
                 "ST-segment depression",
             ),
-            # A pdftotext superscript artifact, not a unit. The repair belongs in the
-            # PDF-reading path; guessing `/mm3` here would be a guess, and `/mm` is
-            # ambiguous between per-millimetre and per-cubic-millimetre.
+            # A pdftotext superscript artifact, not a unit. `/mm` alone is ambiguous
+            # between per-millimetre and per-cubic-millimetre; it is restored to `/mm3`
+            # only when the member concepts' LOINC property verifies it
+            # (`restore_dropped_unit_exponent`), and none is known here.
             ("/ mm", "Platelet count"),
             ("ml/min/1.73 m", "eGFR"),
         ],

@@ -313,10 +313,13 @@ def _production_criteria(value_constraint: dict[str, Any], source_text: str) -> 
 
 
 def test_production_builder_emits_range_high_ratio_for_uln() -> None:
-    """The IR carries unitText='x ULN' into this builder, which reads only op/value."""
+    """The ratio reaches this builder in ``referenceBound`` -- the annotation's
+    ``reference_bound`` (RFC-016 step 3). "x ULN" left in ``unitText`` alone is no longer
+    read as one (A21 deleted)."""
     entry = next(e for e in CORPUS if e["id"] == "uln-x-spaced")
     criteria = _production_criteria(
-        {"op": "gt", "value": 3.0, "unitText": "x ULN"}, entry["source_text"]
+        {"op": "gt", "value": 3.0, "unitText": "x ULN", "referenceBound": "uln"},
+        entry["source_text"],
     )
     assert criteria.get("RangeHighRatio") == {"Value": 3.0, "Op": "gt"}
     assert "ValueAsNumber" not in criteria
