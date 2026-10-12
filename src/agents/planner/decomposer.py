@@ -11,19 +11,18 @@ from src.models.ir import ARTEMISRequest, CohortDefinition, Criteria, ExceptedEn
 from src.agents.planner.prompts import PLANNER_SYSTEM_PROMPT, DECOMPOSITION_PROMPT
 from src.services.criterion_annotation import span_in_line
 from src.services.value_constraint import parse_value_constraint
-from src.agents.agent1.threshold_classifier import deescape
 from src.utils.naming_words import naming_words
 
 
 def _comparison_form(text: str) -> str:
     """Comparison form for the substring check: de-escaped, whitespace-folded, lowered.
 
-    Same convention as ``threshold_classifier._normalise``, which owns it for ADR-032
-    threshold spans; this is the same decision applied to sub-term spans. Tolerating
-    case and whitespace drift is safe -- a model that re-wraps a line still copied it
-    -- while an analyte the line never mentions is absent under any of these forms.
+    De-escaping removes the backslashes ClinicalTrials.gov puts before comparators
+    (``\\>``). Tolerating case and whitespace drift is safe -- a model that re-wraps a
+    line still copied it -- while an analyte the line never mentions is absent under any
+    of these forms.
     """
-    return " ".join(deescape(text).split()).lower()
+    return " ".join(text.replace("\\", "").split()).lower()
 
 
 # Moved to `src.utils.naming_words` so `src/utils/circe_lint.py` can ask the same

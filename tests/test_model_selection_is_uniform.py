@@ -27,7 +27,6 @@ _MODULES = (
     "src.utils.llm",
     "src.agents.comparator.recommender",
     "src.agents.agent2.critic",
-    "src.agents.agent1.threshold_classifier",
 )
 
 TARGETS = [
@@ -49,7 +48,6 @@ def _reload_with(monkeypatch: pytest.MonkeyPatch, llm_model: str, tier: str | No
         if name in sys.modules:
             importlib.reload(sys.modules[name])
 
-    from src.agents.agent1 import threshold_classifier as clf
     from src.agents.agent2 import critic as cri
     from src.agents.comparator import recommender as rec
     from src.utils.llm import resolve_model
@@ -58,7 +56,6 @@ def _reload_with(monkeypatch: pytest.MonkeyPatch, llm_model: str, tier: str | No
         "comparator": resolve_model(rec.DEFAULT_LLM_MODEL),
         "critic_well_defined": resolve_model(cri.select_critic_model("Drug")),
         "critic_other": resolve_model(cri.select_critic_model("Observation")),
-        "classifier": resolve_model(clf.DEFAULT_MODEL),
     }
 
 

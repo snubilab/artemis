@@ -104,9 +104,6 @@ RULE_MODULES = frozenset(
         "src/services/restated_absence_repair.py",
         "src/services/dose_form_route.py",
         "src/utils/disease_anchor.py",
-        "src/agents/agent2/complexity_router.py",
-        "src/agents/agent2/rule_extractor.py",
-        "src/services/emission_stability.py",
     }
 )
 

@@ -319,16 +319,6 @@ def _render_dedup_judge() -> str:
     return criteria_dedup_judge._render_prompt(f"{STUB} candidate", [f"{STUB} one", f"{STUB} two"])
 
 
-def _render_threshold_classifier() -> str:
-    from src.agents.agent1 import threshold_classifier
-
-    recorder = _Recorder(reply='{"spans": []}')
-    for every_numeral in (False, True):
-        threshold_classifier._complete(f"{STUB} criterion", recorder.runnable(), "stub-model",
-                                       every_numeral, None)
-    return _joined(recorder.calls)
-
-
 def _render_criterion_annotation() -> str:
     """Through ``annotate_eligibility`` with the model replaced, over a group label (so the
     members block is rendered) and its member; the cache is off so nothing is written."""
@@ -501,14 +491,6 @@ PROMPTS: dict[str, PromptSpec] = {
         tokens=frozenset({
             "record_requirement", "conditional_span", "excepted_entities", "base_span", "text",
             "span", "required", "forbidden", "conditional",
-        }),
-    ),
-    "agent1.threshold_classifier": PromptSpec(
-        _render_threshold_classifier,
-        tokens=frozenset({
-            "spans", "threshold_phrase", "head", "class", "family", "confidence", "high", "low",
-            "REVIEW", "AGE", "MEASUREMENT_VALUE", "TEMPORAL_WINDOW", "STATE_DURATION",
-            "DRUG_DOSE", "SCORE_GRADE", "EVENT_QUANTITY", "NON_CRITERION",
         }),
     ),
 }
@@ -752,7 +734,10 @@ def test_should_leave_no_inventoried_example_in_its_prompt(row: dict[str, Any]) 
         haystack = rendered(_RENDERED_ONLY_PROMPT[row["file"]])
         where = f"the rendered {_RENDERED_ONLY_PROMPT[row['file']]} prompt"
     else:
-        haystack = (ROOT / row["file"]).read_text(encoding="utf-8")
+        source = ROOT / row["file"]
+        # A source file deleted outright sends none of its text to a model; the other
+        # two checks still cover any prompt that moved elsewhere.
+        haystack = source.read_text(encoding="utf-8") if source.exists() else ""
         where = row["file"]
     for needle_key in ("needle", "core_needle"):
         needle = row.get(needle_key)
@@ -824,7 +809,6 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     ),
     "src/agents/agent1/pubmed_fetcher.py": (2, ("agent1.pubmed_criteria_split",)),
     "src/agents/agent1/criteria_dedup_judge.py": (2, ("agent1.dedup_judge",)),
-    "src/agents/agent1/threshold_classifier.py": (4, ("agent1.threshold_classifier",)),
     "src/agents/planner/decomposer.py": (3, ("planner",)),
     "src/agents/agent2/reranker.py": (3, ("agent2.reranker_single_select", "agent2.reranker_topn")),
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),

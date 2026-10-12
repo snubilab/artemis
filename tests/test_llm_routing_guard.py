@@ -67,14 +67,12 @@ def _endpoint_of(llm: Any) -> str | None:
 
 def _call_site_llms() -> dict[str, Any]:
     """Every default a caller gets when it does not name a model itself."""
-    from src.agents.agent1 import threshold_classifier as clf
     from src.agents.agent2 import critic as cri
     from src.agents.comparator import recommender as rec
 
     sites = {
         "bare": get_llm(resolve_model(None)),
         "comparator": get_llm(rec.DEFAULT_LLM_MODEL),
-        "classifier": get_llm(clf.DEFAULT_MODEL),
     }
     for domain in ("Condition", "Drug", "Measurement", "Observation", "Procedure", None):
         sites[f"critic[{domain}]"] = get_llm(cri.select_critic_model(domain))
