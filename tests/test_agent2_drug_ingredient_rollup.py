@@ -36,7 +36,8 @@ def test_roll_up_to_rxnorm_ingredients_replaces_product_codes():
         )
 
     assert rolled_up == [40241186, 999999]
-    query_text = str(mock_session.execute.call_args.args[0])
+    # The first query is stage 1, the RxNorm Ingredient ancestor; stage 2 follows it.
+    query_text = str(mock_session.execute.call_args_list[0].args[0])
     assert "c.vocabulary_id = 'RxNorm'" in query_text
     assert "c.concept_class_id = 'Ingredient'" in query_text
 

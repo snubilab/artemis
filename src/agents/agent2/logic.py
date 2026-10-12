@@ -6,7 +6,6 @@ DB operations are OPTIONAL — if DB is unreachable, gracefully falls back
 to returning the original concept IDs without decomposition/pruning.
 """
 import os
-import re
 import time
 from typing import List, Set
 import logging
@@ -30,18 +29,6 @@ _db_available: bool | None = None
 _db_probe_failed_at: float | None = None
 
 _DB_PROBE_RETRY_DEFAULT_SECONDS = 60.0
-
-# Regex to extract the ingredient name from an RxNorm-style concept name.
-# RxNorm drug name patterns: "{ingredient} {dose} {form} [brand/supplier...]"
-# Examples:
-#   "ticagrelor 90 MG Oral Tablet Box of 56 by Viatris Healthcare" → "ticagrelor"
-#   "apixaban 5 MG Oral Tablet by Key" → "apixaban"
-#   "insulin degludec 100 UNT/ML / liraglutide 3.6 MG/ML Pen Injector" → multi-ingredient
-_DOSE_PATTERN = re.compile(
-    r"^(.*?)\s+\d[\d.,]*\s*(mg|mcg|unt|iu|ml|g|mg/ml|unt/ml|mg/actuat|meq|%|pct)",
-    re.IGNORECASE,
-)
-
 
 def _db_probe_retry_seconds() -> float:
     """How long a FAILED probe stays cached before the database is tried again.
@@ -181,54 +168,54 @@ class ConceptLogician:
         )
         return kept
 
-    def _resolve_ingredient_by_name(
-        self, concept_name: str, db: object
-    ) -> List[int]:
-        """
-        Extract ingredient name(s) from a drug product concept name and look up
-        the corresponding RxNorm standard Ingredient concept IDs.
+    def _ingredients_by_relationship(
+        self, concept_ids: List[int], db: object
+    ) -> dict[int, List[int]]:
+        """Standard Ingredients of drug concepts that have no RxNorm Ingredient ancestor.
 
-        This is a fallback path for RxNorm Extension Marketed Products that have
-        no concept_ancestor entries mapping them to an ingredient. The drug_era
-        table records only RxNorm ingredient-level concepts, so product codes must
-        be normalised to their ingredient(s) for DrugEra-based cohort matching.
+        The second stage of :meth:`roll_up_to_rxnorm_ingredients`, read off the vocabulary:
+        an RxNorm Extension Ingredient ancestor through ``concept_ancestor`` (a product whose
+        ingredient exists only in RxNorm Extension, e.g. 2009211 'Amino Acids 25 MG/ML
+        ... [AMINOFUSIN-TPN]' -> 588017), or a direct ``RxNorm has ing`` relationship.
+        RFC-016 §4 (C1): this replaced cutting the dose and form off the product's
+        ``concept_name`` and looking an RxNorm Ingredient up by the remaining text.
 
-        Strategy: strip the dose/form/supplier suffix from the concept name to
-        obtain the ingredient portion, then match exactly against the concept
-        table for vocabulary_id='RxNorm' AND concept_class_id='Ingredient'.
+        :param concept_ids: concept ids stage 1 left unresolved.
+        :param db: the open session.
+        :returns: concept id -> its ingredient concept ids; an id with none is absent.
         """
         from sqlalchemy import text as sa_text
 
-        # Multi-ingredient products contain " / " (e.g. "insulin degludec / liraglutide")
-        # Split on " / " first, then strip dose suffix from each part.
-        parts = [p.strip() for p in concept_name.split(" / ")]
-        ingredient_names: List[str] = []
-        for part in parts:
-            m = _DOSE_PATTERN.match(part)
-            candidate = m.group(1).strip() if m else part.strip()
-            if candidate:
-                ingredient_names.append(candidate.lower())
-
-        if not ingredient_names:
-            return []
-
-        try:
-            rows = db.execute(
-                sa_text(f"""
-                    SELECT concept_id
-                    FROM {self.schema}.concept
-                    WHERE LOWER(concept_name) = ANY(:names)
-                      AND vocabulary_id = 'RxNorm'
-                      AND concept_class_id = 'Ingredient'
-                      AND standard_concept = 'S'
-                      AND invalid_reason IS NULL
-                """),
-                {"names": ingredient_names},
-            ).fetchall()
-            return [row[0] for row in rows]
-        except Exception as exc:
-            logger.debug("[Logician] Ingredient-by-name lookup failed: %s", exc)
-            return []
+        if not concept_ids:
+            return {}
+        rows = db.execute(
+            sa_text(f"""
+                SELECT ca.descendant_concept_id, i.concept_id
+                  FROM {self.schema}.concept_ancestor ca
+                  JOIN {self.schema}.concept i ON i.concept_id = ca.ancestor_concept_id
+                 WHERE ca.descendant_concept_id = ANY(:cids)
+                   AND i.concept_class_id = 'Ingredient'
+                   AND i.vocabulary_id = 'RxNorm Extension'
+                   AND i.standard_concept = 'S'
+                   AND i.invalid_reason IS NULL
+                UNION
+                SELECT r.concept_id_1, i.concept_id
+                  FROM {self.schema}.concept_relationship r
+                  JOIN {self.schema}.concept i ON i.concept_id = r.concept_id_2
+                 WHERE r.concept_id_1 = ANY(:cids)
+                   AND r.invalid_reason IS NULL
+                   AND r.relationship_id = 'RxNorm has ing'
+                   AND i.concept_class_id = 'Ingredient'
+                   AND i.standard_concept = 'S'
+                   AND i.invalid_reason IS NULL
+                 ORDER BY 1, 2
+            """),
+            {"cids": concept_ids},
+        ).fetchall()
+        found: dict[int, List[int]] = {}
+        for concept_id, ingredient_id in rows:
+            found.setdefault(concept_id, []).append(ingredient_id)
+        return found
 
     def roll_up_to_rxnorm_ingredients(self, concept_ids: List[int]) -> List[int]:
         """
@@ -238,11 +225,12 @@ class ConceptLogician:
         which are recorded at the RxNorm ingredient level. When an ingredient
         ancestor exists, replace the original concept with that ingredient.
 
-        Two-stage approach:
-        1. concept_ancestor lookup (works for RxNorm Clinical Drug Comp/Drug concepts)
-        2. Name-based fallback for RxNorm Extension Marketed Products that have no
-           ancestor entries — extracts ingredient name from the concept name and
-           resolves the standard RxNorm Ingredient by exact name match.
+        Two-stage approach, both read off the vocabulary:
+        1. concept_ancestor to an RxNorm Ingredient (RxNorm Clinical Drug Comp/Drug)
+        2. for what stage 1 left: an RxNorm Extension Ingredient ancestor, or a direct
+           ``RxNorm has ing`` relationship (:meth:`_ingredients_by_relationship`).
+        A concept neither stage resolves is kept as it is. Concept names are not read
+        (RFC-016 §4, C1).
         """
         if not concept_ids:
             return []
@@ -271,59 +259,28 @@ class ConceptLogician:
                 ORDER BY ca.descendant_concept_id, ca.ancestor_concept_id
             """)
 
-            # Stage 2: fetch concept metadata for ids without ancestor results
-            meta_query = text(f"""
-                SELECT concept_id, concept_name, vocabulary_id, concept_class_id
-                FROM {self.schema}.concept
-                WHERE concept_id = ANY(:cids)
-                  AND invalid_reason IS NULL
-            """)
-
             ingredient_map: dict[int, List[int]] = {}
             with next(get_db()) as db:
                 rows = db.execute(ancestor_query, {"cids": deduped}).fetchall()
                 for descendant_id, ancestor_id in rows:
                     ingredient_map.setdefault(descendant_id, []).append(ancestor_id)
 
-                # Identify concepts that could not be resolved via concept_ancestor
+                # Stage 2, inside the session: what stage 1 left unresolved, through
+                # the vocabulary's own relationships. Every query stays inside the
+                # `with` -- a query after Session.__exit__ checked out a connection
+                # nothing returned, until the pool hit "QueuePool limit of size 20
+                # overflow 40 reached" and every rollup was skipped.
                 unresolved = [cid for cid in deduped if cid not in ingredient_map]
-                if unresolved:
-                    meta_rows = db.execute(meta_query, {"cids": unresolved}).fetchall()
-                    meta_map = {row[0]: (row[1], row[2], row[3]) for row in meta_rows}
+                for concept_id, ingredients in self._ingredients_by_relationship(
+                    unresolved, db
+                ).items():
+                    ingredient_map[concept_id] = ingredients
+                    logger.info(
+                        "[Logician] Ingredient through the vocabulary %s -> %s",
+                        concept_id,
+                        ingredients,
+                    )
 
-                    for cid in unresolved:
-                        meta = meta_map.get(cid)
-                        if meta is None:
-                            continue
-                        concept_name, vocab, concept_class = meta
-                        # Only attempt name-based fallback for RxNorm Extension
-                        # product-level classes that commonly lack ancestor entries.
-                        if vocab == "RxNorm Extension" and concept_class in {
-                            "Marketed Product",
-                            "Branded Drug",
-                            "Branded Drug Comp",
-                            "Branded Drug Box",
-                            "Clinical Drug Box",
-                            "Quant Branded Drug",
-                            "Quant Clinical Drug",
-                        }:
-                            resolved = self._resolve_ingredient_by_name(concept_name, db)
-                            if resolved:
-                                ingredient_map[cid] = resolved
-                                logger.info(
-                                    "[Logician] Name-based ingredient fallback %s (%s) → %s",
-                                    cid,
-                                    concept_name[:50],
-                                    resolved,
-                                )
-
-            # Everything below stays inside the session. The safety-net query used
-            # to sit outside it: Session.__exit__ had already returned the
-            # connection, so execute() checked out a fresh one that nothing ever
-            # returned. Measured, checkedout climbed 1, 2, 3... per call until the
-            # pool hit "QueuePool limit of size 20 overflow 40 reached" and every
-            # rollup from then on was skipped -- silently keeping product-level
-            # concept ids that match no drug_exposure rows.
                 rolled_up: List[int] = []
                 for concept_id in deduped:
                     replacements = ingredient_map.get(concept_id)
@@ -333,35 +290,6 @@ class ConceptLogician:
                         rolled_up.append(concept_id)
 
                 result = self._dedupe_preserve_order(rolled_up)
-
-                # Safety net: if no Ingredient-class concept ended up in the
-                # result, extract ingredient names from the product-level
-                # concept names and resolve them directly.  Synthea CDMs store
-                # drug_exposure at the RxNorm Ingredient level, so a concept
-                # set without the Ingredient will match 0 patients.
-                ingredient_check = text(f"""
-                    SELECT concept_id
-                    FROM {self.schema}.concept
-                    WHERE concept_id = ANY(:cids)
-                      AND concept_class_id = 'Ingredient'
-                      AND vocabulary_id = 'RxNorm'
-                """)
-                ing_rows = db.execute(ingredient_check, {"cids": result}).fetchall()
-                if not ing_rows:
-                    # No ingredient in result — try name-based resolution
-                    # for ALL concepts, not just specific product classes
-                    all_meta = db.execute(meta_query, {"cids": result}).fetchall()
-                    for _, cname, vocab, cclass in all_meta:
-                        resolved = self._resolve_ingredient_by_name(cname, db)
-                        if resolved:
-                            result.extend(resolved)
-                            logger.info(
-                                "[Logician] Ingredient safety-net: '%s' → %s",
-                                cname[:50],
-                                resolved,
-                            )
-                            break  # one ingredient match is enough
-                    result = self._dedupe_preserve_order(result)
 
                 if result != deduped:
                     logger.info(

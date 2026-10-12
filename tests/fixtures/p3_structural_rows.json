@@ -2777,5 +2777,30 @@
     ]
    ]
   }
+ },
+ "c1_rxnorm_extension_product": {
+  "about": "A standard RxNorm Extension Marketed Product with no RxNorm Ingredient ancestor; its ingredient is an RxNorm Extension Ingredient (synthea23m, 2026-10-12).",
+  "product": [
+   2009211,
+   "1000 ML Amino Acids 25 MG/ML Injectable Solution [AMINOFUSIN-TPN] by Yungjin",
+   "RxNorm Extension",
+   "Marketed Product"
+  ],
+  "ingredient": [
+   588017,
+   "Amino Acids",
+   "RxNorm Extension",
+   "Ingredient"
+  ],
+  "has_rxnorm_ingredient_ancestor": false,
+  "name_lookup": {
+   "query": "SELECT concept_id, concept_name FROM synthea23m.concept WHERE LOWER(concept_name) = ANY(%s) AND vocabulary_id = 'RxNorm' AND concept_class_id = 'Ingredient' AND standard_concept = 'S' AND invalid_reason IS NULL",
+   "params": [
+    [
+     "1000 ml amino acids"
+    ]
+   ],
+   "rows": []
+  }
  }
 }
