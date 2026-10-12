@@ -84,6 +84,7 @@ from src.services.criterion_annotation import (
     GROUP_ANY,
     LOGIC_ABSENCE,
     PLANNER_EXCEPTED_KEY,
+    PLANNER_RELATION_KEY,
     PROSPECTIVE_EXPLANATION,
     PROSPECTIVE_REASON,
     StatedRelation,
@@ -12470,6 +12471,21 @@ class TTEService:
             for entity in getattr(item, "excepted_entities", None) or []
         ]
         planner_excepted_field = {PLANNER_EXCEPTED_KEY: planner_excepted} if planner_excepted else {}
+        # The planner's verified relation for a split it made (RFC-016 step 2), on the group
+        # label row only -- the row the builder reads a group's relation from. Written only
+        # when present, so every other row keeps its shape.
+        planner_relation = getattr(item, "relation", None)
+        planner_relation_field = (
+            {
+                PLANNER_RELATION_KEY: {
+                    "relation": planner_relation,
+                    "relation_span": getattr(item, "relation_span", None),
+                    "cardinality": getattr(item, "cardinality", None),
+                }
+            }
+            if planner_relation and getattr(item, "sub_criteria", None)
+            else {}
+        )
         return {
             "id": criterion_id,
             "description": description,
@@ -12498,6 +12514,7 @@ class TTEService:
             # older build" with nothing to tell them apart.
             CRITERION_PARENT_GROUP_KEY: parent_group_id,
             **planner_excepted_field,
+            **planner_relation_field,
         }
 
     def _heuristic_draft(self, description: str) -> dict[str, Any]:

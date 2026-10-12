@@ -244,8 +244,12 @@ def _planner(content: str):
         return CriteriaPlanner()
 
 
-def _response(members: list[dict]) -> str:
-    return json.dumps({"decompose": True, "reasoning": "umbrella", "sub_criteria": members})
+def _response(members: list[dict], **relation) -> str:
+    """The planner's answer. ``relation`` (RFC-016 step 2) is needed for a split whose line
+    names two or more of its members; without it the split is declined on that ground."""
+    return json.dumps(
+        {"decompose": True, "reasoning": "umbrella", "sub_criteria": members, **relation}
+    )
 
 
 #: The response the 2026-09-18 run really got for CARMELINA's ABSENCE parent,
@@ -399,7 +403,13 @@ class TestAGenuineUmbrellaStillSplits:
         parent = self._liver_parent()
         assert parent.value_constraint.op == "gt", "the control's parent is one-sided"
 
-        out = _planner(_response(self.LIVER_MEMBERS))._decompose_criterion(parent)
+        out = _planner(
+            _response(
+                self.LIVER_MEMBERS,
+                relation="any",
+                relation_span="either ALT (SGPT), AST (SGOT), or alkaline phosphatase",
+            )
+        )._decompose_criterion(parent)
 
         assert [s.entity_text for s in out.sub_criteria] == [
             "ALT",
@@ -445,7 +455,9 @@ class TestAGenuineUmbrellaStillSplits:
             },
         ]
 
-        out = _planner(_response(members))._decompose_criterion(parent)
+        out = _planner(
+            _response(members, relation="any", relation_span=">240 mg/dl (>13.3 mmol/L)")
+        )._decompose_criterion(parent)
 
         assert [s.value_constraint.unit_text for s in out.sub_criteria] == [
             "mg/dl",

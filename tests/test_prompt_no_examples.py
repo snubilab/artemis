@@ -437,6 +437,8 @@ PROMPTS: dict[str, PromptSpec] = {
             "decompose", "reasoning", "sub_criteria", "name", "entity_text", "domain",
             "source_span", "value_constraint_text", "group_type", "logic_type", "null",
             "true", "false",
+            # RFC-016 step 2: the planner's relation, its span and its enum values.
+            "relation", "relation_span", "cardinality", "all", "any", "at_least",
         }),
     ),
     "agent2.reranker_single_select": PromptSpec(

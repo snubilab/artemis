@@ -104,8 +104,15 @@ class TestTheSplitIsDeclined:
 
 class TestTheSplitStands:
     def test_should_split_when_the_planner_states_no_exception(self):
-        """The line's words decide nothing: no field, no keep-whole."""
-        result = _planner_with_mocked_llm(_response("[]"))._decompose_criterion(
+        """The line's words decide nothing: no field, no keep-whole. Both members are named
+        by the line, so the split also needs a verified relation (RFC-016 step 2) -- the
+        stub states one, so that only the exception decides here."""
+        relation_span = "cancer (except for basal cell carcinoma) and/or treatment for cancer"
+        response = _response("[]").replace(
+            '"excepted_entities": [],',
+            f'"excepted_entities": [], "relation": "any", "relation_span": "{relation_span}",',
+        )
+        result = _planner_with_mocked_llm(response)._decompose_criterion(
             _empa_reg_cancer_criterion())
         assert [s.entity_text for s in result.sub_criteria] == ["Cancer", "Basal cell carcinoma"]
         assert result.excepted_entities == []

@@ -7,7 +7,7 @@
   },
   "p2_new_store": {
    "path": "output/site_gap/2026-10-12_p2_new/store/studies.json",
-   "sha256": "0a899e85d1ae788c25d368ecf90e61bc06986ae47a8edde2a18a7533f56065af",
+   "sha256": "6b1787ebdd6a0624e24f3df1083d95dcfc7db17bc9a42ccfa830ed6d316755a0",
    "note": "written by a running re-extraction; hash at copy time"
   },
   "carolina_treatment_circe": {
@@ -139,6 +139,120 @@
    "conceptSetName": "Anti-obesity drug",
    "logicType": "ABSENCE",
    "groupId": "30a04a70-655e-46a7-ac36-92b555a3dac1",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_exclusion_21": [
+  {
+   "id": 21,
+   "description": "Active liver disease or impaired hepatic function",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "ALT or AST or alkaline phosphatase",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "9003742b-3693-461c-8faa-e8f6df9a6d69",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 22,
+   "description": "ALT elevation",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "ALT",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+   "protocolSpan": "ALT (SGPT)",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 45,
+   "conceptSetName": "ALT",
+   "logicType": "ABSENCE",
+   "groupId": "9003742b-3693-461c-8faa-e8f6df9a6d69",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 23,
+   "description": "AST elevation",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "AST",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+   "protocolSpan": "AST (SGOT)",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 46,
+   "conceptSetName": "AST",
+   "logicType": "ABSENCE",
+   "groupId": "9003742b-3693-461c-8faa-e8f6df9a6d69",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 24,
+   "description": "Alkaline phosphatase elevation",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "alkaline phosphatase",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+   "protocolSpan": "alkaline phosphatase",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 47,
+   "conceptSetName": "alkaline phosphatase",
+   "logicType": "ABSENCE",
+   "groupId": "9003742b-3693-461c-8faa-e8f6df9a6d69",
    "groupType": "ALL",
    "parentGroupId": null,
    "isGroupLabel": false,
@@ -735,6 +849,113 @@
    "conceptSetName": "human NPH insulin",
    "logicType": "PRESENCE",
    "groupId": "4a712697-6e47-44f7-ac5b-29684d79ca33",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "leader_exclusion_4": [
+  {
+   "id": 4,
+   "description": "Acute decompensation of glycemic control",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Acute decompensation of glycemic control",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 5,
+   "description": "Elevated HbA1c",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "Elevated HbA1c",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 29,
+   "conceptSetName": "Elevated HbA1c",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 6,
+   "description": "Hyperglycemia",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Hyperglycemia",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 30,
+   "conceptSetName": "Hyperglycemia",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 7,
+   "description": "Diabetic Ketoacidosis (DKA)",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Diabetic Ketoacidosis",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 31,
+   "conceptSetName": "Diabetic Ketoacidosis",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 8,
+   "description": "Hyperosmolar Hyperglycemic State (HHS)",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Hyperosmolar Hyperglycemic State",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 32,
+   "conceptSetName": "Hyperosmolar Hyperglycemic State",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
    "groupType": "ALL",
    "parentGroupId": null,
    "isGroupLabel": false,
