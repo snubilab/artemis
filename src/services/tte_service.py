@@ -99,6 +99,8 @@ from src.services.presence_unit_repair import (
     repair_presence_unit_filters,
 )
 from src.services.range_disjunction_repair import (
+    CodesetProvenance,
+    codeset_provenance,
     iter_range_disjunctions,
     repair_range_disjunctions,
 )
@@ -4863,7 +4865,11 @@ class TTEService:
                 # without them -- see `_apply_export_repairs`. The stated exceptions come
                 # from the stored criterion rows, keyed by the concept set each maps to.
                 self._apply_export_repairs(
-                    built, stated_exceptions=stated_exceptions_by_codeset(_elig)
+                    built,
+                    stated_exceptions=stated_exceptions_by_codeset(_elig),
+                    provenance=codeset_provenance(
+                        _elig.get("inclusionCriteria"), _elig.get("exclusionCriteria")
+                    ),
                 )
                 return built
 
@@ -7986,6 +7992,7 @@ class TTEService:
         self,
         built: dict[str, Any],
         stated_exceptions: Mapping[int, Sequence[str]] | None = None,
+        provenance: CodesetProvenance | None = None,
     ) -> None:
         """Run the arm-level export repairs on an assembled arm, and on its collapsed rules.
 
@@ -7998,11 +8005,15 @@ class TTEService:
         :param stated_exceptions: concept set id -> the excepted entity names its criterion
             states (`criterion_annotation.stated_exceptions_by_codeset`); what the
             entry-exclusion repair is triggered by. None means none are known.
+        :param provenance: concept set id -> the ``(groupId, protocolLine)`` of the stored
+            rows that map to it (`range_disjunction_repair.codeset_provenance`); what the
+            range collapse reads instead of a rule's name. None means none are known.
         """
         stated = dict(stated_exceptions or {})
+        sources = dict(provenance or {})
 
         def chain(expression: dict[str, Any]) -> None:
-            self._export_repair_chain(expression, stated)
+            self._export_repair_chain(expression, stated, sources)
 
         chain.__name__ = "_export_repair_chain"
         _rewrite_with_collapsed_rules(built, chain)
@@ -8047,6 +8058,7 @@ class TTEService:
         self,
         built: dict[str, Any],
         stated_exceptions: Mapping[int, Sequence[str]] | None = None,
+        provenance: CodesetProvenance | None = None,
     ) -> None:
         """The arm-level export repairs, in their load-bearing order. Mutates ``built``."""
         # Narrowing runs BEFORE the entry-exclusion mirror: both write to an
@@ -8058,7 +8070,7 @@ class TTEService:
         # Order is load-bearing: collapsing a two-sided bound into one `bt` is
         # what makes that criterion's unit filter droppable -- the unit repair
         # declines a one-sided bound because an alternative unit can pass it.
-        self._repair_range_disjunctions(built)
+        self._repair_range_disjunctions(built, dict(provenance or {}))
         # Order is load-bearing for the same reason, one link further along: the
         # restated-absence repair looks for a partner presence that states the
         # protocol range as a SINGLE `bt` criterion, which is precisely what the
@@ -8181,7 +8193,9 @@ class TTEService:
             lookup = vocab.prefetch(items)
         repair_entry_exclusion_conflicts(base, lookup, stated_exceptions)
 
-    def _repair_range_disjunctions(self, base: dict[str, Any]) -> None:
+    def _repair_range_disjunctions(
+        self, base: dict[str, Any], provenance: CodesetProvenance
+    ) -> None:
         """Collapse an inclusion rule that offers a range's two bounds as alternatives
         back into the single ``bt`` criterion the protocol states. Mutates ``base``.
 
@@ -8201,7 +8215,7 @@ class TTEService:
         properties as its two siblings: a DB-free pre-gate, and a vocabulary failure that
         propagates rather than silently shipping the disjunction.
         """
-        if not next(iter_range_disjunctions(base), None):
+        if not next(iter_range_disjunctions(base, provenance), None):
             return
 
         from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
@@ -8214,7 +8228,7 @@ class TTEService:
 
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
-        repair_range_disjunctions(base, lookup)
+        repair_range_disjunctions(base, lookup, provenance)
 
     def _repair_restated_absences(self, base: dict[str, Any]) -> None:
         """Remove an inclusion rule that forbids every value its partner presence

@@ -2,7 +2,10 @@
 
 DB-free on the ``PrefetchedVocabulary`` seam, so the real closure resolver runs. Every
 concept id, bound and rule name below is copied from
-``deliveries/2026-09-12/carmelina_treatment.circe.json`` rule #12.
+``deliveries/2026-09-12/carmelina_treatment.circe.json`` rule #12. The provenance every
+call reads (condition 5: one store group, one protocol line) is built from the real
+CARMELINA store rows 10-15 of ``output/site_gap/2026-09-18_verify``, copied verbatim into
+``tests/fixtures/p3_structural_rows.json``.
 
 The defect: the protocol asks for ``6.5 <= HbA1c <= 10.0`` and the rule was emitted as
 ``Type: ANY`` over ``gte 6.5`` and ``lte 10.0`` -- a disjunction nearly everyone with an
@@ -11,6 +14,7 @@ one-sided bound because an IFCC value (>= 15 mmol/mol) passes a bare ``>= 6.5``.
 """
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from copy import deepcopy
@@ -22,9 +26,17 @@ sys.path.insert(0, str(REPO_ROOT))
 from src.services.conceptset_closure import PrefetchedVocabulary  # noqa: E402
 from src.services.presence_unit_repair import repair_presence_unit_filters  # noqa: E402
 from src.services.range_disjunction_repair import (  # noqa: E402
+    codeset_provenance,
     iter_range_disjunctions,
     repair_range_disjunctions,
 )
+
+CARMELINA = json.loads(
+    (REPO_ROOT / "tests" / "fixtures" / "p3_structural_rows.json").read_text()
+)["a26_a27_carmelina"]
+#: codesets 8/9 -> the presence group 0e4765ea, codesets 10/11 -> the absence group
+#: a1a4effc; all four rows read "HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)".
+PROVENANCE = codeset_provenance(CARMELINA["store_rows"])
 
 # CARMELINA codesets 8 and 9 -- byte-identical item lists.
 HBA1C = [3004410, 3007263, 3034639, 4197971, 44793001]
@@ -141,7 +153,7 @@ def test_should_collapse_to_one_between_criterion_when_any_rule_brackets_one_ana
         criterion(8, {"Value": 6.5, "Op": "gte"}),
         criterion(9, {"Value": 10.0, "Op": "lte"}),
     )
-    applied = repair_range_disjunctions(base, vocabulary(*HBA1C))
+    applied = repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE)
 
     assert [(r.rule_index, r.low, r.high) for r in applied] == [(0, 6.5, 10.0)]
     expression = base["InclusionRules"][0]["expression"]
@@ -165,7 +177,7 @@ def test_should_leave_the_concept_sets_untouched_when_it_collapses():
         criterion(9, {"Value": 10.0, "Op": "lte"}),
     )
     before = deepcopy(base["ConceptSets"])
-    repair_range_disjunctions(base, vocabulary(*HBA1C))
+    repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE)
     assert base["ConceptSets"] == before
 
 
@@ -183,7 +195,7 @@ def test_should_decline_and_warn_when_the_two_closures_differ(caplog):
     )
     before = deepcopy(base)
     with caplog.at_level(logging.WARNING):
-        assert repair_range_disjunctions(base, vocabulary(*HBA1C, HBA1_TOTAL)) == []
+        assert repair_range_disjunctions(base, vocabulary(*HBA1C, HBA1_TOTAL), PROVENANCE) == []
     assert base == before
     assert str(HBA1_TOTAL) in caplog.text
 
@@ -195,7 +207,7 @@ def test_should_decline_when_occurrences_differ():
         criterion(9, {"Value": 10.0, "Op": "lte"}, occurrence={"Type": 0, "Count": 0}),
     )
     before = deepcopy(base)
-    assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+    assert repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE) == []
     assert base == before
 
 
@@ -207,7 +219,7 @@ def test_should_decline_when_windows_differ():
                   window={"Start": {"Days": 365, "Coeff": -1}, "End": {"Days": 0, "Coeff": 1}}),
     )
     before = deepcopy(base)
-    assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+    assert repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE) == []
     assert base == before
 
 
@@ -217,7 +229,7 @@ def test_should_decline_when_both_bounds_point_the_same_way():
         criterion(9, {"Value": 10.0, "Op": "gte"}),
     )
     before = deepcopy(base)
-    assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+    assert repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE) == []
     assert base == before
 
 
@@ -228,7 +240,7 @@ def test_should_decline_when_the_low_bound_is_not_below_the_high_bound():
         name="HbA1c at least 10.0% + HbA1c at most 6.5%",
     )
     before = deepcopy(base)
-    assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+    assert repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE) == []
     assert base == before
 
 
@@ -241,36 +253,57 @@ def test_should_decline_and_warn_when_either_bound_is_strict(caplog):
     )
     before = deepcopy(base)
     with caplog.at_level(logging.WARNING):
-        assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+        assert repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE) == []
     assert base == before
     assert "inclusive" in caplog.text
 
 
-def test_should_decline_and_warn_when_the_rule_name_brackets_two_populations(caplog):
-    """EMPA-REG rule #4's shape: two genuinely different populations, each with its own
-    range. The name is the only thing that separates it from a bracketed range."""
+def test_should_collapse_when_the_rule_name_states_no_range():
+    """The rule name decides nothing (RFC-016 §4, A26): the store says the two bounds are
+    one statement. The real rule #12 from ``2026-09-18_verify/DELIVERY`` renamed to its own
+    store group label 'HbA1c within target range' -- no " + ", no numbers -- still
+    collapses, because codesets 8 and 9 come from one group and one protocol line."""
+    label = next(r for r in CARMELINA["store_rows"] if r["id"] == 10)
+    rule = deepcopy(CARMELINA["rule_12"])
+    rule["name"] = label["description"]
+    base = {
+        "ConceptSets": deepcopy(CARMELINA["concept_sets"]),
+        "PrimaryCriteria": {"CriteriaList": [{"DrugExposure": {"CodesetId": 1}}]},
+        "InclusionRules": [rule],
+    }
+
+    applied = repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE)
+
+    assert [(r.low_codeset_id, r.high_codeset_id, r.low, r.high) for r in applied] == [
+        (8, 9, 6.5, 10.0)
+    ]
+
+
+def test_should_decline_and_warn_when_the_bounds_come_from_two_store_groups(caplog):
+    """Codeset 8 is the presence group's lower bound and codeset 11 the absence group's
+    upper bound: the same protocol line, two different store groups, so the pairing is
+    not one stated range even though everything else about it qualifies."""
     base = cohort(
-        criterion(8, {"Value": 7.0, "Op": "gte"}),
-        criterion(9, {"Value": 10.0, "Op": "lte"}),
-        name="HbA1c for patients on background therapy (>=7.0%) "
-             "+ HbA1c for drug naive patients (<=10.0%)",
+        criterion(8, {"Value": 6.5, "Op": "gte"}),
+        criterion(11, {"Value": 10.0, "Op": "lte"}),
     )
+    base["ConceptSets"].append(concept_set(11, "HbA1c", HBA1C))
     before = deepcopy(base)
     with caplog.at_level(logging.WARNING):
-        assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+        assert repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE) == []
     assert base == before
-    assert "name" in caplog.text
+    assert "different store groups" in caplog.text
 
 
-def test_should_decline_when_the_rule_name_does_not_state_the_delivered_bounds():
-    """A name naming other numbers describes another rule; collapsing on it would be a
-    guess."""
+def test_should_decline_when_no_store_row_maps_to_the_concept_sets():
+    """No provenance is no evidence of one statement, and the repair fails closed."""
     base = cohort(
         criterion(8, {"Value": 6.5, "Op": "gte"}),
         criterion(9, {"Value": 10.0, "Op": "lte"}),
-        name="HbA1c at least 7.0% + HbA1c at most 9.0%",
     )
-    assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+    before = deepcopy(base)
+    assert repair_range_disjunctions(base, vocabulary(*HBA1C), {}) == []
+    assert base == before
 
 
 def test_should_decline_when_the_rule_is_a_conjunction():
@@ -281,7 +314,7 @@ def test_should_decline_when_the_rule_is_a_conjunction():
         rule_type="ALL",
     )
     before = deepcopy(base)
-    assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+    assert repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE) == []
     assert base == before
 
 
@@ -297,7 +330,7 @@ def test_should_decline_when_a_group_holds_more_than_its_own_criterion():
         {"Criteria": {"ConditionOccurrence": {"CodesetId": 1}}, "Occurrence": dict(PRESENCE)}
     )
     before = deepcopy(base)
-    assert repair_range_disjunctions(base, vocabulary(*HBA1C)) == []
+    assert repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE) == []
     assert base == before
 
 
@@ -308,7 +341,7 @@ def test_should_find_no_candidate_without_a_vocabulary_when_nothing_qualifies():
         criterion(9, {"Value": 10.0, "Op": "lte"}),
         rule_type="ALL",
     )
-    assert list(iter_range_disjunctions(base)) == []
+    assert list(iter_range_disjunctions(base, PROVENANCE)) == []
 
 
 # --------------------------------------------------------------------------
@@ -334,7 +367,7 @@ def test_should_drop_the_unit_when_the_collapse_runs_first():
         criterion(8, {"Value": 6.5, "Op": "gte"}),
         criterion(9, {"Value": 10.0, "Op": "lte"}),
     )
-    assert len(repair_range_disjunctions(base, vocabulary(*HBA1C))) == 1
+    assert len(repair_range_disjunctions(base, vocabulary(*HBA1C), PROVENANCE)) == 1
     applied = repair_presence_unit_filters(base, vocabulary(*HBA1C))
     assert [r.analyte for r in applied] == ["HbA1c"]
     assert "Unit" not in sole_measurement(base)

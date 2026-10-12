@@ -30,6 +30,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from src.services.conceptset_closure import PrefetchedVocabulary  # noqa: E402
 from src.services.range_disjunction_repair import (  # noqa: E402
+    codeset_provenance,
     repair_range_disjunctions,
 )
 from src.services.restated_absence_repair import (  # noqa: E402
@@ -245,7 +246,12 @@ def test_should_remove_the_absence_when_the_range_collapse_runs_first_on_the_rea
     )
     lookup = vocabulary(*HBA1C, 40239216)
 
-    assert len(repair_range_disjunctions(base, lookup)) == 1
+    provenance = codeset_provenance(
+        json.loads((REPO_ROOT / "tests" / "fixtures" / "p3_structural_rows.json").read_text())[
+            "a26_a27_carmelina"
+        ]["store_rows"]
+    )
+    assert len(repair_range_disjunctions(base, lookup, provenance)) == 1
     assert len(repair_restated_absences(base, lookup)) == 1
     assert rule_names(base) == [PRESENCE_NAME]
     surviving = base["InclusionRules"][0]["expression"]["CriteriaList"][0]
