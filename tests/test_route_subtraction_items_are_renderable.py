@@ -22,15 +22,25 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.services.overbroad_absence_repair import ConceptRecord
-from src.services.route_subtraction import DrugForm
+from src.services.route_subtraction import AdministrationRoute, DrugForm
 from src.services.tte_service import TTEService
 
 REPO = Path(__file__).resolve().parents[1]
 
 INGREDIENT_ID = 1001
-ORAL = DrugForm(2001, "prednisolone Oral Tablet", "Oral Tablet")
-TOPICAL = DrugForm(2002, "prednisolone Topical Cream", "Topical Cream")
+#: Route closures as the vocabulary gives them: Oral 4132161 and Topical 4263689, each with
+#: its ancestors (``tests/fixtures/rxnorm_dose_form_routes.json``).
+ORAL = DrugForm(
+    2001,
+    "prednisolone Oral Tablet",
+    "Oral Tablet",
+    frozenset({4132161, 4106215, 4179874, 40487501}),
+)
+TOPICAL = DrugForm(
+    2002, "prednisolone Topical Cream", "Topical Cream", frozenset({4263689, 4106215, 4179874})
+)
 SEED = "Systemic corticosteroid"
+STATED = [AdministrationRoute.ORAL]
 
 
 def _atlas_checker():
@@ -73,9 +83,11 @@ def _row(form: DrugForm, **overrides: Any) -> ConceptRecord:
 def _subtract(forms: list[DrugForm], rows: dict[int, ConceptRecord]) -> list[dict[str, Any]]:
     items = _ingredient_items()
     service = TTEService(store=MagicMock())
-    with patch.object(TTEService, "_fetch_drug_forms", return_value=forms), \
-         patch.object(TTEService, "_fetch_concept_records", return_value=rows, create=True):
-        service._apply_route_subtraction(items, SEED, "Drug")
+    with (
+        patch.object(TTEService, "_fetch_drug_forms", return_value=forms),
+        patch.object(TTEService, "_fetch_concept_records", return_value=rows, create=True),
+    ):
+        service._apply_route_subtraction(items, STATED, "Drug", SEED)
     return items
 
 
@@ -115,9 +127,11 @@ def test_should_not_query_the_vocabulary_when_route_subtraction_excludes_nothing
     items = _ingredient_items()
     service = TTEService(store=MagicMock())
     fetch = MagicMock(return_value={})
-    with patch.object(TTEService, "_fetch_drug_forms", return_value=[ORAL]), \
-         patch.object(TTEService, "_fetch_concept_records", fetch, create=True):
-        service._apply_route_subtraction(items, SEED, "Drug")
+    with (
+        patch.object(TTEService, "_fetch_drug_forms", return_value=[ORAL]),
+        patch.object(TTEService, "_fetch_concept_records", fetch, create=True),
+    ):
+        service._apply_route_subtraction(items, STATED, "Drug", SEED)
 
     assert items == _ingredient_items()
     fetch.assert_not_called()

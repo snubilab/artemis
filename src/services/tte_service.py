@@ -7181,6 +7181,7 @@ class TTEService:
             if recoded is None:
                 raise
             raise recoded from refused
+        mapped_criterion = self._with_stated_route(mapped_criterion, criterion, resolved_domain, label)
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
         # A threshold written once on the group label belongs to the members it can
@@ -8263,55 +8264,69 @@ class TTEService:
         )
 
     def _fetch_drug_forms(self, ingredient_ids: list[int]) -> list:
-        """Ingredient-by-dose-form concepts under the given ingredients.
+        """Ingredient-by-dose-form concepts under the given ingredients, with their route.
 
-        One query, because a concept set may hold a dozen ingredients and this
-        runs per criterion. Returns `Clinical Drug Form` concepts joined to the
-        Dose Form they link to via `RxNorm has dose form`.
+        One query, because a concept set may hold a dozen ingredients. Returns the
+        `Clinical Drug Form` concepts under them, each with the Dose Form it links to via
+        `RxNorm has dose form` and that Dose Form's `Has route of admin` route plus every
+        `concept_ancestor` of the route (the closure `compute_route_subtraction` keeps on).
+        A form whose dose form has no route comes back with an empty closure.
 
         :param ingredient_ids: concept ids already in the built expression.
-        :returns: DrugForm records; empty on any database error, which leaves
-            the concept set exactly as it was.
+        :returns: DrugForm records.
+        :raises psycopg2.Error: the vocabulary could not be read. Not swallowed: a route the
+            protocol line states and the build silently skipped would ship every form.
         """
         from src.services.route_subtraction import DrugForm
 
         if not ingredient_ids:
             return []
+        import psycopg2
+
+        from src.settings import settings
+
+        schema = settings.CDM_SCHEMA
+        conn = psycopg2.connect(settings.DATABASE_URL)
         try:
-            import psycopg2
-
-            from src.settings import settings
-
-            conn = psycopg2.connect(settings.DATABASE_URL)
-            try:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        f"""
-                        SELECT DISTINCT c.concept_id, c.concept_name, f.concept_name
-                        FROM {settings.CDM_SCHEMA}.concept_ancestor ca
-                        JOIN {settings.CDM_SCHEMA}.concept c
-                          ON c.concept_id = ca.descendant_concept_id
-                         AND c.concept_class_id = 'Clinical Drug Form'
-                         AND c.invalid_reason IS NULL
-                        JOIN {settings.CDM_SCHEMA}.concept_relationship cr
-                          ON cr.concept_id_1 = c.concept_id
-                         AND cr.relationship_id = 'RxNorm has dose form'
-                         AND cr.invalid_reason IS NULL
-                        JOIN {settings.CDM_SCHEMA}.concept f
-                          ON f.concept_id = cr.concept_id_2
-                        WHERE ca.ancestor_concept_id = ANY(%s)
-                        """,
-                        (list(ingredient_ids),),
-                    )
-                    rows = cur.fetchall()
-            finally:
-                conn.close()
-        except Exception as exc:
-            logging.debug("[TTE] drug-form lookup failed: %s", exc)
-            return []
-
-        return [DrugForm(concept_id=int(cid), concept_name=name, dose_form=form)
-                for cid, name, form in rows]
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    SELECT c.concept_id, c.concept_name, MIN(f.concept_name),
+                           ARRAY_REMOVE(ARRAY_AGG(DISTINCT ra.ancestor_concept_id), NULL)
+                    FROM {schema}.concept_ancestor ca
+                    JOIN {schema}.concept c
+                      ON c.concept_id = ca.descendant_concept_id
+                     AND c.concept_class_id = 'Clinical Drug Form'
+                     AND c.invalid_reason IS NULL
+                    JOIN {schema}.concept_relationship cr
+                      ON cr.concept_id_1 = c.concept_id
+                     AND cr.relationship_id = 'RxNorm has dose form'
+                     AND cr.invalid_reason IS NULL
+                    JOIN {schema}.concept f
+                      ON f.concept_id = cr.concept_id_2
+                    LEFT JOIN {schema}.concept_relationship rr
+                      ON rr.concept_id_1 = f.concept_id
+                     AND rr.relationship_id = 'Has route of admin'
+                     AND rr.invalid_reason IS NULL
+                    LEFT JOIN {schema}.concept_ancestor ra
+                      ON ra.descendant_concept_id = rr.concept_id_2
+                    WHERE ca.ancestor_concept_id = ANY(%s)
+                    GROUP BY c.concept_id, c.concept_name
+                    """,
+                    (list(ingredient_ids),),
+                )
+                rows = cur.fetchall()
+        finally:
+            conn.close()
+        return [
+            DrugForm(
+                concept_id=int(cid),
+                concept_name=name,
+                dose_form=form,
+                route_ids=frozenset(int(r) for r in route_ids or ()),
+            )
+            for cid, name, form, route_ids in rows
+        ]
 
     def _fetch_concept_records(self, concept_ids: list[int]) -> dict[int, Any]:
         """The CONCEPT rows for these ids, as ``ConceptRecord`` (one batched query).
@@ -8327,43 +8342,82 @@ class TTEService:
         with PostgresConceptCatalog(settings.DATABASE_URL, settings.CDM_SCHEMA) as catalog:
             return catalog.concepts_by_id(concept_ids)
 
+    def _with_stated_route(
+        self,
+        mapped_criterion: dict[str, Any],
+        criterion: Mapping[str, Any],
+        resolved_domain: str | None,
+        label: str,
+    ) -> dict[str, Any]:
+        """The mapping with the route its protocol line states subtracted (RFC-016 step 4).
+
+        The route is the annotation's verified ``route`` field and nothing else -- not the
+        seed, not the description. The mapper's expression is never edited in place: it may
+        be the criterion cache's own, which holds the route-free mapping of the seed.
+
+        :param mapped_criterion: the mapper's answer.
+        :param criterion: the store row, carrying its ``annotation``.
+        :param resolved_domain: the domain the rule is emitted under.
+        :param label: the criterion's name, for the log.
+        :returns: ``mapped_criterion`` unchanged when no exclusion applies, else a copy whose
+            expression carries the exclusions and whose metadata lists them as selected.
+        """
+        from src.services.criterion_annotation import stated_route
+
+        statement = stated_route(criterion)
+        if statement is None or (resolved_domain or "") != "Drug":
+            return mapped_criterion
+        expression = deepcopy(mapped_criterion.get("expression") or {})
+        items = expression["items"] = list(expression.get("items") or [])
+        if not self._apply_route_subtraction(items, statement.routes, resolved_domain, label):
+            return mapped_criterion
+        metadata = mapped_criterion.get("mapping_metadata")
+        if metadata is not None and hasattr(metadata, "model_copy"):
+            metadata = metadata.model_copy(
+                update={
+                    "selectedConceptIds": [
+                        item["concept"]["CONCEPT_ID"]
+                        for item in items
+                        if (item.get("concept") or {}).get("CONCEPT_ID") is not None
+                    ]
+                }
+            )
+        return {**mapped_criterion, "expression": expression, "mapping_metadata": metadata}
+
     def _apply_route_subtraction(
         self,
         items: list[dict[str, Any]],
-        seed_text: str,
+        routes: Sequence[Any] | None,
         expected_domain: str | None,
-    ) -> None:
-        """Append isExcluded items for routes the criterion did not ask for.
+        label: str = "",
+    ) -> int:
+        """Append isExcluded items for the drug forms whose route the criterion did not ask for.
 
-        A criterion reading "systemic corticosteroids" becomes a concept set of
-        RxNorm Ingredients with includeDescendants, which is every form of the
-        drug: for CAROLINA, 14,331 concepts of which 3,875 are creams, eye drops
-        and inhalers. This subtracts the forms whose route was not asked for, at
-        `Clinical Drug Form` level with includeDescendants so a few dozen items
-        cover thousands of leaves -- the axis gold uses, 139 items against its
-        136 on the criterion that prompted this.
+        A criterion whose line restricts "corticosteroids" to systemic use becomes a concept
+        set of RxNorm Ingredients with includeDescendants, which is every form of the drug:
+        for CAROLINA, 14,331 concepts of which 3,875 are creams, eye drops and inhalers. This
+        subtracts the forms whose route was not asked for, at `Clinical Drug Form` level with
+        includeDescendants so a few dozen items cover thousands of leaves -- the axis gold
+        uses.
 
-        Drug domain only. "systemic" next to a condition means whole-body, not a
-        route, and route_qualifier already refuses those senses; the domain gate
-        is the second guard.
+        ``routes`` is the annotation step's ``route`` field (``stated_route``), never the
+        criterion text; which forms satisfy it is the vocabulary's ``Has route of admin``
+        (``route_subtraction.compute_route_subtraction``). Drug domain only.
 
-        Mutates `items` in place. Does nothing when the criterion states no
-        route, which is the overwhelming majority -- 6 of 473 criteria across
-        the six studies carry one.
+        Mutates `items` in place. Does nothing when no route is stated.
 
         :param items: the built expression's items, mutated in place.
-        :param seed_text: the criterion text to read the qualifier from.
+        :param routes: the stated ``AdministrationRoute`` values; None or empty does nothing.
         :param expected_domain: the criterion's domain; only "Drug" applies.
+        :param label: the criterion's name, for the log and the error.
+        :returns: how many exclusions were appended.
         """
-        if (expected_domain or "") != "Drug":
-            return
+        if (expected_domain or "") != "Drug" or not routes:
+            return 0
 
-        from src.services.route_qualifier import detect_route_qualifiers
-        from src.services.route_subtraction import compute_route_subtraction, routes_to_keep
+        from src.services.route_subtraction import compute_route_subtraction
 
-        keep = routes_to_keep(detect_route_qualifiers(seed_text))
-        if not keep:
-            return
+        keep = list(routes)
 
         included_ids = [
             item["concept"]["CONCEPT_ID"]
@@ -8372,11 +8426,11 @@ class TTEService:
         ]
         forms = self._fetch_drug_forms(included_ids)
         if not forms:
-            return
+            return 0
 
         result = compute_route_subtraction(forms, keep)
         if not result.excluded:
-            return
+            return 0
 
         already = {(item.get("concept") or {}).get("CONCEPT_ID") for item in items}
         to_exclude = [form for form in result.excluded if form.concept_id not in already]
@@ -8394,7 +8448,7 @@ class TTEService:
         missing = [form.concept_id for form in to_exclude if form.concept_id not in rows]
         if missing:
             raise RuntimeError(
-                f"route subtraction on {seed_text!r}: the vocabulary returned no CONCEPT row for "
+                f"route subtraction on {label!r}: the vocabulary returned no CONCEPT row for "
                 f"excluded drug form(s) {missing}"
             )
         for form in to_exclude:
@@ -8411,8 +8465,10 @@ class TTEService:
         # inferred from a diff.
         logging.info(
             "[TTE] route subtraction on '%s': keep=%s excluded=%d undecidable=%d",
-            seed_text, sorted(keep), len(result.excluded), len(result.undecidable),
+            label, sorted(route.value for route in keep), len(result.excluded),
+            len(result.undecidable),
         )
+        return len(to_exclude)
 
     def _recommend_seeded_concept_set(
         self,
@@ -8578,9 +8634,11 @@ class TTEService:
                         seed_concept_ids=mapping_result.seed_concept_ids or None,
                     )
                     expression = recommendation.expression.to_atlas_json()
-                    # One list, bound into the expression: _apply_route_subtraction
-                    # APPENDS its exclusions, and an append to a copy never reached the
-                    # returned or cached expression.
+                    # One list, bound into the expression, so the in-place edit below
+                    # reaches the returned and cached expression. No route subtraction
+                    # here: a route is stated by the criterion's protocol line, so it is
+                    # applied by `_build_seeded_eligibility_rule`, which holds the row, and
+                    # this cached mapping of the seed stays route-free.
                     items = expression["items"] = list(expression.get("items") or [])
 
                     if items:
@@ -8588,10 +8646,6 @@ class TTEService:
                             concept = item.get("concept", {})
                             if concept.get("CONCEPT_ID") in overbroad_set:
                                 item["includeDescendants"] = False
-
-                        self._apply_route_subtraction(
-                            items, normalized_seed, expected_domain
-                        )
 
                         # Capture mapping metadata for HITL transparency
                         selected_ids = [
