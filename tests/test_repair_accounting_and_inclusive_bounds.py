@@ -242,9 +242,7 @@ class TestTheGateFiresOnTheCaseThatMotivatedIt:
         ]
         cls = parser_module.LogicDecomposer
 
-        unrecorded = cls._repair_pattern_e(
-            cls._repair_band_tiers(decomposer._repair_split_bands(list(before)))
-        )
+        unrecorded = cls._repair_band_tiers(decomposer._repair_split_bands(list(before)))
 
         with pytest.raises(UnaccountedDepartureError) as raised:
             assert_repairs_accounted(before, unrecorded, RepairLedger(), role="inclusion")

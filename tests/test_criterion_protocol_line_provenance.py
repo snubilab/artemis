@@ -520,47 +520,6 @@ class TestTheHydrationSeamTheLivePathUses:
         assert [bool(r.get("isGroupLabel")) for r in rows] == [True, False, False]
         assert [r[CRITERION_PROTOCOL_LINE_KEY] for r in rows] == [LIVER_LINE] * 3
 
-    def test_a_merged_or_group_label_carries_the_line_its_members_share(self, parser_module):
-        """``_repair_pattern_e`` synthesises a label from rules the model emitted
-        flat, so that label has no JSON of its own to read a line from -- and it is
-        still emitted as a store row beside its members. Where every member came from
-        one line, that line is the label's line too."""
-        line = "5. History of myocardial infarction, stroke, or peripheral arterial disease"
-        cohort = _hydrate(parser_module, {
-            "inclusion_rules": [
-                {"name": "Prior myocardial infarction", "domain": "Condition",
-                 "entity_text": "Myocardial infarction", "source_text": line},
-                {"name": "Prior stroke", "domain": "Condition",
-                 "entity_text": "Stroke", "source_text": line},
-            ]
-        })
-
-        rows = _service()._criteria_from_ir(cohort.inclusion_rules)
-
-        assert [r for r in rows if r.get("isGroupLabel")], "the flat rules were merged"
-        assert all(r[CRITERION_PROTOCOL_LINE_KEY] == line for r in rows)
-
-    def test_a_merged_label_whose_members_disagree_claims_no_line(self, parser_module):
-        """Two lines merged under one label have no single line between them, and
-        naming one of them would attribute the other's criteria to it."""
-        cohort = _hydrate(parser_module, {
-            "inclusion_rules": [
-                {"name": "Prior myocardial infarction", "domain": "Condition",
-                 "entity_text": "Myocardial infarction", "source_text": "5. Prior MI"},
-                {"name": "Prior stroke", "domain": "Condition",
-                 "entity_text": "Stroke", "source_text": "6. Prior stroke"},
-            ]
-        })
-
-        rows = _service()._criteria_from_ir(cohort.inclusion_rules)
-
-        label = [r for r in rows if r.get("isGroupLabel")]
-        assert label, "the flat rules were merged"
-        assert label[0][CRITERION_PROTOCOL_LINE_KEY] == ""
-        assert {r[CRITERION_PROTOCOL_LINE_KEY] for r in rows if not r.get("isGroupLabel")} == {
-            "5. Prior MI", "6. Prior stroke",
-        }
-
     def test_json_without_a_line_hydrates_to_no_line_rather_than_failing(self, parser_module):
         cohort = _hydrate(parser_module, {
             "inclusion_rules": [{"name": "T2DM", "domain": "Condition",

@@ -280,20 +280,22 @@ class TestTheBuildReadsRecordRequirement:
         assert skip["conditionalSource"] == "annotation"
         assert circe["_generationCensus"]["skippedByReason"] == {CONDITIONAL_REASON: 1}
 
-    def test_should_emit_the_rule_as_before_when_the_row_carries_no_annotation(self, service):
-        """The default behaviour: no word list decides anything any more."""
+    def test_should_not_skip_the_rule_when_the_row_carries_no_annotation(self, service):
+        """The default behaviour: no word list decides anything any more. CARMELINA 7
+        carries no entity_text, so since RFC-016 step 2 (A10) it is refused as
+        missing-entity-text instead of being mapped on its description -- not skipped."""
         circe = service._build_seeded_target_circe(_eligibility(inclusion=[CARMELINA_7]))
-        assert len(circe["InclusionRules"]) == 1
         assert circe["_skippedCriteria"] == []
+        assert [u["refusalCode"] for u in circe["_unmappedCriteria"]] == ["missing-entity-text"]
 
-    def test_should_emit_the_rule_and_keep_the_rejection_when_the_span_is_not_in_the_line(
+    def test_should_not_skip_and_keep_the_rejection_when_the_span_is_not_in_the_line(
         self, service
     ):
         row = _annotated(CARMELINA_7, _conditional("for at least 8 weeks prior to randomization"))
         assert row[ANNOTATION_REJECTED_KEY][0]["field"] == "record_requirement"
         circe = service._build_seeded_target_circe(_eligibility(inclusion=[row]))
-        assert len(circe["InclusionRules"]) == 1
         assert circe["_skippedCriteria"] == []
+        assert [u["refusalCode"] for u in circe["_unmappedCriteria"]] == ["missing-entity-text"]
 
     def test_should_take_the_members_with_it_when_a_group_label_is_conditional(self, service):
         label = _annotated(CAROLINA_37, _conditional(CAROLINA_SPAN))

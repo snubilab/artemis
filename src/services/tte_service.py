@@ -174,7 +174,6 @@ from src.utils.criterion_refusal import (
     REFUSAL_NO_CONCEPT_MAPPING,
     REFUSAL_STRANDED_GROUP_THRESHOLD,
     REFUSAL_UNMAPPABLE_PLACEHOLDER,
-    SEED_CAUSED_REFUSAL_CODES,
     CriterionRefused,
 )
 from src.utils.criterion_seed import (
@@ -971,78 +970,6 @@ def _refuse_mapped_seed_naming_no_entity(
         f"would filter patients on concepts no criterion named",
         code=REFUSAL_UNMAPPABLE_PLACEHOLDER,
         detail=f"{len(items)} concepts from {answered}",
-    )
-
-
-def _recode_refusal_for_missing_entity(
-    refused: CriterionRefused, criterion: dict[str, Any], seed: str
-) -> CriterionRefused | None:
-    """Book a seed-caused refusal against EXTRACTION when the seed was a substitute.
-
-    ``entity_text`` is MANDATORY on every criterion with no ``sub_criteria``
-    (``8bbd50d``), because it is the only text the concept mapper is ever given. The
-    model complies per row. When it does not, :func:`criterion_mapper_seed` falls back
-    to ``description`` -- and until this function existed, nothing anywhere recorded
-    that a fallback had happened, so the mapper's own verdict was the whole story. The
-    delivered record read "No concept mapping found for 'Drug naive'", which is a
-    sentence about the VOCABULARY, on a phrase the protocol never wrote: 'Drug naive' is
-    EMPA-REG inclusion 15's human-facing name, and the line behind it names an
-    antidiabetic drug class the mapper was never told about.
-
-    Re-coding rather than refusing early, because the substitution is usually SURVIVABLE
-    and refusing it would cost far more than it recovers. Measured over
-    ``output/site_gap/2026-09-10/store_grounded/studies.json`` and
-    ``tmp/tte_cold6_20260908/studies.json``, counting only the criteria that REACH the
-    mapper across the six delivered trials:
-
-        store                 reaching the mapper   entity empty   of those, LOST
-        store_grounded                293                70               8
-        tte_cold6_20260908            274                90              10
-
-    62 of the grounded store's 70 substituted seeds map anyway. A guard that refused
-    every empty ``entity_text`` would destroy those 62 to recover 8 -- so the guard is
-    placed where the loss is ALREADY established and only its attribution moves. The
-    survivors are not left silent either; they are recorded under
-    :data:`~src.utils.criterion_seed.MISSING_ENTITY_CRITERIA_KEY`.
-
-    Two exemptions, and both are load-bearing:
-
-    * only a code in
-      :data:`~src.utils.criterion_refusal.SEED_CAUSED_REFUSAL_CODES` is re-coded. That
-      list is an ALLOW-list, so a refusal about the criterion's NUMBER rather than its
-      concepts keeps the record it already had;
-    * ``unmappable-placeholder`` is never re-coded even though it IS seed-caused,
-      because it is the one code ``PERMITTED_REFUSAL_CODES`` permits and those rows earn
-      it on the seed's own words. ARISTOTLE exclusion 26 ("Investigational drug use")
-      carries an empty ``entity_text`` AND that permit; re-coding it would flip both
-      ARISTOTLE arms from PASS to FAIL for a loss that is irreducible either way.
-
-    What the new code does NOT claim is that the protocol had an entity to extract.
-    CAROLINA exclusion 72 ("patients considered reliable by the investigator") has no
-    ``entity_text`` because its line names no clinical entity; the code still reads
-    correctly there -- the mapper was refused on a substituted seed -- and telling that
-    row apart from EMPA-REG's needs a judgement over the protocol line that no
-    deterministic rule here can make. Guessing it is the one thing that would be worse
-    than the silence this replaces.
-
-    :param refused: the refusal the mapper (or the domain check) raised.
-    :param criterion: the store eligibility-criterion dict the seed came from.
-    :param seed: the text the mapper was actually asked about.
-    :returns: a re-coded refusal to raise ``from`` the original, or ``None`` when the
-        refusal stands exactly as it is.
-    """
-    if refused.code not in SEED_CAUSED_REFUSAL_CODES:
-        return None
-    if not criterion_entity_text_missing(criterion):
-        return None
-    return CriterionRefused(
-        f"criterion extraction left the mandatory entity_text empty, so the mapper was "
-        f"asked about the criterion's own name instead -- seeded {seed!r}",
-        code=REFUSAL_MISSING_ENTITY_TEXT,
-        # The code the mapper reached, kept machine-readable so a consumer recovers the
-        # mechanism without parsing the chained sentence `describe_mapping_failure`
-        # builds. The prose of that mechanism survives on `__cause__`.
-        detail=f"{refused.code}: {refused.detail or str(refused)}",
     )
 
 
@@ -5696,12 +5623,16 @@ class TTEService:
 
                 expanded_texts: list[str] = []
                 domain_hints: list[str | None] = []
-                for criterion, _excl in mappable_items:
+                prefetch_index: list[int] = []
+                for item_index, (criterion, _excl) in enumerate(mappable_items):
                     # The SAME seed `_build_seeded_eligibility_rule` will ask for. These
                     # candidates are handed back by index, so a seed chosen differently
                     # here pre-fetches for one string and answers a mapper that asked for
                     # another -- `criterion_mapper_seed` is the single home of that choice.
                     raw_text = criterion_mapper_seed(criterion)
+                    if not raw_text:
+                        # No entity text: refused before mapping (`missing-entity-text`).
+                        continue
                     # Mirror abbreviation expansion from workflow.py
                     exp, was_exp = expand_abbreviation(raw_text)
                     if was_exp:
@@ -5714,11 +5645,12 @@ class TTEService:
                     raw_text = _qe.expand(raw_text, domain_hint=domain)
                     expanded_texts.append(raw_text)
                     domain_hints.append(domain)
+                    prefetch_index.append(item_index)
 
                 batch_results = _retriever.batch_search(
                     expanded_texts, n_results=60, domain_hints=domain_hints,
                 )
-                for idx, text in enumerate(expanded_texts):
+                for idx, text in zip(prefetch_index, expanded_texts):
                     candidates = batch_results.get(text, [])
                     if candidates:
                         pre_fetched[idx] = candidates
@@ -7325,14 +7257,20 @@ class TTEService:
             or f"{'Exclusion' if exclusion else 'Inclusion'} criterion"
         ).strip()
         # `label` names the rule a human reads and reports every refusal below, so it
-        # keeps the protocol's whole sentence. The SEED is narrower: a criterion whose
-        # `sourceText` is empty falls back to a description that still carries the
-        # temporal qualifier already stored in `window` ("... within 3 years"), and the
-        # intent router refuses to parse a seed carrying one -- four CARMELINA criteria
-        # were lost that way on 2026-09-09 with correct windows on every one of them.
-        # Nothing is deleted: the criterion's own fields and this rule's name are
-        # untouched. See `src/utils/criterion_seed.py`.
-        seed = criterion_mapper_seed(criterion) or label
+        # keeps the protocol's whole sentence. The SEED is the criterion's own entity
+        # text (or the annotation's verified base span). A criterion whose mandatory
+        # `entity_text` is empty is refused here rather than seeded on its description:
+        # the description is a phrase written for a human, and cutting its time phrase
+        # out with a word table (the former `strip_window_expressed_temporal`, inventory
+        # A10) is the rule RFC-016 step 2 removes. Recorded under `missing-entity-text`
+        # and in `_missingEntityCriteria`. See `src/utils/criterion_seed.py`.
+        seed = criterion_mapper_seed(criterion)
+        if not seed:
+            raise CriterionRefused(
+                "criterion extraction left the mandatory entity_text empty, so there is no "
+                f"entity to ask the mapper about; refused instead of seeding on {label!r}",
+                code=REFUSAL_MISSING_ENTITY_TEXT,
+            )
         # The entities the protocol line leaves out of this criterion's set, as the
         # planner or the annotation step quoted them (RFC-016) -- never read off the
         # description or the seed. EMPA-REG exclusion #30 seeds "Endocrine disorder"
@@ -7348,46 +7286,34 @@ class TTEService:
         # infers the real domain (e.g. Observation/Condition) from the concept-set
         # match itself instead.
         criterion_domain = None if raw_domain in DEMOGRAPHIC_DOMAINS else raw_domain
-        # Everything the SEED can be blamed for lives inside this block, and nothing
-        # else does. A refusal raised here is a verdict on the text the mapper was
-        # asked; the two refusals further down (`stranded-group-threshold`,
-        # `unreadable-value-filter`) are verdicts on the NUMBER, and a different seed
-        # would not change either. Keeping the boundary here is what stops the
-        # re-coding from attributing a Circe-side defect to extraction.
-        try:
-            mapped_criterion = self._recommend_seeded_concept_set(
-                seed,
-                expected_domain=criterion_domain,
-                pre_fetched_candidates=pre_fetched_candidates,
-                workflow=workflow,
-                entity_exception=seed_exception,
-            )
-            # Named rather than inlined into `_seeded_criteria_key` because the window
-            # default below is keyed by the same resolved domain: the CIRCE table and the
-            # lookback are two readings of one answer, and deriving them from two
-            # expressions is how they drift apart.
-            resolved_domain = criterion_domain or mapped_criterion["domain"]
-            criteria_key = self._seeded_criteria_key(resolved_domain)
-            # `seed` and not `label`: the classifier inside decides on what the MAPPER was
-            # asked, and the two differ on the row it matters for (EMPA-REG exclusion #41
-            # is seeded "Investigational Drug" while its description says "Prior
-            # investigational drug trial", which names a trial and stays unpermitted).
-            _refuse_domain_contradiction_for_seed(criteria_key, mapped_criterion, label, seed)
-            # ...and last, the same classifier on the path where NOTHING went wrong. The
-            # two consults above are both failure paths, so a placeholder seed whose
-            # mapper answered plausibly in the criterion's own domain took neither and
-            # was emitted: eight of the nine placeholder-seeded criteria in the
-            # 2026-09-10 grounded delivery shipped rules, six of them CAROLINA's
-            # `CV risk factor` branches under two required inclusion rules and two of
-            # them ABSENCE rules over "Drug therapy" and "Dispensing of
-            # pharmaceutical/biologic product". Kept after the domain check so a row
-            # that fails both keeps the richer record.
-            _refuse_mapped_seed_naming_no_entity(mapped_criterion, seed)
-        except CriterionRefused as refused:
-            recoded = _recode_refusal_for_missing_entity(refused, criterion, seed)
-            if recoded is None:
-                raise
-            raise recoded from refused
+        mapped_criterion = self._recommend_seeded_concept_set(
+            seed,
+            expected_domain=criterion_domain,
+            pre_fetched_candidates=pre_fetched_candidates,
+            workflow=workflow,
+            entity_exception=seed_exception,
+        )
+        # Named rather than inlined into `_seeded_criteria_key` because the window
+        # default below is keyed by the same resolved domain: the CIRCE table and the
+        # lookback are two readings of one answer, and deriving them from two
+        # expressions is how they drift apart.
+        resolved_domain = criterion_domain or mapped_criterion["domain"]
+        criteria_key = self._seeded_criteria_key(resolved_domain)
+        # `seed` and not `label`: the classifier inside decides on what the MAPPER was
+        # asked, and the two differ on the row it matters for (EMPA-REG exclusion #41
+        # is seeded "Investigational Drug" while its description says "Prior
+        # investigational drug trial", which names a trial and stays unpermitted).
+        _refuse_domain_contradiction_for_seed(criteria_key, mapped_criterion, label, seed)
+        # ...and last, the same classifier on the path where NOTHING went wrong. The
+        # two consults above are both failure paths, so a placeholder seed whose
+        # mapper answered plausibly in the criterion's own domain took neither and
+        # was emitted: eight of the nine placeholder-seeded criteria in the
+        # 2026-09-10 grounded delivery shipped rules, six of them CAROLINA's
+        # `CV risk factor` branches under two required inclusion rules and two of
+        # them ABSENCE rules over "Drug therapy" and "Dispensing of
+        # pharmaceutical/biologic product". Kept after the domain check so a row
+        # that fails both keeps the richer record.
+        _refuse_mapped_seed_naming_no_entity(mapped_criterion, seed)
         criteria_attrs: dict[str, Any] = {"CodesetId": codeset_id}
 
         # A threshold written once on the group label belongs to the members it can

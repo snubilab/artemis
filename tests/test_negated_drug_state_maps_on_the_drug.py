@@ -90,16 +90,18 @@ REFUSED_ROWS = [
 
 
 class TestWhatTheMapperWasActuallyAsked:
-    """The seed is the entity, and with no entity it is a phrase written for a human."""
+    """The seed is the entity; with no entity and no line, the description as written."""
 
-    def test_should_seed_on_the_protocol_phrase_when_the_criterion_carries_no_entity(self):
-        seeds = [criterion_mapper_seed(row) for row in REFUSED_ROWS]
-
-        assert seeds[0] == "Anti-diabetic drug naive"
-        assert seeds[1] == "Drug Naïve or Pre-treated (Excluding GLP-1/DPP-4/SGLT-2)"
-        # The window-expressed duration is stripped by `738be93`; what is left is still
-        # a policy phrase, not a drug.
-        assert seeds[2] == "Stable Background Medication"
+    def test_should_seed_on_the_description_as_written_when_the_row_carries_no_line(self):
+        """These rows carry no `protocolLine`, so nothing marks them as extracted and the
+        description is the seed -- as written: since RFC-016 step 2 (A10) no time phrase
+        is cut out of it. An extracted row (one with a line) and no entity text is refused
+        instead (`tests/test_text_rule_removals_step2.py`)."""
+        assert [criterion_mapper_seed(row) for row in REFUSED_ROWS] == [
+            "Anti-diabetic drug naive",
+            "Drug Naïve or Pre-treated (Excluding GLP-1/DPP-4/SGLT-2)",
+            "Stable Background Medication (8 weeks prior to screening)",
+        ]
 
     def test_should_seed_on_the_drug_when_the_criterion_carries_one(self):
         """The control that makes the case above mean something."""
@@ -119,8 +121,8 @@ class TestTheStoreRowAnEntitylessLeafProduces:
         assert len(rows) == 1
         assert rows[0]["sourceText"] == ""
         assert rows[0]["description"] == "Anti-diabetic drug naive"
-        # And therefore the mapper is asked about the name.
-        assert criterion_mapper_seed(rows[0]) == "Anti-diabetic drug naive"
+        # And therefore there is nothing to ask the mapper (refused, not seeded on the name).
+        assert criterion_mapper_seed(rows[0]) == ""
 
     def test_should_carry_the_drug_into_source_text_when_the_ir_leaf_names_one(self):
         service = TTEService.__new__(TTEService)

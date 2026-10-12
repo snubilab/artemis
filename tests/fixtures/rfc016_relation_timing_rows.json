@@ -7,7 +7,7 @@
   },
   "p2_new_store": {
    "path": "output/site_gap/2026-10-12_p2_new/store/studies.json",
-   "sha256": "6b1787ebdd6a0624e24f3df1083d95dcfc7db17bc9a42ccfa830ed6d316755a0",
+   "sha256": "cf94b947c49332ceaa42c0e0898b8b7b21cd2811edcb5ca20279ec4127281528",
    "note": "written by a running re-extraction; hash at copy time"
   },
   "carolina_treatment_circe": {
@@ -1392,6 +1392,95 @@
    "logicType": "ABSENCE",
    "groupId": "84fe373e-ccc9-47f4-9b43-d368186e503c",
    "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "plato_inclusion_12": [
+  {
+   "id": 12,
+   "description": "Hospitalized for ACS with onset in previous 24 hours, ischemic symptoms >=10 min duration at rest, not pregnant, and informed consent",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "Hospitalized for potential ST-segment elevation or non–STsegment elevation ACS, with onset during the previous 24 hours, documented by cardiac ischemic symptoms due to atherosclerosis of ≥10 minutes' duration at rest, ≥18 years of age, not pregnant, and with informed consent",
+   "protocolSpan": "",
+   "window": {
+    "start": -24,
+    "end": 0
+   },
+   "conceptSetId": 9,
+   "conceptSetName": "Hospitalized for ACS with onset , ischemic symptoms >=10 min duration at rest, not pregnant, and informed consent",
+   "logicType": "PRESENCE",
+   "groupId": null,
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carmelina_exclusion_27": [
+  {
+   "id": 27,
+   "description": "CABG within 2 months prior to consent",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "CABG ≤ 2 months prior informed consent",
+   "protocolSpan": "",
+   "window": {
+    "start": -60,
+    "end": 0
+   },
+   "conceptSetId": 24,
+   "conceptSetName": "CABG",
+   "logicType": "ABSENCE",
+   "groupId": null,
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_exclusion_68": [
+  {
+   "id": 68,
+   "description": "Cancer other than non-melanoma skin cancer within last 3 years",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "cancer other than non-melanoma skin cancer within last 3 years",
+   "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+   "protocolSpan": "has cancer other than non-melanoma skin cancer within last 3 years",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 80,
+   "conceptSetName": "cancer other than non-melanoma skin cancer",
+   "logicType": "ABSENCE",
+   "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carmelina_inclusion_3": [
+  {
+   "id": 3,
+   "description": "Drug-naïve or pre-treated with any antidiabetic background therapy",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "Male or female patients who are drug-naïve or pre-treated with any antidiabetic background therapy, excluding treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors if ≥ 7 consecutive days",
+   "protocolSpan": "",
+   "window": null,
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "85eaf366-a77a-4872-9575-829727a43f5b",
+   "groupType": "ANY",
    "parentGroupId": null,
    "isGroupLabel": false,
    "mappable": true

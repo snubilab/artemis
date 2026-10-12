@@ -1,5 +1,11 @@
 """A criterion whose mandatory ``entity_text`` is empty says so, in the artifact.
 
+RFC-016 step 2 (inventory A10) changed the remedy this file was written for. The
+criterion is no longer seeded on its ``description`` (with time phrases cut out by a word
+table) and re-coded afterwards; it is refused before mapping as ``missing-entity-text``
+and recorded under ``MISSING_ENTITY_CRITERIA_KEY``. The measurement below is kept as the
+record of what that costs: the ~89% of substituted seeds that used to map are now refused.
+
 ``8bbd50d`` made ``entity_text`` MANDATORY on any criterion with no ``sub_criteria``,
 because it is the ONLY text the concept mapper is ever given. The model complies per
 row and unreliably. What happens when it does not comply is what this file pins.
@@ -319,61 +325,23 @@ class TestThePredicateSeparatesTheObservationsRows:
 # ---------------------------------------------------------------------------
 
 
-class TestASubstitutedSeedIsNotABookedMappingFailure:
+class TestAnEntitylessCriterionIsRefusedBeforeMapping:
     @pytest.mark.parametrize(
         "criterion",
         [EMPA_REG_INCL_15, EMPA_REG_INCL_16],
         ids=["empa-reg-incl-15", "empa-reg-incl-16"],
     )
-    def test_should_recode_no_concept_mapping_when_the_seed_was_substituted(
+    def test_should_refuse_without_asking_the_mapper_when_entity_text_is_empty(
         self, monkeypatch, criterion
     ):
-        """The two rows of the 2026-09-10 EMPA-REG failure, at the raise site.
-
-        The gate said "No concept mapping found for 'Drug naive'", which sends a reader
-        to the vocabulary. 'Drug naive' is the criterion's human-facing name; the mapper
-        was never given an entity at all."""
-        refusal = CriterionRefused(
-            f"No concept mapping found for '{criterion['description']}'",
-            code=REFUSAL_NO_CONCEPT_MAPPING,
-        )
-        service = _service(monkeypatch, refusal)
-
-        with pytest.raises(CriterionRefused) as caught:
-            service._build_seeded_eligibility_rule(
-                criterion=criterion, codeset_id=7, exclusion=False
-            )
-
-        assert caught.value.code == _expected_code()
-        # The mapper's own verdict is not thrown away -- it is chained, so
-        # `describe_mapping_failure` folds both into one reason.
-        assert caught.value.__cause__ is refusal
-        # ...and the code it carried is recoverable without parsing prose.
-        assert REFUSAL_NO_CONCEPT_MAPPING in (caught.value.detail or "")
-
-    def test_should_recode_a_domain_contradiction_earned_on_a_substituted_seed(
-        self, monkeypatch
-    ):
-        """CARMELINA inclusion 16/17 ('Stable Background Medication ...') are Drug
-        criteria whose concept set came back Condition/Observation/Procedure. The seed
-        was the label, not a drug; the row one line above it in the same store
-        (inclusion 11, `sourceText='antidiabetic background medication'`) mapped to a
-        Drug set. The wrong-domain answer is downstream of the substitution."""
-        criterion = {
-            "id": 16,
-            "description": "Stable Background Medication (8 weeks prior to screening)",
-            "domain": "Drug",
-            "sourceText": "",
-            "window": {"start": -56, "end": 0},
-            "logicType": "PRESENCE",
-            "isGroupLabel": False,
-        }
-        service = _service(
-            monkeypatch,
-            _mapping(
-                ["Condition", "Observation", "Procedure"],
-                "Stable Background Medication (8 weeks prior to screening)",
-            ),
+        """The two rows of the 2026-09-10 EMPA-REG failure. The mapper would answer; it is
+        not asked, because there is no entity to ask about."""
+        asked: list[str] = []
+        service = _service(monkeypatch, _mapping(["Drug"], "Antidiabetic agent"))
+        monkeypatch.setattr(
+            service,
+            "_recommend_seeded_concept_set",
+            lambda seed, **kw: asked.append(seed) or _mapping(["Drug"], "Antidiabetic agent"),
         )
 
         with pytest.raises(CriterionRefused) as caught:
@@ -382,16 +350,13 @@ class TestASubstitutedSeedIsNotABookedMappingFailure:
             )
 
         assert caught.value.code == _expected_code()
-        assert REFUSAL_DOMAIN_CONTRADICTION in (caught.value.detail or "")
-        # The mechanism stays legible in the delivered record.
-        assert "DrugExposure reads Drug" in str(caught.value.__cause__)
+        assert asked == []
 
     def test_should_keep_the_contradiction_code_when_the_entity_is_present(
         self, monkeypatch
     ):
         """PLATO exclusion 32, the control. A real substance answered from the wrong
-        domain is a mapper defect, and re-coding it would send a reader to extraction
-        for a row whose extraction was correct."""
+        domain is a mapper defect, booked as such."""
         service = _service(
             monkeypatch, _mapping(["Drug"], "Clopidogrel contraindication")
         )
@@ -403,71 +368,30 @@ class TestASubstitutedSeedIsNotABookedMappingFailure:
 
         assert caught.value.code == REFUSAL_DOMAIN_CONTRADICTION
 
-    def test_should_never_recode_over_the_one_permitted_code(self, monkeypatch):
-        """ARISTOTLE exclusion 26. `unmappable-placeholder` is the ONLY code
-        `PERMITTED_REFUSAL_CODES` permits, and the row earns it on the seed's own words:
-        "Investigational drug use" names no substance whichever field carried it. Both
-        ARISTOTLE arms PASS on this permit; re-coding it costs two PASSes for a loss
-        that is irreducible either way."""
-        refusal = CriterionRefused(
-            "No concept mapping found for 'Investigational drug use'",
-            code=REFUSAL_UNMAPPABLE_PLACEHOLDER,
-        )
-        service = _service(monkeypatch, refusal)
-
-        with pytest.raises(CriterionRefused) as caught:
-            service._build_seeded_eligibility_rule(
-                criterion=ARISTOTLE_EXCL_26_PLACEHOLDER, codeset_id=41, exclusion=True
-            )
-
-        assert caught.value.code == REFUSAL_UNMAPPABLE_PLACEHOLDER
-        assert caught.value is refusal
-
-    def test_should_not_touch_a_refusal_the_seed_did_not_cause(self, monkeypatch):
-        """A value filter the CDM table cannot read is refused AFTER the mapper answered
-        and has nothing to do with which text seeded it. Re-coding it would attribute a
-        Circe-side defect to extraction. CAROLINA inclusion 37 is the measured row and
-        it carries its entity; this is the same shape with the entity removed, so the
-        exemption is tested where it could actually fire."""
-        criterion = {
-            "id": 37,
-            "description": "Significant vessel stenosis",
-            "domain": "Condition",
-            "sourceText": "",
-            "valueConstraint": {
-                "op": "gte",
-                "value": 50.0,
-                "unitText": "%",
-                "referenceBound": "absolute",
-                "unitConceptId": 8554,
-            },
-            "window": {"start": -9999, "end": 0},
-            "logicType": "PRESENCE",
-            "isGroupLabel": False,
-        }
-        service = _service(monkeypatch, _mapping(["Condition"], "Significant vessel stenosis"))
-
-        with pytest.raises(CriterionRefused) as caught:
-            service._build_seeded_eligibility_rule(
-                criterion=criterion, codeset_id=7, exclusion=False
-            )
-
-        assert caught.value.code != _expected_code()
-
-    def test_should_build_the_rule_unchanged_when_a_substituted_seed_maps(
+    def test_should_refuse_the_entityless_placeholder_row_as_missing_entity_too(
         self, monkeypatch
     ):
-        """The 62 survivors. A substituted seed that maps is NOT refused -- refusing it
-        would trade 8 recovered losses for 62 new ones."""
-        service = _service(monkeypatch, _mapping(["Drug"], "Antidiabetic agent"))
+        """ARISTOTLE exclusion 26, "Investigational drug use", empty entity_text. It used
+        to reach the mapper on its description and earn `unmappable-placeholder`, the
+        one code the delivery gate permits. Refused before mapping, it now carries
+        `missing-entity-text`, which the gate does not permit: a known cost of A10's
+        removal, pinned here so it is not silent."""
+        service = _service(monkeypatch, _mapping(["Observation"], "Investigational drug"))
+        # The row as the 2026-10-12 prompt_f2 candidate store holds it (ARISTOTLE
+        # exclusion 32): extracted, so it carries the protocol line it came from.
+        extracted = {
+            **ARISTOTLE_EXCL_26_PLACEHOLDER,
+            "protocolLine": "Use of an unapproved, investigational drug or device within "
+                            "the past 30 days",
+        }
 
-        rule = service._build_seeded_eligibility_rule(
-            criterion=EMPA_REG_INCL_16, codeset_id=7, exclusion=False
-        )
+        with pytest.raises(CriterionRefused) as caught:
+            service._build_seeded_eligibility_rule(
+                criterion=extracted, codeset_id=41, exclusion=True
+            )
 
-        assert rule["rule"]["expression"]["CriteriaList"][0]["Criteria"]["DrugExposure"][
-            "CodesetId"
-        ] == 7
+        assert caught.value.code == _expected_code()
+        assert caught.value.code != REFUSAL_UNMAPPABLE_PLACEHOLDER
 
 
 # ---------------------------------------------------------------------------
@@ -481,32 +405,13 @@ class TestTheBreachIsRecordedWhetherOrNotItCost:
         substituted" is a claim an absent key cannot make."""
         assert criterion_seed.MISSING_ENTITY_CRITERIA_KEY == "_missingEntityCriteria"
 
-    def test_should_record_a_survivor_and_name_its_substituted_seed(self, monkeypatch):
-        """CARMELINA inclusion 12 mapped on `description` because `sourceText` was empty.
-        It shipped with a concept set and nothing anywhere said the mapper had been asked
-        about the criterion's name."""
-        criterion = {
-            "id": 12,
-            "description": "Exclusion of GLP-1/DPP-4/SGLT-2",
-            "domain": "Drug",
-            "sourceText": "",
-            "window": None,
-            "logicType": "ABSENCE",
-            "isGroupLabel": False,
-        }
-        record = criterion_seed.missing_entity_record(criterion, role="inclusion", mapped=True)
-
-        assert record["criterionId"] == "12"
-        assert record["role"] == "inclusion"
-        assert record["seed"] == "Exclusion of GLP-1/DPP-4/SGLT-2"
-        assert record["outcome"] == "mapped"
-
     def test_should_record_a_loss_under_a_distinct_outcome(self):
         record = criterion_seed.missing_entity_record(
             EMPA_REG_INCL_15, role="inclusion", mapped=False
         )
         assert record["outcome"] == "unmapped"
-        assert record["seed"] == "Drug naive"
+        # No seed: there was no entity to ask about, and no description is substituted.
+        assert record["seed"] == ""
 
 
 # ---------------------------------------------------------------------------
@@ -578,41 +483,17 @@ class TestTheArtifactCarriesTheRecord:
         )
         assert circe[criterion_seed.MISSING_ENTITY_CRITERIA_KEY] == []
 
-    def test_should_record_a_substituted_seed_that_mapped(self, generator):
-        """The half `_unmappedCriteria` structurally cannot hold. 62 of the grounded
-        store's 70 substituted seeds are this row: a concept set minted from a
-        human-facing label, shipped, and recorded nowhere."""
+    def test_should_record_an_entityless_criterion_as_refused_not_mapped(self, generator):
+        """EMPA-REG inclusion 16 used to map on its description ("Pre treated with any
+        background therapy") and ship. It is refused and recorded instead."""
         circe = generator._build_seeded_target_circe(
             _eligibility([{**EMPA_REG_INCL_16, "id": "inc-1"}])
         )
         records = circe[criterion_seed.MISSING_ENTITY_CRITERIA_KEY]
-        assert len(records) == 1
-        assert records[0]["outcome"] == "mapped"
-        assert records[0]["seed"] == "Pre treated with any background therapy"
-        # ...and it is NOT a loss: the rule shipped.
-        assert circe["_unmappedCriteria"] == []
-        assert circe["_generationCensus"]["mapped"] == 1
-
-    def test_should_record_a_substituted_seed_that_was_lost_and_recode_its_refusal(
-        self, generator
-    ):
-        """Both halves on one criterion: the record says the mandate was breached, and
-        `_unmappedCriteria` stops blaming the vocabulary for it."""
-        circe = generator._build_seeded_target_circe(
-            _eligibility(
-                [{**EMPA_REG_INCL_15, "id": "inc-1", "description": UNMAPPABLE}]
-            )
-        )
-        records = circe[criterion_seed.MISSING_ENTITY_CRITERIA_KEY]
-        assert [r["outcome"] for r in records] == ["unmapped"]
-
+        assert [(r["outcome"], r["seed"]) for r in records] == [("unmapped", "")]
         unmapped = circe["_unmappedCriteria"]
-        assert len(unmapped) == 1
-        assert unmapped[0]["refusalCode"] == _expected_code()
-        # The mapper's verdict is chained, not discarded, so the delivered reason names
-        # both stages -- `describe_mapping_failure` reads `__cause__` one level deep.
-        assert "No concept mapping found" in unmapped[0]["reason"]
-        assert REFUSAL_NO_CONCEPT_MAPPING in unmapped[0]["refusalDetail"]
+        assert [u["refusalCode"] for u in unmapped] == [_expected_code()]
+        assert circe["_generationCensus"]["mapped"] == 0
 
     def test_should_not_record_rows_that_never_reach_the_mapper(self, generator):
         """A group label and a demographic have no seed to substitute. Recording them

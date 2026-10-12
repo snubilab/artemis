@@ -1477,10 +1477,8 @@ class LogicDecomposer:
             lambda rules: self._repair_inclusive_upper_bounds(rules, ledger),
         )
 
-        # Split-band repair BEFORE Pattern E: a band's two halves are adjacent flat
-        # rules, and Pattern E rewrites the flat list (it merges cluster members into
-        # an ANY group), so running it first would hide one half of a pair behind a
-        # group. Exclusion rules are not repaired: `_build_criteria` forces
+        # Split-band repair: a band's two halves are adjacent flat rules. Exclusion rules
+        # are not repaired: `_build_criteria` forces
         # `logic_type="ABSENCE"` on every one of them, so the PRESENCE lower bound a
         # pair needs cannot exist on that side -- measured 0 PRESENCE exclusion rules
         # across all 65 current-model IR caches.
@@ -1490,15 +1488,15 @@ class LogicDecomposer:
 
         # ...then the tiers that band leaves adjacent. Bands must be whole before they
         # can be recognised as alternatives, so this runs second and both run before
-        # Pattern E, which rewrites the flat list into groups of its own.
+        # anything that groups the flat list.
         inclusion_rules = _gated(
             "band-tier", lambda rules: self._repair_band_tiers(rules, ledger)
         )
 
-        # Pattern E post-parse repair: merge flat CV/risk factor OR groups
-        inclusion_rules = _gated(
-            "pattern-e", lambda rules: self._repair_pattern_e(rules, ledger)
-        )
+        # The former "Pattern E" repair -- merging flat inclusion rules whose entity text
+        # hit one of four keyword clusters into an ANY group -- is removed (RFC-016 step 2,
+        # inventory A2): it decided grouping from words. Grouping is the model's own
+        # (`sub_criteria` / `group_type`) and the relation the group's line states.
 
         # C2Q-inspired post-parse validation
         self._validate_measurement_rules(inclusion_rules, "inclusion")
@@ -1851,58 +1849,6 @@ class LogicDecomposer:
             if rule.sub_criteria:
                 self._validate_measurement_rules(rule.sub_criteria, rule_type)
     
-    # --- Pattern E keyword clusters ---
-    # ORDER MATTERS: more-specific clusters must come before less-specific ones.
-    # "acs" must precede "cv_prior" because "acute coronary syndrome" contains
-    # "coronary" which would otherwise match cv_prior first.
-    _PATTERN_E_CLUSTERS: dict = {
-        "acs": [
-            "stemi", "st-elevation", "nstemi", "non-st-elevation",
-            "unstable angina", "acute coronary",
-        ],
-        "cv_prior": [
-            "mi", "myocardial infarction", "stroke", "tia", "transient ischemic",
-            "revascular", "angioplasty", "coronary", "bypass", "cabg", "stenosis",
-            "peripheral artery", "peripheral vascular", "carotid", "heart failure",
-            "renal failure", "chronic kidney", "ckd",
-        ],
-        "cv_risk": [
-            "microalbuminuria", "proteinuria", "hypertension", "lvh",
-            "left ventricular hypertrophy", "ankle-brachial", "abi",
-            "retinopathy", "neuropathy",
-            "egfr", "glomerular filtration",
-        ],
-        "metabolic": [
-            "diabetes", "t2dm", "obesity", "metabolic", "dyslipidemia", "hyperlipidemia",
-        ],
-    }
-
-    @staticmethod
-    def _match_cluster(rule: "Criteria") -> Optional[str]:
-        """Return cluster name if rule's entity_text or name matches a cluster keyword.
-
-        Uses word-boundary matching for short keywords (<=4 chars) to prevent
-        false positives from substring collisions (e.g. 'mi' inside 'mellitus').
-        """
-        import re
-
-        text = " ".join(filter(None, [rule.entity_text, rule.name])).lower()
-        for cluster, keywords in LogicDecomposer._PATTERN_E_CLUSTERS.items():
-            for kw in keywords:
-                if len(kw) <= 4:
-                    # Use word-boundary regex for short abbreviations
-                    if re.search(r"\b" + re.escape(kw) + r"\b", text):
-                        return cluster
-                else:
-                    if kw in text:
-                        return cluster
-        return None
-
-    @staticmethod
-    def _is_flat_rule(rule: "Criteria") -> bool:
-        """A flat rule has no sub_criteria and group_type ALL."""
-        return not rule.sub_criteria and rule.group_type == "ALL"
-
     @staticmethod
     def _record_demotions(ledger: "RepairLedger", members: list, group_name: str,
                           *, action: str) -> None:
@@ -1943,9 +1889,8 @@ class LogicDecomposer:
     def _build_any_group(name: str, run: list) -> "Criteria":
         """One ANY group over `run`, preserving each member unchanged.
 
-        The single group builder: `_repair_pattern_e` (CV/risk clusters) and
-        `_repair_band_tiers` (alternative bands on one analyte) both call it, so a
-        group's shape is decided once rather than in each repair that wants one.
+        The single group builder, called by `_repair_band_tiers` (alternative bands on
+        one analyte), so a group's shape is decided in one place.
 
         A synthesised label has no JSON of its own to read a line from -- yet
         `_criteria_from_ir` emits it as a store row alongside its members, and a row
@@ -2098,70 +2043,6 @@ class LogicDecomposer:
                               for m in members),
                 )
             i = j
-        return result
-
-    @staticmethod
-    def _repair_pattern_e(rules: list, ledger: "RepairLedger" = None) -> list:
-        """
-        Post-parse repair: merge flat inclusion rules that match the same
-        CV/risk cluster into a single ANY group.
-
-        Scans all rules (not just consecutive) and groups by cluster.
-        Merges if 2+ flat rules belong to the same cluster.
-        Already-grouped rules (with sub_criteria) are untouched.
-        """
-        ledger = ledger if ledger is not None else RepairLedger()
-        if not rules:
-            return rules
-
-        # Pass 1: collect flat rules by cluster (non-consecutive OK)
-        cluster_buckets: dict[str, list[int]] = {}
-        for i, rule in enumerate(rules):
-            if not LogicDecomposer._is_flat_rule(rule):
-                continue
-            cluster = LogicDecomposer._match_cluster(rule)
-            if cluster is not None:
-                cluster_buckets.setdefault(cluster, []).append(i)
-
-        # Determine which indices to merge (cluster size >= 2)
-        merge_indices: set[int] = set()
-        merge_map: dict[int, str] = {}  # index → cluster name
-        for cluster, indices in cluster_buckets.items():
-            if len(indices) >= 2:
-                for idx in indices:
-                    merge_indices.add(idx)
-                    merge_map[idx] = cluster
-
-        if not merge_indices:
-            return rules
-
-        # Pass 2: build result, inserting merged groups at first occurrence
-        result: list = []
-        emitted_clusters: set[str] = set()
-        for i, rule in enumerate(rules):
-            if i not in merge_indices:
-                result.append(rule)
-                continue
-
-            cluster = merge_map[i]
-            if cluster in emitted_clusters:
-                continue  # already merged into group
-
-            # Collect all rules in this cluster (preserving original order)
-            run = [rules[idx] for idx in cluster_buckets[cluster]]
-            cluster_label = cluster.replace("_", " ").title()
-            group_name = f"{cluster_label} (OR group)"
-            merged = LogicDecomposer._build_any_group(group_name, run)
-            LogicDecomposer._record_demotions(ledger, run, group_name,
-                                              action="demoted-into-pattern-e-group")
-            logger.info(
-                "[Agent 1] Pattern E repair: merged %d non-consecutive '%s' rules into ANY group",
-                len(run),
-                cluster,
-            )
-            result.append(merged)
-            emitted_clusters.add(cluster)
-
         return result
 
     def _build_or_refuse(self, data: dict, refusals: "RepairLedger", *, role: str,
