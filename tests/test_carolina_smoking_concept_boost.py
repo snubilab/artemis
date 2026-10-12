@@ -196,13 +196,22 @@ class TestBoostedCandidatesAreScoredNotForceRanked:
     def test_boost_final_rank_is_not_always_first(self):
         """A boosted candidate does not automatically win the whole pool — its rank
         is a function of the computed score, not insertion order or a hardcoded
-        top-1 placement."""
+        top-1 placement.
+
+        With the boost it does rank first on the real pool once concept names are no
+        longer read (RFC-016 §4, C4: before, a name-overlap boost on other candidates
+        happened to outrank it). So the test pushes its distance past the farthest
+        candidate in the pool: a computed rank then leaves first place, a forced one
+        would not."""
         payload = _fixture()
+        far = max(c["distance"] for c in payload["candidates"]) + 5.0
+        for row in payload["candidates"]:
+            if row["concept_id"] == TARGET_A:
+                row["distance"] = far
         retriever = _retriever(concept_weights={TARGET_A: -0.25, TARGET_B: -0.25})
         ranked = _ranked_ids(retriever, payload, n=len(payload["candidates"]))
 
         assert ranked[0] != TARGET_A
-        assert ranked[0] != TARGET_B
 
 
 # --------------------------------------------------------------------------- #

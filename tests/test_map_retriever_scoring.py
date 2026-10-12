@@ -119,13 +119,12 @@ class TestVocabPreferenceDrug:
     def test_rxnorm_beats_rxnorm_extension(self):
         """Drug query: plain RxNorm should rank above RxNorm Extension at equal distance.
 
-        Both candidates carry the SAME name on purpose. The name-match boost is worth
-        -0.15 for an exact hit against -0.08 for a substring, which is larger than the
-        0.10 the vocabulary entries are separated by -- so pairing a bare ingredient
-        against a packaged form ('sitagliptin 32.1 MG Oral Tablet') produces a test that
-        passes even with the Drug preferences deleted outright. RxNorm Extension does
-        carry ingredient-named Drug rows (HEMOGLOBIN among them), so an equal-name pair
-        is the realistic case as well as the sensitive one.
+        Both candidates carry the SAME name on purpose. A name-match boost (-0.15 exact,
+        -0.08 substring) used to outweigh the 0.10 the vocabulary entries are separated
+        by, so a bare ingredient against a packaged form passed with the Drug preferences
+        deleted outright; that boost is gone (RFC-016 §4, C4), and the equal-name pair
+        stays the realistic case -- RxNorm Extension carries ingredient-named Drug rows
+        (HEMOGLOBIN among them).
         """
         candidates = [
             {

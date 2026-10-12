@@ -193,7 +193,9 @@ class TestBatchSearchScoring:
         icd = next(c for c in candidates if c.vocabulary_id == "ICD10CM")
         assert snomed.adjusted_score < icd.adjusted_score
 
-    def test_applies_exact_match_boost(self, retriever, mock_collection):
+    def test_does_not_score_concept_names(self, retriever, mock_collection):
+        """RFC-016 §4 (C4): a name equal to the query no longer earns a boost, so two
+        candidates with the same distance and metadata score the same."""
         mock_collection.query.return_value = _make_query_result(
             ids_per_query=[["1234", "5678"]],
             metadatas_per_query=[[
@@ -209,7 +211,7 @@ class TestBatchSearchScoring:
         candidates = result["heart failure"]
         exact = next(c for c in candidates if c.concept_name == "Heart failure")
         other = next(c for c in candidates if c.concept_name == "Cardiac insufficiency")
-        assert exact.adjusted_score < other.adjusted_score
+        assert exact.adjusted_score == other.adjusted_score
 
 
 def _make_single_query_result(query_text: str) -> dict:
