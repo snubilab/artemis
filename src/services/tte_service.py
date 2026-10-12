@@ -1241,8 +1241,6 @@ class TTEService:
         return self._get_comparison_mode(study) == "explicit_comparator"
 
     # Defect A/C fix (ADR-019): drug-anchored entry + active-comparator design.
-    _PLACEBO_ARM_NAMES = {"sugar pill", "sham"}
-
     def _drug_anchored_entry(self) -> bool:
         """True when drug-anchored entry mode (Defect A / ADR-019) is enabled."""
         return os.environ.get("TTE_DRUG_ANCHORED_ENTRY", "").strip().lower() in ("1", "true", "yes")
@@ -1261,10 +1259,24 @@ class TTEService:
         """:returns: False only when the ablation env var is explicitly set to 1."""
         return os.environ.get(self._EXACT_INGREDIENT_ABLATION_ENV, "").strip() != "1"
 
-    def _is_placebo_arm(self, name: str) -> bool:
-        """True when an arm denotes placebo/no-drug (no real-world cohort possible)."""
-        n = (name or "").strip().lower()
-        return (not n) or ("placebo" in n) or (n in self._PLACEBO_ARM_NAMES)
+    def _comparator_arm_is_placebo(self, study: dict[str, Any]) -> bool | None:
+        """Whether the study's comparator arm delivers no drug, from the trial registry.
+
+        RFC-016 §4 (A22): read off the cached ClinicalTrials.gov ``armGroups[].type``
+        (`ctgov_arm_types.comparator_is_placebo`), never off the arm name. None means the
+        registry does not settle it -- no cached record, or active and placebo comparators
+        side by side -- and the caller then builds neither comparator variant.
+
+        :param study: the stored study, carrying ``nctId``.
+        :returns: True for a placebo/sham/no-intervention comparator, False for an active
+            one, None when undecidable.
+        """
+        from src.services.ctgov_arm_types import (
+            comparator_is_placebo,
+            load_cached_arm_group_types,
+        )
+
+        return comparator_is_placebo(load_cached_arm_group_types(study.get("nctId")))
 
     def apply_artifact(
         self, artifact_id: str, target_sections: list[str], base_study_version: int
@@ -4791,6 +4803,21 @@ class TTEService:
         treatment_arm_name = (
             (treatment_arms[0].get("name") or "").strip() if treatment_arms else ""
         )
+        # Asked once per study, of the trial registry rather than of an arm's name, and
+        # only where the answer chooses the comparator's build.
+        asks_registry = (
+            len(treatment_arms) > 1
+            and not self._uses_explicit_comparator(study)
+            and self._drug_anchored_entry()
+        )
+        comparator_is_placebo = self._comparator_arm_is_placebo(study) if asks_registry else None
+        if asks_registry and comparator_is_placebo is None:
+            logging.warning(
+                "[TTE] study %s (%s): the trial registry does not say whether the "
+                "comparator arm is a placebo, so it is built as the derived disease-based "
+                "comparator, neither active- nor placebo-comparator",
+                study_id, study.get("nctId"),
+            )
         for index, arm in enumerate(treatment_arms):
             arm_name = (arm.get("name") or "").strip()
             role = "treatment" if index == 0 else "comparator" if index == 1 else f"arm_{index + 1}"
@@ -4805,14 +4832,14 @@ class TTEService:
                 is_derived_comparator
                 and self._drug_anchored_entry()
                 and bool(arm_name)
-                and not self._is_placebo_arm(arm_name)
+                and comparator_is_placebo is False
             )
             # ADR-028: placebo arm has no real-world cohort. Recommend a CV-neutral
             # active comparator (mock-approved HITL) instead of the legacy drug-ABSENCE.
             is_placebo_comparator = (
                 is_derived_comparator
                 and self._drug_anchored_entry()
-                and self._is_placebo_arm(arm_name)
+                and comparator_is_placebo is True
             )
 
             arm_key = f"arm_{index}"
