@@ -629,3 +629,27 @@ def test_should_segment_pmc_full_text_through_the_step(monkeypatch):
     )
     criteria = pmc_fetcher.get_pmc_eligibility("0")
     assert criteria == {kind: expected_items(source, kind) for kind in KINDS}
+
+
+def test_should_not_emit_a_last_criterion_that_no_verified_fragment_ends():
+    """With neither the last criterion's end nor the section's end in the text, nothing
+    bounds that criterion: slicing it to the end of the part would hand Agent 1 the rest
+    of the document as one criterion. It is not emitted, and the rejection says why."""
+    source = "ARISTOTLE.protocol"
+    baseline = segment_eligibility(text_of(source), respond=TruthOracle(source)).criteria()
+
+    def edit(chunk, payload):
+        section = payload.get("exclusion")
+        if section:
+            if section["end"]:
+                section["end"] = "prior to administration of the investigational product."
+            for item in section["items"]:
+                if item["start"].startswith("Women of child bearing potential (WOCBP) unwilling"):
+                    item["end"] = "prior to administration of the investigational product."
+        return payload
+
+    result = segment_eligibility(text_of(source), respond=TruthOracle(source, edit=edit))
+    assert result.criteria()["exclusion"] == baseline["exclusion"][:-1]
+    reasons = {(r.field, r.reason) for r in result.rejected}
+    assert ("items.end", REASON_NOT_FOUND) in reasons and ("end", REASON_NOT_FOUND) in reasons
+    assert ("items.start", segmentation.REASON_UNBOUNDED) in reasons

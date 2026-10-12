@@ -86,6 +86,7 @@ REASON_INVALID = "not-the-requested-object"
 REASON_CALL_FAILED = "call-failed"
 REASON_UNMARKED = "never-marked"
 REASON_EMPTY = "empty-after-interruptions"
+REASON_UNBOUNDED = "no-verified-end"
 
 
 SEGMENTATION_SYSTEM_PROMPT = """You mark where the eligibility criteria of a clinical trial \
@@ -361,7 +362,7 @@ class _Marks:
 
     starts: list[tuple[int, Any, int, bool]] = field(default_factory=list)
     ends: list[tuple[int, Any, int]] = field(default_factory=list)
-    #: criterion start offset -> [end offset or None, start fragment, part, part end,
+    #: criterion start offset -> [end offset or None, start fragment, part,
     #: whether any part offered an end fragment for it]
     items: dict[int, list[Any]] = field(default_factory=dict)
     interruptions: set[str] = field(default_factory=set)
@@ -420,17 +421,11 @@ def _read_section(
                 tail_end = tail[1]
         known = marks.items.get(head[0])
         if known is None:
-            marks.items[head[0]] = [
-                tail_end,
-                head_fragment,
-                chunk.index,
-                hi,
-                tail_fragment is not None,
-            ]
+            marks.items[head[0]] = [tail_end, head_fragment, chunk.index, tail_fragment is not None]
         else:
             if known[0] is None and tail_end is not None:
                 known[0] = tail_end
-            known[4] = known[4] or tail_fragment is not None
+            known[3] = known[3] or tail_fragment is not None
 
     start_fragment = section.get(FIELD_START)
     section_start = None
@@ -512,21 +507,31 @@ def _assemble_kind(text: str, kind: str, marks: _Marks, rejected: list[Rejection
     limit = section_end if section_end is not None else len(text)
     used = []
     for offset in sorted(marks.items):
-        tail_end, fragment, part, part_end, end_offered = marks.items[offset]
+        tail_end, fragment, part, end_offered = marks.items[offset]
         if section_start <= offset < limit:
-            used.append((offset, tail_end, part, part_end, end_offered))
+            used.append((offset, tail_end, part, end_offered))
         else:
             rejected.append(
                 Rejection(kind, FIELD_ITEM_START, fragment, REASON_OUTSIDE_SECTION, part)
             )
 
     criteria: list[str] = []
-    for position, (offset, tail_end, part, part_end, end_offered) in enumerate(used):
+    for position, (offset, tail_end, part, end_offered) in enumerate(used):
         bound = used[position + 1][0] if position + 1 < len(used) else limit
         if tail_end is None:
             if not end_offered:
                 rejected.append(Rejection(kind, FIELD_ITEM_END, None, REASON_UNMARKED, part))
-            tail_end = bound if position + 1 < len(used) or section_end is not None else part_end
+            if position + 1 == len(used) and section_end is None:
+                # Nothing verified ends it: neither its own end, a next criterion, nor
+                # the section's end. Cutting at the end of the part would emit an
+                # arbitrary stretch of the document as one criterion.
+                rejected.append(
+                    Rejection(
+                        kind, FIELD_ITEM_START, marks.items[offset][1], REASON_UNBOUNDED, part
+                    )
+                )
+                continue
+            tail_end = bound
         end = min(tail_end, bound)
         kept = [
             line
