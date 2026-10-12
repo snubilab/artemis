@@ -252,7 +252,7 @@ class TestTheReplayHelper:
 
 class TestTheArmRepairsReachTheRecord:
     def test_should_keep_the_record_redundant_when_an_arm_repair_rewrites_the_survivor(self):
-        """The six arm repairs run through one method; one of them stands in for all six."""
+        """The arm repairs run through one method; one of them stands in for all of them."""
         expression = _collapsed_pair()
         service = TTEService.__new__(TTEService)
 
@@ -263,7 +263,6 @@ class TestTheArmRepairsReachTheRecord:
 
         noop = lambda e, *_stated: None  # noqa: E731
         for name in (
-            "_repair_overbroad_absence_sets",
             "_repair_entry_excluded_by_own_rule",
             "_repair_range_disjunctions",
             "_repair_restated_absences",

@@ -90,10 +90,6 @@ from src.services.entry_exclusion_repair import (
     iter_repair_candidates,
     repair_entry_exclusion_conflicts,
 )
-from src.services.overbroad_absence_repair import (
-    iter_overbroad_candidates,
-    repair_overbroad_absence_sets,
-)
 from src.services.presence_unit_repair import (
     iter_unit_candidates,
     repair_presence_unit_filters,
@@ -8045,8 +8041,8 @@ class TTEService:
         chain.__name__ = "_export_repair_chain"
         _rewrite_with_collapsed_rules(built, chain)
         # After every repair, on the file's own rules only: a repair above may already
-        # have resolved the contradiction (the over-broad-absence narrowing, the entry
-        # mirror), and a carried collapsed rule has no presence partner to contradict.
+        # have resolved the contradiction (the entry mirror), and a carried collapsed
+        # rule has no presence partner to contradict.
         self._refuse_contradicted_absences(built)
 
     def _refuse_contradicted_absences(self, base: dict[str, Any]) -> None:
@@ -8087,12 +8083,11 @@ class TTEService:
         stated_exceptions: Mapping[int, Sequence[str]] | None = None,
         provenance: CodesetProvenance | None = None,
     ) -> None:
-        """The arm-level export repairs, in their load-bearing order. Mutates ``built``."""
-        # Narrowing runs BEFORE the entry-exclusion mirror: both write to an
-        # absence concept set, and the mirror would leave the over-broad member
-        # in place and then block the narrowing, which declines on an isExcluded
-        # item. See `_repair_overbroad_absence_sets`.
-        self._repair_overbroad_absence_sets(built)
+        """The arm-level export repairs, in their load-bearing order. Mutates ``built``.
+
+        The over-broad-absence narrowing that ran first here matched a concept set's
+        NAME against vocabulary names and is deleted (RFC-016 §4, C7).
+        """
         self._repair_entry_excluded_by_own_rule(built, dict(stated_exceptions or {}))
         # Order is load-bearing: collapsing a two-sided bound into one `bt` is
         # what makes that criterion's unit filter droppable -- the unit repair
@@ -8115,58 +8110,6 @@ class TTEService:
         # `_repair_confusable_concept_set_members`.
         self._repair_confusable_concept_set_members(built)
         self._repair_presence_unit_filters(built)
-
-    def _repair_overbroad_absence_sets(self, base: dict[str, Any]) -> None:
-        """Narrow a concept set that an absence rule reads from an over-broad ancestor
-        back to the concept the set's own name states. Mutates ``base`` in place.
-
-        Measured in the 2026-09-18 cold re-extraction: CARMELINA codeset 14 and CAROLINA
-        codeset 34, both named ``'Type 1 diabetes mellitus'``, hold the single member
-        ``4130526 'Disorder of glucose metabolism'`` with ``includeDescendants``. That
-        concept's valid closure is 180 concepts and contains ``201826 Type 2 diabetes
-        mellitus`` -- what the entry event admits on -- so the absence rule removes every
-        patient the cohort enters and the definition is empty on any CDM. The same sets
-        in ``deliveries/2026-09-12/`` hold ``201254 Type 1 diabetes mellitus`` (25
-        concepts, excluding 201826), so this is a regression in one resolution path
-        rather than a long-standing shape.
-
-        Runs FIRST at this chokepoint, before
-        :meth:`_repair_entry_excluded_by_own_rule`. Both repairs write to an absence
-        concept set and they write opposite things -- this one replaces the member, that
-        one appends ``isExcluded`` items mirroring the entry set. In the other order the
-        mirror would paper over the wrong member (still matching the other 179
-        glucose-metabolism disorders) and would then make this repair decline, because an
-        ``isExcluded`` item is one of its declines. Narrowing first also leaves the mirror
-        nothing to do: once codeset 14 resolves to 201254 the entry closure is no longer
-        covered. Order against :meth:`_repair_range_disjunctions` and
-        :meth:`_repair_presence_unit_filters` is free, since both read only
-        ``Measurement`` criteria and a Measurement criterion is a decline here.
-
-        The five conditions, the DOMAIN and direction gates inherited from
-        :meth:`_repair_stale_drug_concept_sets`, and why a PRESENCE criterion declines
-        (EMPA-REG's ``'Dyslipidemia'``) live in
-        :mod:`src.services.overbroad_absence_repair`; this is the wiring.
-
-        Same two properties as its three siblings: a DB-free pre-gate, so a payload with
-        no single-member absence set costs no round trip; and a vocabulary failure that
-        propagates rather than silently shipping the set that empties the cohort.
-        """
-        if not next(iter_overbroad_candidates(base), None):
-            return
-
-        from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
-        from src.services.overbroad_absence_repair import PostgresConceptCatalog
-
-        items = items_of_cohort(base)
-        if not items:
-            return
-
-        from src.settings import settings
-
-        with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
-            lookup = vocab.prefetch(items)
-        with PostgresConceptCatalog(settings.DATABASE_URL, settings.CDM_SCHEMA) as catalog:
-            repair_overbroad_absence_sets(base, lookup, catalog)
 
     def _repair_entry_excluded_by_own_rule(
         self, base: dict[str, Any], stated_exceptions: Mapping[int, Sequence[str]]

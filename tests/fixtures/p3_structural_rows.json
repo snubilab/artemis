@@ -2674,5 +2674,108 @@
     "Substance Concentration"
    ]
   ]
+ },
+ "c7_carmelina_t1dm": {
+  "source": "verify_0918_carmelina_comparator",
+  "concept_set_14": {
+   "id": 14,
+   "name": "Type 1 diabetes mellitus",
+   "expression": {
+    "items": [
+     {
+      "concept": {
+       "CONCEPT_ID": 4130526,
+       "CONCEPT_NAME": "Disorder of glucose metabolism",
+       "DOMAIN_ID": "Condition",
+       "VOCABULARY_ID": "SNOMED",
+       "CONCEPT_CLASS_ID": "Disorder",
+       "STANDARD_CONCEPT": "S",
+       "STANDARD_CONCEPT_CAPTION": "Standard",
+       "CONCEPT_CODE": "",
+       "INVALID_REASON": null,
+       "INVALID_REASON_CAPTION": null
+      },
+      "includeDescendants": true,
+      "includeMapped": false,
+      "isExcluded": false
+     }
+    ]
+   }
+  },
+  "rule_3": {
+   "name": "Type 1 diabetes mellitus",
+   "expression": {
+    "Type": "ALL",
+    "CriteriaList": [
+     {
+      "Criteria": {
+       "ConditionOccurrence": {
+        "CodesetId": 14
+       }
+      },
+      "StartWindow": {
+       "Start": {
+        "Days": 9999,
+        "Coeff": -1
+       },
+       "End": {
+        "Days": 0,
+        "Coeff": 1
+       }
+      },
+      "RestrictVisit": false,
+      "IgnoreObservationPeriod": false,
+      "Occurrence": {
+       "Type": 0,
+       "Count": 0
+      }
+     }
+    ],
+    "DemographicCriteriaList": [],
+    "Groups": []
+   }
+  },
+  "vocabulary_concepts": {
+   "query": "SELECT concept_id, concept_name, domain_id, vocabulary_id, concept_class_id, standard_concept, concept_code, invalid_reason FROM synthea23m.concept WHERE concept_id = ANY(%s) ORDER BY 1",
+   "params": [
+    [
+     4130526,
+     201254,
+     201826
+    ]
+   ],
+   "rows": [
+    [
+     201254,
+     "Type 1 diabetes mellitus",
+     "Condition",
+     "SNOMED",
+     "Disorder",
+     "S",
+     "46635009",
+     null
+    ],
+    [
+     201826,
+     "Type 2 diabetes mellitus",
+     "Condition",
+     "SNOMED",
+     "Disorder",
+     "S",
+     "44054006",
+     null
+    ],
+    [
+     4130526,
+     "Disorder of glucose metabolism",
+     "Condition",
+     "SNOMED",
+     "Disorder",
+     "S",
+     "126877002",
+     null
+    ]
+   ]
+  }
  }
 }

@@ -363,7 +363,6 @@ class TestTheExportRepairReadsTheField:
     def test_should_hand_the_map_to_the_entry_repair_through_the_export_chain(self, monkeypatch):
         svc = TTEService.__new__(TTEService)
         seen: list[Any] = []
-        monkeypatch.setattr(svc, "_repair_overbroad_absence_sets", lambda built: None)
         monkeypatch.setattr(
             svc, "_repair_entry_excluded_by_own_rule", lambda built, stated: seen.append(stated)
         )
