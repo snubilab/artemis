@@ -8235,7 +8235,7 @@ class TTEService:
         not compare unit filters at all, because the finding is that the absence restates
         the presence's bounds in the presence's own polarity, which holds under any unit.
 
-        The five conditions, the three satisfiable shapes that must decline, the
+        The four conditions, the three satisfiable shapes that must decline, the
         deliberate divergence from the gold ``!bt`` shape, and what removing a rule does to
         the delivery gate's rule-multiset check live in
         :mod:`src.services.restated_absence_repair`; this is the wiring. Same two
