@@ -4,6 +4,7 @@
 **날짜**: 2026-10-12
 **포함**: RFC-014(결합 관계·시점), RFC-015(기록 요구·예외). 이 문서가 두 RFC의 실행 범위를 합친다.
 **근거**: `docs/inventory/2026-10-12_text_rules.{md,json}`, 가드 `tests/test_no_text_rules.py`(pending 298건), 계획 `todolist/20261012_095201_remove_examples_and_text_rules.md` P3·P4
+**알려진 한계(6절 2단계, 2026-10-12 후보 저장소에서 확인)**: `relation`은 한 줄의 하위 항목 전체에 관계 하나를 적고, `timing`은 규칙 하나에 값 하나를 적는다. 그래서 세 경우는 이 필드로 표현할 수 없다. (1) "X 그리고 (A 또는 B)" 꼴의 줄: CAROLINA 배제 [17](NYHA class III 또는 IV인 울혈성 심부전)과 [20](폐경 전 여성의 수유·임신·피임, 하위 항목 16개). `all`로 적으면 모든 하위 항목 기록이 있는 환자만 배제하고, `any`로 적으면 지금처럼 하나만 있어도 배제한다. (2) 예정된 사건과 과거 사건을 한 줄에 적은 CAROLINA [14]와 PLATO [6]. `prospective`로 적으면 과거 부분까지 빠지고, `prior`로 적으면 지금처럼 과거 기간 규칙으로 나가며 `_windowDisagreement`가 기록된다. (3) PLATO "≥2 of the following": Agent 1 IR과 저장소에 하위 항목이 1개만 있어 `at_least` 2를 적용할 수 없다. (1)·(2)는 추출 단계가 중첩 묶음을 내거나 줄을 나눠야, (3)은 추출 단계가 하위 항목을 모두 내야 고칠 수 있다.
 
 ## 구현 현황 (2026-10-12, `fix/0923-reply` 기준)
 

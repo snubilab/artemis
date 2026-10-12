@@ -240,6 +240,15 @@ class Criteria(BaseModel):
     # the field existed; the annotation step fills the store row's equivalent then.
     excepted_entities: List[ExceptedEntity] = Field(default_factory=list)
 
+    # How the protocol line combines the members of a split this criterion's planner made
+    # (RFC-016 step 2, RFC-014 §2-1), recorded only when `relation_span` is a substring of
+    # `source_text`. None on every criterion the planner did not split, and on a split whose
+    # members the line does not name. The builder derives the group's CIRCE Type from it.
+    # Values are `criterion_annotation.Relation`; only `check_relation`-verified ones are set.
+    relation: Optional[str] = None
+    relation_span: Optional[str] = None
+    cardinality: Optional[int] = None
+
     @model_validator(mode="after")
     def _a_leaf_needs_a_domain(self) -> "Criteria":
         """Refuse a missing domain on a criterion that emits a rule of its own.

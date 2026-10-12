@@ -1,0 +1,571 @@
+{
+ "about": "LEADER (NCT01179048) Agent 1 IR, target arm, copied verbatim from a read-only cache. Its flat inclusion rules are what the removed Pattern E repair (inventory A2) merged into 'Cv Prior (OR group)' and 'Cv Risk (OR group)'.",
+ "source": {
+  "path": "data/cache/agent1_ir/NCT01179048_vllm_google_gemma-4-E4B-it_e833c06829935f34.json",
+  "sha256": "77d769fc975d0ef3369de12b0c782f8bccf7a38027f7ca199659e95badc78175"
+ },
+ "target": {
+  "primary_criteria": {
+   "domain": "Drug",
+   "entity_text": "liraglutide",
+   "limit": "First"
+  },
+  "inclusion_rules": [
+   {
+    "name": "Age >= 50 years AND (CV/Cerebrovascular/Peripheral Vascular Disease OR Chronic Renal Failure OR Chronic Heart Failure) OR (Age >= 60 years AND Other Specified Risk Factors)",
+    "domain": "Demographics",
+    "entity_text": null,
+    "source_text": "Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Ankle-brachial index < 0.9",
+    "domain": "Measurement",
+    "entity_text": "Ankle-brachial index",
+    "source_text": "Ankle-brachial index <0.9",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "lt",
+     "value": 0.9,
+     "referenceBound": "absolute"
+    }
+   },
+   {
+    "name": "Anti-diabetic drug naive OR treated with OADs OR treated with human NPH insulin or long-acting insulin analogue or premixed insulin",
+    "domain": "Drug",
+    "entity_text": null,
+    "source_text": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -365,
+     "end": 0
+    },
+    "sub_criteria": [
+     {
+      "name": "Anti-diabetic drug naive",
+      "domain": "Drug",
+      "entity_text": "oral anti-diabetic drugs",
+      "source_text": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+      "logic_type": "ABSENCE",
+      "window": {
+       "start": -365,
+       "end": 0
+      }
+     },
+     {
+      "name": "Treated with OADs",
+      "domain": "Drug",
+      "entity_text": "oral anti-diabetic drugs",
+      "source_text": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -365,
+       "end": 0
+      }
+     },
+     {
+      "name": "Treated with human NPH insulin or long-acting insulin analogue or premixed insulin",
+      "domain": "Drug",
+      "entity_text": "human NPH insulin",
+      "source_text": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -365,
+       "end": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "Anti-diabetic drug naive OR treated with OADs OR treated with human NPH insulin or long-acting insulin analogue or premixed insulin",
+    "domain": "Drug",
+    "entity_text": null,
+    "source_text": "Anti-diabetic drug naïve or treated with one or more oral anti-diabetic drugs or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -365,
+     "end": 0
+    },
+    "sub_criteria": [
+     {
+      "name": "Anti-diabetic drug naïve",
+      "domain": "Drug",
+      "entity_text": "oral anti-diabetic drugs",
+      "source_text": "Anti-diabetic drug naïve or treated with one or more oral anti-diabetic drugs or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+      "logic_type": "ABSENCE",
+      "window": {
+       "start": -365,
+       "end": 0
+      }
+     },
+     {
+      "name": "Treated with OADs",
+      "domain": "Drug",
+      "entity_text": "oral anti-diabetic drugs",
+      "source_text": "Anti-diabetic drug naïve or treated with one or more oral anti-diabetic drugs or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -365,
+       "end": 0
+      }
+     },
+     {
+      "name": "Treated with human NPH insulin or long-acting insulin analogue or premixed insulin",
+      "domain": "Drug",
+      "entity_text": "human NPH insulin",
+      "source_text": "Anti-diabetic drug naïve or treated with one or more oral anti-diabetic drugs or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -365,
+       "end": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "Asymptomatic cardiac ischemia",
+    "domain": "Observation",
+    "entity_text": "cardiac ischemia",
+    "source_text": "Asymptomatic cardiac ischemia documented by positive nuclear imaging test, exercise test or dobutamine stress echo",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Chronic heart failure NYHA class II-III",
+    "domain": "Condition",
+    "entity_text": "Chronic heart failure",
+    "source_text": "Chronic heart failure NYHA class II-III",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Chronic renal failure",
+    "domain": "Condition",
+    "entity_text": "Chronic renal failure",
+    "source_text": "Chronic renal failure:",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Glycated hemoglobin >= 7.0%",
+    "domain": "Measurement",
+    "entity_text": "Glycated hemoglobin",
+    "source_text": "Glycated hemoglobin ≥7.0%",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gte",
+     "value": 7.0,
+     "referenceBound": "absolute",
+     "unitText": "%"
+    }
+   },
+   {
+    "name": "HbA1c >= 7.0%",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c",
+    "source_text": "HbA1c: 7.0% or above",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gte",
+     "value": 7.0,
+     "unitText": "%"
+    }
+   },
+   {
+    "name": "History of symptomatic CHD",
+    "domain": "Condition",
+    "entity_text": "symptomatic CHD",
+    "source_text": "History of symptomatic CHD documented by positive exercise stress test or any cardiac imaging or unstable angina with ECG changes",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Hypertension and left ventricular hypertrophy by ECG or imaging",
+    "domain": "Condition",
+    "entity_text": "Hypertension and left ventricular hypertrophy",
+    "source_text": "Hypertension and left ventricular hypertrophy by ECG or imaging",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Left ventricular systolic or diastolic dysfunction by imaging",
+    "domain": "Condition",
+    "entity_text": "Left ventricular systolic or diastolic dysfunction",
+    "source_text": "Left ventricular systolic or diastolic dysfunction by imaging",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Microalbuminuria or proteinuria",
+    "domain": "Condition",
+    "entity_text": "Microalbuminuria or proteinuria",
+    "source_text": "Microalbuminuria or proteinuria",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Age >= 60 years AND at least one of: Prior MI, Prior stroke or TIA, Prior coronary, carotid or peripheral arterial revascularization >50% stenosis",
+    "domain": "Demographics",
+    "entity_text": null,
+    "source_text": "No Prior cardiovascular disease group: Age ≥60 y and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 60.0, \"referenceBound\": \"absolute\", \"unitText\": \"y\"}",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "sub_criteria": [
+     {
+      "name": "Age (general)",
+      "domain": "Demographics",
+      "entity_text": "Age",
+      "source_text": "No Prior cardiovascular disease group: Age ≥60 y and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 60.0, \"referenceBound\": \"absolute\", \"unitText\": \"y\"}",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -9999,
+       "end": 0
+      },
+      "value_constraint": {
+       "op": "gte",
+       "value": 60.0,
+       "referenceBound": "absolute",
+       "unitText": "y"
+      }
+     },
+     {
+      "name": "Prior MI",
+      "domain": "Condition",
+      "entity_text": "Prior MI",
+      "source_text": "No Prior cardiovascular disease group: Age ≥60 y and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 60.0, \"referenceBound\": \"absolute\", \"unitText\": \"y\"}",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -9999,
+       "end": 0
+      }
+     },
+     {
+      "name": "Prior stroke or TIA",
+      "domain": "Condition",
+      "entity_text": "Prior stroke or TIA",
+      "source_text": "No Prior cardiovascular disease group: Age ≥60 y and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 60.0, \"referenceBound\": \"absolute\", \"unitText\": \"y\"}",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -9999,
+       "end": 0
+      }
+     },
+     {
+      "name": "Prior coronary, carotid or peripheral arterial revascularization >50% stenosis",
+      "domain": "Procedure",
+      "entity_text": "arterial revascularization",
+      "source_text": "No Prior cardiovascular disease group: Age ≥60 y and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 60.0, \"referenceBound\": \"absolute\", \"unitText\": \"y\"}",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -9999,
+       "end": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "Age >= 50 years AND at least one of: Prior MI, Prior cardiovascular disease",
+    "domain": "Demographics",
+    "entity_text": null,
+    "source_text": "Prior cardiovascular disease cohort: age ≥50 and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 50.0, \"referenceBound\": \"absolute\"}",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "sub_criteria": [
+     {
+      "name": "Age (general)",
+      "domain": "Demographics",
+      "entity_text": "Age",
+      "source_text": "Prior cardiovascular disease cohort: age ≥50 and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 50.0, \"referenceBound\": \"absolute\"}",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -9999,
+       "end": 0
+      },
+      "value_constraint": {
+       "op": "gte",
+       "value": 50.0,
+       "referenceBound": "absolute"
+      }
+     },
+     {
+      "name": "Prior MI",
+      "domain": "Condition",
+      "entity_text": "Prior MI",
+      "source_text": "Prior cardiovascular disease cohort: age ≥50 and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 50.0, \"referenceBound\": \"absolute\"}",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -9999,
+       "end": 0
+      }
+     },
+     {
+      "name": "Prior cardiovascular disease",
+      "domain": "Condition",
+      "entity_text": "Prior cardiovascular disease",
+      "source_text": "Prior cardiovascular disease cohort: age ≥50 and ≥1 of the following criteria: [value_constraint] {\"op\": \"gte\", \"value\": 50.0, \"referenceBound\": \"absolute\"}",
+      "logic_type": "PRESENCE",
+      "window": {
+       "start": -9999,
+       "end": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "Prior coronary, carotid or peripheral arterial revascularization >50% stenosis",
+    "domain": "Procedure",
+    "entity_text": "arterial revascularization",
+    "source_text": "Prior coronary, carotid or peripheral arterial revascularization >50% stenosis of coronary, carotid, or lower extremity arteries",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Prior stroke or TIA",
+    "domain": "Condition",
+    "entity_text": "Prior stroke or TIA",
+    "source_text": "Prior stroke or TIA",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Type 2 diabetes",
+    "domain": "Condition",
+    "entity_text": "Type 2 diabetes",
+    "source_text": "Type 2 diabetes",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "eGFR < 60 mL/min/1.73m2",
+    "domain": "Measurement",
+    "entity_text": "eGFR",
+    "source_text": " eGFR <60 mL/min/1.73m2 (Modification of Diet in Renal Disease formula)  eGFR <60 mL/min (Cockcroft-Gault formula)",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "lt",
+     "value": 60.0,
+     "referenceBound": "absolute",
+     "unitText": "mL/min/1.73m2"
+    }
+   }
+  ],
+  "exclusion_rules": [
+   {
+    "name": "Acute coronary or cerebrovascular event",
+    "domain": "Condition",
+    "entity_text": "Acute coronary or cerebrovascular event",
+    "source_text": "Acute coronary or cerebrovascular event in the previous 14 days",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -14,
+     "end": 0
+    }
+   },
+   {
+    "name": "Acute decompensation of glycemic control",
+    "domain": "Condition",
+    "entity_text": "Acute decompensation of glycemic control",
+    "source_text": "Acute decompensation of glycemic control",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Calcitonin >= 50 ng/L",
+    "domain": "Measurement",
+    "entity_text": "Calcitonin",
+    "source_text": "Calcitonin ≥50 ng/L",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gte",
+     "value": 50.0,
+     "referenceBound": "absolute",
+     "unitText": "ng/L"
+    }
+   },
+   {
+    "name": "Chronic heart failure NYHA class IV",
+    "domain": "Condition",
+    "entity_text": "Chronic heart failure",
+    "source_text": "Chronic heart failure (NYHA class IV)",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Current continuous renal replacement therapy",
+    "domain": "Procedure",
+    "entity_text": "continuous renal replacement therapy",
+    "source_text": "Current continuous renal replacement therapy",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Currently planned coronary, carotid, or peripheral artery revascularization",
+    "domain": "Procedure",
+    "entity_text": "artery revascularization",
+    "source_text": "Currently planned coronary, carotid, or peripheral artery revascularization",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "End-stage liver disease",
+    "domain": "Condition",
+    "entity_text": "End-stage liver disease",
+    "source_text": "End-stage liver disease",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Family or personal history of multiple endocrine neoplasia type 2 or familial medullary thyroid carcinoma",
+    "domain": "Condition",
+    "entity_text": "multiple endocrine neoplasia type 2 or familial medullary thyroid carcinoma",
+    "source_text": "Family or personal history of multiple endocrine neoplasia type 2 or familial medullary thyroid carcinoma",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "History of solid organ transplant or awaiting solid organ transplant",
+    "domain": "Procedure",
+    "entity_text": "solid organ transplant",
+    "source_text": "History of solid organ transplant or awaiting solid organ transplant",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Malignant neoplasm",
+    "domain": "Condition",
+    "entity_text": "Malignant neoplasm",
+    "source_text": "Malignant neoplasm",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Personal history of non-familial medullary thyroid carcinoma",
+    "domain": "Condition",
+    "entity_text": "non-familial medullary thyroid carcinoma",
+    "source_text": "Personal history of non-familial medullary thyroid carcinoma 39",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Type 1 diabetes",
+    "domain": "Condition",
+    "entity_text": "Type 1 diabetes",
+    "source_text": "Type 1 diabetes",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -9999,
+     "end": 0
+    }
+   },
+   {
+    "name": "Use of GLP-1 receptor agonist or DPP-4 inhibitor within 3 months prior to screening",
+    "domain": "Drug",
+    "entity_text": "GLP-1 receptor agonist or DPP-4 inhibitor",
+    "source_text": "Use of a GLP-1 receptor agonist (exenatide, liraglutide or other) or pramlintide or any DPP-4 inhibitor within the 3 months prior to screening",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -90,
+     "end": 0
+    }
+   },
+   {
+    "name": "Use of other insulin within 3 months prior to screening",
+    "domain": "Drug",
+    "entity_text": "insulin",
+    "source_text": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -90,
+     "end": 0
+    }
+   }
+  ]
+ }
+}

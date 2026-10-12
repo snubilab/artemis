@@ -14,16 +14,14 @@ ninth member, and those three reached no store row, no concept set and no CIRCE 
 **The cardinality has nowhere to live.** ``AT_LEAST`` was emitted zero times by anything
 under ``src/`` (``rg -c AT_LEAST src/`` exits 1). CIRCE's group expression carries
 ``Type: "AT_LEAST"`` with a ``Count``, and Atlas's own ``CriteriaGroup`` reads both, so
-the target shape was always available; nothing built it. ``circe_lint._LIST_CARDINALITY``
-already recognised the line shape and ``states_flat_disjunction`` deliberately DECLINED
-such a line -- its docstring says so outright: "CIRCE can express it, as a nested Group
-carrying a Count, and until something builds that nesting the honest answer is to decline
-the line rather than half-fix it." This is that something.
+the target shape was always available; nothing built it.
 
-The count is read from the protocol's own line, never defaulted. A line that states no
-number leaves the group exactly as it was, which is what
-``TestCardinalityIsReadFromTheLineOrDeclined`` asserts in both directions -- a count
-invented for a line that never gave one would be the same class of defect as the drop.
+The count comes from the relation the group's label states (RFC-016 step 2): the
+annotation's ``relation: at_least`` with its ``cardinality``, kept only when its
+``relation_span`` is a substring of the label's line. It is never defaulted and never read
+off the line's words any more (the former ``circe_lint.list_cardinality``, inventory A18,
+is removed). A label that states no relation leaves the group exactly as it was, which is
+what ``TestCardinalityComesFromTheStatedRelation`` asserts in both directions.
 """
 from __future__ import annotations
 
@@ -267,8 +265,15 @@ class TestGrandchildrenReachTheCirce:
 # ---------------------------------------------------------------------------
 
 def _cardinality_group(
-    line: str, *, members: int = 3, group_type: str = "ALL"
+    line: str,
+    *,
+    members: int = 3,
+    group_type: str = "ALL",
+    relation: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    """A label plus ``members`` rows; the label carries ``relation`` as its annotation."""
+    from src.services.criterion_annotation import ANNOTATION_KEY, check_relation
+
     gid = str(uuid.uuid4())
     rows = [{
         "id": 0,
@@ -289,24 +294,39 @@ def _cardinality_group(
         "groupId": gid,
         "groupType": group_type,
     } for i in range(members)]
+    if relation is not None:
+        fields, rejected = check_relation(relation, line)
+        assert rejected is None, rejected
+        rows[0][ANNOTATION_KEY] = fields
     return rows
 
 
-class TestCardinalityIsReadFromTheLineOrDeclined:
+def _at_least(span: str, count: int) -> dict[str, Any]:
+    return {"relation": "at_least", "relation_span": span, "cardinality": count}
+
+
+class TestCardinalityComesFromTheStatedRelation:
     TWO_OF = (
         "Two or more of the following risk factors: age >= 60 years, documented "
         "hypercholesterolemia, documented diabetes mellitus"
     )
     NO_NUMBER = "Documented hypertension or documented diabetes mellitus"
 
-    def test_should_emit_at_least_with_the_count_the_line_states(self, emitter):
-        expression = emitter._build_seeded_target_circe(
-            _shell(_cardinality_group(self.TWO_OF))
-        )
+    def test_should_emit_at_least_with_the_count_the_label_states(self, emitter):
+        rows = _cardinality_group(self.TWO_OF, relation=_at_least("Two or more of the following", 2))
+        expression = emitter._build_seeded_target_circe(_shell(rows))
 
         rule = expression["InclusionRules"][0]["expression"]
         assert rule["Type"] == "AT_LEAST"
         assert rule["Count"] == 2
+
+    def test_should_not_read_a_count_off_the_line_when_no_relation_is_stated(self, emitter):
+        """The line states "Two or more"; without a stated relation nothing reads it."""
+        expression = emitter._build_seeded_target_circe(_shell(_cardinality_group(self.TWO_OF)))
+
+        rule = expression["InclusionRules"][0]["expression"]
+        assert not rule["Type"].startswith("AT_")
+        assert "Count" not in rule
 
     def test_should_not_invent_a_count_for_a_line_that_states_no_number(self, emitter):
         expression = emitter._build_seeded_target_circe(
@@ -317,40 +337,33 @@ class TestCardinalityIsReadFromTheLineOrDeclined:
         assert not rule["Type"].startswith("AT_")
         assert "Count" not in rule
 
-    def test_should_decline_when_the_line_asks_for_more_members_than_survived(self, emitter):
+    def test_should_decline_when_the_label_asks_for_more_members_than_survived(self, emitter):
         """Members are lost to mapping failures. `AT_LEAST 3` over two surviving
         members is unsatisfiable, and an unsatisfiable rule empties the cohort as
         quietly as a dropped criterion does."""
         line = "At least three of the following: A, B, C, D"
+        rows = _cardinality_group(
+            line, members=2, relation=_at_least("At least three of the following", 3)
+        )
 
-        expression = emitter._build_seeded_target_circe(_shell(_cardinality_group(line, members=2)))
+        expression = emitter._build_seeded_target_circe(_shell(rows))
 
         rule = expression["InclusionRules"][0]["expression"]
         assert not rule["Type"].startswith("AT_")
 
     def test_should_tighten_a_declared_any_group_that_states_two_of(self, emitter):
-        """`ANY` is "at least one". Under a line demanding two it admits a patient with
-        a single risk factor -- looser than the protocol, and the case that actually
-        occurs: all 22 of the corpus's N>=2 cardinality groups are declared `ANY`,
-        CAROLINA's "At least two of the following CV risk factors" and PLATO's
-        ">=2 of the following" among them. Gold's CAROLINA
-        `InclusionRules[1].Groups[3]` is AT_LEAST/2 under that same line.
-        """
-        expression = emitter._build_seeded_target_circe(
-            _shell(_cardinality_group(self.TWO_OF, group_type="ANY"))
+        rows = _cardinality_group(
+            self.TWO_OF, group_type="ANY", relation=_at_least("Two or more of the following", 2)
         )
+        expression = emitter._build_seeded_target_circe(_shell(rows))
 
         rule = expression["InclusionRules"][0]["expression"]
         assert rule["Type"] == "AT_LEAST"
         assert rule["Count"] == 2
 
-    def test_should_keep_an_all_absence_group_as_all_even_under_a_cardinality_line(
-        self, emitter
-    ):
-        """SPEC-INFRA-003 REQ-004 still owns an all-ABSENCE group: N separate
-        exclusions mean absence from the UNION, and `AT_LEAST 2` over absences would
-        mean "at least two of them are absent", which retains a patient matching the
-        third."""
+    def test_should_keep_an_all_absence_group_as_all_when_no_relation_is_stated(self, emitter):
+        """SPEC-INFRA-003 REQ-004 still owns an all-ABSENCE group that states nothing:
+        N separate exclusions mean absence from the UNION."""
         rows = _cardinality_group(self.TWO_OF, group_type="ANY")
         for row in rows:
             row["logicType"] = "ABSENCE"
@@ -361,46 +374,28 @@ class TestCardinalityIsReadFromTheLineOrDeclined:
 
         assert expression["InclusionRules"][0]["expression"]["Type"] == "ALL"
 
-    def test_should_leave_a_one_of_line_alone(self, emitter):
-        """`AT_LEAST 1` and `ANY` are the same rule. Rewriting a correct row buys
-        nothing and costs a diff on every already-delivered group."""
+    def test_should_negate_a_stated_at_least_over_an_exclusion_group(self, emitter):
+        """Exclude when two or more of three are present = keep when at least two of the
+        three are absent: AT_LEAST k - N + 1 over the absence members."""
+        rows = _cardinality_group(
+            self.TWO_OF, group_type="ANY", relation=_at_least("Two or more of the following", 2)
+        )
+        for row in rows:
+            row["logicType"] = "ABSENCE"
+
         expression = emitter._build_seeded_target_circe(
-            _shell(_cardinality_group("One of the following: A, B, C"))
+            {"targetCohortName": "T", "inclusionCriteria": [], "exclusionCriteria": rows}
         )
 
         rule = expression["InclusionRules"][0]["expression"]
-        assert not rule["Type"].startswith("AT_")
+        assert (rule["Type"], rule["Count"]) == ("AT_LEAST", 2)
 
+    def test_should_emit_any_for_a_stated_at_least_one(self, emitter):
+        """`AT_LEAST 1` and `ANY` are the same rule."""
+        line = "One of the following: A, B, C"
+        rows = _cardinality_group(line, relation=_at_least("One of the following", 1))
+        expression = emitter._build_seeded_target_circe(_shell(rows))
 
-class TestListCardinalityReading:
-    """The reading itself, at its one home in `circe_lint`."""
-
-    @pytest.mark.parametrize("line,expected", [
-        ("Two or more of the following risk factors: a, b, c", 2),
-        ("at least two of the following", 2),
-        ("At least 3 of the following", 3),
-        ("Age >=60 y and >=2 of the following criteria:", 2),
-        ("≥2 of the following:", 2),
-        ("one of the following", 1),
-        ("Age ≥60 y and ≥1 of the following criteria:", 1),
-        ("Documented hypertension or documented diabetes", None),
-        ("", None),
-        (None, None),
-        # The `of` is load-bearing: this counts DRUGS, not group members, and sits in
-        # the middle of LEADER's own line.
-        ("treated with one or more oral anti-diabetic drugs", None),
-    ])
-    def test_should_read_the_number_the_line_states(self, line, expected):
-        from src.utils.circe_lint import list_cardinality
-
-        assert list_cardinality(line) == expected
-
-    def test_should_keep_declining_a_cardinality_line_as_a_flat_disjunction(self):
-        """`states_flat_disjunction` and the reading share one pattern; the boolean
-        must not move."""
-        from src.utils.circe_lint import states_flat_disjunction
-
-        assert states_flat_disjunction(
-            "Age ≥60 y and ≥1 of the following criteria: A or B"
-        ) is False
-        assert states_flat_disjunction("Prior stroke or TIA") is True
+        rule = expression["InclusionRules"][0]["expression"]
+        assert rule["Type"] == "ANY"
+        assert "Count" not in rule

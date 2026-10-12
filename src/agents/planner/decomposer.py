@@ -9,9 +9,16 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from src.utils.llm import get_llm
 from src.models.ir import ARTEMISRequest, CohortDefinition, Criteria, ExceptedEntity
 from src.agents.planner.prompts import PLANNER_SYSTEM_PROMPT, DECOMPOSITION_PROMPT
-from src.services.criterion_annotation import span_in_line
+from src.services.criterion_annotation import (
+    FIELD_CARDINALITY,
+    FIELD_RELATION,
+    FIELD_RELATION_SPAN,
+    Relation,
+    check_relation,
+    declared_group_type,
+    span_in_line,
+)
 from src.services.value_constraint import parse_value_constraint
-from src.utils.naming_words import naming_words
 
 
 def _comparison_form(text: str) -> str:
@@ -25,61 +32,31 @@ def _comparison_form(text: str) -> str:
     return " ".join(text.replace("\\", "").split()).lower()
 
 
-# Moved to `src.utils.naming_words` so `src/utils/circe_lint.py` can ask the same
-# question of a whole stored criterion without importing this module's model stack. The
-# alias is kept because gate 2 below and every existing caller read the private name.
-#
-# The moved version does NOT route through `_comparison_form`, and that is an identity
-# rather than a tolerance: `deescape` only removes backslashes, and the split pattern
-# treats a backslash as a separator like every other non-alphanumeric character, so the
-# two agree on every possible input. Re-checked against the 1,910 criterion strings of
-# the 2026-09-14 store: zero differ.
-_naming_words = naming_words
-
-
 def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Optional[str]:
     """The fragment of the protocol line that names this sub-term, or None.
 
-    The prompt ASKS the model to copy the naming fragment verbatim. This function is
-    what makes the answer worth anything: the model's own account of where a term came
-    from is exactly what cannot be taken on trust here, since ``stated: true`` on an
-    invented analyte is indistinguishable from the truth. Two gates, and a span has to
-    pass both:
+    The prompt ASKS the model to copy the naming fragment verbatim. This function is what
+    makes the answer worth anything: the model's own account of where a term came from is
+    exactly what cannot be taken on trust, since ``stated: true`` on an invented analyte is
+    indistinguishable from the truth. One gate: the span is **really present in the line**,
+    under :func:`_comparison_form`. Not a fuzzy match: fuzz is how an invention scores as a
+    reading.
 
-    1. **Really present in the line**, under :func:`_comparison_form`. Not a fuzzy
-       match: fuzz is how an invention scores as a reading.
-    2. **Shares a naming word with the sub-term it claims to name.**
+    The second gate this function used to apply -- the span must share a "naming word"
+    with the sub-term, read through an English function-word list -- is removed (RFC-016
+    §5, inventory A9): it decided meaning from words. Its known cost is accepted: a member
+    elaborated FROM an umbrella can cite the umbrella (CAROLINA's ALT sub-term citing
+    ``impaired hepatic function``) and is then counted as named by the line. Two
+    consequences follow and are deliberate: such a member is not marked as elaboration,
+    and a split of two or more such members needs a stated ``relation`` like any other
+    (:meth:`CriteriaPlanner._decompose_criterion`).
 
-    Gate 2 is not belt-and-braces; gate 1 alone is insufficient, and CAROLINA is the
-    case that shows it. Asked for a span off ``acute liver disease or impaired hepatic
-    function``, the model returned ``impaired hepatic function`` for an *ALT* sub-term.
-    That span is a perfectly real substring -- it passes gate 1 -- and it names the
-    umbrella, not the analyte. Since every elaborated member can cite the umbrella it
-    was elaborated FROM, gate 1 alone would let the whole failure through wearing a
-    grounding mark, which is worse than no mark at all. Gate 2 refuses it: the span
-    shares no word with "Alanine aminotransferase (ALT) elevation".
-
-    Gate 2 also subsumes the operand case. ``> 2X ULN`` is a real substring of a line
-    that states a threshold and names nothing; it shares no word with the analyte. (The
-    obvious alternative, ``threshold_classifier.is_headless`` (the module was deleted in
-    ``fa7c41a``; the measurement was taken before that), did NOT catch it -- measured: it
-    returned False, because ``ULN`` is not a unit ``normalize_unit`` recognises.)
-
-    Known and deliberate false negative: a line that names the sub-term by a synonym
-    the sub-term does not repeat -- ``SGPT`` decomposed into ``Alanine
-    aminotransferase`` -- shares no word and is marked elaboration though it is really
-    a reading. The asymmetry is the right way round. An under-credited reading loses
-    nothing, because the sub-term is kept either way; an over-credited elaboration is
-    the defect being fixed.
-
-    Never raises, and never drops a sub-term. Failing both gates marks the member as
-    the model's own; refusing it outright would delete a criterion the pipeline exists
+    Never raises, and never drops a sub-term. A span that fails marks the member as the
+    model's own; refusing the member outright would delete a criterion the pipeline exists
     to recover.
+
+    ``sub_term_text`` is kept in the signature for the callers; it is no longer read.
     """
-    # `sub_term_text` is deliberately not optional. Defaulted to "", gate 2 would refuse
-    # every span, so a caller that forgot the argument would silently mark every member
-    # as elaboration -- and a marking that says "all elaboration" reads exactly like one
-    # that is working.
     if not isinstance(claimed, str):
         return None
     span = claimed.strip()
@@ -88,9 +65,6 @@ def _grounded_span(claimed: object, source_text: str, sub_term_text: str) -> Opt
     if not source_text:
         return None
     if _comparison_form(span) not in _comparison_form(source_text):
-        return None
-    span_words = _naming_words(span)
-    if not span_words or not (span_words & _naming_words(sub_term_text)):
         return None
     return span
 
@@ -425,13 +399,31 @@ class CriteriaPlanner:
                     print(f"  ⊘ '{criterion.entity_text}' → split declined: {torn}")
                     return criterion
 
+                # RFC-016 step 2 (RFC-014 §2-1). How the line combines the members is the
+                # model's reading, kept only when its span is in the line. A line that names
+                # two or more of the members and states no verified relation is declined, like
+                # a torn range: the group type would otherwise be guessed from the logic alone,
+                # which is how CAROLINA's "T2DM and concurrently ... and ..." became ANY. A
+                # split whose members the line does not name is an umbrella's elaboration and
+                # reads as `any`.
+                relation, _ = check_relation(result, criterion.source_text or "")
+                named = sum(1 for sc in sub_criteria if sc.source_span)
+                if relation[FIELD_RELATION] is None and named >= 2:
+                    print(f"  ⊘ '{criterion.entity_text}' → split declined: the line names "
+                          f"{named} of {len(sub_criteria)} members and states no verified "
+                          f"relation (relation={result.get(FIELD_RELATION)!r}, "
+                          f"relation_span={result.get(FIELD_RELATION_SPAN)!r})")
+                    return criterion
+
                 criterion.sub_criteria = sub_criteria
-                # De Morgan: negating a disjunction distributes as a conjunction.
-                # "cardiovascular disease" (PRESENCE) → any sub-term qualifies → ANY.
-                # "no drug abuse" (ABSENCE) → alcohol AND opioid AND cannabis must all
-                # be absent → ALL. Using ANY here would let one absent sub-term pass the
-                # whole exclusion, silently admitting patients the protocol excludes.
-                criterion.group_type = "ALL" if criterion.logic_type == "ABSENCE" else "ANY"
+                criterion.group_type = declared_group_type(
+                    criterion.logic_type,
+                    relation[FIELD_RELATION] or Relation.ANY.value,
+                    relation[FIELD_CARDINALITY],
+                )
+                criterion.relation = relation[FIELD_RELATION]
+                criterion.relation_span = relation[FIELD_RELATION_SPAN]
+                criterion.cardinality = relation[FIELD_CARDINALITY]
 
                 # Say how many members the protocol line named and how many the model
                 # supplied. The counts are printed rather than derived later because a

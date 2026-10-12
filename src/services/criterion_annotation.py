@@ -20,6 +20,19 @@ free text with English word lists (the former ``dose_stability.py`` and
   carries the whole clause ("cancer other than non-melanoma skin cancer within last 3
   years") is mapped tail-first and the subtraction then has nothing sound to act on.
 
+RFC-016 step 2 (RFC-014) adds two more, replacing the word rules that read them off the
+line (inventory A2, A4, A18, E3):
+
+* ``relation`` (+ ``relation_span``, ``cardinality``) -- how the line combines a group's
+  members: ``all``, ``any`` or ``at_least`` N. :func:`stated_relation` hands the verified
+  value to the builder, which derives the group's CIRCE ``Type`` from it and the logic
+  (:func:`relation_group_type`). The planner states the same field when it splits a line;
+  the annotation's is read only when the planner left none.
+* ``timing`` (+ ``window_span``) -- whether the line places the criterion before entry,
+  at entry, or after it. A ``prospective`` criterion is not observable at index, so it is
+  not emitted as an occurrence; it is recorded as a skip under :data:`PROSPECTIVE_REASON`
+  (:func:`prospective_skips`).
+
 The model decides the meaning and quotes the fragment of ``protocolLine`` that supports
 it. Code checks one thing only: that each quoted fragment is a substring of the line
 (:func:`span_in_line`, the same comparison form as the planner's gate 1). A fragment that
@@ -54,7 +67,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever either prompt below changes meaning; part of the cache key.
-ANNOTATION_PROMPT_VERSION = "rfc016-step1-v1"
+ANNOTATION_PROMPT_VERSION = "rfc016-step2-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -73,6 +86,18 @@ FIELD_EXCEPTED_ENTITIES = "excepted_entities"
 FIELD_BASE_SPAN = "base_span"
 FIELD_TEXT = "text"
 FIELD_SPAN = "span"
+FIELD_RELATION = "relation"
+FIELD_RELATION_SPAN = "relation_span"
+FIELD_CARDINALITY = "cardinality"
+FIELD_TIMING = "timing"
+FIELD_WINDOW_SPAN = "window_span"
+
+#: The planner's verified relation for a criterion it split (RFC-016 §3, last paragraph),
+#: as ``{relation, relation_span, cardinality}``. Read before the annotation's own.
+PLANNER_RELATION_KEY = "plannerRelation"
+#: Where :func:`window_disagreement` records a verified ``window_span`` whose own duration
+#: is not the extracted window. A report: nothing reads it to change a rule.
+WINDOW_DISAGREEMENT_KEY = "_windowDisagreement"
 
 #: Store row keys the inputs are read from.
 _LINE = "protocolLine"
@@ -100,6 +125,16 @@ CONDITIONAL_EXPLANATION = (
 #: Where a conditional skip was decided.
 SOURCE_ANNOTATION = "annotation"
 SOURCE_EXTRACTION = "extraction"
+SOURCE_PLANNER = "planner"
+
+#: Recorded on each criterion the annotation places after entry; permitted by the delivery
+#: gate only when the recorded span is a substring of the deciding row's ``protocolLine``.
+PROSPECTIVE_REASON = "prospective-not-observable-at-index"
+PROSPECTIVE_EXPLANATION = (
+    "The protocol line places this criterion after the patient enters the trial (planned "
+    "or expected). Nothing at index records it, and emitted as an occurrence it would be "
+    "read from the patient's past."
+)
 
 
 class RecordRequirement(str, Enum):
@@ -110,14 +145,33 @@ class RecordRequirement(str, Enum):
     CONDITIONAL = "conditional"
 
 
+class Relation(str, Enum):
+    """The three values of ``relation`` (RFC-014 §2-1)."""
+
+    ALL = "all"
+    ANY = "any"
+    AT_LEAST = "at_least"
+
+
+class Timing(str, Enum):
+    """The three values of ``timing`` (RFC-014 §2-2)."""
+
+    PRIOR = "prior"
+    AT_INDEX = "at_index"
+    PROSPECTIVE = "prospective"
+
+
 _REQUIREMENT_VALUES = frozenset(member.value for member in RecordRequirement)
+_RELATION_VALUES = frozenset(member.value for member in Relation)
+_TIMING_VALUES = frozenset(member.value for member in Timing)
 
 
 ANNOTATION_SYSTEM_PROMPT = """You annotate one eligibility criterion of a clinical trial protocol.
 
 The criterion has already been extracted from a line of the protocol, and you do not change \
-any extracted field. You read that protocol line and record two facts about the criterion, \
-each together with the fragment of the protocol line that states it.
+any extracted field. You read that protocol line and record the facts the fields below \
+define about the criterion, each together with the fragment of the protocol line that \
+states it.
 
 Every fragment you return is copied from the protocol line character for character: no \
 paraphrase, no expanded abbreviation, no added word. A fragment that does not occur in the \
@@ -160,11 +214,39 @@ protocol line that names it. It is an empty list when the line removes nothing f
 `base_span` is the fragment of the protocol line that names the set the excepted entities \
 are removed from. It is required when `excepted_entities` is not empty and null otherwise.
 
+`relation` states how the protocol line combines the members listed above into this \
+criterion, read without the criterion's logic type. One of:
+- `all`: the criterion holds only when every member holds.
+- `any`: the criterion holds when at least one member holds.
+- `at_least`: the criterion holds when at least a stated number of members hold.
+It is null when the criterion has no members.
+
+`relation_span` is the fragment of the protocol line that states how the members combine. \
+It is required when `relation` is not null and null otherwise.
+
+`cardinality` is the stated number of members, as an integer, when `relation` is \
+`at_least`, and null otherwise.
+
+`timing` states when, relative to the patient's entry into the trial, the protocol line \
+places what this criterion describes. One of:
+- `prior`: before entry.
+- `at_index`: at entry.
+- `prospective`: after entry, as something planned or expected to happen.
+
+`window_span` is the fragment of the protocol line that places the criterion in time. It is \
+required when `timing` is `prospective`; otherwise it is that fragment when the line states \
+one, and null when the line does not.
+
 Output JSON:
 {{"record_requirement": "<required|forbidden|conditional>", \
 "conditional_span": "<fragment of the protocol line, or null>", \
 "excepted_entities": [{{"text": "<entity name>", "span": "<fragment of the protocol line>"}}], \
-"base_span": "<fragment of the protocol line, or null>"}}"""
+"base_span": "<fragment of the protocol line, or null>", \
+"relation": "<all|any|at_least, or null>", \
+"relation_span": "<fragment of the protocol line, or null>", \
+"cardinality": "<integer, or null>", \
+"timing": "<prior|at_index|prospective>", \
+"window_span": "<fragment of the protocol line, or null>"}}"""
 
 
 # --------------------------------------------------------------------------- #
@@ -202,6 +284,97 @@ def _rejection(field: str, value: Any, reason: str) -> dict[str, Any]:
     return {"field": field, "value": value, "reason": reason}
 
 
+def _enum_value(raw: Any) -> str | None:
+    return raw.strip().casefold() if isinstance(raw, str) else None
+
+
+def _count(raw: Any) -> int | None:
+    """A cardinality as a positive integer, or None. Parses a number, never words."""
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw if raw >= 1 else None
+    if isinstance(raw, float) and raw.is_integer():
+        return int(raw) if raw >= 1 else None
+    if isinstance(raw, str):
+        try:
+            value = int(raw.strip())
+        except ValueError:
+            return None
+        return value if value >= 1 else None
+    return None
+
+
+def check_relation(
+    payload: Any, protocol_line: Any
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """The relation fields of one answer, kept only when their evidence is in the line.
+
+    Shared by the annotation step, the planner (:mod:`src.agents.planner.decomposer`) and
+    :func:`stated_relation`, so the three can never disagree about what verifies.
+
+    :param payload: an object carrying ``relation``, ``relation_span``, ``cardinality``.
+    :param protocol_line: the row's ``protocolLine``.
+    :returns: ``(fields, rejection)``. ``fields`` always has the three keys, all None
+        unless the relation verified; ``rejection`` is None when nothing was dropped
+        (including a null relation, which is no claim at all).
+    """
+    fields: dict[str, Any] = {
+        FIELD_RELATION: None,
+        FIELD_RELATION_SPAN: None,
+        FIELD_CARDINALITY: None,
+    }
+    if not isinstance(payload, Mapping):
+        return fields, None
+    raw = payload.get(FIELD_RELATION)
+    if raw is None:
+        return fields, None
+    value = _enum_value(raw)
+    span = payload.get(FIELD_RELATION_SPAN)
+    count = _count(payload.get(FIELD_CARDINALITY))
+    claimed = {
+        FIELD_RELATION: raw,
+        FIELD_RELATION_SPAN: span,
+        FIELD_CARDINALITY: payload.get(FIELD_CARDINALITY),
+    }
+    if value not in _RELATION_VALUES:
+        return fields, _rejection(FIELD_RELATION, claimed, f"not one of {sorted(_RELATION_VALUES)}")
+    if not span_in_line(span, protocol_line):
+        return fields, _rejection(
+            FIELD_RELATION, claimed, f"{FIELD_RELATION_SPAN} is not a substring of protocolLine"
+        )
+    if value == Relation.AT_LEAST.value and count is None:
+        return fields, _rejection(
+            FIELD_RELATION, claimed, f"{FIELD_CARDINALITY} is not a positive integer"
+        )
+    fields[FIELD_RELATION] = value
+    fields[FIELD_RELATION_SPAN] = span
+    fields[FIELD_CARDINALITY] = count if value == Relation.AT_LEAST.value else None
+    return fields, None
+
+
+def _check_timing(
+    payload: Mapping[str, Any], protocol_line: str
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    fields: dict[str, Any] = {FIELD_TIMING: None, FIELD_WINDOW_SPAN: None}
+    raw = payload.get(FIELD_TIMING)
+    if raw is None:
+        return fields, None
+    value = _enum_value(raw)
+    span = payload.get(FIELD_WINDOW_SPAN)
+    quoted = isinstance(span, str) and bool(span.strip())
+    claimed = {FIELD_TIMING: raw, FIELD_WINDOW_SPAN: span}
+    if value not in _TIMING_VALUES:
+        return fields, _rejection(FIELD_TIMING, claimed, f"not one of {sorted(_TIMING_VALUES)}")
+    if (value == Timing.PROSPECTIVE.value or quoted) and not span_in_line(span, protocol_line):
+        return fields, _rejection(
+            FIELD_TIMING, claimed, f"{FIELD_WINDOW_SPAN} is not a substring of protocolLine"
+        )
+    fields[FIELD_TIMING] = value
+    fields[FIELD_WINDOW_SPAN] = span if quoted else None
+    return fields, None
+
+
 def validate_annotation(
     payload: Any, protocol_line: str
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -209,15 +382,21 @@ def validate_annotation(
 
     :param payload: the model's parsed JSON object.
     :param protocol_line: the row's ``protocolLine``.
-    :returns: ``(fields, rejections)``. ``fields`` always carries the four output keys;
-        a rejected field is None (``record_requirement``, ``base_span``) or left out of
-        the list (``excepted_entities``), which is the default behaviour downstream.
+    :returns: ``(fields, rejections)``. ``fields`` always carries every output key; a
+        rejected field is None (``record_requirement``, ``base_span``, ``relation``,
+        ``timing`` and their spans) or left out of the list (``excepted_entities``),
+        which is the default behaviour downstream.
     """
     fields: dict[str, Any] = {
         FIELD_RECORD_REQUIREMENT: None,
         FIELD_CONDITIONAL_SPAN: None,
         FIELD_EXCEPTED_ENTITIES: [],
         FIELD_BASE_SPAN: None,
+        FIELD_RELATION: None,
+        FIELD_RELATION_SPAN: None,
+        FIELD_CARDINALITY: None,
+        FIELD_TIMING: None,
+        FIELD_WINDOW_SPAN: None,
     }
     rejected: list[dict[str, Any]] = []
     if not isinstance(payload, Mapping):
@@ -280,6 +459,12 @@ def validate_annotation(
         rejected.append(_rejection(FIELD_BASE_SPAN, base, "not a substring of protocolLine"))
     else:
         fields[FIELD_BASE_SPAN] = " ".join(base.split())
+
+    for check in (check_relation, _check_timing):
+        checked, rejection = check(payload, protocol_line)
+        fields.update(checked)
+        if rejection is not None:
+            rejected.append(rejection)
     return fields, rejected
 
 
@@ -515,7 +700,49 @@ def annotate_row(
         row[ANNOTATION_REJECTED_KEY] = rejected
     else:
         row.pop(ANNOTATION_REJECTED_KEY, None)
+    disagreement = window_disagreement(fields, row.get("window"))
+    if disagreement is not None:
+        row[WINDOW_DISAGREEMENT_KEY] = disagreement
+    else:
+        row.pop(WINDOW_DISAGREEMENT_KEY, None)
     return outcome
+
+
+def window_disagreement(fields: Mapping[str, Any], window: Any) -> dict[str, Any] | None:
+    """A verified ``window_span`` whose own duration is neither bound of the extracted window.
+
+    Two numbers compared, nothing read for meaning: the duration comes from the number and
+    time unit inside a fragment the span check already verified
+    (:func:`src.agents.agent1.temporal_grounding.stated_durations`), and the window is
+    Agent 1's. Only ``prior`` / ``at_index`` rows are compared -- a ``prospective`` row is
+    not emitted at all. A report only: nothing rewrites the window from it. Measured on the
+    2026-10-12 P2 re-extraction, ARISTOTLE's CHF member reads "within 3 months" and was
+    extracted as ``-3..0``; a verified span alone does not show that.
+
+    :param fields: the validated annotation fields.
+    :param window: the row's ``window`` (``{start, end}`` in days, or None).
+    :returns: ``{windowSpan, statedDays, window}`` when no stated duration matches either
+        bound (within a unit's calendar band), else None -- also when the span states no
+        duration or the row has no window.
+    """
+    if fields.get(FIELD_TIMING) not in (Timing.PRIOR.value, Timing.AT_INDEX.value):
+        return None
+    span = fields.get(FIELD_WINDOW_SPAN)
+    if not span or not isinstance(window, Mapping):
+        return None
+    from src.agents.agent1.temporal_grounding import stated_durations
+
+    durations = stated_durations(span)
+    bounds = {abs(v) for v in (window.get("start"), window.get("end")) if isinstance(v, int)}
+    if not durations or not bounds:
+        return None
+    if any(low <= bound <= high for low, high in durations for bound in bounds):
+        return None
+    return {
+        "windowSpan": span,
+        "statedDays": [low for low, _high in durations],
+        "window": {"start": window.get("start"), "end": window.get("end")},
+    }
 
 
 def _members_of(
@@ -564,6 +791,9 @@ def annotate_eligibility(
     for outcome in outcomes:
         counts[outcome] = counts.get(outcome, 0) + 1
     counts["rejected"] = sum(1 for row, _m, _role in jobs if row.get(ANNOTATION_REJECTED_KEY))
+    counts["windowDisagreement"] = sum(
+        1 for row, _m, _role in jobs if row.get(WINDOW_DISAGREEMENT_KEY)
+    )
     logger.info("[annotation] model=%s version=%s %s", resolved, ANNOTATION_PROMPT_VERSION, counts)
     return counts
 
@@ -625,6 +855,20 @@ def group_descendants(rows: Iterable[Mapping[str, Any]], group_id: str) -> set[s
     return groups
 
 
+def _with_group_members(rows: list[Mapping[str, Any]], own: dict[str, Any]) -> dict[str, Any]:
+    """``own`` decisions, plus each decided group label's decision for every row under it."""
+    decided = dict(own)
+    for label in rows:
+        decision = own.get(str(label.get(_ID, "")))
+        if decision is None or not label.get(_IS_LABEL) or not label.get(_GROUP):
+            continue
+        groups = group_descendants(rows, str(label.get(_GROUP)))
+        for row in rows:
+            if row is not label and row.get(_GROUP) in groups:
+                decided.setdefault(str(row.get(_ID, "")), decision)
+    return decided
+
+
 def conditional_skips(rows: Iterable[Any]) -> dict[str, ConditionalSkip]:
     """The rows of one role that are not emitted because they are conditional.
 
@@ -638,16 +882,148 @@ def conditional_skips(rows: Iterable[Any]) -> dict[str, ConditionalSkip]:
     """
     rows = [r for r in rows if isinstance(r, Mapping)]
     own = {str(r.get(_ID, "")): skip for r in rows if (skip := _own_conditional(r)) is not None}
-    decided = dict(own)
-    for label in rows:
-        decision = own.get(str(label.get(_ID, "")))
-        if decision is None or not label.get(_IS_LABEL) or not label.get(_GROUP):
-            continue
-        groups = group_descendants(rows, str(label.get(_GROUP)))
-        for row in rows:
-            if row is not label and row.get(_GROUP) in groups:
-                decided.setdefault(str(row.get(_ID, "")), decision)
-    return decided
+    return _with_group_members(rows, own)
+
+
+@dataclass(frozen=True)
+class ProspectiveSkip:
+    """Why a row is recorded as not observable at index.
+
+    :param span: the ``window_span`` of the deciding row, a substring of its line.
+    :param decided_by: the id of the deciding row -- the row itself, or its group label.
+    """
+
+    span: str
+    decided_by: str
+
+
+def _own_prospective(row: Mapping[str, Any]) -> ProspectiveSkip | None:
+    annotation = _annotation(row)
+    span = annotation.get(FIELD_WINDOW_SPAN)
+    if annotation.get(FIELD_TIMING) == Timing.PROSPECTIVE.value and span_in_line(
+        span, row.get(_LINE)
+    ):
+        return ProspectiveSkip(span=span, decided_by=str(row.get(_ID, "")))
+    return None
+
+
+def prospective_skips(rows: Iterable[Any]) -> dict[str, ProspectiveSkip]:
+    """The rows of one role that are not emitted because the line places them after entry.
+
+    Decided by the row's own accepted annotation only (``timing: prospective`` with a
+    ``window_span`` in its line, re-checked here). A prospective group label takes every
+    row of its group with it, as :func:`conditional_skips` does.
+
+    :param rows: one role's store rows.
+    :returns: criterion id (stringified) -> the decision.
+    """
+    rows = [r for r in rows if isinstance(r, Mapping)]
+    own = {str(r.get(_ID, "")): skip for r in rows if (skip := _own_prospective(r)) is not None}
+    return _with_group_members(rows, own)
+
+
+@dataclass(frozen=True)
+class StatedRelation:
+    """A group's relation, verified against its label's line.
+
+    :param relation: ``all``, ``any`` or ``at_least``.
+    :param span: the fragment of the line stating it.
+    :param cardinality: the stated number for ``at_least``, else None.
+    :param source: :data:`SOURCE_PLANNER` or :data:`SOURCE_ANNOTATION`.
+    """
+
+    relation: str
+    span: str
+    cardinality: int | None
+    source: str
+
+
+def stated_relation(row: Mapping[str, Any]) -> StatedRelation | None:
+    """How the row's line combines its group's members, when a verified answer exists.
+
+    The planner's (:data:`PLANNER_RELATION_KEY`) first; the annotation's only when the
+    planner's is absent or does not verify. Both are re-checked against the row's own line
+    here, so a hand-edited or stale row cannot carry an unchecked relation into a build.
+
+    :param row: the store row of a group label.
+    :returns: the verified relation, or None.
+    """
+    line = row.get(_LINE)
+    for source, payload in (
+        (SOURCE_PLANNER, row.get(PLANNER_RELATION_KEY)),
+        (SOURCE_ANNOTATION, _annotation(row)),
+    ):
+        fields, _ = check_relation(payload, line)
+        if fields[FIELD_RELATION] is not None:
+            return StatedRelation(
+                relation=fields[FIELD_RELATION],
+                span=fields[FIELD_RELATION_SPAN],
+                cardinality=fields[FIELD_CARDINALITY],
+                source=source,
+            )
+    return None
+
+
+#: CIRCE group types. Machine format (the CIRCE ``CriteriaGroup.Type`` enum).
+GROUP_ALL = "ALL"
+GROUP_ANY = "ANY"
+GROUP_AT_LEAST = "AT_LEAST"
+LOGIC_ABSENCE = "ABSENCE"
+
+
+def relation_group_type(
+    logic: str | None, relation: str, cardinality: int | None, members: int
+) -> tuple[str, int | None] | None:
+    """CIRCE ``(Type, Count)`` for a group from its stated relation and its logic.
+
+    RFC-014 §2-1. The relation is how the line combines the members as conditions; an
+    ``ABSENCE`` group emits each member as "no occurrence", so the relation is negated by
+    De Morgan: ``any`` -> ALL (absent from every member), ``all`` -> ANY (absent from at
+    least one), and ``at_least N`` of ``k`` -> AT_LEAST ``k - N + 1`` absences.
+
+    :param logic: the group's logic type (``ABSENCE`` negates; anything else does not).
+    :param relation: ``all``, ``any`` or ``at_least``.
+    :param cardinality: N for ``at_least``.
+    :param members: how many members the group actually emits.
+    :returns: ``(Type, Count)`` with Count only for AT_LEAST; None when the relation cannot
+        apply (no members, or N outside ``1..members``) -- the caller keeps its declared type.
+    """
+    if members < 1:
+        return None
+    if relation == Relation.AT_LEAST.value:
+        if cardinality is None or not 1 <= cardinality <= members:
+            return None
+        need = members - cardinality + 1 if logic == LOGIC_ABSENCE else cardinality
+        if need == 1:
+            return GROUP_ANY, None
+        if need == members:
+            return GROUP_ALL, None
+        return GROUP_AT_LEAST, need
+    every = relation == Relation.ALL.value
+    if logic == LOGIC_ABSENCE:
+        every = not every
+    return (GROUP_ALL if every else GROUP_ANY), None
+
+
+def declared_group_type(logic: str | None, relation: str, cardinality: int | None) -> str:
+    """The IR ``group_type`` (ALL or ANY) a split records for a relation.
+
+    The builder derives the emitted type from the stored relation; this is the value the IR
+    and the store row carry, and what the builder falls back to when the relation cannot
+    apply (an ``at_least`` asking for more members than mapped). An ``at_least`` of more
+    than one records the strict reading.
+
+    :param logic: the criterion's logic type.
+    :param relation: ``all``, ``any`` or ``at_least``.
+    :param cardinality: N for ``at_least``.
+    :returns: ``ALL`` or ``ANY``.
+    """
+    every = relation == Relation.ALL.value or (
+        relation == Relation.AT_LEAST.value and (cardinality or 0) > 1
+    )
+    if logic == LOGIC_ABSENCE:
+        every = not every
+    return GROUP_ALL if every else GROUP_ANY
 
 
 def stated_exceptions(row: Mapping[str, Any]) -> list[dict[str, str]]:

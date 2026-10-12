@@ -10,7 +10,6 @@ Enhanced with patterns from artemis_agent:
 """
 
 import os
-import re
 import threading
 from typing import List, Optional, Any, Union
 from concurrent.futures import ThreadPoolExecutor
@@ -383,25 +382,12 @@ class Agent2Workflow:
                 else:
                     import psycopg2
                     db_conn = psycopg2.connect(settings.DATABASE_URL)
-                # Split compound "or" queries (e.g. "GLP-1 receptor agonist or DPP-4 inhibitor")
-                # so each drug class is expanded individually via ATC lookup.
-                parts = [p.strip() for p in re.split(r'\s+or\s+', query_text, flags=re.IGNORECASE) if p.strip()]
-                if len(parts) > 1:
-                    all_ids: list[int] = []
-                    matched_names: list[str] = []
-                    for part in parts:
-                        part_name, part_ids = expand_drug_class_via_vocab(
-                            part, db_conn, schema=settings.CDM_SCHEMA
-                        )
-                        if part_name and part_ids:
-                            all_ids.extend(part_ids)
-                            matched_names.append(part_name)
-                    atc_ingredient_ids = list(dict.fromkeys(all_ids))
-                    atc_name = " + ".join(matched_names) if matched_names else None
-                else:
-                    atc_name, atc_ingredient_ids = expand_drug_class_via_vocab(
-                        query_text, db_conn, schema=settings.CDM_SCHEMA
-                    )
+                # The query is expanded whole. Splitting it on " or " (inventory A14, removed
+                # in RFC-016 step 2) read the text to decide what the alternatives were;
+                # alternatives are split upstream, by Agent 1 and the planner.
+                atc_name, atc_ingredient_ids = expand_drug_class_via_vocab(
+                    query_text, db_conn, schema=settings.CDM_SCHEMA
+                )
                 if atc_name and atc_ingredient_ids:
                     logger.info(f"[Agent 2] ATC drug class '{atc_name}': {len(atc_ingredient_ids)} ingredients")
                     result.concept_ids = logician.roll_up_to_rxnorm_ingredients(atc_ingredient_ids)

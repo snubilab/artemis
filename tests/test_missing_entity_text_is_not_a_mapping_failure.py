@@ -725,6 +725,30 @@ class TestTheGateNamesTheSubstitutedSeeds:
         assert rc == 0
 
 
+class TestTheGateWarnsOnSeedsTakenFromADescription:
+    """RFC-016 step 2: a criterion seeded on its description is a WARN on the file's row --
+    named, counted, never a FAIL and never silent."""
+
+    def test_should_name_each_criterion_seeded_on_its_description_as_a_warning(self, gate):
+        rc, out = gate(
+            _with_substitutions(
+                CLEAN_RECORDS,
+                [
+                    _substituted("16", "Pre treated with any background therapy", outcome="mapped"),
+                    _substituted("12", "Exclusion of GLP-1/DPP-4/SGLT-2", outcome="mapped"),
+                ],
+            )
+        )
+        assert rc == 0, out
+        assert "seeded on description (WARN, 2)" in out
+        assert "inclusion #16 'Pre treated with any background therapy'" in out
+
+    def test_should_not_warn_when_every_criterion_carried_its_entity(self, gate):
+        rc, out = gate(_with_substitutions(CLEAN_RECORDS, []))
+        assert rc == 0, out
+        assert "seeded on description" not in out
+
+
 class TestTheGateNeverPermitsTheNewCode:
     def test_should_block_a_delivery_carrying_a_missing_entity_refusal(self, gate):
         """The re-coding changes WHICH defect a reader is sent to look at, not whether

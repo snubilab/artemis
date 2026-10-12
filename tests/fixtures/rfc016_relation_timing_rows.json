@@ -1,0 +1,1589 @@
+{
+ "about": "Real rows for the RFC-016 step 2 tests (relation, timing), copied verbatim from read-only sources. Keys are <trial>_<role>_<first id>; each holds the rows in id order.",
+ "sources": {
+  "candidate_store": {
+   "path": "output/site_gap/2026-10-12_prompt_f2/store/studies.json",
+   "sha256": "07db37f85d13003dbe72d0c9b07bcab1784baf9c37aeb2af6b1b0c46dfc41917"
+  },
+  "p2_new_store": {
+   "path": "output/site_gap/2026-10-12_p2_new/store/studies.json",
+   "sha256": "cf94b947c49332ceaa42c0e0898b8b7b21cd2811edcb5ca20279ec4127281528",
+   "note": "written by a running re-extraction; hash at copy time"
+  },
+  "carolina_treatment_circe": {
+   "path": "output/site_gap/2026-10-12_prompt_f2/DELIVERY/carolina_treatment.circe.json",
+   "sha256": "bad2c5945c84226c92aab35e0f4244293518f9f9c65e72c53ce38bab2667286c"
+  }
+ },
+ "carolina_inclusion_1": [
+  {
+   "id": 1,
+   "description": "T2DM diagnosis and insufficient glycaemic control with high CV risk",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Type 2 Diabetes Mellitus",
+   "protocolLine": "Documented diagnosis of T2DM and concurrently insufficient glycaemic control and a high risk of CV events prior to informed consent:",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "29dc3572-6e5b-41ed-b4f8-7ce619bb3203",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 2,
+   "description": "Type 2 Diabetes Mellitus Diagnosis",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Type 2 Diabetes Mellitus",
+   "protocolLine": "Documented diagnosis of T2DM and concurrently insufficient glycaemic control and a high risk of CV events prior to informed consent:",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 2,
+   "conceptSetName": "Type 2 Diabetes Mellitus",
+   "logicType": "PRESENCE",
+   "groupId": "29dc3572-6e5b-41ed-b4f8-7ce619bb3203",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 3,
+   "description": "Insufficient Glycaemic Control",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "Glycaemic control insufficient",
+   "protocolLine": "Documented diagnosis of T2DM and concurrently insufficient glycaemic control and a high risk of CV events prior to informed consent:",
+   "protocolSpan": "insufficient glycaemic control",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 3,
+   "conceptSetName": "Glycaemic control insufficient",
+   "logicType": "PRESENCE",
+   "groupId": "29dc3572-6e5b-41ed-b4f8-7ce619bb3203",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 4,
+   "description": "High Cardiovascular Risk",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "High risk of CV events",
+   "protocolLine": "Documented diagnosis of T2DM and concurrently insufficient glycaemic control and a high risk of CV events prior to informed consent:",
+   "protocolSpan": "high risk of CV events",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 4,
+   "conceptSetName": "High risk of CV events",
+   "logicType": "PRESENCE",
+   "groupId": "29dc3572-6e5b-41ed-b4f8-7ce619bb3203",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_exclusion_8": [
+  {
+   "id": 8,
+   "description": "Anti-obesity drugs use",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "Anti-obesity drug",
+   "protocolLine": "Treatment with anti-obesity drugs within 3 months prior to informed consent",
+   "protocolSpan": "",
+   "window": {
+    "start": -90,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "30a04a70-655e-46a7-ac36-92b555a3dac1",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 9,
+   "description": "Use of anti-obesity drugs",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "Anti-obesity drug",
+   "protocolLine": "Treatment with anti-obesity drugs within 3 months prior to informed consent",
+   "protocolSpan": "Anti-obesity drug",
+   "window": {
+    "start": -90,
+    "end": 0
+   },
+   "conceptSetId": 38,
+   "conceptSetName": "Anti-obesity drug",
+   "logicType": "ABSENCE",
+   "groupId": "30a04a70-655e-46a7-ac36-92b555a3dac1",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_exclusion_21": [
+  {
+   "id": 21,
+   "description": "Active liver disease or impaired hepatic function",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "ALT or AST or alkaline phosphatase",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "9003742b-3693-461c-8faa-e8f6df9a6d69",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 22,
+   "description": "ALT elevation",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "ALT",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+   "protocolSpan": "ALT (SGPT)",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 45,
+   "conceptSetName": "ALT",
+   "logicType": "ABSENCE",
+   "groupId": "9003742b-3693-461c-8faa-e8f6df9a6d69",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 23,
+   "description": "AST elevation",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "AST",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+   "protocolSpan": "AST (SGOT)",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 46,
+   "conceptSetName": "AST",
+   "logicType": "ABSENCE",
+   "groupId": "9003742b-3693-461c-8faa-e8f6df9a6d69",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 24,
+   "description": "Alkaline phosphatase elevation",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 3.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "uln",
+    "unitConceptId": null
+   },
+   "sourceText": "alkaline phosphatase",
+   "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at visit 1a",
+   "protocolSpan": "alkaline phosphatase",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 47,
+   "conceptSetName": "alkaline phosphatase",
+   "logicType": "ABSENCE",
+   "groupId": "9003742b-3693-461c-8faa-e8f6df9a6d69",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_exclusion_25": [
+  {
+   "id": 25,
+   "description": "Pre-planned coronary artery re-vascularisation",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "Coronary artery re-vascularisation",
+   "protocolLine": "Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "d65c86a9-ee4f-4a54-9248-2f1aa81be13d",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 26,
+   "description": "Pre-planned PCI",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "PCI",
+   "protocolLine": "Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+   "protocolSpan": "PCI",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 48,
+   "conceptSetName": "PCI",
+   "logicType": "ABSENCE",
+   "groupId": "d65c86a9-ee4f-4a54-9248-2f1aa81be13d",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 27,
+   "description": "Pre-planned CABG",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "CABG",
+   "protocolLine": "Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+   "protocolSpan": "CABG",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 49,
+   "conceptSetName": "CABG",
+   "logicType": "ABSENCE",
+   "groupId": "d65c86a9-ee4f-4a54-9248-2f1aa81be13d",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_exclusion_35": [
+  {
+   "id": 35,
+   "description": "Congestive heart failure NYHA class III or IV",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Congestive heart failure",
+   "protocolLine": "Congestive heart failure of NYHA class III or IV",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "6a70a666-e0ab-48d6-8dde-788006e68358",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 36,
+   "description": "Congestive heart failure",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Congestive heart failure",
+   "protocolLine": "Congestive heart failure of NYHA class III or IV",
+   "protocolSpan": "Congestive heart failure",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 54,
+   "conceptSetName": "Congestive heart failure",
+   "logicType": "ABSENCE",
+   "groupId": "6a70a666-e0ab-48d6-8dde-788006e68358",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 37,
+   "description": "NYHA Class III",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "NYHA class III",
+   "protocolLine": "Congestive heart failure of NYHA class III or IV",
+   "protocolSpan": "NYHA class III or IV",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 55,
+   "conceptSetName": "NYHA class III",
+   "logicType": "ABSENCE",
+   "groupId": "6a70a666-e0ab-48d6-8dde-788006e68358",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 38,
+   "description": "NYHA Class IV",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "NYHA class IV",
+   "protocolLine": "Congestive heart failure of NYHA class III or IV",
+   "protocolSpan": "NYHA class III or IV",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 56,
+   "conceptSetName": "NYHA class IV",
+   "logicType": "ABSENCE",
+   "groupId": "6a70a666-e0ab-48d6-8dde-788006e68358",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_exclusion_48": [
+  {
+   "id": 48,
+   "description": "Pre-menopausal women who are nursing or pregnant or of child-bearing potential and not using acceptable birth control",
+   "domain": "Demographics",
+   "valueConstraint": null,
+   "sourceText": "Pre-menopausal woman",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 49,
+   "description": "Pre-menopausal status",
+   "domain": "Demographics",
+   "valueConstraint": null,
+   "sourceText": "Pre-menopausal woman",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "Pre-menopausal women",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 62,
+   "conceptSetName": "pre-menopausal woman",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 50,
+   "description": "Nursing status",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "nursing",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "nursing",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 63,
+   "conceptSetName": "nursing",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 51,
+   "description": "Pregnancy status",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "pregnant",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "pregnant",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 64,
+   "conceptSetName": "pregnant",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 52,
+   "description": "Child-bearing potential status",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "of child-bearing potential",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "of child-bearing potential",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 65,
+   "conceptSetName": "of child-bearing potential",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 53,
+   "description": "Not using acceptable birth control",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "not using acceptable method of birth control",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "not practicing an acceptable method of birth control",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 66,
+   "conceptSetName": "not using acceptable method of birth control",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 54,
+   "description": "Acceptable birth control: Tubal ligation",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "tubal ligation",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "tubal ligation",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 67,
+   "conceptSetName": "tubal ligation",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 55,
+   "description": "Acceptable birth control: Transdermal patch",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "transdermal patch",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "transdermal patch",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 68,
+   "conceptSetName": "transdermal patch",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 56,
+   "description": "Acceptable birth control: IUD/IUS",
+   "domain": "Device",
+   "valueConstraint": null,
+   "sourceText": "intra uterine devices/systems (IUDs/IUSs)",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "intra uterine devices/systems (IUDs/IUSs)",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 69,
+   "conceptSetName": "intra uterine devices/systems (IUDs/IUSs)",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 57,
+   "description": "Acceptable birth control: Oral contraceptives",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "oral contraceptives",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "oral, implantable or injectable contraceptives",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 70,
+   "conceptSetName": "oral contraceptives",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 58,
+   "description": "Acceptable birth control: Implantable contraceptives",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "implantable contraceptives",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "oral, implantable or injectable contraceptives",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 71,
+   "conceptSetName": "implantable contraceptives",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 59,
+   "description": "Acceptable birth control: Injectable contraceptives",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "injectable contraceptives",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "oral, implantable or injectable contraceptives",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 72,
+   "conceptSetName": "injectable contraceptives",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 60,
+   "description": "Acceptable birth control: Sexual abstinence",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "sexual abstinence",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "sexual abstinence (if allowed by local authorities)",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 73,
+   "conceptSetName": "sexual abstinence",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 61,
+   "description": "Acceptable birth control: Double barrier method",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "double barrier method",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "double barrier method",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 74,
+   "conceptSetName": "double barrier method",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 62,
+   "description": "Acceptable birth control: Vasectomised partner",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "vasectomised partner",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "vasectomised partner",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 75,
+   "conceptSetName": "vasectomised partner",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 63,
+   "description": "Not planning to continue acceptable birth control",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "do not plan to continue using acceptable method of birth control throughout the study",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "do not plan to continue using acceptable method of birth control throughout the study",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 76,
+   "conceptSetName": "do not plan to continue using acceptable method of birth control throughout the study",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 64,
+   "description": "Not agreeing to periodic pregnancy testing",
+   "domain": "Observation",
+   "valueConstraint": null,
+   "sourceText": "do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolLine": "Pre-menopausal women (last menstruation # 1 year prior to informed consent) who are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "protocolSpan": "do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 77,
+   "conceptSetName": "do not agree to submit to periodic pregnancy testing during participation in the trial",
+   "logicType": "ABSENCE",
+   "groupId": "8aae2531-81f4-46ee-8443-4fc6c4cbcea3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "leader_inclusion_12": [
+  {
+   "id": 12,
+   "description": "Anti-diabetic drug naive OR treated with OADs OR treated with human NPH insulin or long-acting insulin analogue or premixed insulin",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+   "protocolSpan": "",
+   "window": {
+    "start": -365,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "4a712697-6e47-44f7-ac5b-29684d79ca33",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 13,
+   "description": "Anti-diabetic drug naive",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "oral anti-diabetic drugs",
+   "protocolLine": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+   "protocolSpan": "",
+   "window": {
+    "start": -365,
+    "end": 0
+   },
+   "conceptSetId": 10,
+   "conceptSetName": "oral anti-diabetic drugs",
+   "logicType": "ABSENCE",
+   "groupId": "4a712697-6e47-44f7-ac5b-29684d79ca33",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 14,
+   "description": "Treated with OADs",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "oral anti-diabetic drugs",
+   "protocolLine": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+   "protocolSpan": "",
+   "window": {
+    "start": -365,
+    "end": 0
+   },
+   "conceptSetId": 11,
+   "conceptSetName": "oral anti-diabetic drugs",
+   "logicType": "PRESENCE",
+   "groupId": "4a712697-6e47-44f7-ac5b-29684d79ca33",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 15,
+   "description": "Treated with human NPH insulin or long-acting insulin analogue or premixed insulin",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "human NPH insulin",
+   "protocolLine": "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
+   "protocolSpan": "",
+   "window": {
+    "start": -365,
+    "end": 0
+   },
+   "conceptSetId": 12,
+   "conceptSetName": "human NPH insulin",
+   "logicType": "PRESENCE",
+   "groupId": "4a712697-6e47-44f7-ac5b-29684d79ca33",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "leader_exclusion_4": [
+  {
+   "id": 4,
+   "description": "Acute decompensation of glycemic control",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Acute decompensation of glycemic control",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 5,
+   "description": "Elevated HbA1c",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "Elevated HbA1c",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 29,
+   "conceptSetName": "Elevated HbA1c",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 6,
+   "description": "Hyperglycemia",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Hyperglycemia",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 30,
+   "conceptSetName": "Hyperglycemia",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 7,
+   "description": "Diabetic Ketoacidosis (DKA)",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Diabetic Ketoacidosis",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 31,
+   "conceptSetName": "Diabetic Ketoacidosis",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 8,
+   "description": "Hyperosmolar Hyperglycemic State (HHS)",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Hyperosmolar Hyperglycemic State",
+   "protocolLine": "Acute decompensation of glycemic control",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 32,
+   "conceptSetName": "Hyperosmolar Hyperglycemic State",
+   "logicType": "ABSENCE",
+   "groupId": "56b65162-a43d-472f-bb9a-6303974ac3f8",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "leader_exclusion_10": [
+  {
+   "id": 10,
+   "description": "Chronic heart failure NYHA class IV",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Chronic heart failure",
+   "protocolLine": "Chronic heart failure (NYHA class IV)",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "bb829bdc-6e8f-472c-89fa-06d524403bb3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 11,
+   "description": "Chronic Heart Failure",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Chronic heart failure",
+   "protocolLine": "Chronic heart failure (NYHA class IV)",
+   "protocolSpan": "Chronic heart failure",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 34,
+   "conceptSetName": "Chronic heart failure",
+   "logicType": "ABSENCE",
+   "groupId": "bb829bdc-6e8f-472c-89fa-06d524403bb3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 12,
+   "description": "NYHA Class IV",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "NYHA class IV",
+   "protocolLine": "Chronic heart failure (NYHA class IV)",
+   "protocolSpan": "NYHA class IV",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 35,
+   "conceptSetName": "NYHA class IV",
+   "logicType": "ABSENCE",
+   "groupId": "bb829bdc-6e8f-472c-89fa-06d524403bb3",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "leader_exclusion_14": [
+  {
+   "id": 14,
+   "description": "Currently planned coronary, carotid, or peripheral artery revascularization",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "artery revascularization",
+   "protocolLine": "Currently planned coronary, carotid, or peripheral artery revascularization",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "0e8eebe4-d2a8-4a13-9dc2-f5548bf9551a",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 15,
+   "description": "Coronary Artery Revascularization",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "coronary artery revascularization",
+   "protocolLine": "Currently planned coronary, carotid, or peripheral artery revascularization",
+   "protocolSpan": "coronary",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 37,
+   "conceptSetName": "coronary artery revascularization",
+   "logicType": "ABSENCE",
+   "groupId": "0e8eebe4-d2a8-4a13-9dc2-f5548bf9551a",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 16,
+   "description": "Carotid Artery Revascularization",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "carotid artery revascularization",
+   "protocolLine": "Currently planned coronary, carotid, or peripheral artery revascularization",
+   "protocolSpan": "carotid",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 38,
+   "conceptSetName": "carotid artery revascularization",
+   "logicType": "ABSENCE",
+   "groupId": "0e8eebe4-d2a8-4a13-9dc2-f5548bf9551a",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 17,
+   "description": "Peripheral Artery Revascularization",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "peripheral artery revascularization",
+   "protocolLine": "Currently planned coronary, carotid, or peripheral artery revascularization",
+   "protocolSpan": "peripheral",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 39,
+   "conceptSetName": "peripheral artery revascularization",
+   "logicType": "ABSENCE",
+   "groupId": "0e8eebe4-d2a8-4a13-9dc2-f5548bf9551a",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "plato_inclusion_32": [
+  {
+   "id": 32,
+   "description": "Age >= 60 years",
+   "domain": "Demographics",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "≥2 of the following:",
+   "protocolSpan": "",
+   "window": null,
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "2fcdbae1-55fb-44ef-89ea-2dfaf6f7fa31",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 33,
+   "description": "Age >= 60 y of age",
+   "domain": "Demographics",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 60.0,
+    "valueHigh": null,
+    "unitText": "y of age",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "",
+   "protocolLine": "≥60 y of age",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "2fcdbae1-55fb-44ef-89ea-2dfaf6f7fa31",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": false
+  }
+ ],
+ "plato_exclusion_15": [
+  {
+   "id": 15,
+   "description": "Fibrinolytic therapy planned or within the previous 24 h",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "Fibrinolytic therapy",
+   "protocolLine": "Fibrinolytic therapy planned or within the previous 24 h",
+   "protocolSpan": "",
+   "window": {
+    "start": -24,
+    "end": 0
+   },
+   "conceptSetId": 31,
+   "conceptSetName": "Fibrinolytic therapy",
+   "logicType": "ABSENCE",
+   "groupId": null,
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "aristotle_exclusion_1": [
+  {
+   "id": 1,
+   "description": "Liver enzyme elevation",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": null,
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 2,
+   "description": "ALT > 2X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 2.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Alanine aminotransferase",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 9,
+   "conceptSetName": "Alanine aminotransferase",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 3,
+   "description": "AST > 2X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gt",
+    "value": 2.0,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Aspartate aminotransferase",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 10,
+   "conceptSetName": "Aspartate aminotransferase",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 4,
+   "description": "Total Bilirubin ≥ 1.5X ULN",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "gte",
+    "value": 1.5,
+    "valueHigh": null,
+    "unitText": "x ULN",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Total bilirubin",
+   "protocolLine": "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": 11,
+   "conceptSetName": "Total bilirubin",
+   "logicType": "ABSENCE",
+   "groupId": "df2d9309-5ca3-493d-af54-1e502b9383e0",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "aristotle_exclusion_21": [
+  {
+   "id": 21,
+   "description": "Planned ablation procedure",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "Atrial fibrillation ablation",
+   "protocolLine": "Planned atrial fibrillation or flutter ablation procedure",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 23,
+   "conceptSetName": "Atrial fibrillation ablation",
+   "logicType": "ABSENCE",
+   "groupId": null,
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 22,
+   "description": "Planned major surgery",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "Planned major surgery",
+   "protocolSpan": "",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 24,
+   "conceptSetName": "Planned major surgery",
+   "logicType": "ABSENCE",
+   "groupId": null,
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "empareg_exclusion_6": [
+  {
+   "id": 6,
+   "description": "Planned cardiac surgery or angioplasty",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "Cardiac surgery or angioplasty",
+   "protocolLine": "Planned cardiac surgery or angioplasty within 3 months",
+   "protocolSpan": "",
+   "window": {
+    "start": -90,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "ABSENCE",
+   "groupId": "84fe373e-ccc9-47f4-9b43-d368186e503c",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false
+  },
+  {
+   "id": 7,
+   "description": "Cardiac surgery",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "Cardiac surgery",
+   "protocolLine": "Planned cardiac surgery or angioplasty within 3 months",
+   "protocolSpan": "Cardiac surgery",
+   "window": {
+    "start": -90,
+    "end": 0
+   },
+   "conceptSetId": 14,
+   "conceptSetName": "Cardiac surgery",
+   "logicType": "ABSENCE",
+   "groupId": "84fe373e-ccc9-47f4-9b43-d368186e503c",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  },
+  {
+   "id": 8,
+   "description": "Angioplasty",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "angioplasty",
+   "protocolLine": "Planned cardiac surgery or angioplasty within 3 months",
+   "protocolSpan": "angioplasty",
+   "window": {
+    "start": -90,
+    "end": 0
+   },
+   "conceptSetId": 15,
+   "conceptSetName": "angioplasty",
+   "logicType": "ABSENCE",
+   "groupId": "84fe373e-ccc9-47f4-9b43-d368186e503c",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "plato_inclusion_12": [
+  {
+   "id": 12,
+   "description": "Hospitalized for ACS with onset in previous 24 hours, ischemic symptoms >=10 min duration at rest, not pregnant, and informed consent",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "Hospitalized for potential ST-segment elevation or non–STsegment elevation ACS, with onset during the previous 24 hours, documented by cardiac ischemic symptoms due to atherosclerosis of ≥10 minutes' duration at rest, ≥18 years of age, not pregnant, and with informed consent",
+   "protocolSpan": "",
+   "window": {
+    "start": -24,
+    "end": 0
+   },
+   "conceptSetId": 9,
+   "conceptSetName": "Hospitalized for ACS with onset , ischemic symptoms >=10 min duration at rest, not pregnant, and informed consent",
+   "logicType": "PRESENCE",
+   "groupId": null,
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carmelina_exclusion_27": [
+  {
+   "id": 27,
+   "description": "CABG within 2 months prior to consent",
+   "domain": "Procedure",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "CABG ≤ 2 months prior informed consent",
+   "protocolSpan": "",
+   "window": {
+    "start": -60,
+    "end": 0
+   },
+   "conceptSetId": 24,
+   "conceptSetName": "CABG",
+   "logicType": "ABSENCE",
+   "groupId": null,
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_exclusion_68": [
+  {
+   "id": 68,
+   "description": "Cancer other than non-melanoma skin cancer within last 3 years",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "cancer other than non-melanoma skin cancer within last 3 years",
+   "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+   "protocolSpan": "has cancer other than non-melanoma skin cancer within last 3 years",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 80,
+   "conceptSetName": "cancer other than non-melanoma skin cancer",
+   "logicType": "ABSENCE",
+   "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carmelina_inclusion_3": [
+  {
+   "id": 3,
+   "description": "Drug-naïve or pre-treated with any antidiabetic background therapy",
+   "domain": "Drug",
+   "valueConstraint": null,
+   "sourceText": "",
+   "protocolLine": "Male or female patients who are drug-naïve or pre-treated with any antidiabetic background therapy, excluding treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors if ≥ 7 consecutive days",
+   "protocolSpan": "",
+   "window": null,
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "85eaf366-a77a-4872-9575-829727a43f5b",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "p2_aristotle_inclusion_4": [
+  {
+   "id": 4,
+   "description": "Symptomatic CHF or LV dysfunction",
+   "domain": "Condition",
+   "valueConstraint": {
+    "op": "lte",
+    "value": 40.0,
+    "valueHigh": null,
+    "unitText": "%",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "symptomatic congestive heart failure or left ventricular dysfunction",
+   "protocolLine": "1. [OR-GROUP] 3) One or more of the following risk factor(s) for stroke with any of: Age 75 years or older | Prior stroke, TIA or systemic embolus | Either symptomatic congestive heart failure within 3 months or left ventricular dysfunction with an LV ejection fraction (LVEF) ≤ 40% by echocardiography, radionuclide study or contrast angiography | Diabetes mellitus | Hypertension requiring pharmacological treatment",
+   "protocolSpan": "",
+   "window": {
+    "start": -3,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "e881bf11-6bd7-4db5-a276-5e614b61f1ec",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true
+  }
+ ],
+ "carolina_treatment_inclusion_rule_14": {
+  "name": "Pre-planned PCI + Pre-planned CABG",
+  "expression": {
+   "Type": "ALL",
+   "CriteriaList": [],
+   "DemographicCriteriaList": [],
+   "Groups": [
+    {
+     "Type": "ALL",
+     "CriteriaList": [
+      {
+       "Criteria": {
+        "ProcedureOccurrence": {
+         "CodesetId": 48
+        }
+       },
+       "StartWindow": {
+        "Start": {
+         "Days": 9999,
+         "Coeff": -1
+        },
+        "End": {
+         "Days": 0,
+         "Coeff": 1
+        }
+       },
+       "RestrictVisit": false,
+       "IgnoreObservationPeriod": false,
+       "Occurrence": {
+        "Type": 0,
+        "Count": 0
+       }
+      }
+     ],
+     "DemographicCriteriaList": [],
+     "Groups": []
+    },
+    {
+     "Type": "ALL",
+     "CriteriaList": [
+      {
+       "Criteria": {
+        "ProcedureOccurrence": {
+         "CodesetId": 49
+        }
+       },
+       "StartWindow": {
+        "Start": {
+         "Days": 9999,
+         "Coeff": -1
+        },
+        "End": {
+         "Days": 0,
+         "Coeff": 1
+        }
+       },
+       "RestrictVisit": false,
+       "IgnoreObservationPeriod": false,
+       "Occurrence": {
+        "Type": 0,
+        "Count": 0
+       }
+      }
+     ],
+     "DemographicCriteriaList": [],
+     "Groups": []
+    }
+   ]
+  }
+ }
+}

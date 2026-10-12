@@ -97,9 +97,9 @@ class TestWhatTheMapperWasActuallyAsked:
 
         assert seeds[0] == "Anti-diabetic drug naive"
         assert seeds[1] == "Drug Naïve or Pre-treated (Excluding GLP-1/DPP-4/SGLT-2)"
-        # The window-expressed duration is stripped by `738be93`; what is left is still
-        # a policy phrase, not a drug.
-        assert seeds[2] == "Stable Background Medication"
+        # Since RFC-016 step 2 (A10) nothing is cut out of the description: the phrase is
+        # the seed as written, and it is still a policy phrase, not a drug.
+        assert seeds[2] == "Stable Background Medication (8 weeks prior to screening)"
 
     def test_should_seed_on_the_drug_when_the_criterion_carries_one(self):
         """The control that makes the case above mean something."""

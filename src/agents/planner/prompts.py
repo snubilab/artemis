@@ -36,11 +36,7 @@ Rules:
 2. If a criterion is composite/umbrella — it names a category that covers several distinct, individually codeable concepts — decompose it into specific sub-terms
 3. Each sub-term must have a clear OMOP domain
 4. Preserve the original logic_type (PRESENCE/ABSENCE) for all sub-terms
-5. Set `group_type` from the criterion's logic_type (De Morgan):
-   - PRESENCE → `"ANY"` — an umbrella term is satisfied by any one of its sub-terms
-   - ABSENCE → `"ALL"` — the absence of an umbrella term requires every one of its
-     sub-terms to be absent. Using ANY for an exclusion lets one absent sub-term pass the
-     whole rule, admitting patients the protocol excludes.
+5. Record in `relation` how the Source Text combines the sub-terms it names, as the task prompt defines it
 6. Do NOT over-decompose: a term that already names one specific concept stays as it is; only a category term is decomposed
 7. Think about what conditions a clinician would actually CHECK FOR when screening a patient for this criterion —
    but the protocol's own line comes first. Where the line names its sub-conditions, those ARE the answer;
@@ -118,6 +114,14 @@ criterion names, one entry per entity: `text` is the entity's name to look up in
 vocabulary, and `span` is the fragment of Source Text that names it, copied character for
 character. It is an empty list when Source Text removes nothing from that set.
 
+`relation` states how Source Text combines the sub-terms it names into this criterion, read
+without its logic type: `all` when the criterion holds only if every one of them holds, `any`
+when it holds if at least one of them holds, `at_least` when it holds if at least a stated
+number of them hold. `relation_span` is the fragment of Source Text that states how they
+combine, copied character for character. `cardinality` is that stated number, as an integer,
+when `relation` is `at_least`, and null otherwise. `relation` and `relation_span` are null
+when Source Text names fewer than two of the sub-terms.
+
 **Output JSON**:
 ```json
 {{
@@ -126,6 +130,9 @@ character. It is an empty list when Source Text removes nothing from that set.
   "excepted_entities": [
     {{"text": "<entity name>", "span": "<verbatim fragment of Source Text>"}}
   ],
+  "relation": "<all|any|at_least, or null>",
+  "relation_span": "<verbatim fragment of Source Text, or null>",
+  "cardinality": <integer, or null>,
   "sub_criteria": [
     {{
       "name": "<descriptive name>",

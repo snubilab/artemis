@@ -73,6 +73,9 @@ ARISTOTLE_GROUNDED_RESPONSE = """```json
 {
   "decompose": true,
   "reasoning": "the line enumerates three analytes",
+  "relation": "any",
+  "relation_span": "ALT or AST > 2X ULN or Total Bilirubin",
+  "cardinality": null,
   "sub_criteria": [
     {"name": "Elevated ALT", "entity_text": "Alanine aminotransferase (ALT) elevation", "domain": "Measurement", "source_span": "ALT", "value_constraint_text": "> 2X ULN"},
     {"name": "Elevated AST", "entity_text": "Aspartate aminotransferase (AST) elevation", "domain": "Measurement", "source_span": "AST", "value_constraint_text": "> 2X ULN"},
@@ -83,7 +86,9 @@ ARISTOTLE_GROUNDED_RESPONSE = """```json
 
 
 class TestGroundedSpanGate:
-    """The check itself, against the line that motivated it."""
+    """The check itself, against the line that motivated it. Since RFC-016 step 2 the
+    substring check is the only gate; the naming-word gate (A9) and its two tests (the
+    umbrella span, the operand-only span) are removed with it."""
 
     def test_should_keep_the_span_when_the_line_really_names_the_sub_term(self):
         assert _grounded_span(
@@ -100,21 +105,6 @@ class TestGroundedSpanGate:
             "Aspartate aminotransferase (AST) elevation",
         ) is None
 
-    def test_should_reject_a_real_span_that_names_the_umbrella_not_the_sub_term(self):
-        # Gate 1 alone is not enough, and this is the case that proves it. "impaired
-        # hepatic function" IS a verbatim substring of the CAROLINA line -- the model
-        # returned exactly this for an ALT sub-term. Every elaborated member can cite
-        # the umbrella it was elaborated from, so accepting it would let the whole
-        # failure through wearing a grounding mark.
-        assert _grounded_span(
-            "impaired hepatic function", CAROLINA_UNGROUNDED_LINE,
-            "Alanine aminotransferase (ALT) elevation",
-        ) is None
-        # ... while the umbrella span is still accepted for a sub-term it does name.
-        assert _grounded_span(
-            "impaired hepatic function", CAROLINA_UNGROUNDED_LINE, "Impaired hepatic function"
-        ) == "impaired hepatic function"
-
     def test_should_tolerate_case_and_whitespace_drift_in_a_real_copy(self):
         # A model that re-wraps or re-cases a fragment still copied it. Tolerating that
         # cannot admit an invention, which is absent under every one of these forms.
@@ -124,19 +114,6 @@ class TestGroundedSpanGate:
         assert _grounded_span(
             "alt", ARISTOTLE_GROUNDED_LINE, "Alanine aminotransferase (ALT) elevation"
         ) == "alt"
-
-    def test_should_reject_an_operand_only_span_that_names_nothing(self):
-        # "> 2X ULN" is a real substring of the line and names no clinical term. The
-        # operand belongs to value_constraint_text; a sub-term's span must carry a term.
-        # Note is_headless() does NOT catch this one -- measured False, because "ULN"
-        # is not a unit normalize_unit recognises -- so the naming-word gate is what
-        # refuses it.
-        assert _grounded_span(
-            "> 2X ULN", ARISTOTLE_GROUNDED_LINE, "Alanine aminotransferase (ALT) elevation"
-        ) is None
-        assert _grounded_span(
-            "2", ARISTOTLE_GROUNDED_LINE, "Alanine aminotransferase (ALT) elevation"
-        ) is None
 
     def test_should_refuse_every_span_when_the_line_is_blank(self):
         # The pre-6d0c42f population, and any criterion whose source_text Agent 1 did
@@ -168,9 +145,12 @@ class TestDecompositionIsMarkedNotSuppressed:
 
         # The criterion is NOT lost -- decomposing it is what the pipeline is for.
         assert len(result.sub_criteria) == 3
-        # But every member is marked as the model's own, including the two that
-        # claimed a span. Both claims are refused because neither is in the line.
-        assert [sc.source_span for sc in result.sub_criteria] == [None, None, None]
+        # The two analytes the line never names are marked as the model's own. The ALT
+        # member's "impaired hepatic function" IS in the line, and with the naming-word
+        # gate removed (RFC-016 §5, inventory A9) the substring check is the only test, so
+        # that umbrella span is kept: the accepted cost of not reading words.
+        assert [sc.source_span for sc in result.sub_criteria] == [
+            "impaired hepatic function", None, None]
         # And each still carries the line it came from, so the pair reads as
         # "this line, and nothing in it named this term".
         assert {sc.source_text for sc in result.sub_criteria} == {CAROLINA_UNGROUNDED_LINE}
