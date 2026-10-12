@@ -3961,6 +3961,16 @@ class TTEService:
         updated: list[dict[str, Any]] = []
         for criterion in criteria:
             enriched = deepcopy(criterion)
+            # The row's concept set is the one THIS build minted for it, or none. The
+            # row is a copy of the stored one, so without this a row the new build skips
+            # keeps the id of the build before -- which in this build names another row's
+            # set, and export-time readers (codeset_provenance,
+            # stated_exceptions_by_codeset, the prospective lint's fallback) take it as
+            # the row's. Measured in the 2026-10-12 delivery candidate: CARMELINA
+            # inclusion:7 -> 'Insulin dose change', CAROLINA inclusion:38 -> 'Type 1
+            # diabetes mellitus', inclusion:41 -> 'Rosiglitazone'.
+            enriched["conceptSetId"] = None
+            enriched["conceptSetName"] = ""
             domain = (criterion.get("domain") or "").strip()
             is_group_label = bool(criterion.get("isGroupLabel"))
             vc = criterion.get("valueConstraint")
@@ -4014,14 +4024,12 @@ class TTEService:
             # it indexes and handed a refused criterion its NEIGHBOUR's concept set. It
             # fired 13 times, on 13 producer-refused rows and on nothing else.
             #
-            # A criterion the role-keyed paths miss now keeps the conceptSetId=None /
-            # conceptSetName="" that _criterion_dict_from_ir_item already writes, which
-            # leaves the rule honestly absent instead of matching the wrong patients.
+            # A criterion the role-keyed paths miss keeps the conceptSetId=None /
+            # conceptSetName="" set above, which leaves the rule honestly absent instead
+            # of matching the wrong patients.
             if isinstance(concept_set, dict):
                 enriched["conceptSetId"] = concept_set.get("id")
-                enriched["conceptSetName"] = concept_set.get("name") or enriched.get(
-                    "conceptSetName", ""
-                )
+                enriched["conceptSetName"] = concept_set.get("name") or ""
             updated.append(enriched)
         return updated
 
