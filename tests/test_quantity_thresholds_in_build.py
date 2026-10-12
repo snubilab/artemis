@@ -217,6 +217,7 @@ class TestAThresholdThatIsNotALabValue:
                 "role": "inclusion",
                 "label": row["sourceText"],
                 "isGroupLabel": False,
+                "reason": "threshold-not-representable",
                 "quantityKind": "other",
                 "thresholdSpan": "(≥50%)",
                 "valueConstraint": row["valueConstraint"],

@@ -63,6 +63,8 @@ ANNOTATION_KEY = "annotation"
 ANNOTATION_REJECTED_KEY = "_annotationRejected"
 #: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
 UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
+#: The ``reason`` each of those records carries.
+THRESHOLD_NOT_REPRESENTABLE_REASON = "threshold-not-representable"
 #: Agent 1's own subgroup flag (``Criteria.conditional``), carried onto the store row by
 #: ``TTEService._criteria_from_ir`` instead of the row being dropped.
 EXTRACTED_CONDITIONAL_KEY = "conditional"
@@ -959,6 +961,7 @@ def unrepresentable_threshold_records(
                 "role": role,
                 "label": (row.get("sourceText") or row.get("description") or "").strip(),
                 "isGroupLabel": bool(row.get(_IS_LABEL)),
+                "reason": THRESHOLD_NOT_REPRESENTABLE_REASON,
                 "quantityKind": stated.kind.value,
                 "thresholdSpan": stated.span,
                 "valueConstraint": row.get("valueConstraint"),
