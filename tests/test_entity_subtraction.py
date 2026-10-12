@@ -1,9 +1,9 @@
-"""Turning a parsed entity exception into `isExcluded` items.
+"""Turning a stated entity exception into `isExcluded` items.
 
-The two halves meet here, the same shape as `route_qualifier` ->
-`route_subtraction`: :mod:`entity_exception` says which entity the criterion
-asked to leave out, the mapper says which concepts that entity is, and this
-decides what the concept set carries as `isExcluded`.
+The two halves meet here: the criterion's annotation says which entity its protocol
+line leaves out (RFC-016, `criterion_annotation.stated_exceptions`), the mapper says
+which concepts that entity is, and this decides what the concept set carries as
+`isExcluded`.
 
 Every fixture below is real. The CAROLINA ids are the 20 members of the
 delivered `carolina_treatment.circe.json` codeset 45; which 19 of them are

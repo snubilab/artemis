@@ -3,7 +3,8 @@
 RFC-016 §2 / §6 step 1. Agent 1 and the planner extract a criterion's entity, domain,
 logic, window and value. Two further facts about a criterion live only in its protocol
 line, and until this step nothing recorded them, so later stages re-derived them from
-free text with English word lists (``dose_stability.py``, ``entity_exception.py``):
+free text with English word lists (the former ``dose_stability.py`` and
+``entity_exception.py``, both removed in this step):
 
 * ``record_requirement`` -- whether the criterion asks for a record of its entity
   (``required``), for its absence (``forbidden``), or only conditions patients who

@@ -95,8 +95,6 @@ KINDS = frozenset({"allowed", "pending"})
 # leaves this list then.
 RULE_MODULES = frozenset(
     {
-        "src/services/dose_stability.py",
-        "src/services/entity_exception.py",
         "src/services/route_qualifier.py",
         "src/agents/agent1/temporal_grounding.py",
         "src/utils/criterion_seed.py",
