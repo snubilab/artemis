@@ -584,6 +584,15 @@ DEFAULT_WINDOW_START_DAYS_UNLISTED_DOMAIN = -9999
 #: before this.
 DEFAULTED_WINDOW_CRITERIA_KEY = "_defaultedWindowCriteria"
 
+#: The key `TTEService._build_seeded_target_circe` writes one row under for every
+#: criterion (and the target, ``criterionId`` ``"_target"``) whose Agent 2 mapping
+#: recorded a failure -- a refused KG expansion or a failed critic, each of which left the
+#: concept set built from the reranker's seeds alone: ``{"criterionId", "role", "label",
+#: "failures"}``, ``failures`` as in ``CriterionMappingMetadata.mappingFailures``. Read by
+#: the delivery gate's check (ab). Same present-and-empty contract as
+#: :data:`DEFAULTED_WINDOW_CRITERIA_KEY`.
+MAPPING_FAILURE_CRITERIA_KEY = "_mappingFailureCriteria"
+
 #: `source` on a defaulted-window record: the domain was in
 #: :data:`DEFAULT_WINDOW_START_DAYS_BY_DOMAIN` and its documented value was used.
 DEFAULT_WINDOW_SOURCE_DOMAIN_TABLE = "domain-default"

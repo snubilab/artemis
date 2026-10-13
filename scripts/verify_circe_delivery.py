@@ -305,6 +305,19 @@ Checks per file:
     vs 'Hyperglycemia' pairs do. Shares (t)'s vocabulary prefetch. See
     ``src.utils.circe_lint.forbidden_explicit_presence_criteria``.
 
+(ab) no criterion was mapped while an Agent 2 stage it needed failed. A refused KG
+    expansion (a KG or refiner ``concept_ancestor`` lookup that failed, Neo4j unreachable)
+    and a critic whose answer could not be used each leave the concept set built from the
+    reranker's seeds alone, and the producer lists every such criterion under
+    ``_mappingFailureCriteria``. It FAILS rather than warns: the gate's WARNs are kept for
+    a shape no re-export can remove or a protocol may intend, and this is neither -- the
+    set is what a congested database produced on the day, a mapping carrying a failure is
+    never cached, so a re-run recomputes it. Measured cause: concurrent rebuilds exhausted
+    Postgres connections and left seed-only criteria behind a green ``failures 0``. An
+    absent key is an artifact built before the record and makes no claim; present and
+    empty is printed as ``0 mappings carry a recorded failure``. See
+    ``mapping_failure_findings``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -395,6 +408,7 @@ from src.utils.circe_lint import (  # noqa: E402
     DROP_OUTCOME_RULE_REMOVED,
     DROP_OUTCOME_RULE_RENAMED,
     DROPPED_CRITERIA_KEY,
+    MAPPING_FAILURE_CRITERIA_KEY,
     absence_overlap_codesets,
     absence_overlap_findings,
     aliased_concept_sets,
@@ -1299,6 +1313,36 @@ def absence_forbids_required_values_findings(
             f"requires"
         )
     return findings
+
+
+def mapping_failure_findings(expression: dict[str, Any]) -> tuple[list[str], str]:
+    """Check (ab): every criterion the producer mapped while an Agent 2 stage failed.
+
+    :param expression: the delivered CIRCE expression.
+    :returns: ``(failures, clause)``. One failure naming every listed criterion with its
+        stages and reasons; a clause ``0 mappings carry a recorded failure`` when the
+        record is present and empty, and nothing at all when the file predates it.
+    """
+    records = expression.get(MAPPING_FAILURE_CRITERIA_KEY)
+    if records is None:
+        return [], ""
+    if not records:
+        return [], "0 mappings carry a recorded failure"
+    described = []
+    for record in records:
+        if not isinstance(record, dict):
+            described.append(f"malformed record {record!r}")
+            continue
+        stages = "; ".join(
+            f"{failure.get('stage')}: {failure.get('reason')}"
+            + (" (seeds only)" if failure.get("seedsOnly") else "")
+            for failure in record.get("failures") or []
+            if isinstance(failure, dict)
+        ) or "no failure named"
+        described.append(
+            f"{record.get('role')} #{record.get('criterionId')} {record.get('label')!r} [{stages}]"
+        )
+    return [f"mapped with a recorded failure ({len(records)}): {'; '.join(described)}"], ""
 
 
 def _label_of(row: dict[str, Any]) -> str:
@@ -3228,6 +3272,11 @@ def main(argv: list[str] | None = None) -> int:
                 f"{'; '.join(prospective_emitted)}"
             )
 
+        # (ab) a criterion mapped while a KG/refiner lookup or the critic failed: its concept
+        # set is the seeds alone, which a re-run recomputes -- a failure, not a WARN.
+        failed_mappings, mapping_failure_clause = mapping_failure_findings(expression)
+        reasons.extend(failed_mappings)
+
         # (i) the file's own drop records: recorded criterion loss, and whether the
         # census that reports it still balances on the delivered artifact.
         accounting_violations, accounting_summary = criterion_accounting(expression, study)
@@ -3268,7 +3317,8 @@ def main(argv: list[str] | None = None) -> int:
                 + ([specimen_warn_clause] if specimen_warn_clause else [])
                 + ([overlap_warn_clause] if overlap_warn_clause else [])
                 + ([description_warn_clause] if description_warn_clause else [])
-                + ([threshold_warn_clause] if threshold_warn_clause else []),
+                + ([threshold_warn_clause] if threshold_warn_clause else [])
+                + ([mapping_failure_clause] if mapping_failure_clause else []),
             }
         )
 

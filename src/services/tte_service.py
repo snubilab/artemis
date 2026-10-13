@@ -156,6 +156,7 @@ from src.utils.circe_lint import (
     CRITERION_CONCEPT_SET_REFS_PAYLOAD_KEY,
     DEFAULTED_WINDOW_CRITERIA_KEY,
     DROPPED_CRITERIA_KEY,
+    MAPPING_FAILURE_CRITERIA_KEY,
     SPECIMEN_DECISIONS_KEY,
     VALUE_RANGE_CONVERSIONS_KEY,
     closure_subsumption_codesets,
@@ -4903,9 +4904,20 @@ class TTEService:
         # Accumulate mapping metadata keyed by criterion id (populated later)
         criterion_mapping_meta: dict[str, Any] = {}
         criterion_concept_set_refs: dict[str, int] = {}
+        # One row per mapping that recorded an Agent 2 failure (seeds alone), written
+        # under MAPPING_FAILURE_CRITERIA_KEY for the delivery gate's check (ab).
+        mapping_failure_criteria: list[dict[str, Any]] = []
         target_meta = mapped_target.get("mapping_metadata")
         if target_meta is not None:
             criterion_mapping_meta["_target"] = target_meta.model_dump()
+            target_failures = getattr(target_meta, "mappingFailures", None)
+            if target_failures:
+                mapping_failure_criteria.append({
+                    "criterionId": "_target",
+                    "role": "target",
+                    "label": target_name,
+                    "failures": list(target_failures),
+                })
 
         # Collect non-demographic criteria for parallel mapping
         mappable_items: list[tuple[dict[str, Any], bool]] = []  # (criterion, exclusion)
@@ -5427,6 +5439,18 @@ class TTEService:
                     metadata = result["_mapping_metadata"].model_dump()
                     criterion_mapping_meta[self._criterion_mapping_key(role, crit_id)] = metadata
                     criterion_mapping_meta.setdefault(crit_id, metadata)
+                failures = getattr(result["_mapping_metadata"], "mappingFailures", None)
+                if failures:
+                    mapping_failure_criteria.append({
+                        "criterionId": crit_id,
+                        "role": role,
+                        "label": (
+                            criterion.get("sourceText")
+                            or criterion.get("description")
+                            or ""
+                        ).strip(),
+                        "failures": list(failures),
+                    })
             if result and result.get("_defaulted_window") is not None:
                 defaulted_window_criteria.append({
                     "criterionId": str(criterion.get("id", "")),
@@ -5692,6 +5716,12 @@ class TTEService:
             SPECIMEN_DECISIONS_KEY: sorted(specimen_decisions, key=lambda r: r["codesetId"]),
             DEFAULTED_WINDOW_CRITERIA_KEY: sorted(
                 defaulted_window_criteria, key=lambda r: (r["role"], r["criterionId"])
+            ),
+            # Same present-and-empty contract: the criteria whose concept set Agent 2 built
+            # from its seeds alone because a KG/refiner lookup or the critic failed. Empty
+            # is the claim that every mapping ran; gate (ab) fails a file listing any.
+            MAPPING_FAILURE_CRITERIA_KEY: sorted(
+                mapping_failure_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
             # Same present-and-empty contract once more: the criteria whose MANDATORY
             # `entity_text` extraction left empty, so the mapper was seeded on their
@@ -8279,15 +8309,23 @@ class TTEService:
 
             _exception = entity_exception
             if _exception is not None:
-                _resolution = resolve_entity_exception(
-                    _exception,
-                    lambda phrase: self._recommend_seeded_concept_set(
+                # Every phrase's mapping failures, the excepted ones included: a failure
+                # there changes what the subtraction removes, so it is the criterion's.
+                _phrase_failures: list[dict[str, Any]] = []
+
+                def _map_phrase(phrase: str) -> dict[str, Any]:
+                    mapped = self._recommend_seeded_concept_set(
                         phrase,
                         expected_domain=expected_domain,
                         workflow=workflow,
                         resolving_entity_exception=True,
-                    ),
-                )
+                    )
+                    _phrase_failures.extend(
+                        getattr(mapped.get("mapping_metadata"), "mappingFailures", None) or []
+                    )
+                    return mapped
+
+                _resolution = resolve_entity_exception(_exception, _map_phrase)
                 if _resolution.mapping is not None:
                     logging.info(
                         "[TTE] entity exception on '%s': base=%r excepted=%s -> "
@@ -8296,6 +8334,15 @@ class TTEService:
                         len(_resolution.subtraction.excluded_in_place),
                         len(_resolution.subtraction.appended),
                     )
+                    if _phrase_failures:
+                        from src.api.models.tte import CriterionMappingMetadata
+
+                        _metadata = _resolution.mapping.get("mapping_metadata") or (
+                            CriterionMappingMetadata(queryUsed=normalized_seed)
+                        )
+                        _resolution.mapping["mapping_metadata"] = _metadata.model_copy(
+                            update={"mappingFailures": _phrase_failures}
+                        )
                     return _resolution.mapping
                 # Said out loud. A silent fallback here is indistinguishable from
                 # the defect it was written to repair.
@@ -8442,6 +8489,10 @@ class TTEService:
                             rerankMethod="agent2",
                             queryUsed=normalized_seed,
                             selectedConceptIds=selected_ids,
+                            mappingFailures=[
+                                {**failure, "query": normalized_seed}
+                                for failure in mapping_result.mapping_failures()
+                            ],
                         )
 
                         resolved_domain = self._resolve_seeded_domain(items, expected_domain)

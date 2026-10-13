@@ -486,6 +486,10 @@ class CriterionMappingMetadata(TTEModel):
     rerankMethod: str | None = None  # "cross_encoder", "llm", or "score"
     queryUsed: str | None = None
     selectedConceptIds: list[int] = Field(default_factory=list)
+    # Agent 2 failures behind this mapping (MappingResult.mapping_failures(), each with
+    # the "query" it was asked): {"stage", "reason", "seedsOnly", "query"}. Empty when
+    # every stage ran. The build lists these criteria under _mappingFailureCriteria.
+    mappingFailures: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ReRecommendRequest(TTEModel):

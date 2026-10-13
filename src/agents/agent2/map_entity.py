@@ -37,6 +37,10 @@ class EntityMappingResult:
     slow_path_count: int = 0
     gap_count: int = 0
 
+    # Agent 2 failures behind concept_ids (MappingResult.mapping_failures()): each left
+    # the mapping built from the seeds alone. Empty when every stage ran.
+    mapping_failures: List[Dict[str, Any]] = field(default_factory=list)
+
     # Error (if any)
     error: Optional[str] = None
 
@@ -56,6 +60,7 @@ class EntityMappingResult:
             "atc_expanded": self.atc_expanded,
             "critic_skipped": self.critic_skipped,
             "domain_overridden": self.domain_overridden,
+            "mapping_failures": self.mapping_failures,
         }
         if self.error:
             d["error"] = self.error
@@ -83,6 +88,7 @@ class EntityMappingResult:
             "atc_expanded": self.atc_expanded,
             "critic_skipped": self.critic_skipped,
             "domain_overridden": self.domain_overridden,
+            "mapping_failures": self.mapping_failures,
         }
         if parent_rule:
             entry["parent_rule"] = parent_rule
@@ -142,6 +148,7 @@ def map_single_entity(
             fast_path_count=detail_result.fast_path_count,
             slow_path_count=detail_result.slow_path_count,
             gap_count=gap_total - gap_mapped,
+            mapping_failures=list(detail_result.mapping_failures()),
         )
     except Exception as e:
         elapsed = (time.time() - start) * 1000
