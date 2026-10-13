@@ -421,6 +421,19 @@ def specimen_verdict(
     return SpecimenVerdict(violations=violations, declined=plan.declined if violations else None)
 
 
+def offered(test: LabTest) -> bool:
+    """Whether the judge may be shown ``test``'s option.
+
+    A LOINC challenge (the component's part after '^') is a test condition: a state the patient
+    is in, or a substance given, before the sample is taken. No criterion field states a test
+    condition, so no challenge variant is offered or added, and a challenge-variant member is
+    removed whenever the judge answers. Measured on the 2026-10-12 P3 dry arm A, where they were
+    offered: the critic accepted 33 challenge options for CAROLINA exclusion 11 and not the
+    routine serum code, 37 for ARISTOTLE exclusion 29 and 48 for LEADER exclusion 9.
+    """
+    return test.challenge is None
+
+
 def _candidates(
     analyte: str,
     voters: Sequence[LabTest],
@@ -431,16 +444,16 @@ def _candidates(
     """Standard, point-in-time, quantitative lab tests of ``analyte`` the set could gain.
 
     In the unit's property, or the voters' properties when the unit names none. The analyte is
-    the component concept the set's own non-challenge members carry; a challenge variant is a
-    different component by definition and is matched by its prefix.
+    the component concept the set's own non-challenge members carry. No challenge variant is a
+    candidate (:func:`offered`).
     """
     properties = {unit_prop} if unit_prop else {t.property for t in voters if t.analyte == analyte}
     component_ids = {t.component_id for t in voters if t.analyte == analyte and t.challenge is None}
     found = []
     for test in sorted(analyte_lab_tests(analyte), key=lambda t: t.concept_id):
-        if test.concept_id in have or test.analyte != analyte:
+        if test.concept_id in have or test.analyte != analyte or not offered(test):
             continue
-        if test.challenge is None and component_ids and test.component_id not in component_ids:
+        if component_ids and test.component_id not in component_ids:
             continue
         if test.domain_id != MEASUREMENT_DOMAIN:
             continue
@@ -464,13 +477,15 @@ def plan_specimen_refinement(
     """Decide which LOINC lab tests to drop from a criterion's concept set and which to add.
 
     1. Candidates, only when the criterion carries a numeric bound: for each analyte (component,
-       challenge stripped) among the members, every standard, point-in-time, quantitative lab
-       test of it in the unit's property (or the members' properties when the unit names none).
-       A bound-less criterion states no quantity to widen toward, and a timed collection or
-       study summary is not the measurement a threshold is written against.
-    2. The judge is shown the members' plurality analyte and every (System, challenge) option
-       among the members and candidates, once, and answers which options the criterion states.
-       Specimen and challenge are its decision; code reads no System name and no criterion text.
+       challenge stripped) among the members, every standard, point-in-time, quantitative,
+       challenge-free lab test of it in the unit's property (or the members' properties when the
+       unit names none). A bound-less criterion states no quantity to widen toward, and a timed
+       collection or study summary is not the measurement a threshold is written against.
+    2. The judge is shown the members' plurality analyte and every offered (System, challenge)
+       option among the members and candidates (:func:`offered`: no challenge variant), once,
+       and answers which options the criterion states. Specimen is its decision; code reads no
+       System name and no criterion text. An answer naming an option not offered is ignored, so
+       a challenge-variant member is not accepted.
     3. The analyte is the one held by a strict majority of the members in an accepted option --
        those whose property matches the unit when any do. No majority: decline, set unchanged.
        No member accepted: decline.
@@ -495,10 +510,15 @@ def plan_specimen_refinement(
         for analyte in dict.fromkeys(t.analyte for t in in_unit):
             candidates[analyte] = _candidates(analyte, in_unit, unit_prop, have, analyte_lab_tests)
     every_candidate = [t for found in candidates.values() for t in found]
-    options = list({option_of(t).key: option_of(t) for t in [*lab, *every_candidate]}.values())
+    options = list(
+        {option_of(t).key: option_of(t) for t in [*lab, *every_candidate] if offered(t)}.values()
+    )
     plurality = Counter(t.analyte for t in in_unit).most_common(1)[0][0]
     accepted = judge(plurality, options)
     judged = accepted is not None
+    if judged:
+        # A recorded decision answers whatever it is offered; only an offered option counts.
+        accepted = frozenset(accepted) & {o.key for o in options}
 
     violations = tuple(
         (test.concept_id, reasons)

@@ -23,6 +23,7 @@ from src.services.loinc_specimen import (
 from src.services.loinc_specimen import (
     LabTest,
     plan_specimen_refinement,
+    recorded_judge,
     refine_measurement_concept_set,
     unit_property,
 )
@@ -218,6 +219,17 @@ def no_answer(_analyte, _options):
     return None
 
 
+def accepting_every_option(analyte, options):
+    """A stub judge that accepts whatever it is shown -- the 4B critic's answer on CAROLINA
+    exclusion 11 in the 2026-10-12 P3 dry arm A (34 of 361 accepted, 33 of them challenge
+    variants), and records what it was shown."""
+    accepting_every_option.calls.append((analyte, list(options)))
+    return frozenset(o.key for o in options)
+
+
+accepting_every_option.calls = []
+
+
 def _plan(members, *, judge, unit_code=None, numeric=True, vocab=None):
     vocab = vocab or FakeVocabulary(*GLUCOSE_FAMILY, *members)
     return plan_specimen_refinement(
@@ -252,7 +264,7 @@ class TestUnitProperty:
 
 
 class TestTheJudgeDecides:
-    def test_should_show_the_judge_the_analyte_and_every_member_and_candidate_option(self):
+    def test_should_show_the_judge_the_analyte_and_every_offered_member_and_candidate_option(self):
         judge = accepting(*BLOOD)
         _plan(DELIVERED_GLUCOSE, judge=judge, unit_code="mg/dL")
         [(analyte, options)] = judge.calls
@@ -263,8 +275,6 @@ class TestTheJudgeDecides:
             ("Vitreous fluid", None),
             ("Serum, Plasma or Blood", None),
             ("Serum or Plasma", None),
-            ("Serum or Plasma", FAST),
-            ("Serum or Plasma", "2H post 75 g glucose PO"),
         }
 
     def test_should_decide_no_specimen_when_the_judge_gives_no_answer(self):
@@ -275,14 +285,38 @@ class TestTheJudgeDecides:
         assert plan.added == ()
         assert {cid for cid, _ in plan.removed} == {3004378}  # Relative Mass Concentration
 
-    def test_should_keep_a_challenge_variant_only_when_the_judge_accepts_its_condition(self):
-        fasting = _plan(
-            DELIVERED_GLUCOSE, judge=accepting(*BLOOD, challenges=(None, FAST)), unit_code="mg/dL"
+
+class TestNoTestConditionIsStated:
+    """A LOINC challenge (the component's part after '^') is a test condition. No criterion field
+    states one yet, so no challenge variant is offered to the judge, added, or kept -- whatever
+    the judge answers."""
+
+    def test_should_not_show_the_judge_a_challenge_variant_when_no_test_condition_is_stated(self):
+        accepting_every_option.calls.clear()
+        _plan(DELIVERED_GLUCOSE, judge=accepting_every_option, unit_code="mg/dL")
+        [(_analyte, options)] = accepting_every_option.calls
+        assert [o for o in options if o.challenge is not None] == []
+
+    def test_should_not_add_a_challenge_variant_when_the_judge_accepts_every_option(self):
+        plan = _plan(DELIVERED_GLUCOSE, judge=accepting_every_option, unit_code="mg/dL")
+        assert [t.concept_id for t in plan.added if t.challenge is not None] == []
+        assert 3004501 in {t.concept_id for t in plan.added}
+
+    def test_should_remove_a_challenge_member_when_the_judge_accepts_every_option(self):
+        plan = _plan([GLU_SP, GLU_OGTT], judge=accepting_every_option, unit_code="mg/dL")
+        assert {cid for cid, _ in plan.removed} == {3025673}
+
+    def test_should_remove_a_challenge_member_a_recorded_decision_accepted(self):
+        """Gate (u) re-reads a recorded decision whatever it is offered; a challenge option in
+        that record is not one the criterion states either."""
+        recorded = recorded_judge(
+            [
+                {"systemId": None, "system": "Serum or Plasma", "challenge": None},
+                {"systemId": None, "system": "Serum or Plasma", "challenge": GLU_OGTT.challenge},
+            ]
         )
-        plain = _plan(DELIVERED_GLUCOSE, judge=accepting(*BLOOD), unit_code="mg/dL")
-        assert 3037110 in {t.concept_id for t in fasting.added}
-        assert 3037110 not in {t.concept_id for t in plain.added}
-        assert 3025673 not in {t.concept_id for t in fasting.added}
+        plan = _plan([GLU_SP, GLU_OGTT], judge=recorded, unit_code="mg/dL")
+        assert {cid for cid, _ in plan.removed} == {3025673}
 
 
 class TestPlan:
@@ -322,17 +356,11 @@ class TestPlan:
         assert {t.concept_id for t in plan.added} == {3004501}
         assert {cid for cid, _ in plan.removed} == {3004378, 3004676}
 
-    def test_should_add_the_fasting_code_when_the_judge_accepts_the_fast(self):
-        plan = _plan(
-            DELIVERED_GLUCOSE, judge=accepting(*BLOOD, challenges=(None, FAST)), unit_code="mg/dL"
-        )
-        assert {t.concept_id for t in plan.added} == {3004501, 3037110}
-
     def test_should_swap_to_substance_codes_when_the_unit_is_mmol_per_litre(self):
         plan = _plan(
             DELIVERED_GLUCOSE, judge=accepting(*BLOOD, challenges=(None, FAST)), unit_code="mmol/L"
         )
-        assert {t.concept_id for t in plan.added} == {3013826, 3018251}
+        assert {t.concept_id for t in plan.added} == {3013826}
         assert {cid for cid, _ in plan.removed} == {3000483, 3004378, 3004676, 44816672}
 
     def test_should_leave_the_set_unchanged_when_the_component_is_ambiguous(self):
