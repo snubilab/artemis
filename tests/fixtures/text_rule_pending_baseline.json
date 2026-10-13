@@ -171,6 +171,29 @@
       "src/services/tte_service.py",
       "TTEService._unique_ingredient_ids_by_name",
       "sql"
+    ],
+    [
+      "src/agents/agent2/retriever.py",
+      "BatchSearchResults.__init__",
+      "lookup"
+    ],
+    [
+      "src/services/restated_distinctness.py",
+      "analyze_restated_groups",
+      "lookup"
+    ],
+    [
+      "src/services/tte_service.py",
+      "TTEService._recommend_seeded_concept_set",
+      "lookup"
     ]
+  ],
+  "grown": [
+    {
+      "date": "2026-10-14",
+      "tree": "p3-guard-lookup branched from p3-integrated 3c6fd4f",
+      "step": "the taint pass's lookup sink was extended from dict literals to any dict looked up with case-folded text and to dicts the module keys by text; of the 12 sites it found, 3 live ones that no id or position join can replace within this change were ledgered pending (one in tte_service.py, which the change could not touch)",
+      "keys": 3
+    }
   ]
 }

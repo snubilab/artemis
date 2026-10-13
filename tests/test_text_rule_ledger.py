@@ -17,15 +17,21 @@ PRE_EXTENSION_KEYS = [
     ["src/agents/agent1/criteria_dedup.py", "_CONJUNCTION_MARKER", "re"],
     ["src/agents/agent1/criteria_dedup.py", "_DISJUNCTION_MARKER", "re"],
 ]
+# The keys the 2026-10-14 growth added (the baseline's ``grown`` record): lookups the
+# extended ``lookup`` sink found that no id or position join could replace in that change.
+GROWTH_2026_10_14_KEYS = [
+    ["src/agents/agent2/retriever.py", "BatchSearchResults.__init__", "lookup"],
+    ["src/services/restated_distinctness.py", "analyze_restated_groups", "lookup"],
+    ["src/services/tte_service.py", "TTEService._recommend_seeded_concept_set", "lookup"],
+]
 
 
-def test_should_reject_the_2026_10_13_growth_when_the_baseline_predates_it(tmp_path, monkeypatch):
-    """The ledger as the growth recorded it, held to the baseline that predates the growth.
+def _rejected_growth(tmp_path, monkeypatch, at_growth_keys, before_keys) -> int:
+    """How many pending keys check 4 rejects when ``at_growth_keys`` meets ``before_keys``.
 
-    Built from the recorded baseline keys rather than the live ledger, so the case survives
-    the pending rules being removed one by one.
+    The ledger is built from the recorded baseline keys rather than the live ledger, so the
+    case survives the pending rules being removed one by one.
     """
-    recorded = json.loads(guard.BASELINE_PATH.read_text(encoding="utf-8"))["keys"]
     at_growth = [
         {
             "file": file,
@@ -35,19 +41,35 @@ def test_should_reject_the_2026_10_13_growth_when_the_baseline_predates_it(tmp_p
             "inventory_id": "recorded",
             "status": "dormant",
             "decides": "as recorded",
-            "reason": "the pending list as the 2026-10-13 growth recorded it",
+            "reason": "the pending list as a growth recorded it",
         }
-        for file, symbol, sink in recorded
+        for file, symbol, sink in at_growth_keys
     ]
     baseline = tmp_path / "baseline.json"
-    baseline.write_text(json.dumps({"keys": PRE_EXTENSION_KEYS}), encoding="utf-8")
+    baseline.write_text(json.dumps({"keys": before_keys}), encoding="utf-8")
     monkeypatch.setattr(guard, "_ledger_entries", lambda: at_growth)
     monkeypatch.setattr(guard, "BASELINE_PATH", baseline)
-    monkeypatch.setattr(guard, "PENDING_BASELINE_SHA256", guard.baseline_digest(PRE_EXTENSION_KEYS))
+    monkeypatch.setattr(guard, "PENDING_BASELINE_SHA256", guard.baseline_digest(before_keys))
     with pytest.raises(AssertionError, match="the pending list only shrinks") as raised:
         guard.test_should_not_grow_the_pending_list_when_the_baseline_is_unchanged()
-    grown = str(raised.value).count("  (")
-    assert grown == len({tuple(k) for k in recorded} - {tuple(k) for k in PRE_EXTENSION_KEYS}) == 31
+    return str(raised.value).count("  (")
+
+
+def test_should_reject_the_2026_10_13_growth_when_the_baseline_predates_it(tmp_path, monkeypatch):
+    """The ledger as the 2026-10-13 growth recorded it, held to the baseline before it."""
+    recorded = json.loads(guard.BASELINE_PATH.read_text(encoding="utf-8"))["keys"]
+    at_growth = [k for k in recorded if k not in GROWTH_2026_10_14_KEYS]
+    grown = _rejected_growth(tmp_path, monkeypatch, at_growth, PRE_EXTENSION_KEYS)
+    added = {tuple(k) for k in at_growth} - {tuple(k) for k in PRE_EXTENSION_KEYS}
+    assert grown == len(added) == 31
+
+
+def test_should_reject_the_2026_10_14_growth_when_the_baseline_predates_it(tmp_path, monkeypatch):
+    """The ledger as the 2026-10-14 growth recorded it, held to the baseline before it."""
+    recorded = json.loads(guard.BASELINE_PATH.read_text(encoding="utf-8"))["keys"]
+    assert all(key in recorded for key in GROWTH_2026_10_14_KEYS)
+    before = [k for k in recorded if k not in GROWTH_2026_10_14_KEYS]
+    assert _rejected_growth(tmp_path, monkeypatch, recorded, before) == 3
 
 
 def test_should_reject_a_baseline_edit_when_the_pinned_hash_is_unchanged(tmp_path, monkeypatch):

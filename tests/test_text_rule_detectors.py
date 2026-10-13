@@ -5,11 +5,12 @@ guard that misses a class of rule is worse than none because it reads green. The
 hold its detectors to three fixtures, all parsed with ``ast`` and never imported:
 
 - ``fixtures/text_rule_probe_shapes.py`` -- 53 syntactic shapes from the 2026-10-13
-  blind-spot audit. Every shape is a violation (the parameter ``text`` stands for protocol /
+  blind-spot audit and 5 added on 2026-10-14 (text as the key of a dict that is not a
+  literal). Every shape is a violation (the parameter ``text`` stands for protocol /
   criterion / entity text), so every shape must be flagged.
 - ``fixtures/text_rule_real_cases.py`` -- verbatim excerpts of the rules the guard missed in
-  ``src/`` at 79b9a3f, one per detector, so each detector keeps its real case after the
-  ``src/`` copy is removed.
+  ``src/`` at 79b9a3f (and, for r09, at 3c6fd4f), one per detector, so each detector keeps its
+  real case after the ``src/`` copy is removed.
 - ``fixtures/text_rule_machine_formats.py`` and ``fixtures/text_rule_data/id_keyed.json`` --
   ids, enum values, OMOP field names and structured vocabulary attributes (rule 4). A
   detector that fires on them is making an unobserved defect claim.
@@ -83,7 +84,7 @@ def _shape(name: str) -> str:
 def test_should_flag_every_violation_shape_when_the_probe_is_scanned():
     spans = _shape_spans(PROBE)
     shapes = sorted({_shape(name) for _, _, name in spans})
-    assert len(shapes) == 53, shapes
+    assert len(shapes) == 58, shapes
     flagged: dict[str, list[str]] = {}
     for site in guard.collect_sites([PROBE]):
         owner = next((name for first, last, name in spans if first <= site.line <= last), None)
@@ -110,6 +111,7 @@ def test_should_flag_every_violation_shape_when_the_probe_is_scanned():
         ("r07_initialism_run", "charclass"),
         ("QueryExpander.expand", "length"),
         ("r08_umls_short_query", "length"),
+        ("r09_entity_lookup_by_lowered_text", "lookup"),
     ],
 )
 def test_should_flag_the_real_rule_when_its_src_excerpt_is_scanned(symbol, sink):

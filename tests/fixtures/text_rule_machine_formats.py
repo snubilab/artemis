@@ -83,3 +83,16 @@ def m08_emptiness(text):
 def m09_id_set_overlap(_ingredients, child, parent):
     held = set(_ingredients(parent.concept_id))
     return len(held & set(_ingredients(child.concept_id))) / len(held) if held else 0.0
+
+
+# Dicts keyed and read by ids, enum values and CIRCE / OMOP field names, never by text
+def m10_id_and_enum_keyed_dicts(concepts, rules, concept_id, domain_id, entity_key):
+    by_id = {c["concept_id"]: c for c in concepts}
+    by_domain = {}
+    for c in concepts:
+        by_domain.setdefault(c["domain_id"], []).append(c)
+    by_key = {}
+    for rule in rules:
+        by_key[rule["entity_key"]] = rule
+    hit = by_id.get(concept_id) or by_id[concept_id]
+    return hit, by_domain.get(domain_id, []), by_key.get(entity_key), entity_key in by_key

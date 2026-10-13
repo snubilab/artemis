@@ -1,7 +1,7 @@
 # ruff: noqa
 # Real text rules the guard read green over on 2026-10-13, copied verbatim (bodies cut to
 # the rule) from src/ at 79b9a3f so the detector tests keep their real case after the
-# src/ copy is removed. Never imported or executed: tests/test_text_rule_detectors.py
+# src/ copy is removed. r09 was added on 2026-10-14 from src/ at 3c6fd4f. Never imported or executed: tests/test_text_rule_detectors.py
 # parses it with ast. Each function name says which detector must flag it.
 import os
 import re
@@ -154,3 +154,23 @@ def r08_umls_short_query(query, domain_hint, strict):
     if not query or len(query) < 2:
         return []
     return [query]
+
+
+# src/pipeline/supervisor.py:611-613 and :641-648 PipelineSupervisor._step4_5_assemble_validate
+# (3c6fd4f) -- taint lookup: a dict filled at run time keyed by lower-cased entity text, then
+# read with another lower-cased entity text to recover the failed entity's domain
+def r09_entity_lookup_by_lowered_text(assembly_result, entities_to_map=None):
+    # Build entity lookup for domain/parent_rule recovery during re-mapping
+    entity_lookup: dict = {}
+    for ent in (entities_to_map or []):
+        entity_lookup[ent["text"].lower()] = ent
+
+    failed_entities = [
+        {
+            "text": h.entity_text,
+            "domain": entity_lookup.get(h.entity_text.lower(), {}).get("domain"),
+            "parent_rule": entity_lookup.get(h.entity_text.lower(), {}).get("parent_rule"),
+        }
+        for h in assembly_result.heal_log if h.action == "SKIP"
+    ]
+    return failed_entities

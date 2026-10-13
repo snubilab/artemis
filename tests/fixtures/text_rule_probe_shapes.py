@@ -3,7 +3,9 @@
 # Never imported or executed. tests/test_text_rule_detectors.py parses it with ast and
 # requires tests/test_no_text_rules.py to flag every shape listed there as a violation.
 # Copied verbatim from the 2026-10-13 blind-spot audit (53 shapes; s37b is the helper
-# s37 calls). The parameter name `text` stands for protocol / criterion / entity text.
+# s37 calls); s54-s58 were added on 2026-10-14 for text used as the key of a dict that is
+# not a literal (built at run time, or passed in). The parameter name `text` stands for
+# protocol / criterion / entity text.
 import difflib
 import fnmatch
 import re
@@ -265,3 +267,32 @@ def s52_literal_in_normalised_control(text):
 
 def s53_two_member_set_control(text):
     return text in {"oral", "iv"}
+
+
+# 2026-10-14: a dict that is not a literal, keyed or looked up by text. `text.lower() in
+# table` is already s26 (caught as textmatch), so it is not repeated here.
+def s54_runtime_dict_get_lowered(text, table):
+    return table.get(text.lower())
+
+
+def s55_runtime_dict_subscript_casefolded(text, table):
+    return table[text.casefold()]
+
+
+def s56_comprehension_keyed_by_text_then_get(entities, failures):
+    by_text = {ent["text"]: ent for ent in entities}
+    return [by_text.get(failure.entity_text) for failure in failures]
+
+
+def s57_filled_by_text_then_in(entities, text):
+    by_text = {}
+    for ent in entities:
+        by_text[ent["text"]] = ent
+    return text in by_text
+
+
+def s58_grouped_by_text(items):
+    groups = {}
+    for item in items:
+        groups.setdefault(item["text"], []).append(item)
+    return list(groups.values())

@@ -77,7 +77,12 @@ Sinks:
   ``endswith``, ``removeprefix``, ``removesuffix``, ``match / case``, ``operator.contains``,
   ``fnmatch``, ``translate(str.maketrans(...letters...))``. Comparing with ``""`` is an
   emptiness test and is not collected.
-- ``lookup:`` -- ``TABLE.get(text)`` / ``TABLE[text]`` on a dict literal keyed by strings.
+- ``lookup:`` -- text used as the key of a dict. ``TABLE.get(text)`` / ``TABLE[text]`` on a dict
+  literal keyed by strings; case-folded text (``d.get(text.lower())``, ``d[text.casefold()]``)
+  through ``get / pop / setdefault`` or ``[...]`` on any receiver; and raw text through those or
+  ``in`` on a dict this module keys by text -- built as ``{text: ... for ...}``,
+  ``dict(zip(texts, ...))``, ``dict((text, v) for ...)`` or ``dict.fromkeys(texts)``, filled by
+  ``d[text] = ...``, or grouped by ``d.setdefault(text, [])``, which is itself a lookup.
 - ``textmatch:`` -- two texts compared after case-folding or Unicode normalisation (directly
   or by a same-module helper that returns such a value): ``a.lower() == b.lower()``,
   ``text.lower() in collection``. Equal after ``strip()`` is the same text, not a match.
@@ -98,9 +103,14 @@ Text-ness is read from identifiers, so text held under a name that does not say 
 (``item``, ``candidate``, ``value``) is a source only if a same-module caller passes text
 into it. Flow across modules is not followed: a helper imported from another module is
 opaque. A raw (un-normalised) equality or membership between two texts -- a join on the
-same string -- is not collected. Splitting or replacing on punctuation (``text.split(",")``)
-is tokenisation, not a sink. A lambda body is not analysed. A lookup table whose values
-are names or attributes is collected only where text is looked up in it.
+same string -- is not collected, except through a dict as ``lookup:`` above. A raw text key on
+a dict the module did not visibly key by text -- a parameter, or a value another module returns
+(``batch_results.get(text, [])``) -- is not collected: collecting raw keys on every receiver
+measured 4 more sites on 3c6fd4f, two of them ``os.environ.get(name)``. Text appended to a list
+(``texts.append(text)``) does not make the list text, and a key hashed before the lookup
+(``sha256(text.lower())``) is a digest, not text. Splitting or replacing on punctuation
+(``text.split(",")``) is tokenisation, not a sink. A lambda body is not analysed. A lookup
+table whose values are names or attributes is collected only where text is looked up in it.
 
 THE CHECKS
 ----------
@@ -144,7 +154,7 @@ DELIVERY_SCRIPTS = tuple(
 DATA_SUFFIXES = frozenset({".json", ".yaml", ".yml", ".txt", ".csv", ".tsv"})
 
 # sha256 of the baseline's sorted pending keys (see check 4). Changing it is the growth step.
-PENDING_BASELINE_SHA256 = "4e8eaea9a3549acfc201d1f46384fad9f3ccb65504ea45b8dd29692bf987b605"
+PENDING_BASELINE_SHA256 = "18f7c4c99e01f72c4c6b8764c497ed7888064d6482237289035a030ec57f86cd"
 
 RE_MODULES = frozenset({"re", "regex"})
 RE_FUNCTIONS = frozenset(
@@ -333,6 +343,8 @@ MATCH_METHODS = frozenset(
     }
 )
 MEASURE_WRAPPERS = frozenset({"max", "min", "abs", "round", "float", "int"})
+# Mapping methods whose first argument is a key looked up (or grouped under) in the receiver.
+KEY_METHODS = frozenset({"get", "pop", "setdefault"})
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)
 ORDERINGS = (ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Eq, ast.NotEq)
 
@@ -838,6 +850,7 @@ class _Class:
     methods: dict[str, "_Unit"] = field(default_factory=dict)
     constants: dict[str, list[ast.expr]] = field(default_factory=lambda: defaultdict(list))
     text_attrs: set[str] = field(default_factory=set)
+    keyed_attrs: set[str] = field(default_factory=set)
 
 
 @dataclass(eq=False)
@@ -876,6 +889,8 @@ class _Env:
     elements: set[str] = field(default_factory=set)
     attrs: set[str] = field(default_factory=set)
     gathered: set[str] = field(default_factory=set)
+    # Dicts keyed by text: names and ``self.x`` paths, by their compact source.
+    keyed: set[str] = field(default_factory=set)
     real: bool = False
 
     def size(self) -> tuple[int, ...]:
@@ -886,6 +901,7 @@ class _Env:
             len(self.elements),
             len(self.attrs),
             len(self.gathered),
+            len(self.keyed),
         )
 
 
@@ -1449,6 +1465,7 @@ class _Taint:
             text = self.tainted(value, env)
             size = self.measure(value, env)
             normalised = text and self._normalised(value, env)
+            keyed = self._builds_keyed(value, env)
             for target in targets:
                 if isinstance(target, ast.Attribute):
                     if text:
@@ -1456,6 +1473,8 @@ class _Taint:
                         env.attrs.add(path)
                         if env.real and path.startswith("self.") and env.unit.owner is not None:
                             env.unit.owner.text_attrs.add(path)
+                    if keyed:
+                        self._mark_keyed(target, env)
                     continue
                 if isinstance(target, ast.Subscript):
                     # ``seen[key] = text`` fills a collection of text; ``rule["name"] = text``
@@ -1463,9 +1482,14 @@ class _Taint:
                     # The key's own names are never bound.
                     if text and not _is_str(target.slice) and isinstance(target.value, ast.Name):
                         env.tainted.add(target.value.id)
+                    # ``by_text[text] = record`` makes a dict keyed by text.
+                    if self.tainted(target.slice, env):
+                        self._mark_keyed(target.value, env)
                     continue
                 bound = self._bound_text(target, value, env, iterating=False)
                 env.tainted |= bound
+                if keyed and isinstance(target, ast.Name):
+                    env.keyed.add(target.id)
                 if isinstance(target, ast.Name):
                     if text and self._gathered(value, env):
                         env.gathered.add(target.id)
@@ -1479,6 +1503,79 @@ class _Taint:
             env.tainted |= self._bound_text(node.target, node.iter, env, iterating=True)
             if self._string_collection(node.iter, env.unit):
                 env.elements |= {n.id for n in ast.walk(node.target) if isinstance(n, ast.Name)}
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "setdefault"
+            and node.args
+            and self.tainted(node.args[0], env)
+        ):
+            # ``groups.setdefault(text, [])`` groups records under their text.
+            self._mark_keyed(node.func.value, env)
+
+    def _mark_keyed(self, expr: ast.AST, env: _Env) -> None:
+        path = _compact(expr)
+        env.keyed.add(path)
+        if env.real and path.startswith("self.") and env.unit.owner is not None:
+            env.unit.owner.keyed_attrs.add(path)
+
+    def _keyed(self, expr: ast.AST, env: _Env) -> bool:
+        """Whether ``expr`` is a dict this module keys by text (built, filled or grouped)."""
+        path = _compact(expr)
+        if path in env.keyed:
+            return True
+        scope = env.unit.parent
+        while scope is not None:
+            if scope.env is not None and path in scope.env.keyed:
+                return True
+            scope = scope.parent
+        owner = env.unit.owner
+        return (
+            path.startswith("self.")
+            and env.unit.is_method
+            and owner is not None
+            and path in owner.keyed_attrs
+        )
+
+    def _builds_keyed(self, value: ast.AST, env: _Env) -> bool:
+        """Whether ``value`` is a dict keyed by text, or a name for one.
+
+        ``{text: v for ...}``, ``dict(zip(texts, ...))``, ``dict((text, v) for ...)``,
+        ``dict.fromkeys(texts)``, a dict display with a computed text key, or a copy or alias
+        of a dict already keyed by text.
+        """
+        if isinstance(value, ast.DictComp):
+            return self.tainted(value.key, self._comprehension_env(value, env))
+        if isinstance(value, (ast.Name, ast.Attribute)):
+            return self._keyed(value, env)
+        if isinstance(value, ast.Dict):
+            return any(
+                k is not None and not _is_str(k) and self.tainted(k, env) for k in value.keys
+            )
+        if not isinstance(value, ast.Call) or not value.args:
+            return False
+        func, first = value.func, value.args[0]
+        if isinstance(func, ast.Attribute) and func.attr == "fromkeys":
+            return self.tainted(first, env)
+        if not (isinstance(func, ast.Name) and func.id == "dict"):
+            return False
+        if (
+            isinstance(first, ast.Call)
+            and isinstance(first.func, ast.Name)
+            and first.func.id == "zip"
+        ):
+            return bool(first.args) and self.tainted(first.args[0], env)
+        if isinstance(first, (ast.GeneratorExp, ast.ListComp)) and isinstance(first.elt, ast.Tuple):
+            pair = first.elt.elts
+            return bool(pair) and self.tainted(pair[0], self._comprehension_env(first, env))
+        return self._builds_keyed(first, env)
+
+    def _text_key(self, key: ast.AST, receiver: ast.AST, env: _Env) -> bool:
+        """Text used as a key: case-folded (a case-insensitive match on any dict), or raw on a
+        dict this module keys by text (a join on the text)."""
+        return self.tainted(key, env) and (
+            self._normalised(key, env) or self._keyed(receiver, env)
+        )
 
     def _environment(self, unit: _Unit, params: set[str], real: bool = False) -> _Env:
         env = _Env(unit, set(params), real=real)
@@ -1626,6 +1723,8 @@ class _Taint:
                             yield "literal"
                         elif self._normalised(left, env):
                             yield "textmatch"
+                        elif self._keyed(right, env):
+                            yield "lookup"
                 if isinstance(op, (ast.Eq, ast.NotEq)):
                     for literal, other in ((left, right), (right, left)):
                         if self._literalish(literal, env) and self.tainted(other, env):
@@ -1661,6 +1760,12 @@ class _Taint:
                     and node.args
                     and self.tainted(node.args[0], env)
                     and self._string_dict(func.value, unit)
+                ):
+                    yield "lookup"
+                if (
+                    func.attr in KEY_METHODS
+                    and node.args
+                    and self._text_key(node.args[0], func.value, env)
                 ):
                     yield "lookup"
                 if isinstance(func.value, ast.Name):
@@ -1712,7 +1817,10 @@ class _Taint:
             if (
                 isinstance(node.ctx, ast.Load)
                 and self.tainted(node.slice, env)
-                and self._string_dict(node.value, unit)
+                and (
+                    self._string_dict(node.value, unit)
+                    or self._text_key(node.slice, node.value, env)
+                )
             ):
                 yield "lookup"
         elif isinstance(node, ast.Match):
