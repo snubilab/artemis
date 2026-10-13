@@ -512,7 +512,8 @@ class MappingResult(BaseModel):
                     "none of them (no seed, so concept_ids is empty), or None when it "
                     "selected one, failed, or was never reached. A judgement, not a "
                     "failure: mapping_failures() does not list it. The seeded mapping "
-                    "records it on the RAG fallback's answer, which overrides it."
+                    "refuses the criterion on it (reranker-no-match) instead of asking "
+                    "the RAG fallback."
     )
 
     # Processing metadata

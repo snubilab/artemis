@@ -493,9 +493,7 @@ class CriterionMappingMetadata(TTEModel):
     selectedConceptIds: list[int] = Field(default_factory=list)
     # Agent 2 failures behind this mapping (MappingResult.mapping_failures(), each with
     # the "query" it was asked): {"stage", "reason", "seedsOnly", "query"}. Empty when
-    # every stage ran. Stage "reranker_no_match" marks a RAG-fallback mapping made after
-    # the reranker selected no candidate. The build lists these criteria under
-    # _mappingFailureCriteria.
+    # every stage ran. The build lists these criteria under _mappingFailureCriteria.
     mappingFailures: list[dict[str, Any]] = Field(default_factory=list)
 
 

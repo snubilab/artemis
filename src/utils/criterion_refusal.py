@@ -54,6 +54,21 @@ REFUSAL_NO_CONCEPT_MAPPING = "no-concept-mapping"
 #: decides it (A16), at the raise site or in the gate.
 REFUSAL_UNMAPPABLE_PLACEHOLDER = "unmappable-placeholder"
 
+#: Agent 2's reranker was shown the retriever's candidates and selected none of them, so
+#: the mapper refuses rather than asking the RAG fallback for a concept set. Distinct from
+#: :data:`REFUSAL_NO_CONCEPT_MAPPING`, which is the fallback finding nothing: here a model
+#: judged the candidates and said none denotes the term, and the reason names the stage
+#: (``reranker_no_match``), how many candidates it was offered, and the query.
+#:
+#: The fallback used to run after this verdict and ship whatever it found. Measured on the
+#: 2026-10-12 runs: every fallback start followed a reranker no-match (14 in the delivery
+#: candidate, 8 in P3 arm A), and all three picks that reached delivered files were wrong
+#: or mostly wrong -- CAROLINA 'Pre-menopausal woman' became climacteric state and
+#: premature menopause, LEADER 'awaiting solid organ transplant' became completed
+#: transplants, and CARMELINA 'Insulin dose change' took back two LOINC dose tests the
+#: reranker had rejected. Never permitted by the delivery gate: the loss is a loss.
+REFUSAL_RERANKER_NO_MATCH = "reranker-no-match"
+
 #: The intent router could not parse the seed into a clinical entity — usually because
 #: the seed still carries a temporal qualifier ("... within 3 years") that belongs in the
 #: criterion's ``window``, not in its text. The refusal is correct; the defect is
@@ -168,7 +183,8 @@ REFUSAL_MISSING_ENTITY_TEXT = "missing-entity-text"
 #: :data:`REFUSAL_MISSING_ENTITY_TEXT` may re-code. Every one of them is a verdict ON
 #: THE SEED: the vocabulary was asked this text and had nothing, or answered from the
 #: wrong domain, or the intent router could not parse it, or the search returned an
-#: empty expression. Change the seed and every one of them can change.
+#: empty expression, or the reranker judged its candidates and selected none. Change the
+#: seed and every one of them can change.
 #:
 #: An allow-list rather than a deny-list, and the direction is the load-bearing part. A
 #: refusal wrongly re-coded sends a reader to extraction for a defect that lives
@@ -192,6 +208,7 @@ REFUSAL_MISSING_ENTITY_TEXT = "missing-entity-text"
 SEED_CAUSED_REFUSAL_CODES = frozenset(
     {
         REFUSAL_NO_CONCEPT_MAPPING,
+        REFUSAL_RERANKER_NO_MATCH,
         REFUSAL_INTENT_UNPARSED,
         REFUSAL_EMPTY_CONCEPT_SET,
         REFUSAL_DOMAIN_CONTRADICTION,
@@ -204,6 +221,7 @@ SEED_CAUSED_REFUSAL_CODES = frozenset(
 REFUSAL_CODES = frozenset(
     {
         REFUSAL_NO_CONCEPT_MAPPING,
+        REFUSAL_RERANKER_NO_MATCH,
         REFUSAL_UNMAPPABLE_PLACEHOLDER,
         REFUSAL_INTENT_UNPARSED,
         REFUSAL_EMPTY_CONCEPT_SET,

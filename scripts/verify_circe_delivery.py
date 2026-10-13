@@ -318,18 +318,6 @@ Checks per file:
     empty is printed as ``0 mappings carry a recorded failure``. See
     ``mapping_failure_findings``.
 
-    The same list carries stage ``reranker_no_match``: the reranker selected none of the
-    candidates Agent 2 offered, and the concept set in the file is the RAG fallback's pick
-    over that verdict. A re-run reproduces it, so (ab)'s own reason does not apply; it
-    FAILS anyway because, without the fallback, the same criterion is a
-    ``no-concept-mapping`` refusal, which (i) already fails as criterion loss, and a pick
-    the pipeline's own judge rejected must not pass where the refusal would not. Measured
-    on the 2026-10-12 runs: of the three delivered criteria mapped this way, CAROLINA
-    'Pre-menopausal woman' (climacteric, premature menopause, family history of early
-    menopause) and P3 arm A's LEADER 'awaiting solid organ transplant' (transplant
-    procedures, a pharmacist provider, a device) are wrong and CARMELINA inclusion #9
-    'Insulin dose change' is part right, part dose-mass lab tests the reranker rejected.
-
 (ac) no criterion is in the file undecomposed because the planner failed on it. A planner
     call that failed, or a reply that could not be read, leaves that one criterion exactly
     as Agent 1 extracted it -- an umbrella or "A or B" line mapped as one phrase -- while
@@ -3397,9 +3385,7 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         # (ab) a criterion mapped while a KG/refiner lookup or the critic failed: its concept
-        # set is the seeds alone, which a re-run recomputes -- a failure, not a WARN. Also a
-        # criterion whose set the RAG fallback chose over the reranker's "none fit"
-        # (stage reranker_no_match): refused instead, it would fail (i), so it fails here.
+        # set is the seeds alone, which a re-run recomputes -- a failure, not a WARN.
         failed_mappings, mapping_failure_clause = mapping_failure_findings(expression)
         reasons.extend(failed_mappings)
 
