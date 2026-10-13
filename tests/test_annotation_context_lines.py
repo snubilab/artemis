@@ -262,8 +262,15 @@ class TestTheConditionalSpanMayComeFromALineShown:
 # --------------------------------------------------------------------------- #
 
 
-def _rows_with_row_7_annotated(annotation: dict[str, Any]) -> list[dict[str, Any]]:
-    rows = _without_annotations(INCLUSION)
+#: CARMELINA inclusion 1-9 (rows 2 and 7 among them) for the build: inclusion 10 onwards holds
+#: a lab range, whose conversion reads the LOINC vocabulary from Postgres.
+BUILD_ROWS = [r for r in INCLUSION if r["id"] <= 9]
+
+
+def _rows_with_row_7_annotated(
+    annotation: dict[str, Any], rows: list[dict[str, Any]] = INCLUSION
+) -> list[dict[str, Any]]:
+    rows = _without_annotations(rows)
     next(r for r in rows if r["id"] == 7)[ANNOTATION_KEY] = {
         "promptVersion": "test", "model": "stub", **annotation
     }
@@ -325,6 +332,10 @@ class _Agent2IsStubbed:
         raise RuntimeError("Agent 2 is stubbed out in this test")
 
 
+def _no_database() -> Any:
+    raise RuntimeError("this test reads no database; the build reached the lab vocabulary")
+
+
 @pytest.fixture
 def service(monkeypatch) -> TTEService:
     monkeypatch.setattr("src.agents.agent2.workflow.Agent2Workflow", _Agent2IsStubbed)
@@ -336,6 +347,7 @@ def service(monkeypatch) -> TTEService:
         return _stub_concept_set(seed_text.strip(), kwargs.get("expected_domain") or "Drug")
 
     monkeypatch.setattr(svc, "_recommend_seeded_concept_set", fake_recommend)
+    monkeypatch.setattr(svc, "_lab_test_vocabulary", _no_database)
     return svc
 
 
@@ -354,7 +366,7 @@ class TestTheSkipRecordCarriesTheLineToTheGate:
         self, service
     ):
         rows = _rows_with_row_7_annotated(
-            _context_annotation(SPAN_FROM_ROW_2, ROW_2["protocolLine"])
+            _context_annotation(SPAN_FROM_ROW_2, ROW_2["protocolLine"]), BUILD_ROWS
         )
         skip = _skip_of(_built(service, rows), "7")
         assert skip is not None
@@ -364,14 +376,14 @@ class TestTheSkipRecordCarriesTheLineToTheGate:
         )
 
     def test_should_carry_no_line_when_the_span_is_the_rows_own(self, service):
-        rows = _rows_with_row_7_annotated(_context_annotation(SPAN_FROM_ROW_7, None))
+        rows = _rows_with_row_7_annotated(_context_annotation(SPAN_FROM_ROW_7, None), BUILD_ROWS)
         skip = _skip_of(_built(service, rows), "7")
         assert skip is not None
         assert (skip["conditionalSpan"], skip["conditionalSpanLine"]) == (SPAN_FROM_ROW_7, None)
 
     def test_should_emit_the_row_when_the_recorded_line_belongs_to_the_other_role(self, service):
         rows = _rows_with_row_7_annotated(
-            _context_annotation(SPAN_FROM_EXC_35, EXC_35["protocolLine"])
+            _context_annotation(SPAN_FROM_EXC_35, EXC_35["protocolLine"]), BUILD_ROWS
         )
         circe = _built(service, rows)
         assert _skip_of(circe, "7") is None
@@ -385,7 +397,7 @@ class TestTheSkipRecordCarriesTheLineToTheGate:
         from scripts.verify_circe_delivery import criteria_index, skipped_criteria_violations
 
         rows = _rows_with_row_7_annotated(
-            _context_annotation(SPAN_FROM_ROW_2, ROW_2["protocolLine"])
+            _context_annotation(SPAN_FROM_ROW_2, ROW_2["protocolLine"]), BUILD_ROWS
         )
         circe = _built(service, rows)
         study = {"eligibility": {"inclusionCriteria": rows,
