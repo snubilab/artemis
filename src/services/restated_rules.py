@@ -12,14 +12,15 @@ pre-treated ... (excluding GLP-1, DPP-4, SGLT-2 if recent)", #14 and #15 from tw
 groups. CIRCE AND-combines every ``InclusionRules`` entry, so #14 and #15 select nothing #11 has
 not already selected -- both sites' Atlas reports give #11 and #14 the same N.
 
-WHY THE IR-LEVEL RESTATED PATHS CANNOT REACH IT. :mod:`src.services.restated_distinctness` and
-:mod:`src.services.restated_demographics` decide per role, inside one (domain, description stem)
-group, before mapping. Here the pair spans two roles (inclusion 85eaf366 against exclusion
-773392a3) and every member has its own stem ('Exclusion of GLP-1 receptor agonists if recent',
+WHY AN IR-LEVEL PATH CANNOT REACH IT. An IR-level path decides per role, before mapping, on the
+rows' own fields. Here the pair spans two roles (inclusion 85eaf366 against exclusion 773392a3)
+and every member has its own description ('Exclusion of GLP-1 receptor agonists if recent',
 'Use of GLP-1 receptor agonists', 'DPP-4 inhibitors'), and #15 is not a restatement of any ONE
 criterion but of one conjunct of a three-criterion rule. Identity is only decidable on what the
 rules SELECT, which exists only after the concept sets are minted -- so this runs on the built
-expression, not on the IR.
+expression, not on the IR. Outside Demographics (:mod:`src.services.restated_demographics`) it is
+the only restatement collapse: the IR-level one that grouped rows on their entity text was
+removed on 2026-10-14 (:mod:`src.services.restated_distinctness` records why).
 
 THE PREDICATE, exact and structural, with no threshold and no names:
 

@@ -125,10 +125,6 @@ from src.services.restated_demographics import (
     COLLAPSE_REASON as RESTATED_DEMOGRAPHICS_REASON,
     collapse_all_restated_demographics,
 )
-from src.services.restated_distinctness import (
-    COLLAPSE_REASON as RESTATED_DISTINCTNESS_REASON,
-    collapse_all_restated_criteria,
-)
 from src.services.restated_rules import (
     RESTATED_RULE_COLLAPSE_KEY,
     collapse_redundant_inclusion_rules,
@@ -5088,20 +5084,10 @@ class TTEService:
             )
         )
 
-        # SPEC-INFRA-004 REQ-001 / REQ-007 / REQ-011. The same defect in every other domain,
-        # decided on structured fields (RFC-016 §5 E6). Runs here for the same reason the
-        # Demographics collapse does -- it partitions a whole role at once and has no
-        # concept-set dependency -- and the two never contend for a criterion
-        # because REQ-013 gates this path on the complement of `is_restatable_demographic`,
-        # so the eligible sets are complementary by construction rather than by coincidence.
-        (
-            restated_distinctness_drops,
-            restated_distinctness_collapses,
-            restated_intact_groups,
-        ) = collapse_all_restated_criteria(
-            inclusion_criteria=inc_criteria,
-            exclusion_criteria=exc_criteria,
-        )
+        # Outside Demographics nothing is dropped as a restatement here. The collapse that
+        # stood here grouped rows on their entity text (`restated_distinctness.py` records
+        # what it dropped and why it went); a restatement is now collapsed on what its rule
+        # SELECTS, after mapping, by `collapse_redundant_inclusion_rules` below.
 
         # RFC-016 step 1. A rule its protocol line applies only to patients who already
         # have the record ("Stable antidiabetic background medication", "WOCBP must use
@@ -5187,13 +5173,6 @@ class TTEService:
                 _record_skip(criterion, "inclusion", RESTATED_DEMOGRAPHICS_REASON)
                 order += 1
                 continue
-            # Recorded under its own reason rather than merged with the branch above: the
-            # two paths make different decisions on different grounds, and a census that
-            # attributed both to one reason would hide which signal did the dropping.
-            if ("inclusion", str(criterion.get("id", ""))) in restated_distinctness_drops:
-                _record_skip(criterion, "inclusion", RESTATED_DISTINCTNESS_REASON)
-                order += 1
-                continue
             # Ahead of the group-label branch, so a conditional label is recorded under
             # this reason rather than as a container whose members emitted -- they did not.
             decision = conditional_inclusions.get(str(criterion.get("id", "")))
@@ -5246,13 +5225,6 @@ class TTEService:
             # without this branch every restatement still gets its own set.
             if ("exclusion", str(criterion.get("id", ""))) in restated_demographic_drops:
                 _record_skip(criterion, "exclusion", RESTATED_DEMOGRAPHICS_REASON)
-                order += 1
-                continue
-            # Same placement and the same reason as the inclusion loop's second branch. This
-            # is the side the bulk of the generalized clusters live on -- CAROLINA's ten
-            # sibling clusters and EMPA-REG's six-member liver group are all exclusions.
-            if ("exclusion", str(criterion.get("id", ""))) in restated_distinctness_drops:
-                _record_skip(criterion, "exclusion", RESTATED_DISTINCTNESS_REASON)
                 order += 1
                 continue
             # Same placement as the inclusion loop: an exclusion that applies only to
@@ -5848,23 +5820,10 @@ class TTEService:
             # names its `survivorRule`, because for EMPA-REG which member should survive is
             # not settled -- see `restated_demographics.py` and `spec.md` §2.4 ASSUMPTION-1.
             # (The description-stem `_restatedClusters` report was removed with its stem,
-            # RFC-016 §5 E6; `_restatedDistinctnessCollapse` and `_restatedIntactGroups`
-            # below report duplicates on structured fields.)
+            # RFC-016 §5 E6. `_restatedDistinctnessCollapse` and `_restatedIntactGroups`,
+            # which reported the entity-text collapse, went with it on 2026-10-14; a
+            # restatement outside Demographics is recorded under `_restatedRuleCollapse`.)
             "_restatedDemographicsCollapse": restated_demographic_collapses,
-            # SPEC-INFRA-004 REQ-007. Same present-and-empty contract again. Kept separate
-            # from `_restatedDemographicsCollapse` rather than merged into it: the two paths
-            # use different grouping units -- whole-role against per-(role, distinctness key,
-            # place in the rule tree) -- so a merged list would carry records whose fields
-            # mean different things, and a
-            # reader could not tell which rule produced which record.
-            "_restatedDistinctnessCollapse": restated_distinctness_collapses,
-            # SPEC-INFRA-004 REQ-011. The report is the deliverable here, not the collapse.
-            # A genuine duplicate the key cannot reach -- CAROLINA {22,59}, whose members
-            # read `Investigational drug` and `Investigational Medicinal/Medical Product` --
-            # must be visible in the artifact rather than silently absent, or the next
-            # investigation re-derives it from scratch, which is how that pair reached
-            # SPEC-INFRA-004 mis-classified in the first place.
-            "_restatedIntactGroups": restated_intact_groups,
         }
         # Last, so the narrowing reads the final rule geometry: groups are folded and their
         # types corrected above, and whether a lab range sits among alternative risk factors

@@ -39,6 +39,7 @@ from src.services.criterion_annotation import (
 )
 from src.services.tte_service import TTEService
 from src.services.value_constraint import RESTORED_UNIT_CRITERIA_KEY
+from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
 from src.utils.criterion_refusal import (
     REFUSAL_STRANDED_GROUP_THRESHOLD,
     REFUSAL_UNREADABLE_VALUE_FILTER,
@@ -268,14 +269,20 @@ class TestCarolinaTreatmentCompliance:
         # they carry no number to apply, which is what gate (j) reads.
         assert recorded == {"31"}
 
-    def test_should_still_collapse_the_two_identical_members(self, service):
-        """E6 compares structured fields; the annotation states the same span for both,
-        so it gives them nothing to tell apart. One survives, carrying the span."""
+    def test_should_build_both_identical_members_rather_than_drop_one_on_entity_text(
+        self, service
+    ):
+        """The two members share entity text and the annotation states the same span for
+        both, so nothing structural tells them apart, and the collapse that dropped one on
+        its entity text is gone (`restated_distinctness.py`). Both are built; in one group
+        they select the same thing twice, which a cohort reads as once."""
         span = "between 80% and 120%"
         rows = [_annotated(CAROLINA[i], span, "other", "none") for i in (31, 32, 33)]
         circe = _build(service, inclusion=rows)
-        collapsed = {r["criterionId"] for r in circe["_skippedCriteria"]}
-        assert collapsed & {"32", "33"} and not {"32", "33"} <= collapsed
+        assert not {r["criterionId"] for r in circe["_skippedCriteria"]} & {"32", "33"}
+        refs = circe[CRITERION_CONCEPT_SET_REFS_KEY]
+        items = {cs["id"]: cs["expression"]["items"] for cs in circe["ConceptSets"]}
+        assert items[refs["inclusion:32"]] == items[refs["inclusion:33"]]
 
 
 # --------------------------------------------------------------------------- #
@@ -441,14 +448,14 @@ class TestADoseOrStatisticalThresholdSkipsTheCriterion:
         label = _annotated(CAROLINA[31], "between 80% and 120%", "statistical", "none")
         circe = _build(service, inclusion=[label, CAROLINA[32], CAROLINA[33]])
         skips = {r["criterionId"]: r for r in circe["_skippedCriteria"]}
-        # 33 is E6's duplicate of 32 and is collapsed first, as it was before; the label
-        # and the surviving member go under the label's threshold decision.
+        # 33 restates 32; nothing drops it on its entity text any more, so the label and
+        # both members go under the label's threshold decision.
         assert {cid: r["reason"] for cid, r in skips.items()} == {
             "31": "threshold-not-representable",
             "32": "threshold-not-representable",
-            "33": "restated-distinctness-duplicate",
+            "33": "threshold-not-representable",
         }
-        assert skips["32"]["thresholdDecidedBy"] == "31"
+        assert skips["32"]["thresholdDecidedBy"] == skips["33"]["thresholdDecidedBy"] == "31"
         assert circe["InclusionRules"] == []
 
 

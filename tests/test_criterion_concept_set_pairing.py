@@ -24,7 +24,7 @@ from typing import Any
 
 import pytest
 
-from src.services.restated_distinctness import COLLAPSE_REASON as DISTINCTNESS_REASON
+from src.services.restated_demographics import COLLAPSE_REASON as DEMOGRAPHICS_REASON
 from src.services.tte_service import TTEService
 
 
@@ -100,11 +100,15 @@ def _eligibility(exclusion: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-# Two byte-identical restatements in different groups: SPEC-INFRA-004 collapses the
-# second one, and that drop is what desynchronises the two walks.
-ALCOHOL_RESTATEMENT = [
-    _criterion("5", "Alcohol Use Disorder", "Alcohol Use Disorder", group_id="c8c4cfc2"),
-    _criterion("49", "Alcohol Use Disorder", "Alcohol Use Disorder", group_id="ade8ea06"),
+# Two constraint-free top-level Demographics rows: SPEC-INFRA-003 drops the second one
+# before mapping, and a drop ahead of the mapper is what desynchronised the two walks.
+# (The fixture used SPEC-INFRA-004's entity-text drop until that collapse was removed;
+# `restated_distinctness.py` records why.)
+RESTATED_DEMOGRAPHICS = [
+    _criterion("14", "Pregnancy/Nursing/Uncontrolled Contraception", "", domain="Demographics"),
+    _criterion(
+        "23", "Pregnancy/Nursing/Uncontrolled Contraception (Exclusion)", "", domain="Demographics"
+    ),
 ]
 
 # A grouped pair sitting after the drop -- the population that gets re-paired.
@@ -150,7 +154,7 @@ class TestTheTwoWalksStayInStep:
         """The regression itself. With the walks out of step the group is labelled
         'Stroke' alone and carries the myocardial-infarction set."""
         circe = service._build_seeded_target_circe(
-            _eligibility(ALCOHOL_RESTATEMENT + CARDIOVASCULAR_GROUP)
+            _eligibility(RESTATED_DEMOGRAPHICS + CARDIOVASCULAR_GROUP)
         )
         assert _referenced_set_names(circe, "Stroke + Myocardial Infarction") == [
             "Stroke",
@@ -170,12 +174,12 @@ class TestTheTwoWalksStayInStep:
         """The dropped criterion is recorded as skipped, so a rule bearing another
         criterion's concept set must not be emitted in its place."""
         circe = service._build_seeded_target_circe(
-            _eligibility(ALCOHOL_RESTATEMENT + CARDIOVASCULAR_GROUP)
+            _eligibility(RESTATED_DEMOGRAPHICS + CARDIOVASCULAR_GROUP)
         )
         dropped = [
-            r for r in circe["_skippedCriteria"] if r["reason"] == DISTINCTNESS_REASON
+            r for r in circe["_skippedCriteria"] if r["reason"] == DEMOGRAPHICS_REASON
         ]
-        assert [r["criterionId"] for r in dropped] == ["49"]
+        assert [r["criterionId"] for r in dropped] == ["23"]
         assert len(circe["InclusionRules"]) == 2
 
     def test_should_reference_every_mapped_concept_set_exactly_once_when_a_criterion_was_collapsed(
@@ -184,7 +188,7 @@ class TestTheTwoWalksStayInStep:
         """No concept set left orphaned and none used twice. The entry set (id 1) is
         excluded -- it is referenced from PrimaryCriteria, not from an inclusion rule."""
         circe = service._build_seeded_target_circe(
-            _eligibility(ALCOHOL_RESTATEMENT + CARDIOVASCULAR_GROUP)
+            _eligibility(RESTATED_DEMOGRAPHICS + CARDIOVASCULAR_GROUP)
         )
         referenced = []
         for rule in circe["InclusionRules"]:

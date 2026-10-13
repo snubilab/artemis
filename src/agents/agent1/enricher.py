@@ -83,9 +83,9 @@ def _merge_criteria(
     increased risk of bradycardia,") -- and let at least five restatements in the same
     merge through at 0.23-0.56, so it never gave the guarantee it appeared to.
     A restatement reaches extraction as its own criterion. It is collapsed afterwards
-    only where the model gives both copies identical structured fields
-    (``restated_distinctness.distinctness_key``); where it does not, both stay and the
-    restatement is visible in the IR rather than decided away here. Exact repeats are
+    only where the rules built from both copies select exactly the same thing
+    (``restated_rules``); where they do not, both stay and the restatement is visible
+    in the IR rather than decided away here. Exact repeats are
     removed with the whitespace cleaning in
     ``parser._normalize_trial_data_for_stable_hash``.
 

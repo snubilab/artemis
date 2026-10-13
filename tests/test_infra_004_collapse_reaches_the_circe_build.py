@@ -1,21 +1,19 @@
-"""SPEC-INFRA-004 AC-009 / AC-012: the generalized collapse must reach the emitted CIRCE.
+"""SPEC-INFRA-004 AC-009 / AC-012, after the entity-text collapse was removed (2026-10-14).
 
-`restated_distinctness.py` decides *what* to drop. This is the wiring that makes the decision
-count: the dropped criteria must never reach the mapper, so the cohort stops being filtered on
-the union of their divergent concept sets.
+The generalized collapse dropped, before mapping, every row whose ``(domain, sourceText, window,
+valueConstraint, logicType)`` equalled an earlier row's -- a decision on entity text
+(`restated_distinctness.py` records what it dropped and why it went). These cases now reach the
+mapper, and a restatement is collapsed on what its rule SELECTS, after mapping
+(`restated_rules.collapse_redundant_inclusion_rules`, recorded under ``_restatedRuleCollapse``).
 
-Two properties are load-bearing here and neither is visible from the pure module:
+Two properties are still load-bearing and neither is visible from a pure module:
 
 **The census identity still holds.** `_generationCensus` asserts
-``total == mapped + unmapped + demographicRules + skipped``. A new drop branch that does not
-record itself breaks that identity, which is why the drop routes through `_record_skip` rather
-than a bare `continue`, and why each path records its own reason rather than sharing one.
+``total == mapped + unmapped + demographicRules + skipped``.
 
-**The two paths still do not contend.** AC-009 is the REQ-008 hinge and deliberately the one
-case where they meet: CARMELINA's pregnancy pair is empty-`sourceText`, so REQ-004 withholds
-the generalized signal and the Demographics path must therefore still be the thing that
-collapses it. If that pair collapses because the *generalized* signal reached it, REQ-004 has
-been violated.
+**The Demographics path is unchanged.** CARMELINA's pregnancy pair is constraint-free
+Demographics with empty `sourceText`; SPEC-INFRA-003's cardinality collapse still drops the
+second before mapping, and nothing else drops anything here.
 """
 from __future__ import annotations
 
@@ -25,6 +23,7 @@ import pytest
 
 from src.services.restated_demographics import COLLAPSE_REASON as DEMOGRAPHICS_REASON
 from src.services.restated_distinctness import COLLAPSE_REASON as DISTINCTNESS_REASON
+from src.services.restated_rules import IDENTICAL_REASON
 from src.services.tte_service import TTEService
 from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
 
@@ -56,20 +55,18 @@ def _stub_concept_set(name: str, concept_id: int, domain: str = "Condition") -> 
 @pytest.fixture
 def service(monkeypatch) -> TTEService:
     svc = TTEService.__new__(TTEService)
+    concept_ids: dict[tuple[str, str], int] = {}
 
     def fake_recommend(seed_text: str, **kwargs: Any) -> dict[str, Any]:
         if seed_text.strip() == "empagliflozin":
             return _stub_concept_set("empagliflozin", 1594973, "Drug")
-        # Answer in the domain the criterion asked about. These tests are about the
-        # collapse reaching the CIRCE build, not about domains, and the stub used to
-        # return a Condition concept for every seed -- so a `Measurement` criterion such
-        # as "Alanine aminotransferase" came back as a Condition set. That is the exact
-        # shape `circe_lint.domain_mismatched_criteria` refuses to deliver and that
-        # `_refuse_domain_contradiction` now refuses to build, so the stub was standing
-        # in for an answer the pipeline would never accept.
-        return _stub_concept_set(
-            seed_text.strip(), 201826, kwargs.get("expected_domain") or "Condition"
-        )
+        # Answer in the domain the criterion asked about: a Condition set for a
+        # `Measurement` criterion is the shape `_refuse_domain_contradiction` refuses to
+        # build. One concept per distinct request, so two analytes select two things and a
+        # restatement selects what its original does -- what the criterion cache gives.
+        domain = kwargs.get("expected_domain") or "Condition"
+        concept_id = concept_ids.setdefault((seed_text.strip(), domain), 201826 + len(concept_ids))
+        return _stub_concept_set(seed_text.strip(), concept_id, domain)
 
     monkeypatch.setattr(svc, "_recommend_seeded_concept_set", fake_recommend)
     return svc
@@ -152,70 +149,59 @@ EMPA_REG_CARDIOVASCULAR = [
 ]
 
 
-class TestTheGeneralizedCollapseIsEmitted:
-    def test_should_always_carry_both_keys_even_when_nothing_collapses(self):
-        """Present-and-empty, matching every sibling key. An absent key would be
-        indistinguishable from a clean run on an artifact built before this shipped."""
-        circe = service_build(
-            _eligibility(inclusion=[_criterion("i1", "T2DM", "Type 2 diabetes mellitus")])
-        )
-        assert circe.get("_restatedDistinctnessCollapse") == []
-        assert circe.get("_restatedIntactGroups") == []
+class TestNothingIsDroppedOnEntityText:
+    def test_should_carry_neither_generalized_key_when_the_build_runs(self):
+        """`_restatedDistinctnessCollapse` and `_restatedIntactGroups` reported the removed
+        collapse; a file built now carries neither, so no reader takes an empty list for a
+        collapse that ran and found nothing."""
+        circe = service_build(_eligibility(exclusion=CAROLINA_ALCOHOL + EMPA_REG_LIVER))
+        assert "_restatedDistinctnessCollapse" not in circe
+        assert "_restatedIntactGroups" not in circe
+        assert DISTINCTNESS_REASON not in circe["_generationCensus"]["skippedByReason"]
 
-    def test_should_record_the_collapse_for_the_alcohol_pair(self):
-        circe = service_build(_eligibility(exclusion=CAROLINA_ALCOHOL))
-        (record,) = circe["_restatedDistinctnessCollapse"]
-        assert record["role"] == "exclusion"
-        assert record["distinctnessKey"]["sourceText"] == "Alcohol Use Disorder"
-        assert record["survivorId"] == "5"
-        assert record["droppedIds"] == ["49"]
-        assert record["survivorRule"] == "first-in-document-order"
-
-    def test_should_neither_collapse_nor_group_three_entities_sharing_a_description(self):
-        """Duplicates are decided by structured fields (RFC-016 E6): three different
-        entities under one description are not a candidate group at all."""
-        circe = service_build(_eligibility(exclusion=EMPA_REG_CARDIOVASCULAR))
-        assert circe["_restatedDistinctnessCollapse"] == []
-        assert circe["_restatedIntactGroups"] == []
-
-
-class TestTheDroppedCriteriaNeverReachTheMapper:
-    def test_should_emit_one_concept_set_where_two_restatements_went_in(self):
-        circe = service_build(_eligibility(exclusion=CAROLINA_ALCOHOL))
-        assert circe["_generationCensus"]["mapped"] == 1
-
-    def test_should_keep_the_survivor_mapped_rather_than_dropping_both(self):
-        circe = service_build(_eligibility(exclusion=CAROLINA_ALCOHOL))
-        assert any("5" in str(k) for k in circe[CRITERION_CONCEPT_SET_REFS_KEY])
-
-    def test_should_emit_three_concept_sets_for_the_six_member_liver_group(self):
-        """AC-006 end to end. Six is the unfixed defect; one would destroy two analytes."""
-        circe = service_build(_eligibility(exclusion=EMPA_REG_LIVER))
-        assert circe["_generationCensus"]["mapped"] == 3
-        assert circe["_generationCensus"]["skipped"] == 3
-        assert len(circe["_restatedDistinctnessCollapse"]) == 3
-
-    def test_should_leave_the_category_two_cluster_fully_mapped(self):
-        """The inverse of the criterion above, and the one that matters more: three distinct
-        entities in, three concept sets out, nothing dropped."""
-        circe = service_build(_eligibility(exclusion=EMPA_REG_CARDIOVASCULAR))
-        assert circe["_generationCensus"]["mapped"] == 3
+    @pytest.mark.parametrize(
+        "exclusion,mapped",
+        [(CAROLINA_ALCOHOL, 2), (EMPA_REG_LIVER, 6), (EMPA_REG_CARDIOVASCULAR, 3)],
+    )
+    def test_should_map_every_row_when_rows_share_entity_text(self, exclusion, mapped):
+        circe = service_build(_eligibility(exclusion=exclusion))
+        assert circe["_generationCensus"]["mapped"] == mapped
         assert circe["_generationCensus"]["skipped"] == 0
 
-    def test_should_record_each_dropped_criterion_under_the_generalized_reason(self):
+
+class TestARestatementIsCollapsedOnWhatItSelects:
+    def test_should_collapse_the_alcohol_rule_that_selects_what_the_first_does(self):
         circe = service_build(_eligibility(exclusion=CAROLINA_ALCOHOL))
-        dropped = [r for r in circe["_skippedCriteria"] if r["reason"] == DISTINCTNESS_REASON]
-        assert {r["criterionId"] for r in dropped} == {"49"}
+        (record,) = circe["_restatedRuleCollapse"]
+        assert record["reason"] == IDENTICAL_REASON
+        assert record["criterionKeys"] == ["exclusion:49"]
+        assert record["survivorCriterionKeys"] == ["exclusion:5"]
+        assert len(circe["InclusionRules"]) == 1
+
+    def test_should_leave_one_rule_per_analyte_in_the_six_member_liver_group(self):
+        """AC-006 end to end, now on what the rules select: six rows, three analytes, each
+        stated twice. Three rules remain and the three restatements are recorded."""
+        circe = service_build(_eligibility(exclusion=EMPA_REG_LIVER))
+        assert len(circe["InclusionRules"]) == 3
+        assert sorted(k for r in circe["_restatedRuleCollapse"] for k in r["criterionKeys"]) == [
+            "exclusion:47", "exclusion:48", "exclusion:49",
+        ]
+
+    def test_should_leave_the_category_two_cluster_fully_emitted(self):
+        """Three distinct entities under one description: three rules, nothing collapsed."""
+        circe = service_build(_eligibility(exclusion=EMPA_REG_CARDIOVASCULAR))
+        assert len(circe["InclusionRules"]) == 3
+        assert circe["_restatedRuleCollapse"] == []
 
 
 class TestTheCensusStillBalances:
-    """AC-012. The gate: a drop that skipped `_record_skip` breaks this identity."""
+    """AC-012. A criterion that went in and is in no bucket on the way out breaks this."""
 
     @pytest.mark.parametrize(
         "exclusion,total,skipped",
         [
-            (CAROLINA_ALCOHOL, 2, 1),
-            (EMPA_REG_LIVER, 6, 3),
+            (CAROLINA_ALCOHOL, 2, 0),
+            (EMPA_REG_LIVER, 6, 0),
             (EMPA_REG_CARDIOVASCULAR, 3, 0),
             (CARMELINA_PREGNANCY, 2, 1),
         ],
@@ -227,11 +213,6 @@ class TestTheCensusStillBalances:
         assert census["total"] == (
             census["mapped"] + census["unmapped"] + census["demographicRules"] + census["skipped"]
         ), "a criterion went in and is in no bucket on the way out"
-
-    def test_should_count_the_new_reason_in_the_breakdown(self):
-        census = service_build(_eligibility(exclusion=EMPA_REG_LIVER))["_generationCensus"]
-        assert census["skippedByReason"][DISTINCTNESS_REASON] == 3
-        assert sum(census["skippedByReason"].values()) == census["skipped"]
 
 
 class TestTheDemographicsCollapseIsUnchanged:
@@ -246,33 +227,21 @@ class TestTheDemographicsCollapseIsUnchanged:
         assert record["survivorRule"] == "first-in-document-order"
         assert record["reason"] == DEMOGRAPHICS_REASON
 
-    def test_should_not_let_the_generalized_signal_be_what_collapsed_it(self):
-        """If this pair collapses because the generalized signal reached it, REQ-004 has been
-        violated — and AC-008 would show it. The generalized list must be empty here."""
-        circe = service_build(_eligibility(exclusion=CARMELINA_PREGNANCY))
-        assert circe["_restatedDistinctnessCollapse"] == []
-
     def test_should_record_the_drop_under_the_demographics_reason_not_the_generalized_one(self):
         circe = service_build(_eligibility(exclusion=CARMELINA_PREGNANCY))
         (dropped,) = [r for r in circe["_skippedCriteria"] if r["criterionId"] == "23"]
         assert dropped["reason"] == DEMOGRAPHICS_REASON
 
-    def test_should_leave_the_pair_out_of_the_generalized_report(self):
-        """Restatable demographics are the Demographics path's alone, so the generalized
-        path neither collapses nor reports them."""
-        circe = service_build(_eligibility(exclusion=CARMELINA_PREGNANCY))
-        assert circe["_restatedIntactGroups"] == []
 
-
-class TestTheTwoPathsNeverBothDropOneCriterion:
-    def test_should_produce_disjoint_drop_sets_on_a_mixed_role(self):
-        """Both shapes in one role: the Demographics pair and the alcohol pair. Each path
-        claims its own, and no criterion is recorded as skipped twice."""
+class TestOnlyTheDemographicsPathDropsBeforeMapping:
+    def test_should_drop_only_the_demographics_restatement_on_a_mixed_role(self):
+        """Both shapes in one role: the Demographics pair and the alcohol pair. Only the
+        Demographics path drops before mapping; the alcohol restatement is collapsed on
+        what its rule selects."""
         circe = service_build(_eligibility(exclusion=CARMELINA_PREGNANCY + CAROLINA_ALCOHOL))
-        skipped = circe["_skippedCriteria"]
-        assert len(skipped) == len({r["criterionId"] for r in skipped})
-        by_reason = {r["criterionId"]: r["reason"] for r in skipped}
-        assert by_reason == {"23": DEMOGRAPHICS_REASON, "49": DISTINCTNESS_REASON}
+        by_reason = {r["criterionId"]: r["reason"] for r in circe["_skippedCriteria"]}
+        assert by_reason == {"23": DEMOGRAPHICS_REASON}
+        assert [r["criterionKeys"] for r in circe["_restatedRuleCollapse"]] == [["exclusion:49"]]
 
 
 class TestSpecInfra003AC004IsNotBrokenByTheWiring:
@@ -288,7 +257,7 @@ class TestSpecInfra003AC004IsNotBrokenByTheWiring:
             )
         ]
         circe = service_build(_eligibility(exclusion=triple))
-        assert circe["_restatedDistinctnessCollapse"] == []
+        assert circe["_restatedRuleCollapse"] == []
         assert circe["_generationCensus"]["mapped"] == 3
         assert circe["_generationCensus"]["skipped"] == 0
 
