@@ -5,10 +5,11 @@ message unless stated):
 
 - planner: ``_extract_json`` answered a JSON error with ``{"decompose": false}``, so a
   cut decomposition read as "atomic", printed with a check mark. Any other failure was
-  printed and swallowed per criterion. Now both raise ``PlannerFailed`` out of
-  ``plan()`` -- the trial's existing planner failure path: NCT generation keeps the
-  unplanned IR and records ``fallbackReason`` on the draft -- and a draft carrying a
-  ``fallbackReason`` is no longer reused from the draft cache.
+  printed and swallowed per criterion. Now both are recorded on that criterion
+  (``planning_failure``), which stays undecomposed while the others are planned -- see
+  ``tests/test_planner_failure_is_per_criterion.py`` for the row, the build record, gate
+  (ac) and the draft cache. A failure of ``plan()`` as a whole still takes NCT
+  generation's ``fallbackReason`` route, and such a draft is not reused either.
 - Agent 1 threshold review: a cut reply read as "no misses", logged at DEBUG. It stays
   fail-open by design (a review must not fail the parse it reviews) but says so at
   WARNING, and a reply with no ``misses`` list is a failure, not "no misses".
@@ -77,19 +78,15 @@ def _planner(reply):
     (PLAN_CUT, "JSON"),
     (TimeoutError("read timeout"), "TimeoutError: read timeout"),
 ], ids=["cut mid-item", "call raised"])
-def test_should_fail_the_plan_naming_the_criterion_when_its_decomposition_is_unusable(reply, reason):
-    from src.agents.planner.decomposer import PlannerFailed
-
-    criterion = _criterion()
-    cohort = SimpleNamespace(inclusion_rules=[], exclusion_rules=[criterion])
+def test_should_record_the_failure_on_the_criterion_when_its_decomposition_is_unusable(reply, reason):
+    cohort = SimpleNamespace(inclusion_rules=[], exclusion_rules=[_criterion()])
     ir = SimpleNamespace(target=cohort, comparator=SimpleNamespace(inclusion_rules=[],
                                                                      exclusion_rules=[]))
 
-    with pytest.raises(PlannerFailed) as raised:
-        _planner(reply).plan(ir)
+    planned = _planner(reply).plan(ir).target.exclusion_rules[0]
 
-    assert reason in str(raised.value) and criterion.entity_text in str(raised.value)
-    assert criterion.sub_criteria == []
+    assert reason in (planned.planning_failure or ""), planned
+    assert planned.sub_criteria == []
 
 
 def test_should_keep_an_atomic_answer_atomic():
@@ -100,17 +97,15 @@ def test_should_keep_an_atomic_answer_atomic():
     assert criterion.sub_criteria == []
 
 
-def test_should_record_the_planner_failure_on_the_draft_and_keep_the_unplanned_ir():
-    """The existing route a plan() failure takes in NCT generation (unchanged here)."""
+def test_should_record_a_whole_plan_failure_on_the_draft_and_keep_the_unplanned_ir():
+    """The existing route a failure of plan() itself takes in NCT generation (unchanged)."""
     from src.services.tte_service import TTEService
 
     svc = TTEService.__new__(TTEService)
     ir = SimpleNamespace(name="unplanned")
     with patch.object(svc, "_parse_trial_agent_ir_from_nct", return_value=ir), \
             patch.object(svc, "_get_last_paper_status", return_value=None), \
-            patch.object(svc, "_plan_trial_agent_ir",
-                         side_effect=__import__("src.agents.planner.decomposer",
-                                                fromlist=["PlannerFailed"]).PlannerFailed("cut")), \
+            patch.object(svc, "_plan_trial_agent_ir", side_effect=RuntimeError("cut")), \
             patch.object(svc, "_study_from_ir", side_effect=lambda got, *_a, **_k: {"ir": got}), \
             patch.object(svc, "_fetch_nct_trial_metadata", return_value={}):
         study, _mode, fallback_reason, _paper = svc._generate_with_trial_agent_from_nct("NCT01179048")
@@ -124,7 +119,7 @@ def _draft(meta_extra):
                                  "generationMode": "trial_agent", **meta_extra}}}
 
 
-@pytest.mark.parametrize("reason, reused", [("PlannerFailed: cut", False), (None, True)],
+@pytest.mark.parametrize("reason, reused", [("RuntimeError: cut", False), (None, True)],
                          ids=["planner failed", "clean draft"])
 def test_should_reuse_only_a_draft_whose_planning_ran(tmp_path, reason, reused):
     from src.services.tte_store import TTEStore

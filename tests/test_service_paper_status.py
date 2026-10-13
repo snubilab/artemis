@@ -35,6 +35,9 @@ def _fake_tte_study_dict() -> dict[str, Any]:
         "comparisonMode": "treatment_vs_rest",
         "outcomes": {"primary": [], "secondary": [], "safety": []},
         "eligibilityCriteria": [],
+        # TTEStudy.model_dump always carries it (default_factory); the generation reads
+        # the planning failures off its rows.
+        "eligibility": {},
         "trialMetadata": {},
     }
 

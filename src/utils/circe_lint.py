@@ -593,6 +593,13 @@ DEFAULTED_WINDOW_CRITERIA_KEY = "_defaultedWindowCriteria"
 #: :data:`DEFAULTED_WINDOW_CRITERIA_KEY`.
 MAPPING_FAILURE_CRITERIA_KEY = "_mappingFailureCriteria"
 
+#: The key `TTEService._build_seeded_target_circe` writes one row under for every
+#: criterion whose decomposition the planner could not obtain (the store row's
+#: ``planningFailure``): ``{"criterionId", "role", "label", "reason"}``. The criterion is
+#: in the file undecomposed, as Agent 1 extracted it. Read by the delivery gate's check
+#: (ac). Same present-and-empty contract as :data:`DEFAULTED_WINDOW_CRITERIA_KEY`.
+PLANNING_FAILURE_CRITERIA_KEY = "_planningFailureCriteria"
+
 #: `source` on a defaulted-window record: the domain was in
 #: :data:`DEFAULT_WINDOW_START_DAYS_BY_DOMAIN` and its documented value was used.
 DEFAULT_WINDOW_SOURCE_DOMAIN_TABLE = "domain-default"

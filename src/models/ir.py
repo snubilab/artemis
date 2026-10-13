@@ -226,6 +226,13 @@ class Criteria(BaseModel):
     # rejected, which diagnosed our own schema as the model's mistake and is why the
     # defect survived. Never set on a criterion whose constraint parsed.
     value_constraint_error: Optional[str] = None
+
+    # Why the planner's decomposition of this criterion could not be obtained (its call
+    # failed, or its reply could not be read), or None when it answered or did not run.
+    # A criterion carrying this is exactly as Agent 1 extracted it -- undecomposed --
+    # and reaches the store row as `planningFailure`, the build's
+    # `_planningFailureCriteria` and the delivery gate's check (ac).
+    planning_failure: Optional[str] = None
     
     # Composite criteria: fan-out into sub-criteria
     sub_criteria: List["Criteria"] = Field(default_factory=list)

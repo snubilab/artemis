@@ -241,16 +241,6 @@ def _torn_range_declined(entity_text: str, members: list[Criteria]) -> Optional[
     )
 
 
-class PlannerFailed(RuntimeError):
-    """A criterion's decomposition could not be obtained, so the trial's plan is refused.
-
-    Raised out of :meth:`CriteriaPlanner.plan`, which is the trial's planner failure path:
-    NCT generation keeps the unplanned IR and records the message as the draft's
-    ``fallbackReason``. Swallowing it per criterion left the criterion atomic with nothing
-    to say so, and a reply that did not parse was read as "not composite".
-    """
-
-
 class CriteriaPlanner:
     """
     Agent 1.5: Analyzes each criterion from Agent 1's IR output and
@@ -339,6 +329,10 @@ class CriteriaPlanner:
             HumanMessage(content=prompt)
         ]
         
+        # A failure must leave the criterion exactly as Agent 1 extracted it, and the body
+        # below writes to it as it goes (the stated exceptions before the members are
+        # built), so the failure path returns this copy rather than the half-written one.
+        extracted = criterion.model_copy(deep=True)
         try:
             response = self.llm.invoke(messages)
             result = self._extract_json(response.content)
@@ -467,11 +461,14 @@ class CriteriaPlanner:
                 print(f"  ✓ '{criterion.entity_text}' → atomic (no decomposition)")
                 
         except Exception as e:
+            # This criterion's failure, not the trial's: it stays undecomposed with the
+            # reason on it, and every other criterion is planned. Swallowed silently it
+            # read as "atomic"; raised out of plan() it discarded every other criterion's
+            # decomposition with it.
             reason = " ".join(f"{type(e).__name__}: {e}".split())
             reason = reason[:300] + " ..." if len(reason) > 300 else reason
-            message = f"Decomposition failed for {criterion.entity_text!r}: {reason}"
-            print(f"[Planner] {message}")
-            raise PlannerFailed(message) from e
+            print(f"[Planner] Decomposition failed for {criterion.entity_text!r}: {reason}")
+            return extracted.model_copy(update={"planning_failure": reason})
         
         return criterion
     

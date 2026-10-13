@@ -144,6 +144,11 @@ CRITERION_PROTOCOL_SPAN_KEY = "protocolSpan"
 #: Spelled once here for the same reason as the two above.
 CRITERION_PARENT_GROUP_KEY = "parentGroupId"
 
+#: The key under which a criterion records why the planner's decomposition of it could
+#: not be obtained (``Criteria.planning_failure``). Written only when set; such a row is
+#: as Agent 1 extracted it, undecomposed. Spelled once here for the same reason as above.
+CRITERION_PLANNING_FAILURE_KEY = "planningFailure"
+
 
 class CriterionValueConstraint(TTEModel):
     op: str = ""

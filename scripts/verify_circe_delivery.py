@@ -318,6 +318,18 @@ Checks per file:
     empty is printed as ``0 mappings carry a recorded failure``. See
     ``mapping_failure_findings``.
 
+(ac) no criterion is in the file undecomposed because the planner failed on it. A planner
+    call that failed, or a reply that could not be read, leaves that one criterion exactly
+    as Agent 1 extracted it -- an umbrella or "A or B" line mapped as one phrase -- while
+    every other criterion is planned, and the producer lists each under
+    ``_planningFailureCriteria`` with the reason. It FAILS rather than warns, by the same
+    rule as (ab): the protocol does not intend it, and it is not irreducible -- the
+    failure is not cached (the NCT draft cache skips a draft naming one), so planning the
+    trial again recomputes it. Whether the planner would have decomposed the criterion is
+    exactly what is unknown, so the file cannot be read as the planned one. Absent key:
+    no claim; present and empty: ``0 criteria carry a planning failure``. See
+    ``planning_failure_findings``.
+
 And one check across files rather than per file:
 
 (f) no rule requires zero occurrences of a concept set that intersects the
@@ -409,6 +421,7 @@ from src.utils.circe_lint import (  # noqa: E402
     DROP_OUTCOME_RULE_RENAMED,
     DROPPED_CRITERIA_KEY,
     MAPPING_FAILURE_CRITERIA_KEY,
+    PLANNING_FAILURE_CRITERIA_KEY,
     absence_overlap_codesets,
     absence_overlap_findings,
     aliased_concept_sets,
@@ -1343,6 +1356,28 @@ def mapping_failure_findings(expression: dict[str, Any]) -> tuple[list[str], str
             f"{record.get('role')} #{record.get('criterionId')} {record.get('label')!r} [{stages}]"
         )
     return [f"mapped with a recorded failure ({len(records)}): {'; '.join(described)}"], ""
+
+
+def planning_failure_findings(expression: dict[str, Any]) -> tuple[list[str], str]:
+    """Check (ac): every criterion in the file undecomposed because its planning failed.
+
+    :param expression: the delivered CIRCE expression.
+    :returns: ``(failures, clause)``. One failure naming every listed criterion with its
+        reason; a clause ``0 criteria carry a planning failure`` when the record is present
+        and empty, and nothing at all when the file predates it.
+    """
+    records = expression.get(PLANNING_FAILURE_CRITERIA_KEY)
+    if records is None:
+        return [], ""
+    if not records:
+        return [], "0 criteria carry a planning failure"
+    described = [
+        f"{record.get('role')} #{record.get('criterionId')} {record.get('label')!r} "
+        f"[{record.get('reason') or 'no reason named'}]"
+        if isinstance(record, dict) else f"malformed record {record!r}"
+        for record in records
+    ]
+    return [f"planning failed ({len(records)}): {'; '.join(described)}"], ""
 
 
 def _label_of(row: dict[str, Any]) -> str:
@@ -3277,6 +3312,11 @@ def main(argv: list[str] | None = None) -> int:
         failed_mappings, mapping_failure_clause = mapping_failure_findings(expression)
         reasons.extend(failed_mappings)
 
+        # (ac) a criterion left undecomposed because the planner failed on it: what a
+        # re-plan recomputes, not what the protocol intends -- a failure, not a WARN.
+        failed_planning, planning_failure_clause = planning_failure_findings(expression)
+        reasons.extend(failed_planning)
+
         # (i) the file's own drop records: recorded criterion loss, and whether the
         # census that reports it still balances on the delivered artifact.
         accounting_violations, accounting_summary = criterion_accounting(expression, study)
@@ -3318,7 +3358,8 @@ def main(argv: list[str] | None = None) -> int:
                 + ([overlap_warn_clause] if overlap_warn_clause else [])
                 + ([description_warn_clause] if description_warn_clause else [])
                 + ([threshold_warn_clause] if threshold_warn_clause else [])
-                + ([mapping_failure_clause] if mapping_failure_clause else []),
+                + ([mapping_failure_clause] if mapping_failure_clause else [])
+                + ([planning_failure_clause] if planning_failure_clause else []),
             }
         )
 

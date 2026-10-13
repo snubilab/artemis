@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from src.api.models.tte import (
     CRITERION_PARENT_GROUP_KEY,
+    CRITERION_PLANNING_FAILURE_KEY,
     CRITERION_PROTOCOL_LINE_KEY,
     CRITERION_PROTOCOL_SPAN_KEY,
     DEMOGRAPHIC_DOMAINS,
@@ -156,6 +157,7 @@ from src.utils.circe_lint import (
     DEFAULTED_WINDOW_CRITERIA_KEY,
     DROPPED_CRITERIA_KEY,
     MAPPING_FAILURE_CRITERIA_KEY,
+    PLANNING_FAILURE_CRITERIA_KEY,
     SPECIMEN_DECISIONS_KEY,
     VALUE_RANGE_CONVERSIONS_KEY,
     closure_subsumption_codesets,
@@ -1237,6 +1239,7 @@ class TTEService:
                 cached_meta.get("cacheSourceArtifactId") or cached_artifact["id"]
             )
             paper_status = cached_meta.get("paperStatus")
+            planning_failures = list(cached_meta.get("planningFailures") or [])
             suggestions = deepcopy((cached_artifact.get("payload") or {}).get("suggestions") or [])
             rationale = [
                 f"Reused cached draft proposal for NCT protocol {normalized_nct_id}.",
@@ -1254,6 +1257,9 @@ class TTEService:
                 raise
             paper_status = paper_status_obj.model_dump() if paper_status_obj is not None else None
             generated_payload = TTEStudy.model_validate(generated_study).model_dump()
+            # The criteria the planner could not decompose. Named on the draft so the draft
+            # cache does not replay them; each also rides on its own row.
+            planning_failures = self._planning_failure_records(generated_payload["eligibility"])
             proposed_changes = self._build_draft_generation_proposed_changes(generated_payload)
             suggestions = [
                 item.model_dump()
@@ -1271,6 +1277,7 @@ class TTEService:
         artifact_meta = {
             "generationMode": generation_mode,
             "fallbackReason": fallback_reason,
+            "planningFailures": planning_failures,
             "nctId": normalized_nct_id,
             "generatorVersion": generator_version,
             "cacheHit": cache_hit,
@@ -1315,6 +1322,7 @@ class TTEService:
             meta={
                 "generationMode": generation_mode,
                 "fallbackReason": fallback_reason,
+                "planningFailures": planning_failures,
                 "nctId": normalized_nct_id,
                 "generatorVersion": generator_version,
                 "cacheHit": cache_hit,
@@ -3198,6 +3206,34 @@ class TTEService:
             "CollapseSettings": {"CollapseType": "ERA", "EraPad": 0},
             "CensorWindow": {},
         }
+
+    @staticmethod
+    def _planning_failure_records(eligibility: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """One ``{"criterionId", "role", "label", "reason"}`` per row whose planning failed.
+
+        The single reader of the row's ``planningFailure``: the build writes these under
+        ``_planningFailureCriteria`` for gate (ac), and NCT generation names them on the
+        draft so the draft cache does not replay them.
+
+        :param eligibility: carries ``inclusionCriteria`` and ``exclusionCriteria`` rows.
+        :returns: the records, ordered by role then criterion id; empty when none failed.
+        """
+        def failed(role: str, rows: Any) -> list[dict[str, Any]]:
+            return [
+                {
+                    "criterionId": str(row.get("id", "")),
+                    "role": role,
+                    "label": (row.get("sourceText") or row.get("description") or "").strip(),
+                    "reason": row[CRITERION_PLANNING_FAILURE_KEY],
+                }
+                for row in rows or []
+                if isinstance(row, Mapping) and row.get(CRITERION_PLANNING_FAILURE_KEY)
+            ]
+
+        records = failed("inclusion", eligibility.get("inclusionCriteria")) + failed(
+            "exclusion", eligibility.get("exclusionCriteria")
+        )
+        return sorted(records, key=lambda r: (r["role"], r["criterionId"]))
 
     @staticmethod
     def _record_arm_mapping_failures(
@@ -5762,6 +5798,11 @@ class TTEService:
             MAPPING_FAILURE_CRITERIA_KEY: sorted(
                 mapping_failure_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
+            # Same present-and-empty contract: the criteria the planner could not
+            # decompose, in the file undecomposed. Read off the rows rather than off the
+            # mapping, so a row that never reaches the mapper is listed too; gate (ac)
+            # fails a file listing any.
+            PLANNING_FAILURE_CRITERIA_KEY: self._planning_failure_records(eligibility),
             # Same present-and-empty contract once more: the criteria whose MANDATORY
             # `entity_text` extraction left empty, so the mapper was seeded on their
             # `description` instead. Present and empty is the claim that every criterion
@@ -12052,6 +12093,12 @@ class TTEService:
             for entity in getattr(item, "excepted_entities", None) or []
         ]
         planner_excepted_field = {PLANNER_EXCEPTED_KEY: planner_excepted} if planner_excepted else {}
+        # Why the planner could not decompose this criterion (it is here undecomposed, as
+        # Agent 1 extracted it). Written only when set, so every other row keeps its shape.
+        planning_failure = getattr(item, "planning_failure", None)
+        planning_failure_field = (
+            {CRITERION_PLANNING_FAILURE_KEY: planning_failure} if planning_failure else {}
+        )
         # The planner's verified relation for a split it made (RFC-016 step 2), on the group
         # label row only -- the row the builder reads a group's relation from. Written only
         # when present, so every other row keeps its shape.
@@ -12096,6 +12143,7 @@ class TTEService:
             CRITERION_PARENT_GROUP_KEY: parent_group_id,
             **planner_excepted_field,
             **planner_relation_field,
+            **planning_failure_field,
         }
 
     def _clean_phrase(self, value: str) -> str:
