@@ -108,14 +108,21 @@ class TestPostAgent2Check:
 
     def test_empty_entity(self):
         """매핑 안 된 entity → reason='empty'."""
+        mapped, unmapped = "target:primary:0:0", "target:inclusion:0:0"
         entities = [
-            {"text": "Liraglutide", "domain": "Drug", "source": "target"},
-            {"text": "Unknown Disease", "domain": "Condition", "source": "target"},
+            {"text": "Liraglutide", "domain": "Drug", "source": "target", "entity_key": mapped},
+            {
+                "text": "Unknown Disease",
+                "domain": "Condition",
+                "source": "target",
+                "entity_key": unmapped,
+            },
         ]
         mapped_sets = [
-            {"name": "Liraglutide", "concept_ids": [1234], "domain": "Drug"},
+            {"name": "Liraglutide", "concept_ids": [1234], "domain": "Drug", "entity_key": mapped},
         ]
         gap = GapReport()
+        gap.add_gap(item_id=unmapped, original_text="Unknown Disease", reason="empty")
 
         report = self.supervisor.post_agent2_check(mapped_sets, gap, entities)
 

@@ -501,7 +501,8 @@ class PipelineSupervisor:
             )
             print(f"  ⚠ Failed to map '{entity['text']}': {reason}")
             gap.add_gap(
-                item_id=f"entity_{index}",
+                # The entity's own key, so post_agent2_check can tell which entity this is.
+                item_id=entity.get("entity_key", f"entity_{index}"),
                 original_text=entity["text"],
                 reason=reason,
                 section=entity.get("source", "inclusion"),
@@ -793,6 +794,70 @@ class PipelineSupervisor:
     # Quality Gate (Post-Agent2)
     # ══════════════════════════════════════════════════════════════
 
+    @staticmethod
+    def _pair_entities_with_mapped_sets(
+        entities_to_map: list[dict], mapped_sets: list[dict], gap_report
+    ) -> list[tuple[dict, dict | None]]:
+        """Pair each entity with its own mapping outcome, by id and position, never by text.
+
+        Both producers build the two lists in one pass over the entities: an entity whose
+        mapping came back empty is recorded in ``gap_report`` under its id and gets no
+        mapped set; every other entity gets exactly one mapped set, in entity order
+        (``_build_mapped_sets_and_gap`` here, ``TTEService._build_real_mapping_quality_signal``
+        in the service). Without a gap report every entity has a mapped set, empty or not.
+
+        An entity's id is its ``item_id`` (service) or ``entity_key`` (this module). Where an
+        entity and its mapped set both carry ``entity_key`` the two must agree.
+
+        Two criteria can carry the same description -- LEADER's inclusion and exclusion
+        "Chronic heart failure" are different protocol lines -- so a text join hands one
+        criterion the other's outcome.
+
+        Args:
+            entities_to_map: entities in the order they were mapped.
+            mapped_sets: one mapped set per entity not listed in ``gap_report``, same order.
+            gap_report: GapReport listing the unmapped entities by id, or None.
+
+        Returns:
+            ``(entity, mapped_set)`` per entity; ``mapped_set`` is None when unmapped.
+
+        Raises:
+            ValueError: the lists were not built in step, so no pairing can be trusted.
+        """
+        unmapped_ids = (
+            {item.item_id for item in gap_report.unmapped_items}
+            if gap_report is not None
+            else set()
+        )
+        remaining = iter(mapped_sets)
+        pairs: list[tuple[dict, dict | None]] = []
+        for position, entity in enumerate(entities_to_map):
+            entity_id = entity.get("item_id", entity.get("entity_key"))
+            if entity_id is not None and entity_id in unmapped_ids:
+                pairs.append((entity, None))
+                continue
+            ms = next(remaining, None)
+            if ms is None:
+                raise ValueError(
+                    f"post_agent2_check: entity #{position} (id {entity_id!r}) is neither in the "
+                    f"gap report nor has a mapped set ({len(mapped_sets)} mapped sets for "
+                    f"{len(entities_to_map)} entities)"
+                )
+            entity_key, set_key = entity.get("entity_key"), ms.get("entity_key")
+            if entity_key is not None and set_key is not None and entity_key != set_key:
+                raise ValueError(
+                    f"post_agent2_check: entity #{position} has entity_key {entity_key!r} but "
+                    f"its mapped set has {set_key!r}"
+                )
+            pairs.append((entity, ms))
+        leftover = sum(1 for _ in remaining)
+        if leftover:
+            raise ValueError(
+                f"post_agent2_check: {leftover} mapped set(s) left over after pairing "
+                f"{len(entities_to_map)} entities"
+            )
+        return pairs
+
     def post_agent2_check(
         self,
         mapped_sets: list[dict],
@@ -817,16 +882,13 @@ class PipelineSupervisor:
 
         report.entities_checked = len(entities_to_map)
 
-        # Build lookup of what was mapped
-        mapped_texts = {ms["name"].lower(): ms for ms in mapped_sets}
-
-        for entity in entities_to_map:
+        pairs = self._pair_entities_with_mapped_sets(entities_to_map, mapped_sets, gap_report)
+        for entity, ms in pairs:
             text = entity["text"]
-            text_lower = text.lower()
             domain_hint = entity.get("domain")
 
             # Case 1: Entity was not mapped at all (in gap_report)
-            if text_lower not in mapped_texts:
+            if ms is None:
                 report.retry_reasons.append(RetryReason(
                     entity_text=text,
                     domain_hint=domain_hint,
@@ -835,7 +897,6 @@ class PipelineSupervisor:
                 ))
                 continue
 
-            ms = mapped_texts[text_lower]
             concept_ids = ms.get("concept_ids", [])
             seed_count = len(concept_ids)
 

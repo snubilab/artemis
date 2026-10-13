@@ -1,0 +1,118 @@
+{
+ "about": "Real store rows for the post_agent2_check join (worktree p3-dormant-joins), copied verbatim from a read-only source; each section names its source key.",
+ "sources": {
+  "p3_dry_arm_b_store": {
+   "path": "output/site_gap/2026-10-12_p3_dry/arm_b/store/studies.json",
+   "sha256": "aa8fe75f709957c53ea605ea4bc1587b624846bce8391c94734481c8638236e2"
+  }
+ },
+ "leader_chf_inclusion_exclusion_pair": {
+  "source": "p3_dry_arm_b_store",
+  "study_id": 1,
+  "study_name": "liraglutide vs placebo for Cardiovascular death, non-fatal myocardial infarction, or non-fatal stroke",
+  "note": "LEADER inclusionCriteria[38] and exclusionCriteria[18]: two different criteria (protocol lines 18 and 8, PRESENCE and ABSENCE, concept sets 25 and 38) that carry the same description.",
+  "inclusion_index": 38,
+  "exclusion_index": 18,
+  "inclusion_row": {
+   "id": 39,
+   "description": "Chronic heart failure",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "chronic heart failure",
+   "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+   "protocolSpan": "chronic heart failure",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 25,
+   "conceptSetName": "chronic heart failure",
+   "logicType": "PRESENCE",
+   "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true,
+   "annotation": {
+    "promptVersion": "rfc016-steps1-4-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "required",
+    "conditional_span": null,
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "at_index",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": null,
+    "quantity_kind": null,
+    "reference_bound": null
+   }
+  },
+  "exclusion_row": {
+   "id": 19,
+   "description": "Chronic heart failure",
+   "domain": "Condition",
+   "valueConstraint": null,
+   "sourceText": "Heart failure",
+   "protocolLine": "8. Chronic heart failure (NYHA class IV)",
+   "protocolSpan": "Chronic heart failure",
+   "window": {
+    "start": -9999,
+    "end": 0
+   },
+   "conceptSetId": 38,
+   "conceptSetName": "Heart failure",
+   "logicType": "ABSENCE",
+   "groupId": "c2969b4b-3647-4aa8-aea4-702c40b425b0",
+   "groupType": "ALL",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true,
+   "annotation": {
+    "promptVersion": "rfc016-steps1-4-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "forbidden",
+    "conditional_span": null,
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "at_index",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": null,
+    "quantity_kind": null,
+    "reference_bound": null
+   },
+   "_annotationRejected": [
+    {
+     "field": "quantity_kind",
+     "value": {
+      "threshold_span": null,
+      "quantity_kind": "none",
+      "reference_bound": null
+     },
+     "reason": "given without a threshold_span"
+    }
+   ]
+  }
+ }
+}
