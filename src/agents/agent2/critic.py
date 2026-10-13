@@ -13,13 +13,17 @@ Pipeline position:
   Vector Search → KG Expansion (Neo4j) → **LLM Critic** → Final Concept IDs
 """
 
+import json
 import logging
 import os
+from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 
 import openai
+from langchain_core.exceptions import OutputParserException
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.utils.json import parse_json_markdown
 from pydantic import BaseModel, Field
 
 from src.utils.exceptions import LLMConfigurationError
@@ -167,6 +171,34 @@ def _warn_if_critic_leaves_local(critic_model: str) -> None:
     )
 
 
+class _StrictJsonOutputParser(JsonOutputParser):
+    """``JsonOutputParser`` without its partial-JSON repair.
+
+    The stock parser closes an unterminated reply and returns whatever selections it
+    completed, so a reply cut off at ``max_tokens`` read as a shorter answer and was
+    cached as one. Here an unterminated reply is a parse failure like any other.
+    """
+
+    def parse_result(self, result, *, partial: bool = False) -> Any:
+        text = result[0].text.strip()
+        try:
+            return parse_json_markdown(text, parser=json.loads)
+        except json.JSONDecodeError as e:
+            raise OutputParserException(f"Invalid json output: {text}", llm_output=text) from e
+
+
+@dataclass(frozen=True)
+class CriticOutcome:
+    """What one critic call produced.
+
+    :param concept_ids: the selection, or the seeds alone when ``failure`` is set.
+    :param failure: why the critic's answer could not be used (one line), or None.
+    """
+
+    concept_ids: List[int]
+    failure: Optional[str] = None
+
+
 # ── Output Schema ──────────────────────────────────────────
 class CriticSelection(BaseModel):
     """Schema for a single concept evaluation.
@@ -227,7 +259,7 @@ Concepts with assessment="contradicted" are filtered out."""
 # The output contract, written out instead of LangChain's ``get_format_instructions()``.
 # That text appended a sample object, a counterexample and this module's own pydantic
 # docstrings to the system prompt. Field names and meanings follow ``CriticSelection`` /
-# ``CriticResult``; ``JsonOutputParser`` still parses the answer.
+# ``CriticResult``; ``_StrictJsonOutputParser`` parses the answer.
 _OUTPUT_CONTRACT = """Return ONLY a JSON object with these keys:
 - selected_concepts: an array with one object per candidate you evaluated. Each object has:
   - concept_id: integer, the candidate's OMOP Concept ID.
@@ -267,7 +299,7 @@ class ConceptCritic:
         self._self_reflect = os.environ.get(
             "AGENT2_CRITIC_SELF_REFLECT", "true"
         ).lower() == "true"
-        self.parser = JsonOutputParser(pydantic_object=CriticResult)
+        self.parser = _StrictJsonOutputParser(pydantic_object=CriticResult)
 
         reflection_section = _SELF_REFLECTION_INSTRUCTIONS if self._self_reflect else ""
 
@@ -354,8 +386,31 @@ class ConceptCritic:
         domain_hint: Optional[str] = None,
         kg_concept_ids: Optional[set] = None,
     ) -> List[int]:
+        """The selected concept IDs alone; see :meth:`evaluate_with_outcome`.
+
+        A failed critic returns the seeds here with nothing to say so. The workflow
+        calls :meth:`evaluate_with_outcome`, which carries the failure.
         """
-        Evaluate KG-expanded concepts and return selected concept IDs.
+        return self.evaluate_with_outcome(
+            query, seed_concept_ids, kg_concepts,
+            context=context, domain_hint=domain_hint, kg_concept_ids=kg_concept_ids,
+        ).concept_ids
+
+    def evaluate_with_outcome(
+        self,
+        query: str,
+        seed_concept_ids: List[int],
+        kg_concepts: List[KGConcept],
+        context: Optional[str] = None,
+        domain_hint: Optional[str] = None,
+        kg_concept_ids: Optional[set] = None,
+    ) -> CriticOutcome:
+        """
+        Evaluate KG-expanded concepts and return the selected concept IDs.
+
+        A call that fails, or a reply that is not complete JSON carrying a
+        ``selected_concepts`` list, logs one "[Critic] Evaluation failed" line and
+        returns the seeds with the reason in ``failure``; it is not cached.
 
         Args:
             query: Original clinical query text
@@ -369,14 +424,18 @@ class ConceptCritic:
                             expansions. If None, no preservation logic is applied.
 
         Returns:
-            List of selected OMOP Concept IDs (multi-select)
+            CriticOutcome: the selected OMOP Concept IDs (multi-select), or the seeds
+            and the failure reason.
+
+        Raises:
+            LLMConfigurationError: the critic model is not servable by its provider.
         """
         if not kg_concepts and not seed_concept_ids:
-            return []
+            return CriticOutcome([])
 
         # If no KG expansion results, return seed concepts as-is
         if not kg_concepts:
-            return seed_concept_ids
+            return CriticOutcome(seed_concept_ids)
 
         # Cache check (REQ-03): early return on cache hit. Keyed on the candidates too:
         # a key of query + domain alone answered a later call with other seeds from an
@@ -395,7 +454,7 @@ class ConceptCritic:
                 f"[CACHE HIT] Critic returning {len(cached)} cached concepts "
                 f"for '{query}' (domain={domain_hint})"
             )
-            return cached
+            return CriticOutcome(cached)
         
         # Build candidates list: seed + KG expanded
         candidates_text = ""
@@ -463,9 +522,17 @@ class ConceptCritic:
                 "candidates_text": candidates_text,
             })
             
+            # A reply without the selections is a broken reply, not "nothing selected":
+            # read as the latter it returned the seeds and cached them as the answer.
+            if not isinstance(result, dict) or not isinstance(result.get("selected_concepts"), list):
+                raise ValueError(
+                    "critic reply carries no selected_concepts list: "
+                    f"{json.dumps(result)[:200]}"
+                )
+
             # Extract selected concept IDs
             selected = []
-            raw_selections = result.get("selected_concepts", [])
+            raw_selections = result["selected_concepts"]
 
             # Split into relevant and non-relevant for logging
             relevant_selections = [s for s in raw_selections if s.get("relevant", False)]
@@ -513,12 +580,12 @@ class ConceptCritic:
             if not selected:
                 logger.warning("[Critic] No concepts selected, falling back to seed concepts")
                 self._cache.put(cache_key, seed_concept_ids)
-                return seed_concept_ids
+                return CriticOutcome(seed_concept_ids)
 
             # Cache the result for future identical queries
             self._cache.put(cache_key, selected)
-            return selected
-            
+            return CriticOutcome(selected)
+
         except Exception as e:
             # A wrong model id or a dead credential fails identically on every
             # item. Degrading to seed concepts there discards KG expansion and
@@ -530,8 +597,13 @@ class ConceptCritic:
                     f"Critic model {resolve_model(model_name)!r} is not servable by its "
                     f"provider (HTTP {e.status_code}): {e}"
                 ) from e
-            logger.error(f"[Critic] Evaluation failed: {e}")
-            return seed_concept_ids  # Fallback to seed
+            # Seeds, uncached, with the reason the caller records on the mapping. A parse
+            # failure quotes the whole reply, so the recorded reason keeps its head only.
+            reason = " ".join(f"{type(e).__name__}: {e}".split())
+            if len(reason) > 300:
+                reason = reason[:300] + " ..."
+            logger.error(f"[Critic] Evaluation failed: {reason}")
+            return CriticOutcome(list(seed_concept_ids), failure=reason)
 
 
 # ── Singleton ──────────────────────────────────────────────

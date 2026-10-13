@@ -78,6 +78,13 @@ class KGExpansionFailed(RuntimeError):
     """
 
 
+class CriticFailed(RuntimeError):
+    """The critic's answer could not be used, so no KG candidate is admitted.
+
+    The message is the single-line failure reason recorded on the MappingResult.
+    """
+
+
 def _refuse_expansion(exc: Exception) -> KGExpansionFailed:
     """Log the one counted "KG expansion failed" line for ``exc`` and return the refusal.
 
@@ -490,6 +497,10 @@ class Agent2Workflow:
                 # here, and nothing from the failed expansion was cached.
                 concept_ids, overbroad_ids, critic_skipped = list(seed_concept_ids), [], False
                 result.kg_expansion_failure = str(e)
+            except CriticFailed as e:
+                # Same shape: the seeds stand alone and the critic's reason is recorded.
+                concept_ids, overbroad_ids, critic_skipped = list(seed_concept_ids), [], False
+                result.critic_failure = str(e)
             # Apply ingredient rollup for Drug domain and for unknown domain
             # (domain_hint=None covers target cohort calls like "Ticagrelor" where
             # the caller does not specify a domain but the result is Drug concepts).
@@ -700,7 +711,9 @@ class Agent2Workflow:
         Applied to BOTH fast and slow path results.
         A failed expansion of any seed refuses the whole query's expansion: it logs one
         "KG expansion failed" line and raises KGExpansionFailed. A failed refiner lookup
-        refuses it the same way. A critic failure still falls back to seed_ids.
+        refuses it the same way. A critic whose answer cannot be used logs one
+        "[Critic] Evaluation failed" line and raises CriticFailed; the caller keeps the
+        seeds alone and records the reason.
         
         Modes (controlled by KG_EXPAND_MODE env var):
         - "clinical_anchor" (default): Anchor-only, no descendants. Critic skipped
@@ -855,18 +868,12 @@ class Agent2Workflow:
             )
 
             critic = get_critic()
-            final_ids = critic.evaluate(
+            outcome = critic.evaluate_with_outcome(
                 query=query_text,
                 seed_concept_ids=seed_ids,
                 kg_concepts=filtered_kg,
                 context=critic_context,
                 domain_hint=domain_hint,
-            )
-            logger.info(f"[Agent 2] Critic selected: {len(final_ids)} from {len(unique_kg) + len(seed_ids)} candidates")
-            # === ID LINEAGE: Critic final selection ===
-            logger.info(
-                f"[Agent 2][LINEAGE] critic: input_seeds={seed_ids}, "
-                f"input_kg_count={len(unique_kg)} → final_ids={final_ids}"
             )
         except LLMConfigurationError:
             # Misconfiguration is not a degradable failure: it fails every item
@@ -874,8 +881,19 @@ class Agent2Workflow:
             # from seed concepts alone.
             raise
         except Exception as e:
-            logger.warning(f"[Agent 2] Critic failed: {e}")
-            return seed_ids, [], False
+            # The critic logs its own failures; this is one that never reached it.
+            reason = " ".join(f"{type(e).__name__}: {e}".split())
+            logger.error(f"[Critic] Evaluation failed: {reason}")
+            raise CriticFailed(reason) from e
+        if outcome.failure:
+            raise CriticFailed(outcome.failure)
+        final_ids = outcome.concept_ids
+        logger.info(f"[Agent 2] Critic selected: {len(final_ids)} from {len(unique_kg) + len(seed_ids)} candidates")
+        # === ID LINEAGE: Critic final selection ===
+        logger.info(
+            f"[Agent 2][LINEAGE] critic: input_seeds={seed_ids}, "
+            f"input_kg_count={len(unique_kg)} → final_ids={final_ids}"
+        )
         # ── ConceptSetRefiner (lab meeting 2026-03-09) ──
         # Filter unique_kg to only critic-selected concepts to avoid bypassing critic
         if os.environ.get("ENABLE_REFINER", "1") == "1":

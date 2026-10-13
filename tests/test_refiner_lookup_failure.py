@@ -215,7 +215,8 @@ def test_should_record_the_refusal_not_a_critic_failure_when_the_refiner_after_t
     assert result.concept_ids == [SEED]
     assert REFINER_MARKER in (result.kg_expansion_failure or "")
     assert len(_lines(caplog, FAMILY_MARKER)) == 1
-    assert not _lines(caplog, "Critic failed"), "a refiner failure was reported as the critic's"
+    assert result.critic_failure is None, "a refiner failure was recorded as the critic's"
+    assert not _lines(caplog, "Critic failed") + _lines(caplog, "Critic] Evaluation failed")
 
 
 def test_should_keep_the_refined_expansion_when_the_refiner_lookups_succeed(monkeypatch):

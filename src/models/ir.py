@@ -487,9 +487,31 @@ class MappingResult(BaseModel):
         description="Why the KG expansion was refused (concept_ids are the seeds alone), "
                     "or None when it ran. A mapping carrying this is not cached."
     )
-    
+    critic_failure: Optional[str] = Field(
+        default=None,
+        description="Why the critic's answer could not be used (concept_ids are the seeds "
+                    "alone, no KG candidate admitted), or None when it answered or did not "
+                    "run. A mapping carrying this is not cached."
+    )
+
     # Processing metadata
     processing_time_ms: float = 0.0
+
+    def mapping_failures(self) -> List[Dict[str, Any]]:
+        """Every failure this mapping recorded, in the shape the store and the gate read.
+
+        Each one left the mapping built from the seeds alone (``seedsOnly``): a refused
+        expansion admits no KG candidate, and a failed critic selects none.
+
+        :returns: one ``{"stage", "reason", "seedsOnly"}`` record per failure; empty when
+            nothing failed.
+        """
+        failures = []
+        if self.kg_expansion_failure:
+            failures.append({"stage": "kg_expansion", "reason": self.kg_expansion_failure, "seedsOnly": True})
+        if self.critic_failure:
+            failures.append({"stage": "critic", "reason": self.critic_failure, "seedsOnly": True})
+        return failures
 
 
 # --- Part 5: Pipeline Feedback Loop Models (RFC-001) ---
