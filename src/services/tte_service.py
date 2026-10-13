@@ -3237,7 +3237,12 @@ class TTEService:
 
     @staticmethod
     def _record_arm_mapping_failures(
-        base: dict[str, Any], mapped_drug: Mapping[str, Any], *, role: str, label: str
+        base: dict[str, Any],
+        mapped_drug: Mapping[str, Any],
+        *,
+        role: str,
+        label: str,
+        criterion_id: str = "_arm",
     ) -> None:
         """List the arm drug mapping's recorded failures in ``base``'s mapping-failure record.
 
@@ -3250,8 +3255,10 @@ class TTEService:
 
         :param base: the arm's CIRCE expression, mutated in place.
         :param mapped_drug: what ``_recommend_seeded_concept_set`` returned for the drug.
-        :param role: ``treatment`` or ``comparator``.
+        :param role: ``treatment`` or ``comparator``; ``cohort`` for a single-codeset cohort.
         :param label: the name the arm's drug rule or entry carries.
+        :param criterion_id: ``_arm``; ``_cohort`` for a single-codeset cohort (outcomes),
+            whose one concept set is mapped the same way and was dropped the same way.
         """
         metadata = mapped_drug.get("mapping_metadata")
         if isinstance(metadata, Mapping):
@@ -3261,7 +3268,7 @@ class TTEService:
         if not failures:
             return
         base.setdefault(MAPPING_FAILURE_CRITERIA_KEY, []).append({
-            "criterionId": "_arm",
+            "criterionId": criterion_id,
             "role": role,
             "label": label,
             "failures": list(failures),
@@ -4871,6 +4878,9 @@ class TTEService:
             result["EndStrategy"] = {
                 "DateOffset": {"DateField": "StartDate", "Offset": 1}
             }
+        self._record_arm_mapping_failures(
+            result, mapped_codeset, role="cohort", label=label, criterion_id="_cohort"
+        )
         return result
 
     def _build_grouped_inclusion_rule(

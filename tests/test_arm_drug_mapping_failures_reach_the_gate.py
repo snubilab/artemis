@@ -139,3 +139,20 @@ def test_should_read_failures_from_a_metadata_dict_too():
         circe = svc._build_combined_treatment_circe(_eligibility([]), "empagliflozin")
 
     assert circe[KEY][-1]["failures"] == [FAILURE]
+
+
+# ── the single-codeset cohort (outcomes), the same drop ──────
+
+
+@pytest.mark.parametrize("failures", [[FAILURE], []], ids=["mapping failed", "mapping clean"])
+def test_should_list_the_cohort_mapping_failure_in_the_outcome_expression(failures):
+    """_build_seeded_single_codeset_circe kept only the answer's name, domain and expression,
+    as the arm builders did: an outcome cohort built on a failed mapping carried no record."""
+    circe = _service(failures)._build_seeded_condition_circe(
+        "Stroke", expected_domain="Condition", capture_all_events=True)
+
+    if failures:
+        assert circe[KEY] == [{"criterionId": "_cohort", "role": "cohort", "label": "Stroke",
+                               "failures": [FAILURE]}]
+    else:
+        assert KEY not in circe
