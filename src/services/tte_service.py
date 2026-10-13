@@ -838,8 +838,7 @@ class TTEService:
         """True when drug-anchored entry mode (Defect A / ADR-019) is enabled."""
         return os.environ.get("TTE_DRUG_ANCHORED_ENTRY", "").strip().lower() in ("1", "true", "yes")
 
-    # A named ablation, not a fallback (same idiom as
-    # src/agents/agent1/criteria_dedup.py:_ABLATION_ENV). Attributing a
+    # A named ablation, not a fallback. Attributing a
     # concept-set fix to exact-ingredient matching needs a control arm that runs
     # the identical pipeline with the match off, not a guess from disabling it
     # mid-experiment. Set ARTEMIS_DISABLE_EXACT_INGREDIENT_MATCH=1 only to

@@ -12,14 +12,6 @@ import logging
 from typing import Dict, List, Literal
 from difflib import SequenceMatcher
 
-from src.agents.agent1.criteria_dedup import (
-    DROP,
-    KEEP,
-    dedup_enabled,
-    is_or_group,
-    prune_superseded,
-    structural_verdict,
-)
 from src.agents.agent1.nct_fetcher import TrialData
 
 logger = logging.getLogger(__name__)
@@ -72,33 +64,7 @@ def enrich_trial_data(
 
 
 def _pick_richer(nct_criteria: List[str], pubmed_criteria: List[str]) -> List[str]:
-    """Pick whichever source has more criteria.
-
-    Collapsing N alternatives into one [OR-GROUP] string costs that source N-1
-    from its count, so a raw comparison is structurally biased against whichever
-    side carries the OR structure. When exactly one side has a group, merge
-    instead of choosing -- the group survives and the other side's non-restating
-    items are still picked up. On ARISTOTLE the margin today is only +3 (PDF 8
-    against NCT 5): three more swallowed siblings and the group is discarded
-    outright, re-creating the AND explosion.
-
-    The test is "either side carries a group", not "exactly one does". Under the
-    older exclusive form, two groups meeting each other fell through to the raw
-    count comparison and a 5-alternative group lost to a longer flat list, or to
-    a 4-alternative group that happened to sit in the longer source.
-    """
-    nct_structured = any(is_or_group(item) for item in nct_criteria)
-    pub_structured = any(is_or_group(item) for item in pubmed_criteria)
-    # Gated on the ablation like every other structural branch. Delegating to
-    # _merge_criteria is not enough on its own: that call honours the ablation
-    # internally, but *choosing to merge at all* is itself part of the change, so
-    # an ungated branch left the control arm merging when pre-fix behaviour was to
-    # compare counts and pick one side. The arm then differed from pre-fix by the
-    # merge, not by the deduplication it was meant to isolate.
-    if dedup_enabled() and (pub_structured or nct_structured):
-        base, extra = ((pubmed_criteria, nct_criteria) if pub_structured
-                       else (nct_criteria, pubmed_criteria))
-        return _merge_criteria(base, extra)
+    """Pick whichever source has more criteria."""
     if len(pubmed_criteria) > len(nct_criteria):
         return pubmed_criteria
     return nct_criteria
@@ -123,16 +89,6 @@ def _merge_criteria(
     merged = list(nct_criteria)
 
     for pub_item in pubmed_criteria:
-        # KEEP is not a convenience: it says the structural comparison already
-        # decided, and the similarity gate below has no authority here. Falling
-        # through to it instead dropped a 5-alternative group against the
-        # 4-alternative wording of the same group at a ratio of 0.939.
-        verdict = structural_verdict(pub_item, merged)
-        if verdict == DROP:
-            continue
-        if verdict == KEEP:
-            merged.append(pub_item)
-            continue
         is_duplicate = False
         for nct_item in nct_criteria:
             similarity = SequenceMatcher(
@@ -145,11 +101,7 @@ def _merge_criteria(
         if not is_duplicate:
             merged.append(pub_item)
 
-    # An OR-GROUP appended from the pubmed side subsumes flat NCT items already
-    # in `merged`; the forward loop could not see it yet because the base is the
-    # NCT side. Without this sweep ARISTOTLE keeps all four risk factors as
-    # AND-ed top-level rules alongside the group that already offers them.
-    return prune_superseded(merged)
+    return merged
 
 
 def _supplement_priority_merge(
