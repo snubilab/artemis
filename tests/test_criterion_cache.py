@@ -75,7 +75,7 @@ class TestBasicPutGetMiss:
         result = cache.get("nonexistent criterion")
         assert result is None
 
-    def test_normalized_text_matches(
+    def test_should_hit_when_the_seed_differs_only_in_whitespace(
         self,
         cache: CriterionResultCache,
         sample_entry: CriterionCacheEntry,
@@ -83,7 +83,7 @@ class TestBasicPutGetMiss:
     ) -> None:
         monkeypatch.setenv("EMBEDDING_MODEL", "minilm")
         cache.put("  Type 2   Diabetes  ", "Condition", sample_entry)
-        result = cache.get("type 2 diabetes", "Condition")
+        result = cache.get("Type 2 Diabetes", "Condition")
         assert result is not None
 
 

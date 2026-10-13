@@ -49,7 +49,11 @@ logger = logging.getLogger(__name__)
 #: ``route-free-v1`` (RFC-016 step 4): an entry no longer holds route exclusions read off
 #: the seed, nor an ATC class the seed's route words stopped from climbing; the route a
 #: protocol line states is applied after the cache, per criterion row.
-ENTRY_SHAPE = "route-free-v1"
+#: ``route-free-exact-seed-v1``: an entry holds the mapping of exactly the seed it is keyed
+#: on. Before, the key lower-cased the seed, so an entry could hold the mapping of another
+#: case variant; an all-lower-case seed hashes the same text either way and would have
+#: been served one.
+ENTRY_SHAPE = "route-free-exact-seed-v1"
 
 
 def _critic_signature() -> str:
@@ -94,8 +98,12 @@ _MULTI_SPACE = re.compile(r"\s+")
 
 
 def _normalize(text: str) -> str:
-    """Normalize text for cache key: lowercase, strip, collapse whitespace."""
-    return _MULTI_SPACE.sub(" ", text.lower().strip())
+    """The seed as the cache keys it: stripped, whitespace runs collapsed, case kept.
+
+    Agent 2 is handed the seed as written, so an entry answers only the string it was
+    computed for: two seeds differing only in case are two mappings, not one.
+    """
+    return _MULTI_SPACE.sub(" ", text.strip())
 
 
 class CriterionResultCache:
@@ -171,7 +179,7 @@ class CriterionResultCache:
         path agrees -- a direct ``_make_key(..., "default", ...)`` and an environment
         carrying ``EMBEDDING_MODEL=minilm`` name one collection and must land on one key.
 
-        :param text: the criterion seed, normalised before hashing.
+        :param text: the criterion seed, whitespace-collapsed (case kept) before hashing.
         :param domain: the domain the CALLER asked for. Note that ``DOMAIN_PRECHECK``
             can override it downstream of the lookup, which is exactly why that flag is
             in ``mapping_signature()``.

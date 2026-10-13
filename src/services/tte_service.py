@@ -7995,8 +7995,8 @@ class TTEService:
         resolving_entity_exception: bool = False,
         entity_exception: Any = None,
     ) -> dict[str, Any]:
-        normalized_seed = " ".join(seed_text.split()).strip()
-        if not normalized_seed:
+        seed = " ".join(seed_text.split()).strip()
+        if not seed:
             raise CriterionRefused(
                 "Missing seed text for cohort definition mapping",
                 code=REFUSAL_EMPTY_SEED,
@@ -8047,7 +8047,7 @@ class TTEService:
                     logging.info(
                         "[TTE] entity exception on '%s': base=%r excepted=%s -> "
                         "%d excluded in place, %d appended",
-                        normalized_seed, _exception.base, _exception.excepted,
+                        seed, _exception.base, _exception.excepted,
                         len(_resolution.subtraction.excluded_in_place),
                         len(_resolution.subtraction.appended),
                     )
@@ -8055,7 +8055,7 @@ class TTEService:
                         from src.api.models.tte import CriterionMappingMetadata
 
                         _metadata = _resolution.mapping.get("mapping_metadata") or (
-                            CriterionMappingMetadata(queryUsed=normalized_seed)
+                            CriterionMappingMetadata(queryUsed=seed)
                         )
                         _resolution.mapping["mapping_metadata"] = _metadata.model_copy(
                             update={"mappingFailures": _phrase_failures}
@@ -8066,7 +8066,7 @@ class TTEService:
                 logging.warning(
                     "[TTE] entity exception on '%s' NOT applied, mapping the whole "
                     "phrase as before: %s",
-                    normalized_seed, _resolution.fallback_reason,
+                    seed, _resolution.fallback_reason,
                 )
 
         # Defect B fix: for drug seeds, an EXACT standard RxNorm Ingredient name
@@ -8100,22 +8100,24 @@ class TTEService:
         #     defect upstream of here, not a mapper defect; do not fix it by
         #     loosening this gate.
         if expected_domain in ("Drug", None) and self._exact_ingredient_match_enabled():
-            _exact = self._exact_ingredient_mapping(normalized_seed)
+            _exact = self._exact_ingredient_mapping(seed)
             if _exact is not None:
                 return _exact
             # Only when the seed itself is not an ingredient name. A development code
             # ('BI 10773') never will be -- it appears nowhere in the 6.3M-concept
             # vocabulary -- so the trial's MeSH terms are tried next.
-            _alias = self._alias_ingredient_mapping(normalized_seed, alias_candidates)
+            _alias = self._alias_ingredient_mapping(seed, alias_candidates)
             if _alias is not None:
                 return _alias
 
         # --- Cache lookup ---
+        # On the seed exactly as the mapper reads it: the key keeps case, so a seed that
+        # differs from a cached one only in case is mapped on its own (criterion_cache).
         _cache_enabled = _criterion_cache_enabled()
         if _cache_enabled:
             try:
                 cache = get_criterion_cache()
-                cached = cache.get(normalized_seed, expected_domain)
+                cached = cache.get(seed, expected_domain)
                 if cached is not None:
                     from src.api.models.tte import CriterionMappingMetadata
 
@@ -8157,7 +8159,7 @@ class TTEService:
 
             _workflow = workflow or Agent2Workflow()
             mapping_result = _workflow.process_with_details(
-                normalized_seed,
+                seed,
                 domain_hint=expected_domain,
                 pre_fetched_candidates=pre_fetched_candidates,
             )
@@ -8168,7 +8170,7 @@ class TTEService:
                     overbroad_set = set(mapping_result.overbroad_concept_ids or [])
                     builder = get_expression_builder()
                     recommendation = builder.build_expression(
-                        candidates, roll_up=True, criterion_name=normalized_seed,
+                        candidates, roll_up=True, criterion_name=seed,
                         seed_concept_ids=mapping_result.seed_concept_ids or None,
                     )
                     expression = recommendation.expression.to_atlas_json()
@@ -8211,10 +8213,10 @@ class TTEService:
                             allCandidates=all_candidate_items,
                             rerankConfidence=mean_included_score(all_candidate_items),
                             rerankMethod="agent2",
-                            queryUsed=normalized_seed,
+                            queryUsed=seed,
                             selectedConceptIds=selected_ids,
                             mappingFailures=[
-                                {**failure, "query": normalized_seed}
+                                {**failure, "query": seed}
                                 for failure in mapping_result.mapping_failures()
                             ],
                         )
@@ -8227,12 +8229,12 @@ class TTEService:
                         if _cache_enabled and not mapping_result.mapping_failures():
                             try:
                                 get_criterion_cache().put(
-                                    normalized_seed,
+                                    seed,
                                     expected_domain,
                                     CriterionCacheEntry(
                                         concept_ids=mapping_result.concept_ids,
                                         expression=expression,
-                                        name=recommendation.name or normalized_seed,
+                                        name=recommendation.name or seed,
                                         domain=resolved_domain,
                                         route_path=getattr(mapping_result, "route_path", "") or "",
                                         mapping_metadata=mapping_meta.model_dump() if mapping_meta else None,
@@ -8243,7 +8245,7 @@ class TTEService:
                                 logging.debug("Criterion cache store failed: %s", exc)
 
                         return {
-                            "name": recommendation.name or normalized_seed,
+                            "name": recommendation.name or seed,
                             "expression": expression,
                             "domain": resolved_domain,
                             "mapping_metadata": mapping_meta,
@@ -8256,7 +8258,7 @@ class TTEService:
             agent2_empty = True
             agent2_route = str(getattr(mapping_result, "route_path", "") or "")
             agent2_failures = [
-                {**failure, "query": normalized_seed}
+                {**failure, "query": seed}
                 for failure in mapping_result.mapping_failures()
             ]
             agent2_no_match = mapping_result.reranker_no_match
@@ -8265,7 +8267,7 @@ class TTEService:
             import structlog
             structlog.get_logger().warning(
                 "agent2_seeded_mapping_failed",
-                seed_text=normalized_seed,
+                seed_text=seed,
                 domain=expected_domain,
                 # `str(exc)` alone is "" for a bare TimeoutError, which is what made
                 # this the only surviving trace of a failure nobody could name.
@@ -8281,7 +8283,7 @@ class TTEService:
         # tests the reranker had rejected. Every other empty cause still falls through.
         if agent2_no_match is not None:
             raise CriterionRefused(
-                f"No concept selected for {normalized_seed!r}: the reranker selected none of "
+                f"No concept selected for {seed!r}: the reranker selected none of "
                 f"the {agent2_no_match} candidates Agent 2 offered (stage reranker_no_match, "
                 f"route={agent2_route}); the RAG fallback was not run",
                 code=REFUSAL_RERANKER_NO_MATCH,
@@ -8297,7 +8299,7 @@ class TTEService:
         # with its code intact, and a failure stays a failure.
         try:
             fallback = self._recommend_seeded_concept_set_rag_fallback(
-                normalized_seed, expected_domain=expected_domain
+                seed, expected_domain=expected_domain
             )
         except Exception as fallback_exc:
             if agent2_exc is not None:
@@ -8316,7 +8318,7 @@ class TTEService:
             from src.api.models.tte import CriterionMappingMetadata
 
             metadata = fallback.get("mapping_metadata") or CriterionMappingMetadata(
-                queryUsed=normalized_seed
+                queryUsed=seed
             )
             fallback["mapping_metadata"] = metadata.model_copy(
                 update={"mappingFailures": [*agent2_failures, *metadata.mappingFailures]}
