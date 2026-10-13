@@ -28,6 +28,10 @@ class RecommendationResponse(BaseModel):
     fallback_to: Optional[str] = None
     fallback_reason: Optional[str] = None
     cached: bool = False  # Phase 8 P3: cache hit indicator
+    # A model stage whose answer could not be used and what stood in for it:
+    # {"stage": "nlu_router" | "clinical_reranker", "reason", "seedsOnly": False}. A
+    # response carrying one is not cached; the seeded mapping records it.
+    mapping_failures: List[dict] = Field(default_factory=list)
     
     def to_atlas_json(self) -> dict:
         """ATLAS 호환 JSON (ConceptSets 배열)"""
@@ -154,6 +158,11 @@ class ConceptSetRecommender:
         # Step 1: NLU Router - Intent Separation
         logger.info("Step 1: NLU Router")
         intent_result = self.nlu_router.route(query)
+        failures: List[dict] = []
+        # Only a FailedIntentResult carries a failure; IntentResult is the model's contract.
+        intent_failure = getattr(intent_result, "failure", None)
+        if intent_failure:
+            failures.append({"stage": "nlu_router", "reason": intent_failure, "seedsOnly": False})
         
         # Fallback 체크
         if intent_result.fallback_to:
@@ -168,7 +177,7 @@ class ConceptSetRecommender:
         include_recs = []
         for include_query in intent_result.include:
             logger.info("Processing INCLUDE", intent=include_query)
-            rec = self._process_intent(include_query, "INCLUDE", top_k, include_descendants)
+            rec = self._process_intent(include_query, "INCLUDE", top_k, include_descendants, failures)
             if rec:
                 include_recs.append(rec)
         
@@ -176,7 +185,7 @@ class ConceptSetRecommender:
         exclude_recs = []
         for exclude_query in intent_result.exclude:
             logger.info("Processing EXCLUDE", intent=exclude_query)
-            rec = self._process_intent(exclude_query, "EXCLUDE", top_k, include_descendants)
+            rec = self._process_intent(exclude_query, "EXCLUDE", top_k, include_descendants, failures)
             if rec:
                 exclude_recs.append(rec)
         
@@ -185,11 +194,13 @@ class ConceptSetRecommender:
         response = RecommendationResponse(
             query=query,
             include_recommendations=include_recs,
-            exclude_recommendations=exclude_recs
+            exclude_recommendations=exclude_recs,
+            mapping_failures=failures,
         )
         
-        # Phase 8 P3: Cache Set
-        if use_cache:
+        # Phase 8 P3: Cache Set -- never for a response a failed stage stood in for: a
+        # re-run must ask again rather than replay it.
+        if use_cache and not failures:
             self.cache.set(query, response, **cache_options)
         
         return response
@@ -199,9 +210,13 @@ class ConceptSetRecommender:
         intent_query: str,
         logic: str,
         top_k: int,
-        include_descendants: bool
+        include_descendants: bool,
+        failures: Optional[List[dict]] = None,
     ) -> Optional[RecommendationItem]:
-        """단일 Intent 처리 (Include 또는 Exclude)"""
+        """단일 Intent 처리 (Include 또는 Exclude)
+
+        :param failures: appended to when the reranker's answer could not be used.
+        """
         
         # Stage 2: Search Pipeline
         candidates = self.stage2.search(intent_query, top_k=top_k * 2)  # 여유분
@@ -214,6 +229,10 @@ class ConceptSetRecommender:
         
         # Reranker
         rerank_result = self.reranker.rerank(intent_query, candidates, top_k)
+        if rerank_result.failure and failures is not None:
+            failures.append(
+                {"stage": "clinical_reranker", "reason": rerank_result.failure, "seedsOnly": False}
+            )
         logger.info("Reranker complete", 
                     method=rerank_result.method, 
                     candidates=len(rerank_result.candidates),

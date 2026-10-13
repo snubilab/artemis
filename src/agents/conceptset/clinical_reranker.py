@@ -15,6 +15,8 @@ class RerankerResult(BaseModel):
     candidates: List[ConceptCandidate]
     method: str = Field(description="사용된 리랭킹 방식: 'cross_encoder', 'llm', 'score'")
     confidence: float = Field(default=0.0, description="최상위 후보의 신뢰도")
+    # Why the LLM ranking could not be used (the result is then the score order), or None.
+    failure: Optional[str] = None
 
 
 class ClinicalReranker:
@@ -75,8 +77,7 @@ class ClinicalReranker:
         
         try:
             from langchain_core.prompts import ChatPromptTemplate
-            from langchain_core.output_parsers import JsonOutputParser
-            from src.utils.llm import get_llm
+            from src.utils.llm import StrictJsonOutputParser, get_llm
             
             prompt = ChatPromptTemplate.from_messages([
                 ("system", """You are a clinical terminology expert.
@@ -92,7 +93,7 @@ Select the best matching concept.""")
             ])
             
             llm = get_llm(temperature=0.0, json_mode=True)
-            self._llm_chain = prompt | llm | JsonOutputParser()
+            self._llm_chain = prompt | llm | StrictJsonOutputParser()
             print("[Reranker] LLM Fallback ready")
             return True
             
@@ -134,13 +135,24 @@ Select the best matching concept.""")
                 return result
         
         # Strategy 2: LLM Fallback (낮은 신뢰도 or Cross-Encoder 실패)
+        failure = None
         if self.use_llm_fallback:
-            result = self._rerank_with_llm(query, candidates[:10], top_k)
-            if result:
-                return result
+            try:
+                result = self._rerank_with_llm(query, candidates[:10], top_k)
+            except Exception as e:
+                # The score order stands in, and says why: a reply cut off mid-item used
+                # to be repaired into a truncated id and returned as an "llm" ranking.
+                failure = " ".join(f"{type(e).__name__}: {e}".split())
+                failure = failure[:300] + " ..." if len(failure) > 300 else failure
+                print(f"[Reranker] LLM error: {failure}")
+            else:
+                if result:
+                    return result
         
         # Strategy 3: Score-based (Fallback)
-        return self._rerank_by_score(candidates, top_k)
+        result = self._rerank_by_score(candidates, top_k)
+        result.failure = failure
+        return result
     
     def _rerank_with_cross_encoder(
         self, 
@@ -187,48 +199,43 @@ Select the best matching concept.""")
         candidates: List[ConceptCandidate],
         top_k: int
     ) -> Optional[RerankerResult]:
-        """LLM 기반 리랭킹"""
+        """LLM 기반 리랭킹. None when no LLM could be built; raises when the call or its reply fails."""
         if not self._init_llm():
             return None
         
-        try:
-            # 후보 포맷팅
-            candidates_text = "\n".join([
-                f"- ID: {c.concept_id} | Name: {c.concept_name} | Domain: {c.domain_id}"
-                for c in candidates
-            ])
-            
-            result = self._llm_chain.invoke({
-                "query": query,
-                "candidates": candidates_text
-            })
-            
-            selected_id = result.get("selected_id")
-            confidence = result.get("confidence", 0.5)
-            
-            # 선택된 후보를 맨 앞으로
-            reranked = []
-            selected = None
-            for c in candidates:
-                if c.concept_id == selected_id:
-                    selected = c
-                else:
-                    reranked.append(c)
-            
-            if selected:
-                reranked.insert(0, selected)
-            
-            print(f"[Reranker] LLM: selected={selected_id}, conf={confidence:.3f}")
-            
-            return RerankerResult(
-                candidates=reranked[:top_k],
-                method="llm",
-                confidence=confidence
-            )
-            
-        except Exception as e:
-            print(f"[Reranker] LLM error: {e}")
-            return None
+        # 후보 포맷팅
+        candidates_text = "\n".join([
+            f"- ID: {c.concept_id} | Name: {c.concept_name} | Domain: {c.domain_id}"
+            for c in candidates
+        ])
+        
+        result = self._llm_chain.invoke({
+            "query": query,
+            "candidates": candidates_text
+        })
+        
+        selected_id = result.get("selected_id")
+        confidence = result.get("confidence", 0.5)
+        
+        # 선택된 후보를 맨 앞으로
+        reranked = []
+        selected = None
+        for c in candidates:
+            if c.concept_id == selected_id:
+                selected = c
+            else:
+                reranked.append(c)
+        
+        if selected:
+            reranked.insert(0, selected)
+        
+        print(f"[Reranker] LLM: selected={selected_id}, conf={confidence:.3f}")
+        
+        return RerankerResult(
+            candidates=reranked[:top_k],
+            method="llm",
+            confidence=confidence
+        )
     
     def _rerank_by_score(
         self, 

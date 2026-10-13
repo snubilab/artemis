@@ -8660,6 +8660,12 @@ class TTEService:
             rerankMethod="rag_fallback",
             queryUsed=normalized_seed,
             selectedConceptIds=selected_ids,
+            # A recommender stage whose answer could not be used (the NLU router kept the
+            # seed whole, or the reranker fell back to score order); gate (ab) reads it.
+            mappingFailures=[
+                {**failure, "query": normalized_seed}
+                for failure in getattr(response, "mapping_failures", None) or []
+            ],
         )
 
         return {
@@ -8793,6 +8799,11 @@ class TTEService:
             rerankMethod=rerank_result.method,
             queryUsed=query,
             selectedConceptIds=selected_ids,
+            mappingFailures=(
+                [{"stage": "clinical_reranker", "reason": rerank_result.failure,
+                  "seedsOnly": False, "query": query}]
+                if rerank_result.failure else []
+            ),
         )
 
     def run_mapping_pipeline_for_query(

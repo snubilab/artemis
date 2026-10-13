@@ -7,9 +7,8 @@ RFC-001 v2.1에 따른 구현
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 
-from src.utils.llm import get_llm
+from src.utils.llm import StrictJsonOutputParser, get_llm
 from src.utils.logging import get_logger
 
 # Module logger
@@ -40,6 +39,17 @@ class IntentResult(BaseModel):
     )
 
 
+class FailedIntentResult(IntentResult):
+    """The separation's answer could not be used, so the whole query is kept as one include.
+
+    ``failure`` is the one-line reason, set by :class:`IntentSeparator` and never by the
+    model -- which is why it lives here and not on :class:`IntentResult`, whose fields are
+    the output contract the prompt describes.
+    """
+
+    failure: str
+
+
 # ============================================================================
 # Intent Separator (LLM-based)
 # ============================================================================
@@ -53,7 +63,8 @@ class IntentSeparator:
     # No word list and no abbreviation example (AGENTS.md § PROMPTS AND TEXT RULES,
     # rule 1). The output contract is written out instead of LangChain's
     # ``get_format_instructions()``, which appends a sample object and a counterexample;
-    # field names and meanings follow ``IntentResult``, and the parser still parses.
+    # field names and meanings follow ``IntentResult``, and ``StrictJsonOutputParser``
+    # parses.
     SYSTEM_PROMPT = """You are a medical terminology expert assisting in cohort definition.
 Analyze the user's clinical request and separate it into:
 1. 'include': Conditions/Drugs/Procedures the patient MUST have.
@@ -77,7 +88,7 @@ Extract the include and exclude criteria as JSON."""
 
     def __init__(self):
         self.llm = get_llm(temperature=0.0, json_mode=True)
-        self.parser = JsonOutputParser(pydantic_object=IntentResult)
+        self.parser = StrictJsonOutputParser(pydantic_object=IntentResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", self.SYSTEM_PROMPT),
@@ -102,9 +113,13 @@ Extract the include and exclude criteria as JSON."""
             return IntentResult(**result)
             
         except Exception as e:
-            logger.error("Intent separation failed", error=str(e), query=query)
-            # Fallback: 전체 쿼리를 include로 처리
-            return IntentResult(include=[query], exclude=[])
+            # The whole query is kept as one include, and the reason rides on the result
+            # so the mapping built from it records the failure. A reply cut off mid-item
+            # used to be repaired into the intents it completed and read as an answer.
+            reason = " ".join(f"{type(e).__name__}: {e}".split())
+            reason = reason[:300] + " ..." if len(reason) > 300 else reason
+            logger.error("Intent separation failed", error=reason, query=query)
+            return FailedIntentResult(include=[query], exclude=[], failure=reason)
 
 
 # ============================================================================
