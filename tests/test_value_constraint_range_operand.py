@@ -27,7 +27,9 @@ passes only in isolation.
 from __future__ import annotations
 
 import importlib
+import json
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -223,24 +225,15 @@ class TestSplitBandRepair:
             ("band B lower", 7.0, 9.0),
         ]
 
-    def test_should_not_pair_bounds_that_came_from_different_protocol_lines(
-        self, decomposer, models
-    ):
-        """CAROLINA writes three HbA1c bands on three lines; the line is what separates them."""
-        rules = [
-            _rule(models, "line 1 lower", op="gte", value=6.5, source=self.LINE),
-            _rule(models, "line 2 upper", op="gt", value=7.5, logic="ABSENCE",
-                  source="HbA1c 6.5 - 7.5% while treated with sulphonylurea monotherapy"),
-        ]
-
-        assert [r.name for r in decomposer._repair_split_bands(rules)] == [r.name for r in rules]
-
     def test_should_not_pair_halves_separated_by_another_rule(self, decomposer, models):
-        """All 58 corpus pairs are adjacent, so reaching further establishes nothing."""
+        """All 58 corpus pairs are adjacent, so reaching further establishes nothing.
+
+        The rule between them carries no bound, so the only thing under test is the
+        distance. A bounded rule there sharing the band's domain, unit and window would
+        pair with the upper half: the key reads structure only (see `_band_key`)."""
         rules = [
             _rule(models, "lower", op="gte", value=6.5, source=self.LINE),
-            _rule(models, "something else", op="gte", value=1.0, source=self.LINE,
-                  analyte="Creatinine"),
+            models.Criteria(name="something else", domain="Condition", entity_text="T2DM"),
             _rule(models, "upper", op="gt", value=8.5, logic="ABSENCE", source=self.LINE),
         ]
 
@@ -251,14 +244,6 @@ class TestSplitBandRepair:
             _rule(models, "lower %", op="gte", value=6.5, source=self.LINE, unit="%"),
             _rule(models, "upper mmol/mol", op="gt", value=69.0, logic="ABSENCE",
                   source=self.LINE, unit="mmol/mol"),
-        ]
-
-        assert [r.name for r in decomposer._repair_split_bands(rules)] == [r.name for r in rules]
-
-    def test_should_not_pair_a_rule_that_carries_no_protocol_line(self, decomposer, models):
-        rules = [
-            _rule(models, "lower", op="gte", value=6.5, source=""),
-            _rule(models, "upper", op="gt", value=8.5, logic="ABSENCE", source=""),
         ]
 
         assert [r.name for r in decomposer._repair_split_bands(rules)] == [r.name for r in rules]
@@ -439,3 +424,144 @@ class TestBandTierRepair:
             and r.value_constraint.op == "bt"
             and "HbA1c" in r.name
         ]
+
+
+_BAND_ROWS = json.loads(
+    (Path(__file__).resolve().parent / "fixtures" / "band_repair_rows.json").read_text(
+        encoding="utf-8"
+    )
+)
+
+
+class TestBandRepairsReadStructureOnly:
+    """Both band repairs decide from structure: position, domain, unit, reference bound,
+    window, polarity and operator. Neither reads ``name``, ``entity_text`` or
+    ``source_text`` (AGENTS.md § PROMPTS AND TEXT RULES, rule 2).
+
+    Every case is real IR, copied verbatim into ``fixtures/band_repair_rows.json`` with the
+    source file's SHA-256 (checked against the file when it is present).
+    """
+
+    @staticmethod
+    def _rows(decomposer, parser_module, case):
+        ledger = parser_module.RepairLedger()
+        rules = [
+            decomposer._build_or_refuse(row, ledger, role="inclusion")
+            for row in _BAND_ROWS["cases"][case]
+        ]
+        assert None not in rules and not ledger.records()
+        return rules
+
+    @staticmethod
+    def _repaired(decomposer, parser_module, rules):
+        """Run the two repairs in production order; return the shape and the ledger actions."""
+        ledger = parser_module.RepairLedger()
+        out = parser_module.LogicDecomposer._repair_band_tiers(
+            decomposer._repair_split_bands(list(rules), ledger), ledger
+        )
+        shape = [
+            (
+                rule.group_type,
+                rule.logic_type,
+                [
+                    (m.value_constraint.op, m.value_constraint.value, m.value_constraint.value_high)
+                    for m in (rule.sub_criteria or [rule])
+                ],
+            )
+            for rule in out
+        ]
+        return shape, sorted(record["action"] for record in ledger.records())
+
+    @pytest.mark.parametrize("case", sorted(_BAND_ROWS["cases"]))
+    def test_should_match_the_ir_cache_when_the_source_file_is_present(self, case):
+        import hashlib
+
+        source = _BAND_ROWS["sources"][case]
+        path = Path(__file__).resolve().parents[1] / source["path"]
+        if not path.exists():
+            pytest.skip(f"{source['path']} is not present")
+        raw = path.read_bytes()
+        start, stop = (int(n) for n in source["rows"].split("[", 1)[1].rstrip("]").split(":"))
+
+        assert hashlib.sha256(raw).hexdigest() == source["sha256"]
+        assert json.loads(raw)["target"]["inclusion_rules"][start:stop] == _BAND_ROWS["cases"][case]
+
+    def test_should_merge_each_torn_band_when_its_halves_carry_no_protocol_line(
+        self, decomposer, parser_module
+    ):
+        """CAROLINA's two HbA1c tiers, each a PRESENCE ``gte`` then an ABSENCE ``gt`` on one
+        quantity, from an IR whose rows predate ``source_text``. With the line as the key the
+        pairs were refused for want of a line; the structure of each pair is complete."""
+        rules = self._rows(decomposer, parser_module, "carolina_no_line")
+
+        out = decomposer._repair_split_bands(rules, parser_module.RepairLedger())
+
+        assert [
+            (r.logic_type, r.value_constraint.op, r.value_constraint.value,
+             r.value_constraint.value_high)
+            for r in out
+        ] == [("PRESENCE", "bt", 6.5, 8.5), ("PRESENCE", "bt", 6.5, 7.5)]
+
+    def test_should_group_the_two_tiers_when_their_halves_carry_no_protocol_line(
+        self, decomposer, parser_module
+    ):
+        rules = self._rows(decomposer, parser_module, "carolina_no_line")
+
+        shape, actions = self._repaired(decomposer, parser_module, rules)
+
+        assert shape == [("ANY", "PRESENCE", [("bt", 6.5, 8.5), ("bt", 6.5, 7.5)])]
+        assert actions == ["demoted-into-band-tier-group"] * 2 + ["merged-into-band"] * 4
+
+    def test_should_make_the_same_band_decisions_when_every_text_field_is_replaced(
+        self, decomposer, parser_module
+    ):
+        """CAROLINA's three tiers on three protocol lines: three bands, one restated.
+
+        Replacing each row's name, entity text and line with a value no other row shares
+        must not change a single decision, because no decision may read them.
+        """
+        rules = self._rows(decomposer, parser_module, "carolina_three_tiers")
+        blind = [
+            rule.model_copy(update={
+                "name": f"row {i}", "entity_text": f"quantity {i}", "source_text": f"line {i}",
+            })
+            for i, rule in enumerate(rules)
+        ]
+
+        real = self._repaired(decomposer, parser_module, rules)
+
+        assert real == (
+            [("ANY", "PRESENCE", [("bt", 6.5, 8.5), ("bt", 6.5, 7.5)])],
+            ["demoted-into-band-tier-group"] * 2 + ["dropped-as-restatement"]
+            + ["merged-into-band"] * 6,
+        )
+        assert self._repaired(decomposer, parser_module, blind) == real
+
+    def test_should_leave_two_quantities_apart_when_the_first_is_not_a_lower_bound(
+        self, decomposer, parser_module
+    ):
+        """The one adjacent pair in the IR cache on two different quantities that share
+        domain, unit, reference bound and window: BMI ``<= 45`` then HbA1c ``>= 7.0``.
+        A band needs a PRESENCE lower bound followed by an ABSENCE upper one."""
+        rules = self._rows(decomposer, parser_module, "empareg_bmi_then_hba1c")
+
+        shape, actions = self._repaired(decomposer, parser_module, rules)
+
+        assert shape == [
+            ("ALL", "PRESENCE", [("lte", 45.0, None)]),
+            ("ALL", "PRESENCE", [("gte", 7.0, None)]),
+        ]
+        assert actions == []
+
+    def test_should_leave_a_band_torn_when_its_halves_carry_different_windows(
+        self, decomposer, parser_module
+    ):
+        rules = self._rows(decomposer, parser_module, "carolina_egfr_windows")
+
+        shape, actions = self._repaired(decomposer, parser_module, rules)
+
+        assert shape == [
+            ("ALL", "PRESENCE", [("gte", 30.0, None)]),
+            ("ALL", "ABSENCE", [("gte", 60.0, None)]),
+        ]
+        assert actions == []

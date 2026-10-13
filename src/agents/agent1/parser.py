@@ -1169,33 +1169,41 @@ class LogicDecomposer:
     def _band_key(rule: "Criteria") -> Optional[tuple]:
         """What two halves of one band must agree on, or None if this rule is not a half.
 
-        Deliberately NOT the name's parenthetical. Measured over the 65 caches:
-        requiring the parenthetical to match blocked 16 correct merges across 11 files
-        and prevented zero wrong ones, because roughly half the runs restate the bound
-        inside it -- `(>=6.5%)` against `(<=10.0%)`, `(no >=10%)` -- so the two halves
-        can never carry the same one.
+        Structure only: domain, unit, reference bound and window. With adjacency and the
+        PRESENCE-lower-then-ABSENCE-upper shape `_repair_split_bands` checks, that is the
+        whole of the pairing. The name, `entity_text` and `source_text` are not read: a
+        comparison of two model-written texts deciding a merge is a text rule (AGENTS.md
+        § PROMPTS AND TEXT RULES, rule 2), and the key used to be exactly that -- the
+        case-folded analyte plus the case-folded protocol line.
 
-        The key is the protocol line plus the analyte plus the domain. The line is what
-        makes two bounds halves of the SAME band rather than two bands on one analyte:
-        CAROLINA writes three HbA1c bands on three different lines, and grouping them
-        by analyte alone would pair the first line's lower bound with the second line's
-        upper one. The domain is in the key so a Measurement bound can never pair with
-        a Drug one; it is not FILTERED on, because one arm labels the whole HbA1c group
-        Observation and its band is a band regardless of what the model called the domain.
+        Measured before the change, over every reachable IR (149 files, 298 cohorts: the
+        P2 NEW, P2 placebo and P2 smoke IRs plus `data/cache/agent1_ir/`), 139 adjacent
+        pairs have this shape. The structural key decides every one of the 133 that
+        carry both texts exactly as the text key did (26 merged, 105 declined as half-open,
+        2 refused on their windows); the text key never once separated two rows the
+        structure had paired. The other 6 carried no line or no analyte, so the text key
+        refused them unread; structurally 2 are CAROLINA's two HbA1c bands and now merge,
+        and 4 are half-open and decline. The one adjacent pair on two different
+        quantities sharing domain, unit, reference bound and window (BMI then HbA1c) is
+        refused by its shape.
+
+        What structure cannot do is tell two quantities apart: adjacent rows on different
+        analytes with the same domain, unit, reference bound and window, written as a
+        PRESENCE lower bound then an ABSENCE upper one, would pair. None exists in the
+        measured IR. Nothing on a row identifies its quantity or its protocol line without
+        reading text, so the remedy for that case is a field the extraction states, not a
+        comparison of what it wrote.
+
+        The domain is in the key so a Measurement bound can never pair with a Drug one;
+        it is not FILTERED on, because one arm labels the whole HbA1c group Observation
+        and its band is a band regardless of what the model called the domain.
         """
         vc = rule.value_constraint
         if vc is None or rule.sub_criteria:
             return None
         if vc.op == "bt":
             return None
-        source = (rule.source_text or "").strip()
-        analyte = (rule.entity_text or "").strip()
-        if not source or not analyte:
-            # Without the line there is nothing anchoring two bounds to one band, and
-            # without the analyte nothing anchoring them to one quantity. Declining is
-            # the safe direction: the rules stay exactly as they are.
-            return None
-        return (rule.domain, analyte.casefold(), " ".join(source.split()).casefold())
+        return (rule.domain, vc.unit_text or "", vc.reference_bound, rule.window)
 
     def _repair_split_bands(self, rules: list, ledger: "RepairLedger" = None) -> list:
         """Merge a band Agent 1 split into a lower-bound rule and an upper-bound rule.
@@ -1266,12 +1274,7 @@ class LogicDecomposer:
             lo_vc, up_vc = rule.value_constraint, upper.value_constraint
             if up_vc.op not in self._BAND_UPPER_OPS:
                 continue
-            if (lo_vc.unit_text or "") != (up_vc.unit_text or ""):
-                continue
-            if lo_vc.reference_bound != up_vc.reference_bound:
-                continue
-            if rule.window != upper.window:
-                continue
+            # Unit, reference bound and window are compared by the key above.
             if not lo_vc.value < up_vc.value:
                 continue
             if lo_vc.op != "gte" or up_vc.op != "gt":
@@ -1300,7 +1303,9 @@ class LogicDecomposer:
             consumed.add(j)
             merged = merged_into[i]
             reason = (
-                f"the two halves of one band stated on one protocol line; merged into "
+                f"the two halves of one band: a PRESENCE lower bound followed by an "
+                f"ABSENCE upper bound with the same domain, unit, reference bound and "
+                f"window; merged into "
                 f"the inclusive range {lo_vc.value}-{up_vc.value}"
                 + (f" {lo_vc.unit_text}" if lo_vc.unit_text else "")
             )
@@ -1435,33 +1440,34 @@ class LogicDecomposer:
     def _band_tier_key(rule: "Criteria") -> Optional[tuple]:
         """What makes two criteria alternative BANDS on one quantity, or None.
 
-        NOT `source_text`. CAROLINA's three HbA1c tiers each carry a different one --
-        the first comes from a combined line naming two bands at once, the third from
-        protocol line a) -- so the line neither groups the tiers nor identifies the
-        restatement. It is the wrong key here for the same reason it is the RIGHT key
-        in `_band_key`: there it separates bands that share an analyte, and separating
-        them is exactly what must not happen once each band is whole.
+        Structure only: domain, unit, reference bound, polarity and window, over a
+        criterion carrying a CLOSED band (`op == "bt"`). Neither `entity_text` nor
+        `source_text` is read; the key used to hold the case-folded analyte, and a
+        comparison of two model-written texts deciding a grouping is a text rule
+        (AGENTS.md § PROMPTS AND TEXT RULES, rule 2). The line was never in it:
+        CAROLINA's three HbA1c tiers each carry a different one.
 
-        The key is instead what the criteria are measuring and how: domain, analyte,
-        unit, polarity and window, over a criterion carrying a CLOSED band (`op ==
-        "bt"`). The closed band is the load-bearing half. Two closed bands on one
-        analyte are never a conjunction a protocol would write -- one value cannot sit
-        in two disjoint bands, and where they overlap the conjunction is just the
+        The closed band is the load-bearing half. Two closed bands on one quantity are
+        never a conjunction a protocol would write -- one value cannot sit in two
+        disjoint bands, and where they overlap the conjunction is just the
         intersection, which a protocol would have stated directly. An open bound is
-        not like that: `>= 6.5` and `<= 8.5` on one analyte ARE conjunctive, being the
+        not like that: `>= 6.5` and `<= 8.5` on one quantity ARE conjunctive, being the
         two halves of one band, which is why `_repair_split_bands` pairs them rather
         than grouping them, and why this key does not look at them at all.
+
+        Measured before the change, over the same 149 IR files as `_band_key`: 16
+        adjacent closed-band pairs, every one the output of `_repair_split_bands` and
+        every one on CAROLINA's HbA1c; the structural key groups all 16 exactly as the
+        analyte key did. Like `_band_key` it cannot tell two quantities apart when they
+        share domain, unit, reference bound, polarity and window; none such is adjacent
+        in the measured IR.
         """
         vc = rule.value_constraint
         if vc is None or vc.op != "bt" or rule.sub_criteria:
             return None
-        analyte = (rule.entity_text or "").strip()
-        if not analyte:
-            return None
         return (
             rule.domain,
-            analyte.casefold(),
-            (vc.unit_text or "").strip().casefold(),
+            vc.unit_text or "",
             vc.reference_bound,
             rule.logic_type,
             str(rule.window),

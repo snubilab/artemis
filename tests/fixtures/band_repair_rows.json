@@ -1,0 +1,251 @@
+{
+ "about": "Real Agent 1 IR rows for the band repairs (_repair_split_bands, _repair_band_tiers), copied verbatim from the read-only IR cache data/cache/agent1_ir/. Each case names its file, its SHA-256 and the slice of target.inclusion_rules it is. carolina_no_line: two torn HbA1c bands whose rows carry no source_text (the IR predates the field). carolina_three_tiers: CAROLINA's three HbA1c bands, each torn into a PRESENCE lower and an ABSENCE upper half, written on three different protocol lines. empareg_bmi_then_hba1c: the one adjacent pair in the IR cache on two different quantities sharing domain, unit, reference bound and window. carolina_egfr_windows: one eGFR band whose two halves carry different windows.",
+ "sources": {
+  "carolina_no_line": {
+   "path": "data/cache/agent1_ir/NCT01243424_default_11e83cb6b03cc430.json",
+   "sha256": "e40650fa883443627ff42fc16845e9bd4b8b51ebdb67fa012ed2168041c2eba9",
+   "rows": "target.inclusion_rules[2:6]"
+  },
+  "carolina_three_tiers": {
+   "path": "data/cache/agent1_ir/NCT01243424_vllm_google_gemma-4-E4B-it_308e5e00f929f376.json",
+   "sha256": "7cc32372e3841d3625eb7128dd5fb157decb315bab18f4e18dc0fe36ff0f7786",
+   "rows": "target.inclusion_rules[5:11]"
+  },
+  "empareg_bmi_then_hba1c": {
+   "path": "data/cache/agent1_ir/NCT01131676_vllm_snuh_hari-q3-8b_47f7de8a3a5683dc.json",
+   "sha256": "2985078b2ed95cfea7181852925301cb75b52ee5ced9addef2f6e4670f8f2a3c",
+   "rows": "target.inclusion_rules[2:4]"
+  },
+  "carolina_egfr_windows": {
+   "path": "data/cache/agent1_ir/NCT01243424_vllm_google_gemma-4-E4B-it_0c86b997f8d5c5c3.json",
+   "sha256": "9e28627e1538fd989def9304215201f1033dfa6c61d9ff5d86da1a4117c5c878",
+   "rows": "target.inclusion_rules[5:7]"
+  }
+ },
+ "cases": {
+  "carolina_no_line": [
+   {
+    "name": "HbA1c range for treatment naive or mono-/dual therapy",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "logic_type": "PRESENCE",
+    "value_constraint": {
+     "op": "gte",
+     "value": 6.5,
+     "unit_text": "%"
+    },
+    "window": {
+     "start": -180,
+     "end": 0
+    }
+   },
+   {
+    "name": "HbA1c upper bound for treatment naive or mono-/dual therapy",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "logic_type": "ABSENCE",
+    "value_constraint": {
+     "op": "gt",
+     "value": 8.5,
+     "unit_text": "%"
+    },
+    "window": {
+     "start": -180,
+     "end": 0
+    }
+   },
+   {
+    "name": "HbA1c range for sulphonylurea/glinide therapy",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "logic_type": "PRESENCE",
+    "value_constraint": {
+     "op": "gte",
+     "value": 6.5,
+     "unit_text": "%"
+    },
+    "window": {
+     "start": -180,
+     "end": 0
+    }
+   },
+   {
+    "name": "HbA1c upper bound for sulphonylurea/glinide therapy",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "logic_type": "ABSENCE",
+    "value_constraint": {
+     "op": "gt",
+     "value": 7.5,
+     "unit_text": "%"
+    },
+    "window": {
+     "start": -180,
+     "end": 0
+    }
+   }
+  ],
+  "carolina_three_tiers": [
+   {
+    "name": "HbA1c 6.5 - 8.5% (Naïve/Metformin/Alpha-glucosidase)",
+    "domain": "Measurement",
+    "entity_text": "Glycosylated haemoglobin",
+    "source_text": "Elevated glycosylated haemoglobin (HbA1c): 6.5 - 8.5%, inclusive, if treatment naïve or mono-/dual therapy with metformin and/or an alpha-glucosidase inhibitor; 6.5 - 7.5%, inclusive, if treatment with sulphonylurea/glinide in mono- or dual (with metformin OR an alpha-glucosidase inhibitor) therapy)",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gte",
+     "value": 6.5,
+     "unit_text": "%"
+    }
+   },
+   {
+    "name": "HbA1c <= 8.5% (Naïve/Metformin/Alpha-glucosidase)",
+    "domain": "Measurement",
+    "entity_text": "Glycosylated haemoglobin",
+    "source_text": "Elevated glycosylated haemoglobin (HbA1c): 6.5 - 8.5%, inclusive, if treatment naïve or mono-/dual therapy with metformin and/or an alpha-glucosidase inhibitor; 6.5 - 7.5%, inclusive, if treatment with sulphonylurea/glinide in mono- or dual (with metformin OR an alpha-glucosidase inhibitor) therapy)",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gt",
+     "value": 8.5,
+     "unit_text": "%"
+    }
+   },
+   {
+    "name": "HbA1c 6.5 - 7.5% (SU/Glinide/Metformin combos)",
+    "domain": "Measurement",
+    "entity_text": "Glycosylated haemoglobin",
+    "source_text": "HbA1c 6.5 - 7.5% (48 - 58 mmol/mol) while patient is treated with sulphonylurea (SU) monotherapy, or glinide monotherapy (e.g. repaglinide, nateglinide), or metformin + SU (combination maximal up to 5 years), or metformin + glinide (combination maximal up to 5 years), or alpha-glucosidase inhibitor + SU (combination maximal up to 5 years), or alpha-glucosidase inhibitor + glinide (combination maximal up to 5 years) ! 2016 Boehringer Ingelheim International GmbH or one or more of its affiliated companies. All rights reserved",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gte",
+     "value": 6.5,
+     "unit_text": "%"
+    }
+   },
+   {
+    "name": "HbA1c <= 7.5% (SU/Glinide/Metformin combos)",
+    "domain": "Measurement",
+    "entity_text": "Glycosylated haemoglobin",
+    "source_text": "HbA1c 6.5 - 7.5% (48 - 58 mmol/mol) while patient is treated with sulphonylurea (SU) monotherapy, or glinide monotherapy (e.g. repaglinide, nateglinide), or metformin + SU (combination maximal up to 5 years), or metformin + glinide (combination maximal up to 5 years), or alpha-glucosidase inhibitor + SU (combination maximal up to 5 years), or alpha-glucosidase inhibitor + glinide (combination maximal up to 5 years) ! 2016 Boehringer Ingelheim International GmbH or one or more of its affiliated companies. All rights reserved",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gt",
+     "value": 7.5,
+     "unit_text": "%"
+    }
+   },
+   {
+    "name": "HbA1c 6.5 - 8.5% (Naïve/Intolerant/Treated)",
+    "domain": "Measurement",
+    "entity_text": "Glycosylated haemoglobin",
+    "source_text": "HbA1c 6.5 - 8.5% (48 - 69 mmol/mol) while patient is treatment naïve (if intolerant or contra-indicated to first line anti-diabetic treatment) or treated with:",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gte",
+     "value": 6.5,
+     "unit_text": "%"
+    }
+   },
+   {
+    "name": "HbA1c <= 8.5% (Naïve/Intolerant/Treated)",
+    "domain": "Measurement",
+    "entity_text": "Glycosylated haemoglobin",
+    "source_text": "HbA1c 6.5 - 8.5% (48 - 69 mmol/mol) while patient is treatment naïve (if intolerant or contra-indicated to first line anti-diabetic treatment) or treated with:",
+    "logic_type": "ABSENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gt",
+     "value": 8.5,
+     "unit_text": "%"
+    }
+   }
+  ],
+  "empareg_bmi_then_hba1c": [
+   {
+    "name": "BMI <= 45 at Visit 1",
+    "domain": "Measurement",
+    "entity_text": "Body Mass Index",
+    "source_text": "3. Body Mass index <= 45 at Visit 1",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -365,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "lte",
+     "value": 45.0,
+     "referenceBound": "absolute",
+     "unitText": "at Visit 1"
+    }
+   },
+   {
+    "name": "HbA1c >= 7.0%",
+    "domain": "Measurement",
+    "entity_text": "Hemoglobin A1c/Hemoglobin.total in Blood",
+    "source_text": "4. Glycosylated haemoglobin (HbA1c) of >= 7.0% and <=10% for patients on background therapy or HbA1c >= 7.0% and <= 9.0% for drug naive patients",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -365,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gte",
+     "value": 7.0,
+     "referenceBound": "absolute",
+     "unitText": "%"
+    }
+   }
+  ],
+  "carolina_egfr_windows": [
+   {
+    "name": "Moderately impaired renal function (eGFR)",
+    "domain": "Measurement",
+    "entity_text": "Estimated glomerular filtration rate",
+    "source_text": "14. Moderately impaired renal function (as defined by modified diet of renal disease (MDRD) formula) with estimated glomerular filtration rate [eGFR] 30-59 mL/min/1.73 m2",
+    "logic_type": "PRESENCE",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "value_constraint": {
+     "op": "gte",
+     "value": 30.0
+    }
+   },
+   {
+    "name": "Moderately impaired renal function (eGFR)",
+    "domain": "Measurement",
+    "entity_text": "Estimated glomerular filtration rate",
+    "source_text": "14. Moderately impaired renal function (as defined by modified diet of renal disease (MDRD) formula) with estimated glomerular filtration rate [eGFR] 30-59 mL/min/1.73 m2",
+    "logic_type": "ABSENCE",
+    "value_constraint": {
+     "op": "gte",
+     "value": 60.0
+    }
+   }
+  ]
+ }
+}
