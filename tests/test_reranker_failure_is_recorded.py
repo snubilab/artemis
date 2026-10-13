@@ -124,7 +124,6 @@ def _process(reranker):
     workflow._reranker = reranker
     with patch.object(wf, "expand_abbreviation", return_value=("q", False)), \
             patch.object(wf, "expand_in_context", side_effect=lambda q: q), \
-            patch.object(wf, "_exact_name_concept", side_effect=AssertionError("DB reached")), \
             patch.object(wf.logician, "decompose_combination", side_effect=lambda cid: [cid]), \
             patch.object(wf.logician, "prune_empty_concepts", side_effect=lambda ids: ids), \
             patch.object(wf.logician, "drop_wrong_entity_class_for_condition",

@@ -9,13 +9,19 @@ nothing, and the force-include put sitagliptin back.
 
 The measurement that motivated this is in
 docs/experiments/2026-08-10_exact_vs_embedding_attribution.md.
+
+A rejection is now final. The exact concept-name lookup that used to stand in for it
+(`_exact_name_concept`, LOWER(concept_name) = LOWER(query)) read a concept name as text
+to choose a concept, which AGENTS.md § PROMPTS AND TEXT RULES forbids; it was deleted
+after it fired 0 times in 14 consults on the delivery candidate and 0 in 11 on P3 arm A
+(output/site_gap/2026-10-12_p3_dry/analysis_a/textrule_removal/classC_evidence/d1.txt).
 """
 from __future__ import annotations
 
-import pytest
+from unittest.mock import MagicMock, patch
 
 from src.agents.agent2.retriever import CandidateConcept
-from src.agents.agent2.workflow import _exact_name_concept, _seeds_after_rerank
+from src.agents.agent2.workflow import _seeds_after_rerank
 
 
 def _c(concept_id: int, name: str, domain: str = "Drug") -> CandidateConcept:
@@ -31,60 +37,94 @@ def _c(concept_id: int, name: str, domain: str = "Drug") -> CandidateConcept:
 
 SITAGLIPTIN = _c(1235494, "sitagliptin 32.1 MG")
 SAXAGLIPTIN = _c(855999, "saxagliptin 2.5 MG Oral Tablet by Sandoz")
-LINAGLIPTIN = _c(40239216, "linagliptin")
 
 
 class TestRerankerRejectedEverything:
-    def test_should_return_no_seeds_when_reranker_rejects_all_and_no_exact_name_match(self):
-        assert _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], [], None) == []
+    def test_should_return_no_seeds_when_reranker_rejects_all(self):
+        assert _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], []) == []
 
     def test_should_not_force_include_top1_when_reranker_rejects_all(self):
         """The regression this file exists for: rejecting all must not yield candidates[0]."""
-        seeds = _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], [], None)
+        seeds = _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], [])
         assert SITAGLIPTIN.concept_id not in {c.concept_id for c in seeds}
-
-    def test_should_use_the_exact_name_match_when_reranker_rejects_all(self):
-        seeds = _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], [], LINAGLIPTIN)
-        assert [c.concept_id for c in seeds] == [40239216]
 
 
 class TestRerankerSelectedSomething:
     """Unchanged behaviour: the force-include only ever protected a real selection."""
 
     def test_should_force_include_top1_when_reranker_selected_other_concepts(self):
-        seeds = _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], [SAXAGLIPTIN], None)
+        seeds = _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], [SAXAGLIPTIN])
         assert [c.concept_id for c in seeds] == [1235494, 855999]
 
     def test_should_not_duplicate_top1_when_reranker_already_selected_it(self):
-        seeds = _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], [SITAGLIPTIN], None)
-        assert [c.concept_id for c in seeds] == [1235494]
-
-    def test_should_ignore_the_exact_name_match_when_reranker_selected_something(self):
-        """The exact lookup is a fallback for rejection, not an override of a judgment."""
-        seeds = _seeds_after_rerank([SITAGLIPTIN], [SITAGLIPTIN], LINAGLIPTIN)
+        seeds = _seeds_after_rerank([SITAGLIPTIN, SAXAGLIPTIN], [SITAGLIPTIN])
         assert [c.concept_id for c in seeds] == [1235494]
 
 
-@pytest.mark.integration
-class TestExactNameLookup:
-    def test_should_resolve_linagliptin_that_the_embedding_path_missed(self):
-        got = _exact_name_concept("linagliptin", "Drug")
-        assert got is not None and got.concept_id == 40239216
+# ── the whole slow path, reranker answering "none" ───────────
 
-    def test_should_be_case_insensitive(self):
-        got = _exact_name_concept("Linagliptin", "Drug")
-        assert got is not None and got.concept_id == 40239216
 
-    def test_should_return_nothing_for_a_development_code(self):
-        """`BI 10773` is not in the vocabulary at all — that one needs the alias path."""
-        assert _exact_name_concept("BI 10773", "Drug") is None
+QUERY = "chronic kidney disease"
+#: A standard concept whose name is the query, as the vocabulary would hand it back.
+NAMED_AS_THE_QUERY = (46271022, "Chronic kidney disease", "Condition", "SNOMED", "Clinical Finding")
+CANDIDATES = [
+    CandidateConcept(concept_id=cid, concept_name=f"c{cid}", domain_id="Condition",
+                     vocabulary_id="SNOMED", concept_class_id="Clinical Finding", distance=0.4)
+    for cid in (198185, 36716947)
+]
 
-    def test_should_return_nothing_when_the_name_is_ambiguous_without_a_domain(self):
-        """'ticagrelor' is both a LOINC answer and an RxNorm ingredient. Two standard
-        concepts share the name, so with no domain to separate them the lookup declines
-        rather than guessing — the same rule the MeSH alias path uses."""
-        assert _exact_name_concept("ticagrelor", None) is None
 
-    def test_should_resolve_an_ambiguous_name_once_the_domain_narrows_it(self):
-        got = _exact_name_concept("ticagrelor", "Drug")
-        assert got is not None and got.concept_id == 40241186
+class _SelectsNothing:
+    """A reranker whose usable answer is that no candidate denotes the term."""
+
+    def rerank_topn(self, *_args, **_kwargs):
+        return []
+
+
+def _vocabulary_answering_by_name():
+    """A pool whose connection answers any query with one concept named as the query."""
+    cursor = MagicMock()
+    cursor.__enter__.return_value = cursor
+    cursor.__exit__.return_value = False
+    cursor.fetchall.return_value = [NAMED_AS_THE_QUERY]
+    conn = MagicMock()
+    conn.cursor.return_value = cursor
+    pool = MagicMock()
+    pool.getconn.return_value = conn
+    return pool
+
+
+def _process(pool):
+    from src.agents.agent2 import workflow as wf
+
+    workflow = wf.Agent2Workflow()
+    workflow._reranker = _SelectsNothing()
+    with patch.object(wf, "expand_abbreviation", return_value=(QUERY, False)), \
+            patch.object(wf, "expand_in_context", side_effect=lambda q: q), \
+            patch.object(wf, "_get_db_pool", return_value=pool), \
+            patch.object(wf.logician, "decompose_combination", side_effect=lambda cid: [cid]), \
+            patch.object(wf.logician, "prune_empty_concepts", side_effect=lambda ids: ids), \
+            patch.object(wf.logician, "drop_wrong_entity_class_for_condition",
+                         side_effect=lambda ids: ids), \
+            patch.object(wf.Agent2Workflow, "_kg_expand_and_critique",
+                         side_effect=lambda ids, *a, **k: (ids, [], True)), \
+            patch.object(wf, "get_kg_expander"):
+        return workflow.process_with_details(
+            QUERY, domain_hint="Condition", pre_fetched_candidates=list(CANDIDATES),
+        )
+
+
+def test_should_map_nothing_and_record_a_gap_when_the_reranker_selects_nothing():
+    """Even when a standard concept carries the query as its name: the reranker's "none"
+    stands, and the empty mapping is recorded on the result rather than replaced."""
+    pool = _vocabulary_answering_by_name()
+
+    result = _process(pool)
+
+    assert result.concept_ids == [] and result.seed_concept_ids == []
+    assert result.gap_report.mapped_count == 0
+    assert [gap.reason for gap in result.gap_report.unmapped_items] == ["No OMOP mapping found"]
+    assert [gap.original_text for gap in result.gap_report.unmapped_items] == [QUERY]
+    # A judgment, not a failure: nothing is booked as a reranker failure.
+    assert result.reranker_failure is None and result.mapping_failures() == []
+    pool.getconn.assert_not_called()
