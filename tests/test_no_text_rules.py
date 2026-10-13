@@ -1807,7 +1807,12 @@ def _ledger_entries() -> list[dict[str, str]]:
 def scanned_files() -> list[Path]:
     """``src/**/*.py``, the delivery-path scripts, and every ``.py`` file the ledger names."""
     files = set(SCAN_DIRECTORY.rglob("*.py")) | set(DELIVERY_SCRIPTS)
-    files |= {ROOT / entry["file"] for entry in _ledger_entries() if entry["file"].endswith(".py")}
+    # A named file that no longer exists is not scanned; its pending rules then read as gone.
+    files |= {
+        path
+        for entry in _ledger_entries()
+        if entry["file"].endswith(".py") and (path := ROOT / entry["file"]).is_file()
+    }
     return sorted(files)
 
 

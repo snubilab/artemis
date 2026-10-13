@@ -20,15 +20,34 @@ PRE_EXTENSION_KEYS = [
 
 
 def test_should_reject_the_2026_10_13_growth_when_the_baseline_predates_it(tmp_path, monkeypatch):
+    """The ledger as the growth recorded it, held to the baseline that predates the growth.
+
+    Built from the recorded baseline keys rather than the live ledger, so the case survives
+    the pending rules being removed one by one.
+    """
+    recorded = json.loads(guard.BASELINE_PATH.read_text(encoding="utf-8"))["keys"]
+    at_growth = [
+        {
+            "file": file,
+            "symbol": symbol,
+            "sink": sink,
+            "kind": "pending",
+            "inventory_id": "recorded",
+            "status": "dormant",
+            "decides": "as recorded",
+            "reason": "the pending list as the 2026-10-13 growth recorded it",
+        }
+        for file, symbol, sink in recorded
+    ]
     baseline = tmp_path / "baseline.json"
     baseline.write_text(json.dumps({"keys": PRE_EXTENSION_KEYS}), encoding="utf-8")
+    monkeypatch.setattr(guard, "_ledger_entries", lambda: at_growth)
     monkeypatch.setattr(guard, "BASELINE_PATH", baseline)
     monkeypatch.setattr(guard, "PENDING_BASELINE_SHA256", guard.baseline_digest(PRE_EXTENSION_KEYS))
     with pytest.raises(AssertionError, match="the pending list only shrinks") as raised:
         guard.test_should_not_grow_the_pending_list_when_the_baseline_is_unchanged()
     grown = str(raised.value).count("  (")
-    pending = sum(1 for entry in guard.load_ledger() if entry["kind"] == "pending")
-    assert grown == pending - len(PRE_EXTENSION_KEYS), raised.value
+    assert grown == len({tuple(k) for k in recorded} - {tuple(k) for k in PRE_EXTENSION_KEYS}) == 31
 
 
 def test_should_reject_a_baseline_edit_when_the_pinned_hash_is_unchanged(tmp_path, monkeypatch):
