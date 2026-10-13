@@ -1,8 +1,16 @@
 """
 Critic Result Cache — Thread-safe TTL+LRU cache for LLM Critic results.
 
-Avoids redundant LLM calls for identical (query_text, domain_hint) pairs.
-Cache key: sha256(query_text.lower().strip() + "|" + domain_hint + "|" + LLM_MODEL)
+Avoids redundant LLM calls for identical critic calls. The key is everything the
+answer depends on: the query (case-folded), the context shown before it, the domain, the
+resolved model, critic_signature() (model tier, self-reflection, prompt version), the seed
+ids, the KG candidate ids and kg_concept_ids. The id lists are sorted, so the same call
+with its ids in another order is the same key.
+
+It used to be the query and domain alone. In the P2 NEW re-ingest (2026-10-12) a second
+'CABG' call with a different seed set was answered from the first call's entry, so the
+critic never saw seed 4231998 and the replayed selection carried 4000733, a seed of the
+other call.
 
 Configuration:
     AGENT2_CRITIC_CACHE_TTL_HOURS: TTL in hours (default: 24)
@@ -13,11 +21,12 @@ with manual timestamp-based TTL enforcement.
 """
 
 import hashlib
+import json
 import logging
 import os
 import threading
 import time
-from typing import Optional
+from collections.abc import Iterable
 
 from src.utils.llm import resolve_model
 
@@ -64,26 +73,43 @@ class CriticCache:
             self._cache: dict[str, tuple[list[int], float]] = {}
 
     @staticmethod
-    def make_key(query_text: str, domain_hint: str | None) -> str:
-        """Generate cache key from query text, domain hint and resolved model.
+    def make_key(
+        query_text: str,
+        domain_hint: str | None,
+        *,
+        context: str | None,
+        seed_concept_ids: Iterable[int],
+        candidate_concept_ids: Iterable[int],
+        kg_concept_ids: Iterable[int] | None,
+    ) -> str:
+        """Cache key over every input of one critic call.
 
-        Key = sha256(query_text.lower().strip() + "|" + domain_hint_or_empty
-                     + "|" + resolved LLM model)
+        Every argument is required so that no call site can build a key without the
+        candidates the answer was chosen from.
 
-        Args:
-            query_text: Clinical query text.
-            domain_hint: OMOP domain (e.g., "Condition") or None.
-
-        Returns:
-            Hex digest string for cache lookup.
+        :param query_text: clinical query text; case-folded and stripped.
+        :param domain_hint: OMOP domain (e.g. "Condition") or None.
+        :param context: text shown before the query in the prompt, or None.
+        :param seed_concept_ids: the seeds shown to the critic.
+        :param candidate_concept_ids: the KG candidates shown to the critic.
+        :param kg_concept_ids: the ids whose contradicted verdicts the filter may keep,
+            or None for no such set.
+        :returns: hex digest.
         """
-        normalized = query_text.lower().strip()
-        domain = domain_hint or ""
         # resolve_model() alone was not enough: AGENT2_CRITIC_MODEL_TIER can point
         # the critic at a different model entirely while LLM_MODEL stays put.
         from src.agents.agent2.critic import critic_signature
 
-        raw = f"{normalized}|{domain}|{resolve_model()}|{critic_signature()}"
+        raw = json.dumps([
+            query_text.lower().strip(),
+            context or "",
+            domain_hint or "",
+            resolve_model(),
+            critic_signature(),
+            sorted(int(cid) for cid in seed_concept_ids),
+            sorted(int(cid) for cid in candidate_concept_ids),
+            None if kg_concept_ids is None else sorted(int(cid) for cid in kg_concept_ids),
+        ])
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def get(self, key: str) -> list[int] | None:

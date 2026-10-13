@@ -2,7 +2,7 @@
 SPEC-PERF-001 M5: Critic Result Cache — Tests for CriticCache class.
 
 Tests:
-- Cache key is sha256(query_text.lower().strip() + "|" + domain_hint)
+- Cache key is a sha256 over the call's inputs (query, domain, model, candidates)
 - TTL: configurable via AGENT2_CRITIC_CACHE_TTL_HOURS (default: 24)
 - Max entries: 500 (LRU eviction)
 - Thread safety
@@ -21,6 +21,14 @@ from src.agents.agent2.critic_cache import CriticCache
 from src.utils.llm import resolve_model
 
 
+def _key(query_text, domain_hint):
+    """A key for a fixed critic call that varies only in query and domain."""
+    return CriticCache.make_key(
+        query_text, domain_hint, context=None, seed_concept_ids=[1],
+        candidate_concept_ids=[2], kg_concept_ids=None,
+    )
+
+
 class TestCacheKeyGeneration:
     """Verify cache key format."""
 
@@ -32,12 +40,11 @@ class TestCacheKeyGeneration:
         different critic models producing one key. Anything that must change the key
         should be asserted here as a property, not by rebuilding the input string.
         """
-        cache = CriticCache(max_entries=10, ttl_hours=1)
-        key = cache.make_key("test query", "Condition")
+        key = _key("test query", "Condition")
 
         assert len(key) == 64 and all(c in "0123456789abcdef" for c in key)
-        assert key != cache.make_key("other query", "Condition")
-        assert key != cache.make_key("test query", "Drug")
+        assert key != _key("other query", "Condition")
+        assert key != _key("test query", "Drug")
 
     def test_key_with_none_domain(self):
         """None domain is treated as empty string.
@@ -48,15 +55,12 @@ class TestCacheKeyGeneration:
         a mapping cached under one critic model replayed under another. A test that
         pins the formula makes the fix for that look like a regression.
         """
-        cache = CriticCache(max_entries=10, ttl_hours=1)
-
-        assert cache.make_key("test query", None) == cache.make_key("test query", "")
+        assert _key("test query", None) == _key("test query", "")
 
     def test_key_is_case_insensitive(self):
         """Same query with different case should produce same key."""
-        cache = CriticCache(max_entries=10, ttl_hours=1)
-        key1 = cache.make_key("History of Stroke", "Condition")
-        key2 = cache.make_key("history of stroke", "Condition")
+        key1 = _key("History of Stroke", "Condition")
+        key2 = _key("history of stroke", "Condition")
         assert key1 == key2
 
 
@@ -72,7 +76,7 @@ class TestCacheHitMiss:
     def test_cache_hit_returns_stored_value(self):
         """Stored value should be retrievable."""
         cache = CriticCache(max_entries=10, ttl_hours=1)
-        key = cache.make_key("stroke", "Condition")
+        key = _key("stroke", "Condition")
         cache.put(key, [1, 2, 3])
         result = cache.get(key)
         assert result == [1, 2, 3]
@@ -80,7 +84,7 @@ class TestCacheHitMiss:
     def test_cache_stores_empty_list(self):
         """Empty list result should be cacheable (not confused with miss)."""
         cache = CriticCache(max_entries=10, ttl_hours=1)
-        key = cache.make_key("rare query", "Condition")
+        key = _key("rare query", "Condition")
         cache.put(key, [])
         result = cache.get(key)
         assert result == []  # not None
@@ -92,7 +96,7 @@ class TestCacheTTL:
     def test_expired_entry_returns_none(self):
         """Entry past TTL should return None."""
         cache = CriticCache(max_entries=10, ttl_hours=0)  # instant expiry
-        key = cache.make_key("test", "Condition")
+        key = _key("test", "Condition")
         cache.put(key, [1, 2, 3])
         time.sleep(0.01)
         result = cache.get(key)
@@ -112,16 +116,16 @@ class TestCacheLRUEviction:
         """Oldest entry should be evicted when max entries exceeded."""
         cache = CriticCache(max_entries=3, ttl_hours=1)
         for i in range(4):
-            key = cache.make_key(f"query_{i}", "Condition")
+            key = _key(f"query_{i}", "Condition")
             cache.put(key, [i])
 
         # First entry should be evicted
-        key0 = cache.make_key("query_0", "Condition")
+        key0 = _key("query_0", "Condition")
         assert cache.get(key0) is None
 
         # Last 3 should still be there
         for i in range(1, 4):
-            key = cache.make_key(f"query_{i}", "Condition")
+            key = _key(f"query_{i}", "Condition")
             assert cache.get(key) == [i]
 
     def test_max_entries_default_is_500(self):
@@ -141,7 +145,7 @@ class TestCacheThreadSafety:
         def writer(thread_id: int):
             try:
                 for i in range(50):
-                    key = cache.make_key(f"t{thread_id}_q{i}", "Condition")
+                    key = _key(f"t{thread_id}_q{i}", "Condition")
                     cache.put(key, [thread_id, i])
             except Exception as e:
                 errors.append(e)

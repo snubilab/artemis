@@ -18,7 +18,16 @@ import pytest
 from src.agents.agent2.critic_cache import CriticCache
 from src.agents.agent2.criterion_cache import CriterionResultCache
 
-LOCAL = "vllm/Qwen/Qwen2.5-7B-Instruct"
+
+def _key(query_text, domain_hint):
+    """A key for a fixed critic call that varies only in query and domain."""
+    return CriticCache.make_key(
+        query_text, domain_hint, context=None, seed_concept_ids=[1],
+        candidate_concept_ids=[2], kg_concept_ids=None,
+    )
+
+
+LOCAL ="vllm/Qwen/Qwen2.5-7B-Instruct"
 
 
 @pytest.fixture(autouse=True)
@@ -34,7 +43,7 @@ def _criterion_key() -> str:
     return CriterionResultCache._make_key("diabetes", "Condition", "minilm", LOCAL)
 
 
-@pytest.mark.parametrize("cache_key", [_criterion_key, lambda: CriticCache.make_key("diabetes", "Condition")])
+@pytest.mark.parametrize("cache_key", [_criterion_key, lambda: _key("diabetes", "Condition")])
 def test_the_tier_changes_the_key(cache_key, monkeypatch: pytest.MonkeyPatch) -> None:
     keys = {}
     for tier in (None, "auto", "gpt-4o"):

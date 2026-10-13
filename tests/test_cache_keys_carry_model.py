@@ -24,6 +24,14 @@ MODEL_B = "gpt-probe-model-b"
 TEXT = "History of Stroke"
 
 
+def _key(query_text, domain_hint):
+    """A key for a fixed critic call that varies only in query and domain."""
+    return CriticCache.make_key(
+        query_text, domain_hint, context=None, seed_concept_ids=[1],
+        candidate_concept_ids=[2], kg_concept_ids=None,
+    )
+
+
 @contextmanager
 def using_model(model: str) -> Iterator[None]:
     """resolve_model() reads settings live, so setting the attribute is enough."""
@@ -56,9 +64,9 @@ def _criterion_cache_hits_across_model_switch() -> bool:
 def _critic_cache_hits_across_model_switch() -> bool:
     cache = CriticCache(max_entries=8, ttl_hours=1)
     with using_model(MODEL_A):
-        cache.put(cache.make_key(TEXT, "Condition"), [201826])
+        cache.put(_key(TEXT, "Condition"), [201826])
     with using_model(MODEL_B):
-        return cache.get(cache.make_key(TEXT, "Condition")) is not None
+        return cache.get(_key(TEXT, "Condition")) is not None
 
 
 def _agent1_ir_cache_hits_across_model_switch() -> bool:
@@ -95,9 +103,9 @@ def test_same_model_still_hits(name: str) -> None:
             assert cache.get(TEXT, "Condition") is not None
         elif name == "agent2_critic_cache":
             critic_cache = CriticCache(max_entries=8, ttl_hours=1)
-            key = critic_cache.make_key(TEXT, "Condition")
+            key = _key(TEXT, "Condition")
             critic_cache.put(key, [201826])
-            assert critic_cache.get(critic_cache.make_key(TEXT, "Condition")) is not None
+            assert critic_cache.get(_key(TEXT, "Condition")) is not None
         else:
             with patch("src.agents.agent1.parser.get_llm", return_value=Mock()):
                 assert LogicDecomposer().model_name == LogicDecomposer().model_name

@@ -378,8 +378,17 @@ class ConceptCritic:
         if not kg_concepts:
             return seed_concept_ids
 
-        # Cache check (REQ-03): early return on cache hit
-        cache_key = self._cache.make_key(query, domain_hint)
+        # Cache check (REQ-03): early return on cache hit. Keyed on the candidates too:
+        # a key of query + domain alone answered a later call with other seeds from an
+        # earlier call's selection (P2 NEW 'CABG', 2026-10-12).
+        cache_key = self._cache.make_key(
+            query,
+            domain_hint,
+            context=context,
+            seed_concept_ids=seed_concept_ids,
+            candidate_concept_ids=[c.concept_id for c in kg_concepts],
+            kg_concept_ids=kg_concept_ids,
+        )
         cached = self._cache.get(cache_key)
         if cached is not None:
             logger.info(

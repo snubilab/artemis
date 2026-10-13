@@ -22,14 +22,22 @@ from src.agents.agent2.critic_cache import CriticCache
 from src.agents.agent2.criterion_cache import CriterionResultCache
 
 
+def _key(query_text, domain_hint):
+    """A key for a fixed critic call that varies only in query and domain."""
+    return CriticCache.make_key(
+        query_text, domain_hint, context=None, seed_concept_ids=[1],
+        candidate_concept_ids=[2], kg_concept_ids=None,
+    )
+
+
 class TestPromptVersionReachesTheCacheKeys:
     def test_should_carry_the_prompt_version_in_the_critic_signature(self):
         assert _CRITIC_PROMPT_VERSION in critic_signature()
 
     def test_should_change_the_critic_cache_key_when_the_prompt_version_changes(self):
-        before = CriticCache.make_key("atrial fibrillation", "Condition")
+        before = _key("atrial fibrillation", "Condition")
         with patch.object(critic_mod, "_CRITIC_PROMPT_VERSION", "some-other-prompt"):
-            after = CriticCache.make_key("atrial fibrillation", "Condition")
+            after = _key("atrial fibrillation", "Condition")
         assert before != after
 
     def test_should_change_the_criterion_cache_key_when_the_prompt_version_changes(self):
