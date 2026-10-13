@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from src.agents.agent2.concept_set_refiner import ConceptSetRefiner
+from src.agents.agent2.concept_set_refiner import ConceptSetRefiner, RefinerLookupError
 
 
 @pytest.fixture
@@ -47,15 +47,14 @@ class TestShouldIncludeDescendants:
         # Should not even query DB
         assert refiner._should_include_descendants(12345, "Drug") is True
 
-    def test_db_failure_defaults_true_for_condition(self, refiner):
-        """When DB query fails (returns None), Condition defaults to True."""
-        with patch.object(refiner, "_get_single_descendant_count", return_value=None):
-            assert refiner._should_include_descendants(12345, "Condition") is True
-
-    def test_db_failure_defaults_false_for_procedure(self, refiner):
-        """When DB query fails, non-Condition/non-Drug defaults to False."""
-        with patch.object(refiner, "_get_single_descendant_count", return_value=None):
-            assert refiner._should_include_descendants(12345, "Procedure") is False
+    @pytest.mark.parametrize("domain", ["Condition", "Procedure"])
+    def test_db_failure_raises_instead_of_deciding(self, refiner, domain):
+        """A failed count is not an answer. It used to be True for Condition, which kept
+        the whole subtree of every ancestor whose count could not be read."""
+        failure = RefinerLookupError("Refiner lookup failed (descendant count) for [12345]")
+        with patch.object(refiner, "_get_single_descendant_count", side_effect=failure):
+            with pytest.raises(RefinerLookupError):
+                refiner._should_include_descendants(12345, domain)
 
     def test_env_var_false_reverts_to_old_behavior(self, refiner):
         """When AGENT2_INCLUDE_DESCENDANTS_AUTO=false, always return False."""
@@ -90,12 +89,12 @@ class TestGetSingleDescendantCount:
         assert "concept_ancestor" in mock_cur.execute.call_args[0][0]
         mock_conn.close.assert_called_once()
 
-    def test_returns_none_on_db_failure(self, refiner):
-        """Should return None when database query fails."""
-        with patch.object(refiner, "_get_db_connection", side_effect=Exception("DB down")):
-            count = refiner._get_single_descendant_count(12345)
-
-        assert count is None
+    def test_raises_on_db_failure(self, refiner):
+        """A failed read raises, naming the concept and the table it read."""
+        with patch.object(refiner, "_get_db_connection", side_effect=Exception("DB down")), \
+             patch.object(refiner, "_get_schema", return_value="cdm"):
+            with pytest.raises(RefinerLookupError, match=r"\[12345\] in cdm\.concept_ancestor"):
+                refiner._get_single_descendant_count(12345)
 
 
 class TestRefineWithDataDrivenDescendants:

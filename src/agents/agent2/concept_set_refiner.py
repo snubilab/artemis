@@ -27,6 +27,24 @@ logger = logging.getLogger(__name__)
 FOOTPRINT_THRESHOLD = 3000
 
 
+class RefinerLookupError(RuntimeError):
+    """A ``concept_ancestor`` read the refinement needs failed.
+
+    Every pass decides from those reads: which ancestor keeps its descendants, which
+    concept is too wide, which ancestor a kept descendant makes redundant. Read as
+    "no rows", a failed read let every ancestor through with its descendants, so the
+    refinement is refused instead; the workflow keeps the seeds alone and records why.
+    """
+
+
+def _lookup_failed(what: str, concept_ids: List[int], schema: str, exc: Exception) -> RefinerLookupError:
+    """The one-line error for a failed read, naming the lookup, the ids and the table."""
+    detail = " ".join(f"{type(exc).__name__}: {exc}".split())
+    return RefinerLookupError(
+        f"Refiner lookup failed ({what}) for {sorted(concept_ids)} in {schema}.concept_ancestor: {detail}"
+    )
+
+
 @dataclass
 class RefinementResult:
     """Output of the ConceptSetRefiner."""
@@ -42,8 +60,8 @@ def _close_quietly(conn) -> None:
     These are psycopg2 connections opened outside SQLAlchemy's pool, so they count
     against Postgres max_connections (100) rather than pool_size + max_overflow.
     Two call sites closed inside the try, so a failing query leaked one -- and the
-    except above logs at warning and degrades to an empty result, so the leak is
-    invisible in the output. Same shape as the rollup leak fixed in 7fbeab2, where
+    except above then logged at warning and degraded to an empty result, so the leak
+    was invisible in the output. Same shape as the rollup leak fixed in 7fbeab2, where
     the pool drained until every later call was skipped.
     """
     if conn is None:
@@ -86,8 +104,9 @@ class ConceptSetRefiner:
         Toggle: AGENT2_INCLUDE_DESCENDANTS_AUTO (default "true").
         When "false", reverts to old behavior (always False for ancestors).
 
-        Fallback: If DB query fails, defaults to True for Condition domain
-        (safe default matching Gold behavior).
+        A failed count lookup raises RefinerLookupError. It used to answer True for a
+        Condition ancestor, which kept the whole subtree of every ancestor whose count
+        could not be read.
         """
         auto_mode = os.environ.get("AGENT2_INCLUDE_DESCENDANTS_AUTO", "true").lower()
         if auto_mode != "true":
@@ -98,23 +117,17 @@ class ConceptSetRefiner:
             return True
 
         desc_count = self._get_single_descendant_count(concept_id)
-        if desc_count is None:
-            # DB unavailable — safe default for Condition domain
-            return domain == "Condition"
-
         return 1 < desc_count < 50000
 
-    def _get_single_descendant_count(self, concept_id: int) -> Optional[int]:
+    def _get_single_descendant_count(self, concept_id: int) -> int:
         """Get descendant count for a single concept from concept_ancestor.
 
-        Returns None if DB query fails (caller should use fallback logic).
+        :raises RefinerLookupError: the read failed.
         """
+        schema = self._get_schema()
         conn = None
         try:
             conn = self._get_db_connection()
-            if conn is None:
-                return None
-            schema = self._get_schema()
             cur = conn.cursor()
             cur.execute(f"""
                 SELECT COUNT(DISTINCT descendant_concept_id)
@@ -126,8 +139,7 @@ class ConceptSetRefiner:
             cur.close()
             return row[0] if row else 0
         except Exception as e:
-            logger.warning(f"[Refiner] Descendant count query failed for {concept_id}: {e}")
-            return None
+            raise _lookup_failed("descendant count", [concept_id], schema, e) from e
         finally:
             if conn is not None:
                 try:
@@ -152,6 +164,10 @@ class ConceptSetRefiner:
 
         Returns:
             RefinementResult with kept_ids, pruned_ids, overbroad_ids.
+
+        Raises:
+            RefinerLookupError: a concept_ancestor read a pass needed failed; nothing
+                about this refinement is returned.
         """
         result = RefinementResult()
         seed_set = set(seed_ids)
@@ -336,14 +352,17 @@ class ConceptSetRefiner:
         in the kept set, making the ancestor redundant.
         
         Returns set of subsumed ancestor concept_ids.
+
+        :raises RefinerLookupError: the read failed. An empty set would prune nothing
+            and keep every ancestor a kept descendant makes redundant.
         """
         if not ancestor_ids or not descendant_ids:
             return set()
 
+        schema = self._get_schema()
         conn = None
         try:
             conn = self._get_db_connection()
-            schema = self._get_schema()
             cur = conn.cursor()
 
             # Single batch query: find ancestors that have at least one descendant
@@ -361,19 +380,22 @@ class ConceptSetRefiner:
             return subsumed
 
         except Exception as e:
-            logger.warning(f"[Refiner] Ancestor subsumption query failed: {e}")
-            return set()
+            raise _lookup_failed("subsumption", list(ancestor_ids), schema, e) from e
         finally:
             _close_quietly(conn)
 
     def _batch_get_descendant_counts(self, concept_ids: List[int]) -> dict:
-        """Batch get descendant counts from concept_ancestor."""
+        """Batch get descendant counts from concept_ancestor.
+
+        :raises RefinerLookupError: the read failed. An empty dict leaves every count
+            at 0, and no concept is then flagged overbroad.
+        """
         if not concept_ids:
             return {}
+        schema = self._get_schema()
         conn = None
         try:
             conn = self._get_db_connection()
-            schema = self._get_schema()
             cur = conn.cursor()
             cur.execute(f"""
                 SELECT ancestor_concept_id, COUNT(DISTINCT descendant_concept_id) - 1
@@ -385,8 +407,7 @@ class ConceptSetRefiner:
             cur.close()
             return counts
         except Exception as e:
-            logger.warning(f"[Refiner] Descendant count query failed: {e}")
-            return {}
+            raise _lookup_failed("descendant count", list(concept_ids), schema, e) from e
         finally:
             _close_quietly(conn)
 

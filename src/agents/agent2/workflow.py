@@ -63,7 +63,7 @@ from src.agents.agent2.drug_class_expander import expand_drug_class_via_vocab
 from src.agents.agent2.umls_synonym_expander import get_umls_expander
 from src.agents.agent2.kg_expander import admit_within_seed_closure, get_kg_expander
 from src.agents.agent2.critic import get_critic
-from src.agents.agent2.concept_set_refiner import get_concept_set_refiner
+from src.agents.agent2.concept_set_refiner import RefinerLookupError, get_concept_set_refiner
 from src.models.ir import MappingResult, GapReport
 from src.utils.exceptions import LLMConfigurationError
 
@@ -76,6 +76,33 @@ class KGExpansionFailed(RuntimeError):
 
     The message is the single-line failure reason recorded on the MappingResult.
     """
+
+
+def _refuse_expansion(exc: Exception) -> KGExpansionFailed:
+    """Log the one counted "KG expansion failed" line for ``exc`` and return the refusal.
+
+    One line per refused query: run reports count "KG expansion failed", and the reason
+    ("KG specificity lookup failed ...", "Refiner lookup failed ...", Neo4j unreachable,
+    ...) follows on the same line.
+    """
+    reason = " ".join(f"{type(exc).__name__}: {exc}".split())
+    logger.warning(f"[Agent 2] KG expansion failed: {reason}")
+    return KGExpansionFailed(reason)
+
+
+def _refine(seed_ids: List[int], kg_concepts: list, query_text: str, domain_hint: Optional[str]):
+    """ConceptSetRefiner over the admitted expansion.
+
+    A failed refiner lookup refuses the expansion exactly as a failed KG lookup does: the
+    unrefined candidates would keep every ancestor's descendants, which is the over-wide
+    set the refiner exists to prevent.
+
+    :raises KGExpansionFailed: a concept_ancestor read the refinement needed failed.
+    """
+    try:
+        return get_concept_set_refiner().refine(seed_ids, kg_concepts, query_text, domain_hint=domain_hint)
+    except RefinerLookupError as e:
+        raise _refuse_expansion(e) from e
 
 
 def _exact_name_concept(query_text: str, domain_hint: Optional[str]) -> Optional[CandidateConcept]:
@@ -672,8 +699,8 @@ class Agent2Workflow:
         
         Applied to BOTH fast and slow path results.
         A failed expansion of any seed refuses the whole query's expansion: it logs one
-        "KG expansion failed" line and raises KGExpansionFailed. A critic failure still
-        falls back to seed_ids.
+        "KG expansion failed" line and raises KGExpansionFailed. A failed refiner lookup
+        refuses it the same way. A critic failure still falls back to seed_ids.
         
         Modes (controlled by KG_EXPAND_MODE env var):
         - "clinical_anchor" (default): Anchor-only, no descendants. Critic skipped
@@ -787,13 +814,8 @@ class Agent2Workflow:
                 f"Sample: {[(c.concept_id, c.concept_name, c.relationship) for c in unique_kg[:8]]}"
             )
         except Exception as e:
-            # One line per refused query: run reports count "KG expansion failed", and
-            # the reason ("KG specificity lookup failed ...", Neo4j unreachable, ...)
-            # follows on the same line.
-            reason = " ".join(f"{type(e).__name__}: {e}".split())
-            logger.warning(f"[Agent 2] KG expansion failed: {reason}")
-            raise KGExpansionFailed(reason) from e
-        
+            raise _refuse_expansion(e) from e
+
         if not unique_kg:
             return seed_ids, [], False
         
@@ -813,13 +835,13 @@ class Agent2Workflow:
             )
             # ── ConceptSetRefiner (lab meeting 2026-03-09) ──
             if os.environ.get("ENABLE_REFINER", "1") == "1":
-                refiner = get_concept_set_refiner()
-                ref_result = refiner.refine(seed_ids, unique_kg, query_text, domain_hint=domain_hint)
+                ref_result = _refine(seed_ids, unique_kg, query_text, domain_hint)
                 final_ids = ref_result.kept_ids
                 return final_ids, ref_result.overbroad_ids, True
             return final_ids, [], True
-        
-        # Step 2: LLM Critic (multi-select) — used when anchor count > 10 or legacy mode
+
+        # Step 2: LLM Critic (multi-select) — used when anchor count > 10 or legacy mode.
+        # The refiner runs after this try, so its failure is not reported as the critic's.
         try:
             critic_context = context
             if domain_hint and domain_hint not in ("Drug", "Measurement"):
@@ -846,16 +868,6 @@ class Agent2Workflow:
                 f"[Agent 2][LINEAGE] critic: input_seeds={seed_ids}, "
                 f"input_kg_count={len(unique_kg)} → final_ids={final_ids}"
             )
-            # ── ConceptSetRefiner (lab meeting 2026-03-09) ──
-            # Filter unique_kg to only critic-selected concepts to avoid bypassing critic
-            if os.environ.get("ENABLE_REFINER", "1") == "1":
-                critic_selected_set = set(final_ids)
-                critic_kg = [c for c in unique_kg if c.concept_id in critic_selected_set]
-                refiner = get_concept_set_refiner()
-                ref_result = refiner.refine(seed_ids, critic_kg, query_text, domain_hint=domain_hint)
-                final_ids = ref_result.kept_ids
-                return final_ids, ref_result.overbroad_ids, False
-            return final_ids, [], False
         except LLMConfigurationError:
             # Misconfiguration is not a degradable failure: it fails every item
             # identically and would otherwise produce a full results table built
@@ -864,6 +876,15 @@ class Agent2Workflow:
         except Exception as e:
             logger.warning(f"[Agent 2] Critic failed: {e}")
             return seed_ids, [], False
+        # ── ConceptSetRefiner (lab meeting 2026-03-09) ──
+        # Filter unique_kg to only critic-selected concepts to avoid bypassing critic
+        if os.environ.get("ENABLE_REFINER", "1") == "1":
+            critic_selected_set = set(final_ids)
+            critic_kg = [c for c in unique_kg if c.concept_id in critic_selected_set]
+            ref_result = _refine(seed_ids, critic_kg, query_text, domain_hint)
+            final_ids = ref_result.kept_ids
+            return final_ids, ref_result.overbroad_ids, False
+        return final_ids, [], False
 
     # _guess_domain() — REMOVED
     # Domain classification is now handled by Agent 1 (via Criteria.domain field).
