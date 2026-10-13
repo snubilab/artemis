@@ -8447,7 +8447,9 @@ class TTEService:
                         resolved_domain = self._resolve_seeded_domain(items, expected_domain)
 
                         # --- Cache store on Agent2 success ---
-                        if _cache_enabled:
+                        # A refused KG expansion left the seeds alone; that is a failure,
+                        # not a mapping to replay.
+                        if _cache_enabled and not mapping_result.kg_expansion_failure:
                             try:
                                 get_criterion_cache().put(
                                     normalized_seed,

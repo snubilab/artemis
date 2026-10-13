@@ -53,6 +53,19 @@ KG_CACHE_FILE = Path("data/cache/kg_cache.json")
 KG_CACHE_SCHEMA = "via1"
 
 
+class KGSpecificityLookupError(RuntimeError):
+    """The descendant counts the IC specificity filter reads could not be fetched.
+
+    Without them every ancestor scores the leaf IC and passes the filter, so the
+    expansion that would follow is over-wide. The expansion is refused instead.
+    """
+
+
+def _cdm_schema() -> str:
+    """The schema whose CONCEPT_ANCESTOR the descendant counts are read from."""
+    return os.getenv("CDM_SCHEMA", "synthea23m")
+
+
 @dataclass
 class KGConcept:
     """A concept node from the Knowledge Graph."""
@@ -257,20 +270,29 @@ class KGExpander:
         self._cache_lock = threading.Lock()
         if use_cache:
             self._load_cache()
-        # Mandatory: fail fast if Neo4j is unreachable
+        # Mandatory: fail fast if Neo4j is unreachable or holds no graph
         self._verify_neo4j()
 
     def _verify_neo4j(self) -> None:
-        """Verify Neo4j connectivity at startup. Fails fast if unreachable."""
+        """Verify Neo4j connectivity and a non-empty graph at startup. Fails fast otherwise.
+
+        An empty graph answers every expansion with nothing, and each of those empty
+        answers would be cached as the expansion of its seed.
+        """
         try:
             _ = self.driver  # triggers verify_connectivity()
-            logger.info("[KG Expander] ✅ Neo4j health check passed")
         except Exception as e:
             raise RuntimeError(
                 f"[KG Expander] ❌ Neo4j is not reachable at {NEO4J_URI}. "
                 f"Start it with: docker start telos-neo4j\n"
                 f"Error: {e}"
             ) from e
+        with self.driver.session() as session:
+            if session.run("MATCH (c:Concept) RETURN c.concept_id LIMIT 1").single() is None:
+                raise RuntimeError(
+                    f"[KG Expander] ❌ the graph at {NEO4J_URI} has no Concept nodes"
+                )
+        logger.info("[KG Expander] ✅ Neo4j health check passed")
 
     def _load_cache(self):
         """Load KG expansion cache from disk."""
@@ -292,8 +314,10 @@ class KGExpander:
     @staticmethod
     def _cache_key(concept_id: int, strategy: str, max_sep: int,
                    limit: int, domain_filter: Optional[str]) -> str:
+        # The IC filter's descendant counts come from _cdm_schema(), so the expansion
+        # depends on it.
         raw = (f"{concept_id}|{strategy}|{max_sep}|{limit}|{domain_filter or ''}"
-               f"|{KG_CACHE_SCHEMA}")
+               f"|{KG_CACHE_SCHEMA}|{_cdm_schema()}")
         return hashlib.sha256(raw.encode()).hexdigest()[:16]
     
     @property
@@ -424,7 +448,8 @@ class KGExpander:
         # Apply limit
         final = unique[:limit]
 
-        # Save to in-memory cache (disk write deferred to save_cache())
+        # Save to in-memory cache (disk write deferred to save_cache()). Reached only when
+        # every lookup above succeeded: a failure raises past this point, uncached.
         if self._use_cache:
             ckey = self._cache_key(concept_id, strategy, max_sep, limit, domain_filter)
             with self._cache_lock:
@@ -810,39 +835,32 @@ class KGExpander:
         
         This is necessary because Neo4j only has sep<=3 edges loaded,
         so its descendant counts are partial and unreliable for IC calculation.
+
+        :raises KGSpecificityLookupError: when the counts cannot be read. An empty
+            answer would score every ancestor as a leaf and admit all of them.
         """
-        import psycopg2
-        import os
-        
-        db_host = os.getenv("OMOP_DB_HOST", "localhost")
-        db_port = os.getenv("OMOP_DB_PORT", "5432")
-        db_name = os.getenv("OMOP_DB_NAME", "postgres")
-        db_user = os.getenv("OMOP_DB_USER", "postgres")
-        db_pass = os.getenv("OMOP_DB_PASS", "mypass")
-        schema = os.getenv("CDM_SCHEMA", "synthea23m")
-        
+        schema = _cdm_schema()
+        # Cast to int — Neo4j CSV import stores IDs as strings
+        int_ids = [int(cid) for cid in concept_ids]
         try:
-            # Cast to int — Neo4j CSV import stores IDs as strings
-            int_ids = [int(cid) for cid in concept_ids]
-            conn = psycopg2.connect(
-                host=db_host, port=db_port, dbname=db_name,
-                user=db_user, password=db_pass
-            )
-            cur = conn.cursor()
-            cur.execute(f"""
-                SELECT ancestor_concept_id, COUNT(DISTINCT descendant_concept_id)
-                FROM {schema}.concept_ancestor
-                WHERE ancestor_concept_id = ANY(%s)
-                  AND ancestor_concept_id <> descendant_concept_id
-                GROUP BY ancestor_concept_id
-            """, (int_ids,))
-            result = {row[0]: row[1] for row in cur.fetchall()}
-            cur.close()
-            conn.close()
-            return result
+            conn = _omop_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(f"""
+                        SELECT ancestor_concept_id, COUNT(DISTINCT descendant_concept_id)
+                        FROM {schema}.concept_ancestor
+                        WHERE ancestor_concept_id = ANY(%s)
+                          AND ancestor_concept_id <> descendant_concept_id
+                        GROUP BY ancestor_concept_id
+                    """, (int_ids,))
+                    return {row[0]: row[1] for row in cur.fetchall()}
+            finally:
+                conn.close()
         except Exception as e:
-            logger.warning(f"[Ancestor Climb] PostgreSQL desc_count lookup failed: {e}")
-            return {}
+            raise KGSpecificityLookupError(
+                f"KG specificity lookup failed for {sorted(set(int_ids))} in "
+                f"{schema}.concept_ancestor: {type(e).__name__}: {e}"
+            ) from e
     
     # ── Utility Methods ────────────────────────────────────
     

@@ -482,6 +482,11 @@ class MappingResult(BaseModel):
         default=None,
         description="Original domain_hint if pre-check overrode it, else None"
     )
+    kg_expansion_failure: Optional[str] = Field(
+        default=None,
+        description="Why the KG expansion was refused (concept_ids are the seeds alone), "
+                    "or None when it ran. A mapping carrying this is not cached."
+    )
     
     # Processing metadata
     processing_time_ms: float = 0.0

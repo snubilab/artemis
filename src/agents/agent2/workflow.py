@@ -71,6 +71,13 @@ logger = logging.getLogger(__name__)
 logger.info(f"[Agent 2] MAX_WORKERS={MAX_WORKERS} (from AGENT2_MAX_WORKERS env var)")
 
 
+class KGExpansionFailed(RuntimeError):
+    """A query's KG expansion was refused because a lookup it needed failed.
+
+    The message is the single-line failure reason recorded on the MappingResult.
+    """
+
+
 def _exact_name_concept(query_text: str, domain_hint: Optional[str]) -> Optional[CandidateConcept]:
     """Look the query up as a literal standard concept name.
 
@@ -447,9 +454,15 @@ class Agent2Workflow:
             # builder needs to tell a seed from an expansion: a KG-added ancestor
             # that is not a seed must not roll the seed up into itself.
             seed_concept_ids = list(concept_ids)
-            concept_ids, overbroad_ids, critic_skipped = self._kg_expand_and_critique(
-                concept_ids, query_text, context, domain_hint
-            )
+            try:
+                concept_ids, overbroad_ids, critic_skipped = self._kg_expand_and_critique(
+                    concept_ids, query_text, context, domain_hint
+                )
+            except KGExpansionFailed as e:
+                # Refused, not degraded: the seeds stand alone, the reason is recorded
+                # here, and nothing from the failed expansion was cached.
+                concept_ids, overbroad_ids, critic_skipped = list(seed_concept_ids), [], False
+                result.kg_expansion_failure = str(e)
             # Apply ingredient rollup for Drug domain and for unknown domain
             # (domain_hint=None covers target cohort calls like "Ticagrelor" where
             # the caller does not specify a domain but the result is Drug concepts).
@@ -658,7 +671,9 @@ class Agent2Workflow:
         KG-RAG post-processing: expand seed concepts via Neo4j, then LLM multi-select.
         
         Applied to BOTH fast and slow path results.
-        Falls back to seed_ids on any failure.
+        A failed expansion of any seed refuses the whole query's expansion: it logs one
+        "KG expansion failed" line and raises KGExpansionFailed. A critic failure still
+        falls back to seed_ids.
         
         Modes (controlled by KG_EXPAND_MODE env var):
         - "clinical_anchor" (default): Anchor-only, no descendants. Critic skipped
@@ -708,11 +723,10 @@ class Agent2Workflow:
                         )
                         for sid in seed_ids
                     ]
+                    # One seed's failure refuses the query (handler below): keeping the
+                    # other seeds' candidates would be a partial expansion stored as whole.
                     for sid, future in zip(seed_ids, futures):
-                        try:
-                            generated.extend((sid, c) for c in future.result())
-                        except Exception as e:
-                            logger.warning(f"[Agent 2] KG anchor expansion failed: {e}")
+                        generated.extend((sid, c) for c in future.result())
             else:
                 # ── Legacy clinical mode ──
                 # Determine adaptive limit based on domain and seed count
@@ -733,10 +747,7 @@ class Agent2Workflow:
                         for sid in seed_ids
                     ]
                     for sid, future in zip(seed_ids, futures):
-                        try:
-                            generated.extend((sid, c) for c in future.result())
-                        except Exception as e:
-                            logger.warning(f"[Agent 2] KG expansion for seed failed: {e}")
+                        generated.extend((sid, c) for c in future.result())
                 
                 # Separate ancestor_climb pass (legacy only)
                 if domain_hint in ("Condition", "Procedure"):
@@ -749,10 +760,7 @@ class Agent2Workflow:
                             for sid in seed_ids
                         ]
                         for sid, future in zip(seed_ids, climb_futures):
-                            try:
-                                generated.extend((sid, c) for c in future.result())
-                            except Exception as e:
-                                logger.warning(f"[Agent 2] Ancestor climb for seed failed: {e}")
+                            generated.extend((sid, c) for c in future.result())
                     logger.info(f"[Agent 2] Ancestor climb pass completed for {len(seed_ids)} seeds")
             
             # Note: save_cache() NOT called here — callers do it once after batch
@@ -779,8 +787,12 @@ class Agent2Workflow:
                 f"Sample: {[(c.concept_id, c.concept_name, c.relationship) for c in unique_kg[:8]]}"
             )
         except Exception as e:
-            logger.warning(f"[Agent 2] KG expansion failed: {e}")
-            return seed_ids, [], False
+            # One line per refused query: run reports count "KG expansion failed", and
+            # the reason ("KG specificity lookup failed ...", Neo4j unreachable, ...)
+            # follows on the same line.
+            reason = " ".join(f"{type(e).__name__}: {e}".split())
+            logger.warning(f"[Agent 2] KG expansion failed: {reason}")
+            raise KGExpansionFailed(reason) from e
         
         if not unique_kg:
             return seed_ids, [], False
