@@ -3199,13 +3199,45 @@ class TTEService:
             "CensorWindow": {},
         }
 
+    @staticmethod
+    def _record_arm_mapping_failures(
+        base: dict[str, Any], mapped_drug: Mapping[str, Any], *, role: str, label: str
+    ) -> None:
+        """List the arm drug mapping's recorded failures in ``base``'s mapping-failure record.
+
+        An arm builder maps its drug itself, after the eligibility record was written, and
+        kept only the answer's name, domain and expression -- so a reranker, KG or critic
+        failure (or a RAG-fallback stage failure) behind the arm's own drug set reached no
+        record, and gate (ab) passed a file whose entry or defining rule rests on it. One row
+        ``{"criterionId": "_arm", "role", "label", "failures"}`` is appended to the record the
+        base inherited (created when it inherited none); a clean mapping changes nothing.
+
+        :param base: the arm's CIRCE expression, mutated in place.
+        :param mapped_drug: what ``_recommend_seeded_concept_set`` returned for the drug.
+        :param role: ``treatment`` or ``comparator``.
+        :param label: the name the arm's drug rule or entry carries.
+        """
+        metadata = mapped_drug.get("mapping_metadata")
+        if isinstance(metadata, Mapping):
+            failures = metadata.get("mappingFailures")
+        else:
+            failures = getattr(metadata, "mappingFailures", None)
+        if not failures:
+            return
+        base.setdefault(MAPPING_FAILURE_CRITERIA_KEY, []).append({
+            "criterionId": "_arm",
+            "role": role,
+            "label": label,
+            "failures": list(failures),
+        })
+
     def _build_leader_treatment_only_circe(
         self,
         arm_name: str,
     ) -> dict[str, Any]:
         mapped_drug = self._recommend_seeded_concept_set(arm_name.strip(), expected_domain="Drug")
         criteria_key = self._seeded_criteria_key(mapped_drug["domain"])
-        return {
+        circe = {
             "ConceptSets": [
                 {"id": 1, "name": mapped_drug["name"], "expression": deepcopy(mapped_drug["expression"])}
             ],
@@ -3221,6 +3253,10 @@ class TTEService:
             "CollapseSettings": {"CollapseType": "ERA", "EraPad": 0},
             "CensorWindow": {},
         }
+        self._record_arm_mapping_failures(
+            circe, mapped_drug, role="treatment", label=arm_name.strip()
+        )
+        return circe
 
     def _build_benchmark_compat_drug_primary_circe(
         self,
@@ -3261,6 +3297,9 @@ class TTEService:
             "ObservationWindow": deepcopy(observation_window),
             "PrimaryCriteriaLimit": {"Type": "First"},
         }
+        self._record_arm_mapping_failures(
+            base, mapped_drug, role="treatment", label=arm_name.strip()
+        )
         return base
 
     def _get_target_display_label(self, eligibility: dict[str, Any] | None) -> str:
@@ -5849,6 +5888,9 @@ class TTEService:
         # Resolve drug concept set via the same recommendation pipeline
         mapped_drug = self._recommend_seeded_concept_set(arm_name.strip(), expected_domain="Drug")
         criteria_key = self._seeded_criteria_key(mapped_drug["domain"])
+        self._record_arm_mapping_failures(
+            base, mapped_drug, role="treatment", label=arm_name.strip()
+        )
         washout_days = int((time_params or {}).get("washoutPeriod") or 180)
 
         # Calculate next available concept set ID (no collision with eligibility sets)
@@ -6109,6 +6151,9 @@ class TTEService:
 
         mapped_drug = self._recommend_seeded_concept_set(arm_name.strip(), expected_domain="Drug")
         criteria_key = self._seeded_criteria_key(mapped_drug["domain"])
+        self._record_arm_mapping_failures(
+            base, mapped_drug, role="treatment", label=arm_name.strip()
+        )
         washout_days = int((time_params or {}).get("washoutPeriod") or 180)
 
         existing_ids = [cs["id"] for cs in base.get("ConceptSets", [])] or [0]
@@ -6222,6 +6267,9 @@ class TTEService:
                 alias_candidates=self._intervention_alias_candidates(study),
             )
         criteria_key = self._seeded_criteria_key(mapped_drug["domain"])
+        self._record_arm_mapping_failures(
+            base, mapped_drug, role="comparator", label=f"No {arm_name.strip()}"
+        )
         washout_days = int((time_params or {}).get("washoutPeriod") or 180)
 
         existing_ids = [cs["id"] for cs in base.get("ConceptSets", [])] or [0]
@@ -6305,6 +6353,9 @@ class TTEService:
         # A prebuilt concept set (e.g. a recommended class union) wins over name mapping.
         mapped_drug = prebuilt_concept_set or self._recommend_seeded_concept_set(
             comparator_drug_name.strip(), expected_domain="Drug")
+        self._record_arm_mapping_failures(
+            base, mapped_drug, role="comparator", label=comparator_drug_name.strip()
+        )
 
         # Add the comparator drug as a new concept set and repoint the entry to it
         # (avoids clobbering the treatment-drug concept set if rules still use it).
