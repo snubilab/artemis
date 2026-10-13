@@ -457,15 +457,32 @@ def _last_json_value(text: str) -> str | None:
     raw_decode parses from a position and reports where the value ended, so scanning
     every `{`/`[` and keeping the last one that parses cleanly gives the real
     top-level value regardless of nesting depth.
+
+    A value that sits INSIDE one that never closes is not an answer. A reply cut off
+    mid-item (at the token ceiling, or by a provider that does not say so) holds its
+    earlier items as complete values; returning the longest of them handed a caller one
+    inner item as the whole answer -- measured on the annotation step, a reply cut in
+    its second excepted entity came back as the first entity's ``{"text", "span"}`` and
+    was cached. So every `{`/`[` whose decode fails is kept with the position the decoder
+    reached: one that got past a candidate's end was parsing the candidate as its own
+    member, and the candidate is skipped. A broken object in reasoning prose fails where
+    the prose resumes, before any later answer, and skips nothing.
     """
     decoder = json.JSONDecoder()
-    best: str | None = None
+    complete: list[tuple[int, int]] = []
+    unterminated: list[tuple[int, int]] = []
     for index, char in enumerate(text):
         if char not in "{[":
             continue
         try:
             _, end = decoder.raw_decode(text, index)
-        except ValueError:
+        except ValueError as exc:
+            unterminated.append((index, getattr(exc, "pos", index)))
+            continue
+        complete.append((index, end))
+    best: str | None = None
+    for index, end in complete:
+        if any(start < index and reached >= end for start, reached in unterminated):
             continue
         candidate = text[index:end]
         # Longest wins on ties so a wrapper beats the array nested inside it.
