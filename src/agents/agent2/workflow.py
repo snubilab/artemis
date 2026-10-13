@@ -373,7 +373,7 @@ class Agent2Workflow:
         try:
             concept_ids = self._slow_path(
                 query_text, context, domain_hint=domain_hint,
-                pre_fetched_candidates=pre_fetched_candidates,
+                pre_fetched_candidates=pre_fetched_candidates, result=result,
             )
         except RerankerFailed as e:
             # Refused, not degraded: no seed was chosen, so there is nothing to map. The
@@ -476,10 +476,15 @@ class Agent2Workflow:
         context: Optional[str] = None,
         domain_hint: Optional[str] = None,
         pre_fetched_candidates: Optional[list] = None,
+        result: Optional[MappingResult] = None,
     ) -> List[int]:
         """
         Slow path: Vector search + Top-N LLM reranking.
         KG expansion is handled in post-processing (_kg_expand_and_critique).
+
+        :param result: the mapping being built; when the reranker selects none of the
+            candidates, how many it was offered is recorded on it as ``reranker_no_match``.
+            An empty return alone cannot say that: an empty retrieval returns the same.
         """
         logger.info(f"[Agent 2] Slow path for: '{query_text}' (domain={domain_hint})")
 
@@ -523,6 +528,8 @@ class Agent2Workflow:
                 f"[Agent 2][LINEAGE] reranker rejected all {len(candidates)} candidates "
                 f"for {query_text!r} → no seeds"
             )
+            if result is not None:
+                result.reranker_no_match = len(candidates)
             return []
         
         logger.debug(f"[Agent 2] Top-{len(top_concepts)} seeds: "

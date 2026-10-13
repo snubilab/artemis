@@ -587,7 +587,9 @@ DEFAULTED_WINDOW_CRITERIA_KEY = "_defaultedWindowCriteria"
 #: The key `TTEService._build_seeded_target_circe` writes one row under for every
 #: criterion (and the target, ``criterionId`` ``"_target"``) whose Agent 2 mapping
 #: recorded a failure -- a refused KG expansion or a failed critic, each of which left the
-#: concept set built from the reranker's seeds alone: ``{"criterionId", "role", "label",
+#: concept set built from the reranker's seeds alone; a failed reranker; or a reranker that
+#: selected no candidate, whose criterion's set is then the RAG fallback's pick
+#: (``reranker_no_match``): ``{"criterionId", "role", "label",
 #: "failures"}``, ``failures`` as in ``CriterionMappingMetadata.mappingFailures``. Read by
 #: the delivery gate's check (ab). Same present-and-empty contract as
 #: :data:`DEFAULTED_WINDOW_CRITERIA_KEY`.

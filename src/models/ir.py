@@ -506,6 +506,14 @@ class MappingResult(BaseModel):
                     "concept_ids is empty), or None when it answered. A mapping carrying "
                     "this is not cached."
     )
+    reranker_no_match: Optional[int] = Field(
+        default=None,
+        description="How many candidates the reranker was offered when its answer selected "
+                    "none of them (no seed, so concept_ids is empty), or None when it "
+                    "selected one, failed, or was never reached. A judgement, not a "
+                    "failure: mapping_failures() does not list it. The seeded mapping "
+                    "records it on the RAG fallback's answer, which overrides it."
+    )
 
     # Processing metadata
     processing_time_ms: float = 0.0

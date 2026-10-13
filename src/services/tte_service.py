@@ -8142,8 +8142,9 @@ class TTEService:
         agent2_empty = False
         agent2_route = ""
         # The failures Agent 2 recorded on the way to an empty answer (a reranker whose
-        # answer could not be used selects no seed). The fallback's mapping is what such
-        # a criterion gets, so they ride on it: an empty Agent 2 answer is not a no-match.
+        # answer could not be used selects no seed), and the reranker's own "none of these
+        # fit" when that is why it was empty. The fallback's mapping is what such a
+        # criterion gets, so they ride on it and gate (ab) reads them there.
         agent2_failures: list[dict[str, Any]] = []
         try:
             from src.agents.agent2.workflow import Agent2Workflow
@@ -8254,6 +8255,23 @@ class TTEService:
                 {**failure, "query": normalized_seed}
                 for failure in mapping_result.mapping_failures()
             ]
+            # The reranker judged every candidate and selected none. That is an answer, not
+            # a failure of Agent 2 -- but a concept set the fallback then supplies overrides
+            # it, and nothing else in the delivered file says so. Measured on the
+            # 2026-10-12 delivery candidate: CARMELINA inclusion #9 'Insulin dose change'
+            # shipped the fallback's pick with no record, two of its five concepts being
+            # the retriever's #1 and #2 that the reranker had been shown and rejected.
+            offered = mapping_result.reranker_no_match
+            if offered is not None:
+                agent2_failures.append({
+                    "stage": "reranker_no_match",
+                    "reason": (
+                        f"the reranker selected none of the {offered} candidates Agent 2 "
+                        "offered; any concept set here is the RAG fallback's pick"
+                    ),
+                    "seedsOnly": False,
+                    "query": normalized_seed,
+                })
         except Exception as exc:
             agent2_exc = exc
             import structlog
