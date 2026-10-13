@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import sys
 
 sys.path.insert(0, "/app")
@@ -61,7 +60,6 @@ if _WANTED:
             f"_ALL_TARGETS {sorted(t[0] for t in _ALL_TARGETS)}. Refusing to run "
             f"and report success for studies that were never processed."
         )
-RATIO_TEXT = re.compile(r"(?i)\bULN\b|upper limit of normal")
 
 
 def criteria_of(study: dict) -> list[dict]:
@@ -84,6 +82,7 @@ def report(label: str, study: dict) -> tuple[int, int]:
     :param study: the study record to inspect.
     :returns: (criteria count, ratio-emitting constraint count).
     """
+    from src.services.criterion_annotation import StatedReferenceBound, stated_threshold
     from src.services.value_constraint import build_measurement_value_filter
 
     rows = criteria_of(study)
@@ -98,11 +97,16 @@ def report(label: str, study: dict) -> tuple[int, int]:
         print(f"      · {' '.join((c.get('description') or '').split())[:100]}")
         print(f"        unitText={(c.get('valueConstraint') or {}).get('unitText')!r} -> {fragment}")
 
-    # Named for a bound but carrying nothing is the interesting failure, so say it.
-    dropped = [
-        c for c in rows
-        if RATIO_TEXT.search(c.get("description") or "") and not c.get("valueConstraint")
-    ]
+    # A row whose verified annotation states a threshold against the upper or lower limit
+    # of normal, yet which carries no valueConstraint, is the interesting failure, so say
+    # it. `stated_threshold` re-checks the annotation's span against the row's protocol
+    # line; the description is not read (AGENTS.md § PROMPTS AND TEXT RULES).
+    reference_bounds = {StatedReferenceBound.ULN.value, StatedReferenceBound.LLN.value}
+    dropped = []
+    for c in rows:
+        stated = stated_threshold(c)
+        if stated is not None and stated.bound in reference_bounds and not c.get("valueConstraint"):
+            dropped.append(c)
     for c in dropped:
         print(f"      ! no valueConstraint: {' '.join((c.get('description') or '').split())[:100]}")
 
