@@ -303,7 +303,9 @@ def _render_dedup_judge() -> str:
 
 def _render_criterion_annotation() -> str:
     """Through ``annotate_eligibility`` with the model replaced, over a group label (so the
-    members block is rendered) and its member; the cache is off so nothing is written."""
+    members block is rendered), its member, and a row of the same role on another line (so
+    the block of the role's other lines is rendered with a line in it, not only ``none``);
+    the cache is off so nothing is written."""
     from src.services import criterion_annotation
 
     recorder = _Recorder(reply='{"record_requirement": "required", "conditional_span": null, '
@@ -314,6 +316,8 @@ def _render_criterion_annotation() -> str:
         {"id": 1, "description": STUB, "sourceText": STUB, "isGroupLabel": True, **common},
         {"id": 2, "description": f"{STUB} member", "sourceText": STUB, "isGroupLabel": False,
          **common},
+        {"id": 3, "description": f"{STUB} other", "sourceText": STUB, "isGroupLabel": False,
+         **common, "protocolLine": f"{STUB} other line", "groupId": None},
     ]
     with patch.object(criterion_annotation, "_build_llm", lambda _model: recorder.runnable()), \
             patch.dict(os.environ, {"ARTEMIS_ANNOTATION_CACHE": "0"}):
