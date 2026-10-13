@@ -6,7 +6,6 @@ ADR-023 Phase 2: Promoted from quality-gate-only to full pipeline orchestrator.
 Responsibilities:
 1. Run the full cohort definition pipeline (Agent 1-4)
 2. Post-Agent2 Quality Gate: detect low seed count / empty mappings (report-only)
-3. Loop 1 retry: re-map failed entities after Agent 3/4
 
 Toggle: ENABLE_SUPERVISOR=0 to disable quality gate (pipeline still runs).
 """
@@ -31,8 +30,6 @@ logger = logging.getLogger(__name__)
 SUPERVISOR_ENABLED = os.environ.get("ENABLE_SUPERVISOR", "1") != "0"
 MIN_SEED_COUNT = int(os.environ.get("SUPERVISOR_MIN_SEEDS", "1"))
 DOMAIN_MISMATCH_THRESHOLD = float(os.environ.get("SUPERVISOR_DOMAIN_THRESHOLD", "0.5"))
-
-MAX_LOOP_ATTEMPTS = 3
 
 
 def _agent2_parallel_enabled() -> bool:
@@ -183,7 +180,6 @@ class PipelineSupervisor:
     3.   Registry: Store ConceptSets
     4.   Agent 3: IR + ConceptSets → Circe JSON
     5.   Agent 4: Validate Circe JSON
-    * Loop 1: Re-map failed entities (max 3 attempts)
     """
 
     def __init__(self):
@@ -241,10 +237,9 @@ class PipelineSupervisor:
         # Step 3: Register
         registered_sets = self._step3_register(concept_sets, registry, RegisteredConcept)
 
-        # Steps 4-5 with retry loop
-        assembly_result, validation, loop_results = self._step4_5_assemble_validate(
-            ir, registered_sets, agent3, agent4, get_agent2, registry, RegisteredConcept,
-            entities_to_map=entities_to_map,
+        # Steps 4-5
+        assembly_result, validation = self._step4_5_assemble_validate(
+            ir, registered_sets, agent3, agent4,
         )
 
         # Compute completeness
@@ -263,7 +258,6 @@ class PipelineSupervisor:
             heal_log=assembly_result.heal_log,
             completeness=completeness,
             skipped_rules=skipped_rules,
-            loop_results=loop_results,
             gap_report=gap_report,
             supervisor_report=supervisor_report,
             agent2_mapping_telemetry=agent2_mapping_telemetry,
@@ -601,85 +595,33 @@ class PipelineSupervisor:
         return registered
 
     @staticmethod
-    def _step4_5_assemble_validate(ir, registered_sets, agent3, agent4, get_agent2, registry, RegisteredConcept, *, entities_to_map=None):
-        """Steps 4-5: Assemble Circe JSON + Validate, with Loop 1 retry."""
-        loop_results = []
-        assembly_result = None
-        validation = None
+    def _step4_5_assemble_validate(ir, registered_sets, agent3, agent4):
+        """Steps 4-5: Assemble Circe JSON + Validate.
 
-        # Build entity lookup for domain/parent_rule recovery during re-mapping
-        entity_lookup: dict = {}
-        for ent in (entities_to_map or []):
-            entity_lookup[ent["text"].lower()] = ent
+        A rule whose concepts are missing is dropped by the assembler and named in its heal
+        log. Loop 1 used to re-map those entities, recovering each one's domain by looking
+        its lower-cased text up among the mapped entities' lower-cased texts. It ran only
+        here (CohortPipeline <- scripts; no API route, TTEService method or delivery script
+        reaches this method) and was deleted with that text join.
+        """
+        print("[Step 4] Agent 3: Assembling Circe JSON...")
+        assembly_result = agent3.assemble(ir, registered_sets)
 
-        for attempt in range(1, MAX_LOOP_ATTEMPTS + 1):
-            print(f"[Step 4] Agent 3: Assembling Circe JSON (attempt {attempt}/{MAX_LOOP_ATTEMPTS})...")
-            assembly_result = agent3.assemble(ir, registered_sets)
+        if assembly_result.has_failures:
+            failed = assembly_result.failed_entities
+            print(f"  ⚠ {len(failed)} rule(s) dropped due to missing concepts:")
+            for h in assembly_result.heal_log:
+                if h.action == "SKIP":
+                    print(f"     - '{h.rule_name}': {h.reason}")
+                elif h.action == "PARTIAL":
+                    print(f"     ~ '{h.rule_name}': {h.reason}")
+        print(f"  ✓ Generated Circe JSON\n")
 
-            if assembly_result.has_failures:
-                failed = assembly_result.failed_entities
-                print(f"  ⚠ {len(failed)} rule(s) dropped due to missing concepts:")
-                for h in assembly_result.heal_log:
-                    if h.action == "SKIP":
-                        print(f"     - '{h.rule_name}': {h.reason}")
-                    elif h.action == "PARTIAL":
-                        print(f"     ~ '{h.rule_name}': {h.reason}")
-            print(f"  ✓ Generated Circe JSON\n")
+        print("[Step 5] Agent 4: Validating...")
+        validation = agent4.validate(assembly_result.circe_json)
+        print(agent4.format_report(validation))
 
-            print(f"[Step 5] Agent 4: Validating (attempt {attempt}/{MAX_LOOP_ATTEMPTS})...")
-            validation = agent4.validate(assembly_result.circe_json)
-            print(agent4.format_report(validation))
-
-            if not assembly_result.has_failures:
-                loop_results.append(LoopResult(
-                    loop_id="LOOP_1_REMAP", attempt=attempt,
-                    max_attempts=MAX_LOOP_ATTEMPTS, status="SUCCESS",
-                    details="No assembly failures"
-                ))
-                break
-
-            failed_entities = [
-                {
-                    "text": h.entity_text,
-                    "domain": entity_lookup.get(h.entity_text.lower(), {}).get("domain"),
-                    "parent_rule": entity_lookup.get(h.entity_text.lower(), {}).get("parent_rule"),
-                }
-                for h in assembly_result.heal_log if h.action == "SKIP"
-            ]
-            failed_texts = [e["text"] for e in failed_entities]
-            loop_result = LoopResult(
-                loop_id="LOOP_1_REMAP", attempt=attempt,
-                max_attempts=MAX_LOOP_ATTEMPTS, status="FAILED",
-                remaining_failures=failed_texts,
-                details=f"Attempt {attempt}: {len(failed_texts)} entities failed mapping"
-            )
-
-            if attempt >= MAX_LOOP_ATTEMPTS:
-                loop_result.status = "FAILED"
-                loop_results.append(loop_result)
-                print(f"  ⚠ Max retry attempts reached ({MAX_LOOP_ATTEMPTS}). Proceeding with partial result.\n")
-                break
-
-            print(f"\n  🔄 Loop 1: Re-mapping {len(failed_entities)} failed entities...")
-            from src.pipeline.mapping_retry import remap_and_register_entities
-            remap_results = remap_and_register_entities(
-                failed_entities,
-                registry, RegisteredConcept, registered_sets,
-            )
-            remapped_any = any(r.success for r in remap_results)
-
-            if not remapped_any:
-                loop_result.status = "FAILED"
-                loop_result.details = f"Attempt {attempt}: re-mapping produced no new results"
-                loop_results.append(loop_result)
-                print(f"  ⚠ No new mappings found. Stopping retry loop.\n")
-                break
-
-            loop_result.status = "PARTIAL"
-            loop_results.append(loop_result)
-            print(f"  ✓ Re-mapping complete. Retrying assembly...\n")
-
-        return assembly_result, validation, loop_results
+        return assembly_result, validation
 
     # ══════════════════════════════════════════════════════════════
     # Entity Collection Helpers
