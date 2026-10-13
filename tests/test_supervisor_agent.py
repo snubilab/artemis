@@ -3,10 +3,7 @@ Unit tests for ARTEMIS Supervisor Agent — LangGraph graph structure + review l
 DB/LLM 의존성 없음. Mock 기반.
 """
 import sys
-import threading
-import time
 import types
-from typing import get_args
 import pytest
 
 # ── pandas stub ──
@@ -28,7 +25,6 @@ from src.pipeline.supervisor_agent import (
     ArtemisState,
     SupervisorDecision,
     mapping_node,
-    execute_mapping_remediation,
     review_trial,
     review_mapping,
     review_assembly,
@@ -45,7 +41,6 @@ from src.pipeline.supervisor_agent import (
     MAX_RETRY,
 )
 from src.pipeline.supervisor import Agent2MappingTelemetry
-from src.pipeline.mapping_retry import build_retry_plan
 from src.models.ir import (
     ARTEMISRequest,
     CohortDefinition,
@@ -91,7 +86,6 @@ class TestGraphStructure:
             "trial", "mapping", "assembly", "extraction", "analysis", "reporting",
             "review_trial", "review_mapping", "review_assembly",
             "review_extraction", "review_analysis", "review_reporting",
-            "plan_mapping_remediation", "execute_mapping_remediation",
         }
         assert expected == set(g.nodes.keys())
 
@@ -103,11 +97,6 @@ class TestGraphStructure:
         g = build_graph()
         assert ("reporting", "review_reporting") in g.edges
         assert ("review_reporting", END) in g.edges
-
-    def test_supervisor_decision_action_contract_includes_selective_retry(self):
-        action_args = get_args(SupervisorDecision.__annotations__["action"])
-        assert "SELECTIVE_RETRY" in action_args
-
 
 class TestExecutionNodes:
 
@@ -145,67 +134,6 @@ class TestExecutionNodes:
         assert result["registered_sets"] == ["registered"]
         assert calls["args"][1] is fake_registry_store.registry
         assert calls["args"][2] is fake_registry_models.RegisteredConcept
-
-    def test_execute_remediation_passes_registry_dependencies_to_register(self, monkeypatch):
-        calls = {}
-
-        class FakeSupervisor:
-            def _step2_5_consolidate(self, mapped_sets):
-                return mapped_sets
-
-            def _step3_register(self, mapped_sets, registry, registered_concept):
-                calls["args"] = (mapped_sets, registry, registered_concept)
-                return ["registered"]
-
-        fake_supervisor_module = types.ModuleType("src.pipeline.supervisor")
-        fake_supervisor_module.get_supervisor = lambda: FakeSupervisor()
-        monkeypatch.setitem(sys.modules, "src.pipeline.supervisor", fake_supervisor_module)
-
-        fake_registry_models = types.ModuleType("src.registry.models")
-        fake_registry_models.RegisteredConcept = type("RegisteredConcept", (), {})
-        monkeypatch.setitem(sys.modules, "src.registry.models", fake_registry_models)
-
-        fake_registry_store = types.ModuleType("src.registry.store")
-        fake_registry_store.registry = object()
-        monkeypatch.setitem(sys.modules, "src.registry.store", fake_registry_store)
-
-        fake_map_entity = types.ModuleType("src.agents.agent2.map_entity")
-
-        class FakeMappingResult:
-            success = True
-            concept_ids = [10, 20]
-            overbroad_concept_ids = []
-            route_path = "slow"
-            critic_skipped = False
-            domain_overridden = None
-
-        fake_map_entity.map_single_entity = lambda *args, **kwargs: FakeMappingResult()
-        monkeypatch.setitem(sys.modules, "src.agents.agent2.map_entity", fake_map_entity)
-
-        state = {
-            "retry_queue": [{
-                "entity_key": "target:primary:0:0",
-                "entity_text": "Metformin",
-                "domain_hint": "Drug",
-                "rule_context": None,
-                "reason": "empty_mapping",
-                "corrected_domain": None,
-                "force_slow_path": True,
-            }],
-            "raw_mapped_sets": [{
-                "name": "Metformin",
-                "entity_key": "target:primary:0:0",
-                "concept_ids": [10],
-            }],
-            "retry_counts": {},
-        }
-
-        result = execute_mapping_remediation(state)
-
-        assert result["registered_sets"] == ["registered"]
-        assert calls["args"][1] is fake_registry_store.registry
-        assert calls["args"][2] is fake_registry_models.RegisteredConcept
-
 
 # ══════════════════════════════════════════════════════════════
 # Review Node Tests
@@ -340,7 +268,7 @@ class TestDomainMismatch:
         result = _check_domain_mismatches(mapped, [])
         assert result == []
 
-    def test_mismatch_preserves_domain_frequency_for_retry_planning(self):
+    def test_mismatch_records_domain_frequency(self):
         mapped = [
             {"name": "Metformin", "domain": "Drug", "concept_ids": [1, 2, 3, 4], "entity_key": "target:primary:0:0"},
         ]
@@ -362,366 +290,6 @@ class TestDomainMismatch:
         assert mismatches[0]["domain_counts"] == {"Observation": 2, "Condition": 1, "Drug": 1}
         assert mismatches[0]["dominant_domain"] == "Observation"
         assert mismatches[0]["dominant_ratio"] == 0.5
-
-        plan = build_retry_plan(
-            audit={
-                "domain_mismatches": mismatches,
-                "too_few": [],
-                "high_risk_entities": [],
-                "overbroad_entities": [],
-            },
-            raw_mapped_sets=mapped,
-            entities_to_map=[
-                {"text": "Metformin", "domain": "Drug", "source": "target", "entity_key": "target:primary:0:0"},
-            ],
-            retry_counts={},
-        )
-
-        assert plan.candidates[0].corrected_domain is None
-
-    def test_mismatch_in_review_mapping_triggers_selective_retry(self):
-        """Domain mismatch should trigger SELECTIVE_RETRY with Phase 3."""
-        from unittest.mock import MagicMock
-        rc1 = MagicMock()
-        rc1.concept_id, rc1.domain_id = 1, "Condition"  # Drug mapped to Condition!
-        rs = MagicMock()
-        rs.concepts = [rc1]
-
-        gap = GapReport(total_criteria=1, mapped_count=1)
-        state = {
-            "gap_report": gap,
-            "mapped_sets": [{"name": "Metformin", "domain": "Drug", "concept_ids": [1]}],
-            "raw_mapped_sets": [{"name": "Metformin", "domain": "Drug", "concept_ids": [1], "entity_key": "target:primary:0:0"}],
-            "entities_to_map": [{"text": "Metformin", "domain": "Drug", "source": "target", "entity_key": "target:primary:0:0"}],
-            "registered_sets": [rs],
-            "retry_counts": {},
-            "decisions": [],
-            "error_log": [],
-        }
-        result = review_mapping(state)
-        assert result["decisions"][0].action == "SELECTIVE_RETRY"
-        audit = result["decisions"][0].metrics["audit"]
-        assert len(audit["domain_mismatches"]) == 1
-        assert audit["severity"] == "CRITICAL"
-        assert "domain mismatch" in result["decisions"][0].reason
-        # Verify retry_queue contains the mismatched entity
-        assert len(result.get("retry_queue", [])) == 1
-        assert result["retry_queue"][0]["entity_text"] == "Metformin"
-        assert result["retry_queue"][0]["reason"] == "domain_mismatch"
-        assert result["retry_queue"][0]["strategy"] == "same_domain"
-        assert result["retry_queue"][0]["corrected_domain"] is None
-
-    def test_review_mapping_second_domain_mismatch_retry_can_enable_correction(self):
-        """After one mismatch retry, strong evidence may enable corrected_domain."""
-        from unittest.mock import MagicMock
-        concepts = []
-        for cid in [1, 2, 3, 4]:
-            rc = MagicMock()
-            rc.concept_id, rc.domain_id = cid, "Condition"
-            concepts.append(rc)
-        rs = MagicMock()
-        rs.concepts = concepts
-
-        gap = GapReport(total_criteria=1, mapped_count=1)
-        state = {
-            "gap_report": gap,
-            "mapped_sets": [{"name": "Metformin", "domain": "Drug", "concept_ids": [1, 2, 3, 4]}],
-            "raw_mapped_sets": [{"name": "Metformin", "domain": "Drug", "concept_ids": [1, 2, 3, 4], "entity_key": "target:primary:0:0"}],
-            "entities_to_map": [{"text": "Metformin", "domain": "Drug", "source": "target", "entity_key": "target:primary:0:0"}],
-            "registered_sets": [rs],
-            "retry_counts": {"domain_mismatch:target:primary:0:0": 1},
-            "decisions": [],
-            "error_log": [],
-        }
-        result = review_mapping(state)
-
-        assert result["decisions"][0].action == "SELECTIVE_RETRY"
-        assert result["retry_queue"][0]["strategy"] == "corrected_domain"
-        assert result["retry_queue"][0]["corrected_domain"] == "Condition"
-
-    def test_execute_mapping_remediation_tracks_domain_mismatch_stage_count(self, monkeypatch):
-        """Domain mismatch remediation increments the dedicated stage counter."""
-        calls = {}
-
-        class FakeSupervisor:
-            def _step2_5_consolidate(self, mapped_sets):
-                return mapped_sets
-
-            def _step3_register(self, mapped_sets, registry, registered_concept):
-                calls["args"] = (mapped_sets, registry, registered_concept)
-                return ["registered"]
-
-        fake_supervisor_module = types.ModuleType("src.pipeline.supervisor")
-        fake_supervisor_module.get_supervisor = lambda: FakeSupervisor()
-        monkeypatch.setitem(sys.modules, "src.pipeline.supervisor", fake_supervisor_module)
-
-        fake_registry_models = types.ModuleType("src.registry.models")
-        fake_registry_models.RegisteredConcept = type("RegisteredConcept", (), {})
-        monkeypatch.setitem(sys.modules, "src.registry.models", fake_registry_models)
-
-        fake_registry_store = types.ModuleType("src.registry.store")
-        fake_registry_store.registry = object()
-        monkeypatch.setitem(sys.modules, "src.registry.store", fake_registry_store)
-
-        fake_map_entity = types.ModuleType("src.agents.agent2.map_entity")
-
-        class FakeMappingResult:
-            success = True
-            concept_ids = [10, 20]
-            overbroad_concept_ids = []
-            route_path = "slow"
-            critic_skipped = False
-            domain_overridden = None
-
-        fake_map_entity.map_single_entity = lambda *args, **kwargs: FakeMappingResult()
-        monkeypatch.setitem(sys.modules, "src.agents.agent2.map_entity", fake_map_entity)
-
-        state = {
-            "retry_queue": [{
-                "entity_key": "target:primary:0:0",
-                "entity_text": "Metformin",
-                "domain_hint": "Drug",
-                "rule_context": None,
-                "reason": "domain_mismatch",
-                "strategy": "same_domain",
-                "corrected_domain": None,
-                "force_slow_path": True,
-            }],
-            "raw_mapped_sets": [{
-                "name": "Metformin",
-                "entity_key": "target:primary:0:0",
-                "concept_ids": [10],
-            }],
-            "retry_counts": {},
-        }
-
-        result = execute_mapping_remediation(state)
-
-        assert result["retry_counts"]["entity:target:primary:0:0"] == 1
-        assert result["retry_counts"]["domain_mismatch:target:primary:0:0"] == 1
-
-    def test_execute_mapping_remediation_parallel_preserves_queue_order_and_successes(self, monkeypatch):
-        monkeypatch.setenv("SUPERVISOR_REMEDIATION_PARALLEL", "1")
-        monkeypatch.setenv("SUPERVISOR_REMEDIATION_MAX_WORKERS", "4")
-        call_threads = []
-
-        class FakeSupervisor:
-            def _step2_5_consolidate(self, mapped_sets):
-                return mapped_sets
-
-            def _step3_register(self, mapped_sets, registry, registered_concept):
-                return ["registered"]
-
-        fake_supervisor_module = types.ModuleType("src.pipeline.supervisor")
-        fake_supervisor_module.get_supervisor = lambda: FakeSupervisor()
-        monkeypatch.setitem(sys.modules, "src.pipeline.supervisor", fake_supervisor_module)
-
-        fake_registry_models = types.ModuleType("src.registry.models")
-        fake_registry_models.RegisteredConcept = type("RegisteredConcept", (), {})
-        monkeypatch.setitem(sys.modules, "src.registry.models", fake_registry_models)
-
-        fake_registry_store = types.ModuleType("src.registry.store")
-        fake_registry_store.registry = object()
-        monkeypatch.setitem(sys.modules, "src.registry.store", fake_registry_store)
-
-        fake_map_entity = types.ModuleType("src.agents.agent2.map_entity")
-
-        class FakeMappingResult:
-            def __init__(self, concept_ids):
-                self.success = True
-                self.concept_ids = concept_ids
-                self.overbroad_concept_ids = []
-                self.route_path = "slow"
-                self.critic_skipped = False
-                self.domain_overridden = None
-
-            def to_mapped_set(self, *, entity_id, entity_text, domain, entity_key=None, **kwargs):
-                payload = {"id": entity_id, "name": entity_text, "domain": domain, "concept_ids": self.concept_ids}
-                if entity_key:
-                    payload["entity_key"] = entity_key
-                return payload
-
-        def fake_map_single_entity(entity_text, **kwargs):
-            call_threads.append(threading.current_thread().name)
-            if entity_text == "First":
-                time.sleep(0.03)
-                return FakeMappingResult([11, 12])
-            if entity_text == "Second":
-                time.sleep(0.01)
-                return FakeMappingResult([21, 22, 23])
-            raise AssertionError(f"unexpected entity {entity_text}")
-
-        fake_map_entity.map_single_entity = fake_map_single_entity
-        monkeypatch.setitem(sys.modules, "src.agents.agent2.map_entity", fake_map_entity)
-
-        state = {
-            "retry_queue": [
-                {
-                    "entity_key": "target:inclusion:0:0",
-                    "entity_text": "First",
-                    "domain_hint": "Drug",
-                    "rule_context": None,
-                    "reason": "empty_mapping",
-                    "corrected_domain": None,
-                    "force_slow_path": True,
-                },
-                {
-                    "entity_key": "target:inclusion:1:0",
-                    "entity_text": "Second",
-                    "domain_hint": "Drug",
-                    "rule_context": None,
-                    "reason": "empty_mapping",
-                    "corrected_domain": None,
-                    "force_slow_path": True,
-                },
-            ],
-            "raw_mapped_sets": [],
-            "retry_counts": {},
-        }
-
-        result = execute_mapping_remediation(state)
-
-        assert any(name != threading.main_thread().name for name in call_threads)
-        assert [item["name"] for item in result["raw_mapped_sets"]] == ["First", "Second"]
-        assert result["loop_results"][0].healed_entities == ["First", "Second"]
-
-    def test_execute_mapping_remediation_pool_failure_falls_back_to_sequential(self, monkeypatch):
-        monkeypatch.setenv("SUPERVISOR_REMEDIATION_PARALLEL", "1")
-        call_threads = []
-
-        class FakeSupervisor:
-            def _step2_5_consolidate(self, mapped_sets):
-                return mapped_sets
-
-            def _step3_register(self, mapped_sets, registry, registered_concept):
-                return ["registered"]
-
-        fake_supervisor_module = types.ModuleType("src.pipeline.supervisor")
-        fake_supervisor_module.get_supervisor = lambda: FakeSupervisor()
-        monkeypatch.setitem(sys.modules, "src.pipeline.supervisor", fake_supervisor_module)
-
-        fake_registry_models = types.ModuleType("src.registry.models")
-        fake_registry_models.RegisteredConcept = type("RegisteredConcept", (), {})
-        monkeypatch.setitem(sys.modules, "src.registry.models", fake_registry_models)
-
-        fake_registry_store = types.ModuleType("src.registry.store")
-        fake_registry_store.registry = object()
-        monkeypatch.setitem(sys.modules, "src.registry.store", fake_registry_store)
-
-        fake_map_entity = types.ModuleType("src.agents.agent2.map_entity")
-
-        class FakeMappingResult:
-            success = True
-            concept_ids = [10, 20]
-            overbroad_concept_ids = []
-            route_path = "slow"
-            critic_skipped = False
-            domain_overridden = None
-
-            def to_mapped_set(self, *, entity_id, entity_text, domain, entity_key=None, **kwargs):
-                payload = {"id": entity_id, "name": entity_text, "domain": domain, "concept_ids": self.concept_ids}
-                if entity_key:
-                    payload["entity_key"] = entity_key
-                return payload
-
-        def fake_map_single_entity(entity_text, **kwargs):
-            call_threads.append(threading.current_thread().name)
-            return FakeMappingResult()
-
-        fake_map_entity.map_single_entity = fake_map_single_entity
-        monkeypatch.setitem(sys.modules, "src.agents.agent2.map_entity", fake_map_entity)
-
-        class ExplodingExecutor:
-            def __init__(self, *args, **kwargs):
-                raise RuntimeError("remediation pool unavailable")
-
-        monkeypatch.setattr("src.pipeline.supervisor_agent.ThreadPoolExecutor", ExplodingExecutor, raising=False)
-
-        state = {
-            "retry_queue": [{
-                "entity_key": "target:primary:0:0",
-                "entity_text": "Metformin",
-                "domain_hint": "Drug",
-                "rule_context": None,
-                "reason": "empty_mapping",
-                "corrected_domain": None,
-                "force_slow_path": True,
-            }],
-            "raw_mapped_sets": [],
-            "retry_counts": {},
-        }
-
-        result = execute_mapping_remediation(state)
-
-        assert result["loop_results"][0].status == "SUCCESS"
-        assert call_threads
-        assert all(name == threading.main_thread().name for name in call_threads)
-
-    def test_execute_mapping_remediation_can_be_disabled_via_env(self, monkeypatch):
-        monkeypatch.setenv("SUPERVISOR_REMEDIATION_PARALLEL", "0")
-        call_threads = []
-
-        class FakeSupervisor:
-            def _step2_5_consolidate(self, mapped_sets):
-                return mapped_sets
-
-            def _step3_register(self, mapped_sets, registry, registered_concept):
-                return ["registered"]
-
-        fake_supervisor_module = types.ModuleType("src.pipeline.supervisor")
-        fake_supervisor_module.get_supervisor = lambda: FakeSupervisor()
-        monkeypatch.setitem(sys.modules, "src.pipeline.supervisor", fake_supervisor_module)
-
-        fake_registry_models = types.ModuleType("src.registry.models")
-        fake_registry_models.RegisteredConcept = type("RegisteredConcept", (), {})
-        monkeypatch.setitem(sys.modules, "src.registry.models", fake_registry_models)
-
-        fake_registry_store = types.ModuleType("src.registry.store")
-        fake_registry_store.registry = object()
-        monkeypatch.setitem(sys.modules, "src.registry.store", fake_registry_store)
-
-        fake_map_entity = types.ModuleType("src.agents.agent2.map_entity")
-
-        class FakeMappingResult:
-            success = True
-            concept_ids = [10]
-            overbroad_concept_ids = []
-            route_path = "slow"
-            critic_skipped = False
-            domain_overridden = None
-
-            def to_mapped_set(self, *, entity_id, entity_text, domain, entity_key=None, **kwargs):
-                payload = {"id": entity_id, "name": entity_text, "domain": domain, "concept_ids": self.concept_ids}
-                if entity_key:
-                    payload["entity_key"] = entity_key
-                return payload
-
-        def fake_map_single_entity(entity_text, **kwargs):
-            call_threads.append(threading.current_thread().name)
-            return FakeMappingResult()
-
-        fake_map_entity.map_single_entity = fake_map_single_entity
-        monkeypatch.setitem(sys.modules, "src.agents.agent2.map_entity", fake_map_entity)
-
-        state = {
-            "retry_queue": [{
-                "entity_key": "target:primary:0:0",
-                "entity_text": "Metformin",
-                "domain_hint": "Drug",
-                "rule_context": None,
-                "reason": "empty_mapping",
-                "corrected_domain": None,
-                "force_slow_path": True,
-            }],
-            "raw_mapped_sets": [],
-            "retry_counts": {},
-        }
-
-        result = execute_mapping_remediation(state)
-
-        assert result["loop_results"][0].status == "SUCCESS"
-        assert call_threads
-        assert all(name == threading.main_thread().name for name in call_threads)
 
 
 class TestReviewAssembly:
