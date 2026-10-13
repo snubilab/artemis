@@ -86,7 +86,10 @@ def process_single_rule(rule: TROYRule, troy_json: Dict, db_pool: ThreadedConnec
         rule_cache_misses = 0
 
         for qt in query_texts:
-            cached_ids = agent2_cache.get(qt) if agent2_cache else None
+            # The domain Agent 2 is given is part of the cache key: one concept-set name
+            # used under two domains is two mappings.
+            query_domain = rule.cs_domains.get(qt, rule.domain)
+            cached_ids = agent2_cache.get(qt, query_domain) if agent2_cache else None
             if cached_ids is not None:
                 ids = cached_ids
                 meta = {"processing_ms": 0, "cached": True}
@@ -95,7 +98,6 @@ def process_single_rule(rule: TROYRule, troy_json: Dict, db_pool: ThreadedConnec
                 _a2 = get_agent2()
                 _start = time.time()
                 try:
-                    query_domain = rule.cs_domains.get(qt, rule.domain)
                     _detail = _a2.process_with_details(qt, domain_hint=query_domain)
                     ids = _detail.concept_ids
                     meta = {"processing_ms": _detail.processing_time_ms}
@@ -106,7 +108,7 @@ def process_single_rule(rule: TROYRule, troy_json: Dict, db_pool: ThreadedConnec
                     meta = {"error": str(e), "processing_ms": (time.time() - _start) * 1000}
                 rule_cache_misses += 1
                 if agent2_cache and ids:
-                    new_cache_entries.append({"entity_text": qt, "domain_hint": None, "concept_ids": ids})
+                    new_cache_entries.append({"entity_text": qt, "domain_hint": query_domain, "concept_ids": ids})
 
             all_agent2_ids.extend(ids)
             total_ms += meta.get("processing_ms", 0)

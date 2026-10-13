@@ -1,20 +1,23 @@
 """Every cache key must carry the resolved LLM model.
 
 This is a class test, not an instance test. The same defect — a key built from
-the criterion text alone — was found in three separate caches, and each one
+the criterion text alone — was found in three separate caches, then in Agent2Cache, and each one
 returns another model's answer as a cache hit that looks identical to a fresh
 one. A new cache added without the model in its key belongs in CACHES below.
 """
 
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
 from src.agents.agent1.parser import LogicDecomposer
+from src.agents.agent2.agent2_cache import Agent2Cache
 from src.agents.agent2.critic_cache import CriticCache
 from src.agents.agent2.criterion_cache import CriterionCacheEntry, CriterionResultCache
 from src.settings import settings
@@ -69,6 +72,15 @@ def _critic_cache_hits_across_model_switch() -> bool:
         return cache.get(_key(TEXT, "Condition")) is not None
 
 
+def _agent2_cache_hits_across_model_switch() -> bool:
+    with tempfile.TemporaryDirectory() as tmp:
+        cache = Agent2Cache(cache_path=Path(tmp) / "agent2_cache.json")
+        with using_model(MODEL_A):
+            cache.put(TEXT, "Condition", [201826])
+        with using_model(MODEL_B):
+            return cache.get(TEXT, "Condition") is not None
+
+
 def _agent1_ir_cache_hits_across_model_switch() -> bool:
     with patch("src.agents.agent1.parser.get_llm", return_value=Mock()):
         with using_model(MODEL_A):
@@ -81,6 +93,7 @@ def _agent1_ir_cache_hits_across_model_switch() -> bool:
 CACHES: dict[str, Callable[[], bool]] = {
     "agent2_criterion_cache": _criterion_cache_hits_across_model_switch,
     "agent2_critic_cache": _critic_cache_hits_across_model_switch,
+    "agent2_mapping_cache": _agent2_cache_hits_across_model_switch,
     "agent1_ir_cache": _agent1_ir_cache_hits_across_model_switch,
 }
 
@@ -106,6 +119,11 @@ def test_same_model_still_hits(name: str) -> None:
             key = _key(TEXT, "Condition")
             critic_cache.put(key, [201826])
             assert critic_cache.get(_key(TEXT, "Condition")) is not None
+        elif name == "agent2_mapping_cache":
+            with tempfile.TemporaryDirectory() as tmp:
+                mapping_cache = Agent2Cache(cache_path=Path(tmp) / "agent2_cache.json")
+                mapping_cache.put(TEXT, "Condition", [201826])
+                assert mapping_cache.get(TEXT, "Condition") is not None
         else:
             with patch("src.agents.agent1.parser.get_llm", return_value=Mock()):
                 assert LogicDecomposer().model_name == LogicDecomposer().model_name

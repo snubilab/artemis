@@ -2,6 +2,11 @@
 Agent 2 Mapping Cache — JSON-based persistent cache for Agent 2 results.
 Avoids re-running the expensive LLM/Neo4j pipeline for identical inputs.
 
+The key is the text, the domain and the run that mapped them: the embedding model, the
+resolved LLM model, critic_signature() and mapping_signature() -- the parts the criterion
+cache keys the same Agent 2 mapping on. It used to be text and domain alone, so a
+benchmark run under one configuration replayed another configuration's mappings.
+
 Usage:
     cache = Agent2Cache()
     result = cache.get("Type 2 Diabetes", "Condition")
@@ -52,12 +57,25 @@ class Agent2Cache:
             json.dump(self._cache, f, indent=2, ensure_ascii=False)
 
     @staticmethod
-    def _key(entity_text: str, domain_hint: Optional[str] = None) -> str:
-        """Generate cache key from entity text and domain hint."""
-        raw = f"{entity_text.strip().lower()}|{(domain_hint or '').lower()}"
+    def _key(entity_text: str, domain_hint: Optional[str]) -> str:
+        """Cache key over the text, the domain and the run configuration that maps them.
+
+        :param entity_text: the text Agent 2 maps; case-folded and stripped.
+        :param domain_hint: the domain Agent 2 is given, or None.
+        :returns: hex digest.
+        """
+        from src.agents.agent2.critic import critic_signature
+        from src.utils.llm import resolve_model
+        from src.utils.mapping_flags import canonical_embedding_model, mapping_signature
+
+        raw = (
+            f"{entity_text.strip().lower()}|{(domain_hint or '').lower()}"
+            f"|{canonical_embedding_model(os.environ.get('EMBEDDING_MODEL', ''))}"
+            f"|{resolve_model()}|{critic_signature()}|{mapping_signature()}"
+        )
         return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
-    def get(self, entity_text: str, domain_hint: Optional[str] = None) -> Optional[List[int]]:
+    def get(self, entity_text: str, domain_hint: Optional[str]) -> Optional[List[int]]:
         """Look up cached concept IDs. Returns None on miss."""
         key = self._key(entity_text, domain_hint)
         with self._lock:
@@ -83,10 +101,10 @@ class Agent2Cache:
         """Store multiple entries at once (single write)."""
         with self._lock:
             for entry in entries:
-                key = self._key(entry["entity_text"], entry.get("domain_hint"))
+                key = self._key(entry["entity_text"], entry["domain_hint"])
                 self._cache[key] = {
                     "entity_text": entry["entity_text"],
-                    "domain_hint": entry.get("domain_hint"),
+                    "domain_hint": entry["domain_hint"],
                     "concept_ids": entry["concept_ids"],
                 }
             self._save()
