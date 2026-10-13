@@ -46,7 +46,7 @@ def test_should_seed_the_two_rows_with_texts_that_differ_only_in_case():
     """The fixture is the collision itself, not a constructed one."""
     first, second = criterion_mapper_seed(EMPA_REG_GLUCOSE), criterion_mapper_seed(CAROLINA_GLUCOSE)
     assert (first, second) == ("glucose", "Glucose")
-    assert (EMPA_REG_GLUCOSE["domain"], CAROLINA_GLUCOSE["domain"]) == ("Measurement", "Measurement")
+    assert {EMPA_REG_GLUCOSE["domain"], CAROLINA_GLUCOSE["domain"]} == {"Measurement"}
 
 
 def test_should_miss_when_a_seed_differs_from_the_cached_seed_only_in_case():

@@ -148,7 +148,8 @@ def test_should_emit_the_label_bound_when_only_the_demographic_label_carries_it(
     rows = AGE_FIXTURE[section]["rows"]
     circe = _build(service, rows)
 
-    assert _age_criteria(circe["InclusionRules"]) == [{"Value": 18.0, "Op": "gte"}] * CARMELINA_MEMBERS
+    ages = _age_criteria(circe["InclusionRules"])
+    assert ages == [{"Value": 18.0, "Op": "gte"}] * CARMELINA_MEMBERS
     # The label still emits nothing of its own; the member carries its bound.
     assert _skip_reason(circe, 28) == "group-label"
     assert _skip_reason(circe, 29) is None
@@ -164,7 +165,8 @@ def test_should_emit_the_label_bound_when_the_label_threshold_is_annotated_other
 
     circe = _build(service, rows)
 
-    assert _age_criteria(circe["InclusionRules"]) == [{"Value": 18.0, "Op": "gte"}] * CARMELINA_MEMBERS
+    ages = _age_criteria(circe["InclusionRules"])
+    assert ages == [{"Value": 18.0, "Op": "gte"}] * CARMELINA_MEMBERS
 
 
 @pytest.mark.parametrize(
@@ -191,5 +193,6 @@ def test_should_emit_the_inverted_label_bound_when_the_demographic_group_is_an_e
         {"targetCohortName": "AF cohort", "inclusionCriteria": [], "exclusionCriteria": rows}
     )
 
-    assert _age_criteria(circe["InclusionRules"]) == [{"Value": 18.0, "Op": "lt"}] * CARMELINA_MEMBERS
+    ages = _age_criteria(circe["InclusionRules"])
+    assert ages == [{"Value": 18.0, "Op": "lt"}] * CARMELINA_MEMBERS
     assert _skip_reason(circe, 28) == "group-label"

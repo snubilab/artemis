@@ -25,7 +25,6 @@ from src.services.restated_demographics import COLLAPSE_REASON as DEMOGRAPHICS_R
 from src.services.restated_distinctness import COLLAPSE_REASON as DISTINCTNESS_REASON
 from src.services.restated_rules import IDENTICAL_REASON
 from src.services.tte_service import TTEService
-from src.utils.circe_lint import CRITERION_CONCEPT_SET_REFS_KEY
 
 
 def _stub_concept_set(name: str, concept_id: int, domain: str = "Condition") -> dict[str, Any]:
