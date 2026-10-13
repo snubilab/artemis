@@ -9522,7 +9522,7 @@ class TTEService:
             ])
             return response.content.strip()
         except Exception as exc:
-            logger.warning("LLM report narrative generation failed: %s", exc)
+            logging.warning("LLM report narrative generation failed: %s", exc)
             return self._fallback_report_html(
                 title=title,
                 treatment_name=treatment_name,
