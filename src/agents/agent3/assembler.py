@@ -202,14 +202,13 @@ class CohortAssembler:
             "PrimaryCriteriaLimit": {"Type": "First"},
         }
 
-        # Build inclusion rules, excluding the condition rule we promoted
+        # Every built rule stays, the promoted condition rule included: it repeats what
+        # PrimaryCriteria already requires. Removing it by matching a rule name against
+        # the entity text removed it in 5 of 96 cached Agent-1 IRs and kept it in 91.
         target_cohort, heal_log = self._build_cohort_definition(
             ir.target, concept_sets, "Target Cohort"
         )
-        target_inclusion_rules = [
-            rule for rule in target_cohort.get("InclusionRules", [])
-            if not self._rule_matches_entity(rule, disease_entity_text)
-        ]
+        target_inclusion_rules = target_cohort.get("InclusionRules", [])
 
         end_strategy = self._build_end_strategy(ir.target.exit_strategy)
 
@@ -292,14 +291,6 @@ class CohortAssembler:
             if rule.domain and rule.domain.lower() == "condition":
                 return rule
         return None
-
-    @staticmethod
-    def _rule_matches_entity(built_rule: Dict[str, Any], entity_text: Optional[str]) -> bool:
-        """Check whether a built inclusion rule originated from a given entity_text."""
-        if not entity_text:
-            return False
-        rule_name = (built_rule.get("name") or "").strip().lower()
-        return rule_name == entity_text.strip().lower()
 
     @staticmethod
     def _wrap_cohort_json(
