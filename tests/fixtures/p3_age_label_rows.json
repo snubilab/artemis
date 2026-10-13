@@ -1,0 +1,309 @@
+{
+  "about": "Real store rows for the Demographics group-label age bound (worktree p3-age-fix), copied verbatim from read-only sources; each section names its source key, study id, role and row ids. Nothing in a row is edited here; a test that varies a field says so itself.",
+  "sources": {
+    "p2_new_store": {
+      "path": "output/site_gap/2026-10-12_p2_new/store/studies.json",
+      "sha256": "e71ce3bfe9c13be85c1f2292a2b2e536ba738a739f7b4090003501578cce01b7"
+    },
+    "p3_dry_arm_b_store": {
+      "path": "output/site_gap/2026-10-12_p3_dry/arm_b/store/studies.json",
+      "sha256": "aa8fe75f709957c53ea605ea4bc1587b624846bce8391c94734481c8638236e2"
+    }
+  },
+  "carmelina_age_label_p2_new": {
+    "source": "p2_new_store",
+    "study": 9,
+    "role": "inclusionCriteria",
+    "rows": [
+      {
+        "id": 28,
+        "description": "Age at screening",
+        "domain": "Demographics",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 18.0,
+          "valueHigh": null,
+          "unitText": "years",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "Age",
+        "protocolLine": "7. Age => 18 years at Visit 1(screening). For Japan only: Age => 20 years at Visit 1 [value_constraint] {\"op\": \"gte\", \"value\": 18.0, \"referenceBound\": \"absolute\", \"unitText\": \"years\"}",
+        "protocolSpan": "",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "453f3ac1-7e9b-43a1-8520-5c212413deba",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": true,
+        "mappable": false
+      },
+      {
+        "id": 29,
+        "description": "Age at Visit 1 (General)",
+        "domain": "Demographics",
+        "valueConstraint": null,
+        "sourceText": "Age",
+        "protocolLine": "7. Age => 18 years at Visit 1(screening). For Japan only: Age => 20 years at Visit 1 [value_constraint] {\"op\": \"gte\", \"value\": 18.0, \"referenceBound\": \"absolute\", \"unitText\": \"years\"}",
+        "protocolSpan": "Age",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "453f3ac1-7e9b-43a1-8520-5c212413deba",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true
+      },
+      {
+        "id": 30,
+        "description": "Age at Visit 1 (Japan Specific)",
+        "domain": "Demographics",
+        "valueConstraint": null,
+        "sourceText": "Age",
+        "protocolLine": "7. Age => 18 years at Visit 1(screening). For Japan only: Age => 20 years at Visit 1 [value_constraint] {\"op\": \"gte\", \"value\": 18.0, \"referenceBound\": \"absolute\", \"unitText\": \"years\"}",
+        "protocolSpan": "Age",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "453f3ac1-7e9b-43a1-8520-5c212413deba",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true
+      }
+    ]
+  },
+  "carmelina_age_label_arm_b": {
+    "source": "p3_dry_arm_b_store",
+    "study": 9,
+    "role": "inclusionCriteria",
+    "rows": [
+      {
+        "id": 28,
+        "description": "Age at screening",
+        "domain": "Demographics",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 18.0,
+          "valueHigh": null,
+          "unitText": "years",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "Age",
+        "protocolLine": "7. Age => 18 years at Visit 1(screening). For Japan only: Age => 20 years at Visit 1",
+        "protocolSpan": "",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "453f3ac1-7e9b-43a1-8520-5c212413deba",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": true,
+        "mappable": false,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "18 years",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        },
+        "_annotationRejected": [
+          {
+            "field": "relation",
+            "value": {
+              "relation": "any",
+              "relation_span": null,
+              "cardinality": null
+            },
+            "reason": "relation_span is not a substring of protocolLine"
+          }
+        ]
+      },
+      {
+        "id": 29,
+        "description": "Age at Visit 1 (General)",
+        "domain": "Demographics",
+        "valueConstraint": null,
+        "sourceText": "Age",
+        "protocolLine": "7. Age => 18 years at Visit 1(screening). For Japan only: Age => 20 years at Visit 1",
+        "protocolSpan": "Age",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "453f3ac1-7e9b-43a1-8520-5c212413deba",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": "at Visit 1(screening)",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "18 years",
+          "quantity_kind": "other",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 30,
+        "description": "Age at Visit 1 (Japan Specific)",
+        "domain": "Demographics",
+        "valueConstraint": null,
+        "sourceText": "Age",
+        "protocolLine": "7. Age => 18 years at Visit 1(screening). For Japan only: Age => 20 years at Visit 1",
+        "protocolSpan": "Age",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "453f3ac1-7e9b-43a1-8520-5c212413deba",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": "at Visit 1(screening)",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "18 years",
+          "quantity_kind": "other",
+          "reference_bound": "none"
+        }
+      }
+    ]
+  },
+  "empareg_age_arm_b": {
+    "source": "p3_dry_arm_b_store",
+    "study": 8,
+    "role": "inclusionCriteria",
+    "rows": [
+      {
+        "id": 9,
+        "description": "Minimum age requirement",
+        "domain": "Demographics",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 18.0,
+          "valueHigh": null,
+          "unitText": "years",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "Age",
+        "protocolLine": "4. Age >= 18 years",
+        "protocolSpan": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": null,
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": false,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": ">= 18 years",
+          "quantity_kind": "other",
+          "reference_bound": "none"
+        }
+      }
+    ]
+  }
+}

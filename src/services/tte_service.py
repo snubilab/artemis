@@ -5167,6 +5167,18 @@ class TTEService:
             role = "exclusion" if exclusion else "inclusion"
             return group_label_constraints.get((role, str(group_id)))
 
+        def _with_label_age_bound(criterion: dict[str, Any], exclusion: bool) -> dict[str, Any]:
+            """The row its Age rule is built from: a Demographics member with no bound of its
+            own takes its Demographics label's, since the label emits no rule of its own
+            (CARMELINA inclusion 28 over 29/30). Structural fields only."""
+            if (criterion.get("valueConstraint") or {}).get("value") is not None:
+                return criterion
+            label = group_labels.get(str(criterion.get("groupId")))
+            if label is None or (label[1].get("domain") or "").strip() not in DEMOGRAPHIC_DOMAINS:
+                return criterion
+            bound = _parent_constraint(criterion, exclusion)
+            return criterion if bound is None else {**criterion, "valueConstraint": bound}
+
         for criterion in inc_criteria:
             # First branch in the loop, ahead of the demographic split: a dropped
             # criterion must not reach the mapper at all, which is the entire point --
@@ -5213,7 +5225,7 @@ class TTEService:
                 continue
             domain = (criterion.get("domain") or "").strip()
             if domain in DEMOGRAPHIC_DOMAINS:
-                demo = self._build_demographic_rule(criterion)
+                demo = self._build_demographic_rule(_with_label_age_bound(criterion, False))
                 if demo:
                     gid = criterion.get("groupId")
                     if gid is None:
@@ -5276,13 +5288,14 @@ class TTEService:
                 # discarding. `eq` has no single-op inversion in CIRCE's Age/NumericRange
                 # Op enum, so it is checked here and recorded under its own reason
                 # rather than falling through to the generic "demographic-no-rule".
-                vc = criterion.get("valueConstraint")
+                age_row = _with_label_age_bound(criterion, True)
+                vc = age_row.get("valueConstraint")
                 op = (vc.get("op") or "").strip().lower() if vc else None
                 if op == "eq":
                     _record_skip(criterion, "exclusion", "exclusion-demographic-eq-unsupported")
                     order += 1
                     continue
-                demo = self._build_demographic_rule(criterion, exclusion=True)
+                demo = self._build_demographic_rule(age_row, exclusion=True)
                 if demo:
                     gid = criterion.get("groupId")
                     if gid is None:

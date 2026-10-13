@@ -1611,12 +1611,13 @@ class ThresholdUse(str, Enum):
     * ``default`` -- no verified threshold (no annotation, a rejected one, or a line that
       states none): the row's own ``valueConstraint`` is used exactly as before.
     * ``measured`` -- a verified lab value, or an ``other`` quantity on a Measurement row
-      (the case the build already supports): applied as a value filter, compared against
-      the annotation's ``reference_bound``.
+      (the case the build already supports) or on a Demographics row (built as a CIRCE
+      ``Age``): applied as a value filter, compared against the annotation's
+      ``reference_bound``.
     * ``not-representable`` -- a verified duration, count, or an ``other`` quantity outside
-      Measurement: no value filter is emitted for it, the criterion is kept, and the
-      threshold is recorded under :data:`UNREPRESENTABLE_THRESHOLDS_KEY` (the delivery gate
-      WARNs on it).
+      Measurement and Demographics: no value filter is emitted for it, the criterion is
+      kept, and the threshold is recorded under :data:`UNREPRESENTABLE_THRESHOLDS_KEY` (the
+      delivery gate WARNs on it).
     * ``skip-criterion`` -- a verified dose or statistical quantity: the WHOLE criterion is
       skipped and recorded under :data:`THRESHOLD_NOT_REPRESENTABLE_REASON`, which the
       delivery gate counts as criterion loss. A drug emitted without its dose, or a row
@@ -1641,11 +1642,16 @@ def threshold_use(row: Mapping[str, Any]) -> tuple[ThresholdUse, StatedThreshold
     :param row: the store criterion row.
     :returns: the decision and the verified threshold it rests on (None for ``default``).
     """
+    # Imported here, as `scripts/verify_circe_delivery.py` does: the models module pulls in
+    # the LLM client, which this module otherwise reaches only when it calls the model.
+    from src.api.models.tte import DEMOGRAPHIC_DOMAINS
+
     stated = stated_threshold(row)
     if stated is None:
         return ThresholdUse.DEFAULT, None
     if stated.kind is QuantityKind.LAB_VALUE or (
-        stated.kind is QuantityKind.OTHER and row.get("domain") == MEASUREMENT_DOMAIN
+        stated.kind is QuantityKind.OTHER
+        and (row.get("domain") == MEASUREMENT_DOMAIN or row.get("domain") in DEMOGRAPHIC_DOMAINS)
     ):
         return ThresholdUse.MEASURED, stated
     if stated.kind in _SKIP_KINDS:

@@ -1210,7 +1210,8 @@ def threshold_without_value_filter_findings(
     there). Such a row that minted a concept set (``_criterionConceptSetRefs``) and whose
     criteria over that set carry no key of ``VALUE_CONDITION_ATTRIBUTES`` fails, with one
     exception that is a WARN instead: the annotation says the threshold is a duration, a
-    count or a non-Measurement ``other`` quantity (the criterion is kept without it) AND
+    count or an ``other`` quantity outside Measurement and Demographics (the criterion is
+    kept without it) AND
     the file lists the row under ``_unrepresentableThresholds`` -- the record is the
     producer's claim, and the decision behind it is re-derived from the store row here,
     never read off it. A dose or statistical threshold skips the whole criterion, so such a
