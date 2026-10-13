@@ -11,11 +11,9 @@ References:
 - RFC-012: Post-Agent2 Quality Gate
 """
 import logging
-import os
 from typing import Optional, Any, Literal, Annotated
 from typing_extensions import TypedDict
 from dataclasses import dataclass, field
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from langgraph.graph import StateGraph
 from langgraph.graph.graph import START, END
@@ -34,23 +32,6 @@ logger = logging.getLogger(__name__)
 MAX_RETRY = 3
 
 
-def _remediation_parallel_enabled() -> bool:
-    return os.environ.get("SUPERVISOR_REMEDIATION_PARALLEL", "1").strip().lower() not in {
-        "0",
-        "false",
-        "no",
-    }
-
-
-def _remediation_max_workers(candidate_count: int) -> int:
-    raw = os.environ.get("SUPERVISOR_REMEDIATION_MAX_WORKERS", "4").strip()
-    try:
-        configured = int(raw)
-    except ValueError:
-        configured = 4
-    return max(1, min(configured, max(1, candidate_count)))
-
-
 # ══════════════════════════════════════════════════════════════
 # State Definition
 # ══════════════════════════════════════════════════════════════
@@ -60,7 +41,7 @@ class SupervisorDecision:
     """Result of a Supervisor review node."""
     agent_name: str
     status: Literal["SUCCESS", "PARTIAL", "FAILED"]
-    action: Literal["PROCEED", "RETRY", "SELECTIVE_RETRY", "SKIP", "ESCALATE"]
+    action: Literal["PROCEED", "RETRY", "SKIP", "ESCALATE"]
     reason: str
     metrics: dict = field(default_factory=dict)
 
@@ -124,12 +105,6 @@ class ArtemisState(TypedDict, total=False):
     current_phase: str
     escalate_reason: Optional[str]
 
-    # Phase 2: Pre-consolidation mapping preservation
-    raw_mapped_sets: list[dict]  # Entity mappings before consolidation
-
-    # Phase 3: Selective retry queue
-    retry_queue: list[dict]  # RetryCandidate dicts for remediation
-
 
 # ══════════════════════════════════════════════════════════════
 # Agent Nodes (execute the actual work)
@@ -184,7 +159,6 @@ def mapping_node(state: ArtemisState) -> dict:
             print(f"  ⚠ {report.retries_triggered} weak entities detected")
 
         # Step 2.5: Consolidate
-        raw_mapped_sets = list(mapped_sets)  # Phase 2: preserve pre-consolidation
         mapped_sets = sv._step2_5_consolidate(mapped_sets)
 
         # Step 3: Register
@@ -193,7 +167,6 @@ def mapping_node(state: ArtemisState) -> dict:
         return {
             "entities_to_map": entities,
             "mapped_sets": mapped_sets,
-            "raw_mapped_sets": raw_mapped_sets,
             "gap_report": gap,
             "agent2_mapping_telemetry": agent2_mapping_telemetry,
             "registered_sets": registered,
@@ -717,26 +690,6 @@ def review_mapping(state: ArtemisState) -> dict:
     status = "SUCCESS" if action == "PROCEED" else "PARTIAL" if action == "RETRY" else "FAILED"
     updates: dict = {}
 
-    # Check for selective retry candidates (Phase 3)
-    if action == "PROCEED" and (audit.get("domain_mismatches") or _has_empty_entities(state)):
-        # Build retry plan to check if selective retry is warranted
-        from src.pipeline.mapping_retry import build_retry_plan
-        retry_plan = build_retry_plan(
-            audit=audit,
-            raw_mapped_sets=state.get("raw_mapped_sets", []),
-            entities_to_map=state.get("entities_to_map", []),
-            retry_counts=retry_counts,
-        )
-        if retry_plan.has_candidates:
-            action = "SELECTIVE_RETRY"
-            status = "PARTIAL"
-            strategy_summary = ",".join(sorted({c.strategy for c in retry_plan.candidates}))
-            reason += (
-                f" | {len(retry_plan.candidates)} entities need selective re-map"
-                f" ({strategy_summary})"
-            )
-            updates["retry_queue"] = [_retry_candidate_to_dict(c) for c in retry_plan.candidates]
-
     decision = SupervisorDecision(
         agent_name="mapping", status=status, action=action,
         reason=reason,
@@ -760,40 +713,10 @@ def review_mapping(state: ArtemisState) -> dict:
             max_attempts=MAX_RETRY, status="FAILED",
             details=reason,
         )]
-    elif action == "SELECTIVE_RETRY":
-        updates["loop_results"] = [LoopResult(
-            loop_id="LOOP_SR_SELECTIVE", attempt=mapping_retries + 1,
-            max_attempts=MAX_RETRY, status="PARTIAL",
-            remaining_failures=[c["entity_text"] for c in updates.get("retry_queue", [])],
-            details=reason,
-        )]
     if action == "ESCALATE":
         updates["escalate_reason"] = reason
 
     return updates
-
-
-def _has_empty_entities(state: ArtemisState) -> bool:
-    """Check if any entity in entities_to_map is missing from mapped_sets."""
-    mapped_names = {ms.get("name", "").lower() for ms in state.get("raw_mapped_sets", [])}
-    for ent in state.get("entities_to_map", []):
-        if ent["text"].lower() not in mapped_names:
-            return True
-    return False
-
-
-def _retry_candidate_to_dict(c) -> dict:
-    """Convert RetryCandidate dataclass to plain dict for state serialization."""
-    return {
-        "entity_key": c.entity_key,
-        "entity_text": c.entity_text,
-        "domain_hint": c.domain_hint,
-        "rule_context": c.rule_context,
-        "reason": c.reason,
-        "strategy": c.strategy,
-        "corrected_domain": c.corrected_domain,
-        "force_slow_path": c.force_slow_path,
-    }
 
 
 def review_assembly(state: ArtemisState) -> dict:
@@ -977,202 +900,6 @@ def review_reporting(state: ArtemisState) -> dict:
 
 # ══════════════════════════════════════════════════════════════
 # ══════════════════════════════════════════════════════════════
-# Phase 3: Selective Retry Remediation Nodes
-# ══════════════════════════════════════════════════════════════
-
-def plan_mapping_remediation(state: ArtemisState) -> dict:
-    """Pass the retry_queue through — planning already happened in review_mapping.
-
-    This node exists as a distinct pipeline stage for observability and
-    potential future expansion (e.g., Agent 1 IR repair in v2).
-    """
-    queue = state.get("retry_queue", [])
-    if not queue:
-        logger.info("[Remediation] No retry candidates — passing through")
-    else:
-        logger.info(f"[Remediation] Planning re-map for {len(queue)} entities")
-        for item in queue:
-            print(f"  📋 {item['entity_text']} ({item['reason']})")
-    return {"current_phase": "plan_remediation"}
-
-
-def execute_mapping_remediation(state: ArtemisState) -> dict:
-    """Execute selective re-mapping for retry_queue entities.
-
-    For each retry candidate:
-    1. Re-map via map_single_entity(force_slow_path=True)
-    2. Rollback gate: only commit if new mapping has more concepts
-    3. Update raw_mapped_sets and mapped_sets with improved results
-    """
-    queue = state.get("retry_queue", [])
-    if not queue:
-        return {"retry_queue": [], "current_phase": "execute_remediation"}
-
-    raw_mapped_sets = list(state.get("raw_mapped_sets", []))
-    retry_counts = dict(state.get("retry_counts", {}))
-
-    # Build lookup: entity_key → index in raw_mapped_sets
-    key_to_idx: dict = {}
-    for idx, ms in enumerate(raw_mapped_sets):
-        key = ms.get("entity_key")
-        if key:
-            key_to_idx[key] = idx
-
-    prepared_queue = []
-    for item in queue:
-        entity_key = item["entity_key"]
-        retry_key = f"entity:{entity_key}"
-        retry_counts[retry_key] = retry_counts.get(retry_key, 0) + 1
-        if item.get("reason") == "domain_mismatch":
-            mismatch_retry_key = f"domain_mismatch:{entity_key}"
-            retry_counts[mismatch_retry_key] = retry_counts.get(mismatch_retry_key, 0) + 1
-
-        prepared_item = dict(item)
-        prepared_item["_resolved_domain"] = item.get("corrected_domain") or item.get("domain_hint")
-        prepared_queue.append(prepared_item)
-
-    outcomes = _run_remediation_work_items(prepared_queue)
-
-    improved = 0
-    healed_entities = []
-    for outcome in outcomes:
-        item = outcome["item"]
-        emr = outcome["emr"]
-        entity_key = item["entity_key"]
-        if not emr.success:
-            print(f"  ✗ Re-map failed for '{item['entity_text']}': {emr.error}")
-            continue
-
-        # Rollback gate: compare with original
-        orig_idx = key_to_idx.get(entity_key)
-        if orig_idx is not None:
-            orig = raw_mapped_sets[orig_idx]
-            orig_count = len(orig.get("concept_ids", []))
-            new_count = len(emr.concept_ids)
-            if new_count <= orig_count and item["reason"] != "domain_mismatch":
-                print(f"  ↩ Rollback '{item['entity_text']}': new({new_count}) ≤ orig({orig_count})")
-                continue
-
-            # Commit: update in place
-            raw_mapped_sets[orig_idx]["concept_ids"] = emr.concept_ids
-            raw_mapped_sets[orig_idx]["overbroad_concept_ids"] = emr.overbroad_concept_ids
-            raw_mapped_sets[orig_idx]["route_path"] = emr.route_path
-            raw_mapped_sets[orig_idx]["critic_skipped"] = emr.critic_skipped
-            raw_mapped_sets[orig_idx]["domain_overridden"] = emr.domain_overridden
-            print(f"  ✓ Improved '{item['entity_text']}': {orig_count} → {new_count} concepts")
-            improved += 1
-            healed_entities.append(item["entity_text"])
-        else:
-            # New entity (was missing) — append to raw_mapped_sets
-            new_entry = emr.to_mapped_set(
-                entity_id=len(raw_mapped_sets) + 1,
-                entity_text=item["entity_text"],
-                domain=item.get("domain_hint", ""),
-                entity_key=entity_key,
-            )
-            raw_mapped_sets.append(new_entry)
-            print(f"  ✓ Filled '{item['entity_text']}': {len(emr.concept_ids)} concepts")
-            improved += 1
-            healed_entities.append(item["entity_text"])
-
-    print(f"  [Remediation] {improved}/{len(queue)} entities improved")
-
-    # Re-consolidate and re-register
-    from src.pipeline.supervisor import get_supervisor
-    from src.registry.models import RegisteredConcept
-    from src.registry.store import registry
-    sv = get_supervisor()
-    mapped_sets = sv._step2_5_consolidate(raw_mapped_sets)
-    registered = sv._step3_register(mapped_sets, registry, RegisteredConcept)
-
-    # Build telemetry
-    return {
-        "raw_mapped_sets": raw_mapped_sets,
-        "mapped_sets": mapped_sets,
-        "registered_sets": registered,
-        "retry_queue": [],
-        "retry_counts": retry_counts,
-        "current_phase": "execute_remediation",
-        "loop_results": [LoopResult(
-            loop_id="LOOP_SR_REMEDIATION",
-            attempt=1,
-            max_attempts=1,
-            status="SUCCESS" if improved > 0 else "FAILED",
-            healed_entities=healed_entities,
-            details=f"{improved}/{len(queue)} entities improved",
-        )],
-    }
-
-
-def _run_remediation_work_items(queue: list[dict]) -> list[dict]:
-    if len(queue) <= 1 or not _remediation_parallel_enabled():
-        return [
-            _run_single_remediation_work_item(index, item)
-            for index, item in enumerate(queue)
-        ]
-
-    try:
-        outcomes_by_index: dict[int, dict] = {}
-        with ThreadPoolExecutor(max_workers=_remediation_max_workers(len(queue))) as pool:
-            future_to_payload = {
-                pool.submit(_run_single_remediation_work_item, index, item): (index, item)
-                for index, item in enumerate(queue)
-            }
-            for future in as_completed(future_to_payload):
-                index, item = future_to_payload[future]
-                outcome = future.result()
-                emr = outcome["emr"]
-                if outcome.get("raised_error") or emr.error:
-                    retry_outcome = _run_single_remediation_work_item(index, item)
-                    retry_outcome["used_sequential_retry"] = True
-                    outcome = retry_outcome
-                outcomes_by_index[index] = outcome
-        return [outcomes_by_index[index] for index in range(len(queue))]
-    except Exception as exc:
-        print(f"  ⚠ Remediation parallel pool unavailable, falling back to sequential execution: {exc}")
-        return [
-            _run_single_remediation_work_item(index, item)
-            for index, item in enumerate(queue)
-        ]
-
-
-def _run_single_remediation_work_item(index: int, item: dict) -> dict:
-    from src.agents.agent2.map_entity import map_single_entity
-
-    try:
-        emr = map_single_entity(
-            item["entity_text"],
-            domain_hint=item.get("_resolved_domain"),
-            rule_context=item.get("rule_context"),
-            force_slow_path=item.get("force_slow_path", True),
-        )
-        return {
-            "index": index,
-            "item": item,
-            "emr": emr,
-            "raised_error": None,
-            "used_sequential_retry": False,
-        }
-    except Exception as exc:
-        class FailedRemap:
-            success = False
-            error = str(exc)
-            concept_ids = []
-            overbroad_concept_ids = []
-            route_path = None
-            critic_skipped = False
-            domain_overridden = None
-
-        return {
-            "index": index,
-            "item": item,
-            "emr": FailedRemap(),
-            "raised_error": str(exc),
-            "used_sequential_retry": False,
-        }
-
-
-# ══════════════════════════════════════════════════════════════
 # Routing Functions (conditional edges)
 # ══════════════════════════════════════════════════════════════
 
@@ -1193,8 +920,6 @@ def route_after_mapping(state: ArtemisState) -> str:
     action = _last_decision_action(state)
     if action == "RETRY":
         return "mapping"
-    if action == "SELECTIVE_RETRY":
-        return "plan_mapping_remediation"
     return "assembly"
 
 
@@ -1226,8 +951,7 @@ def build_graph() -> StateGraph:
 
     Structure:
         trial → review_trial → [mapping | END]
-        mapping → review_mapping → [assembly | mapping(retry) | plan_remediation | END]
-        plan_mapping_remediation → execute_mapping_remediation → review_mapping
+        mapping → review_mapping → [assembly | mapping(retry) | END]
         assembly → review_assembly → [extraction | mapping(retry) | END]
         extraction → review_extraction → [analysis | extraction(retry) | END]
         analysis → review_analysis → reporting
@@ -1251,10 +975,6 @@ def build_graph() -> StateGraph:
     graph.add_node("review_analysis", review_analysis)
     graph.add_node("review_reporting", review_reporting)
 
-    # Phase 3: Selective retry remediation nodes
-    graph.add_node("plan_mapping_remediation", plan_mapping_remediation)
-    graph.add_node("execute_mapping_remediation", execute_mapping_remediation)
-
     # Entry / finish points for pinned langgraph runtime
     graph.set_entry_point("trial")
     graph.add_edge("trial", "review_trial")
@@ -1262,10 +982,6 @@ def build_graph() -> StateGraph:
 
     graph.add_edge("mapping", "review_mapping")
     graph.add_conditional_edges("review_mapping", route_after_mapping)
-
-    # Selective retry loop: plan → execute → back to review
-    graph.add_edge("plan_mapping_remediation", "execute_mapping_remediation")
-    graph.add_edge("execute_mapping_remediation", "review_mapping")
 
     graph.add_edge("assembly", "review_assembly")
     graph.add_conditional_edges("review_assembly", route_after_assembly)
