@@ -467,9 +467,11 @@ class LogicDecomposer:
         on the misses; nothing re-attaches a number (RFC-016 step 3 deleted the parser
         that supplied one).
 
-        Fails open: a broken review call (bad JSON, network error, anything) is
-        logged and swallowed, never raised — returns []. A review failure must not
-        fail the parse that already succeeded.
+        Fails open: a broken review call (bad JSON, a reply with no ``misses`` list,
+        network error, anything) is logged at WARNING as one "[Agent 1] Threshold review
+        failed" line and returns []. A review failure must not fail the parse that
+        already succeeded, but it must not read as "nothing missed" either: it used to
+        be logged at DEBUG, so a cut reply was indistinguishable from a clean review.
 
         :returns: the reviewer's "misses" list (each a dict with criterion_line,
             criterion_text, reason), or [] when nothing was flagged or the call failed.
@@ -497,11 +499,15 @@ class LogicDecomposer:
             )
             response = reviewer.invoke([HumanMessage(content=prompt)])
             data = self._extract_json(response.content)
-            return data.get("misses") or []
+            misses = data.get("misses") if isinstance(data, dict) else None
+            if not isinstance(misses, list):
+                raise ValueError(f"review reply carries no misses list: {json.dumps(data)[:200]}")
+            return misses
         except Exception as exc:
-            logger.debug(
-                "[Agent 1] Step 7 threshold review failed for %s, skipping (fail-open): %s",
-                nct_id, exc,
+            reason = " ".join(f"{type(exc).__name__}: {exc}".split())
+            logger.warning(
+                "[Agent 1] Threshold review failed for %s, no threshold was reviewed "
+                "(fail-open): %s", nct_id, reason[:300],
             )
             return []
 

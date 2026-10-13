@@ -241,6 +241,16 @@ def _torn_range_declined(entity_text: str, members: list[Criteria]) -> Optional[
     )
 
 
+class PlannerFailed(RuntimeError):
+    """A criterion's decomposition could not be obtained, so the trial's plan is refused.
+
+    Raised out of :meth:`CriteriaPlanner.plan`, which is the trial's planner failure path:
+    NCT generation keeps the unplanned IR and records the message as the draft's
+    ``fallbackReason``. Swallowing it per criterion left the criterion atomic with nothing
+    to say so, and a reply that did not parse was read as "not composite".
+    """
+
+
 class CriteriaPlanner:
     """
     Agent 1.5: Analyzes each criterion from Agent 1's IR output and
@@ -457,8 +467,11 @@ class CriteriaPlanner:
                 print(f"  ✓ '{criterion.entity_text}' → atomic (no decomposition)")
                 
         except Exception as e:
-            print(f"  ⚠ Decomposition failed for '{criterion.entity_text}': {e}")
-            # On failure, keep the original criterion unchanged
+            reason = " ".join(f"{type(e).__name__}: {e}".split())
+            reason = reason[:300] + " ..." if len(reason) > 300 else reason
+            message = f"Decomposition failed for {criterion.entity_text!r}: {reason}"
+            print(f"[Planner] {message}")
+            raise PlannerFailed(message) from e
         
         return criterion
     
@@ -469,11 +482,12 @@ class CriteriaPlanner:
         elif "```" in content:
             content = content.split("```")[1].split("```")[0]
         
+        # A reply that does not parse is a failed call. Read as {"decompose": false} it
+        # turned a decomposition cut off mid-item into "atomic", printed with a check mark.
         try:
             return json.loads(content.strip())
         except json.JSONDecodeError as e:
-            print(f"[Planner] JSON parsing error: {e}")
-            return {"decompose": False, "sub_criteria": []}
+            raise ValueError(f"Failed to parse planner response as JSON: {e}") from e
 
 
 # Lazy singleton

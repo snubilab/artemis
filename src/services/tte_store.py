@@ -379,6 +379,10 @@ class TTEStore:
                     continue
                 if meta.get("generationMode") != "trial_agent":
                     continue
+                # A draft whose planning failed (the unplanned IR, with the reason) is a
+                # failure, not a draft to replay: the next run plans again.
+                if meta.get("fallbackReason"):
+                    continue
 
                 return deepcopy(artifact)
         return None

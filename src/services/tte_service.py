@@ -23,7 +23,6 @@ from typing import Any, Callable
 _MAX_RULE_NAME_LENGTH = 255
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field, field_validator
 
 from src.api.models.tte import (
@@ -198,7 +197,7 @@ from src.utils.disease_anchor import (
     select_disease_anchor,
 )
 from src.utils.exceptions import DBConnectionError, DBQueryError, LLMConfigurationError
-from src.utils.llm import get_cost_tracker, get_llm
+from src.utils.llm import StrictJsonOutputParser, get_cost_tracker, get_llm, raise_if_truncated
 
 
 class _AnalysisMethodCandidate(BaseModel):
@@ -2227,7 +2226,8 @@ class TTEService:
             "stage": "final" if str(recommendation_stage).lower() == "final" else "draft",
         }
         try:
-            parser = JsonOutputParser(pydantic_object=_AnalysisStrategyFinalizerDecision)
+            # Strict: the stock parser repaired a cut reply and reported status ok.
+            parser = StrictJsonOutputParser(pydantic_object=_AnalysisStrategyFinalizerDecision)
             llm = get_llm(temperature=0.0, json_mode=True)
             candidates_payload = [
                 {
@@ -9552,6 +9552,9 @@ class TTEService:
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=prompt),
             ])
+            # A narrative stopped at the token ceiling is a prefix of the report, not a
+            # report: refuse it, so the plain report below stands in and says why.
+            raise_if_truncated(response, what="TTE report narrative")
             return response.content.strip()
         except Exception as exc:
             logging.warning("LLM report narrative generation failed: %s", exc)
