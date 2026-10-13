@@ -1,116 +1,79 @@
 """
 ConceptSet Recommendation System - Stage 1 Pipeline
 
-Phase 2: RAG + Ontology 병렬 검색 → RRF 통합
-RFC-001 v2.1 Section 2.1, 2.2.B에 따른 구현
+Phase 2: RAG 검색 (RFC-001 v2.1 Section 2.1)
+
+Stage 1 is the vector search alone. An ontology search used to run beside it and be
+fused by rank: it matched the query inside ``concept_name`` with ``LIKE '%query%'``,
+which reads vocabulary names as text (AGENTS.md § PROMPTS AND TEXT RULES, rule 2), and
+with ten rows it could take half of the fused top ten. A failed vector search raises
+(``RAGSearch.search``), so the caller records a failure instead of a mapping verdict.
 """
 import asyncio
 from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor
 
 from src.agents.conceptset.rag_search import RAGSearch, ConceptCandidate, get_rag_search
-from src.agents.conceptset.ontology_search import OntologySearch, get_ontology_search
-from src.agents.conceptset.rank_fusion import reciprocal_rank_fusion
 
 
 class Stage1Pipeline:
     """
-    Stage 1: Atomic Retrieval (병렬 실행)
-    
-    RAG와 Ontology 검색을 병렬로 실행하고 RRF로 통합.
+    Stage 1: Atomic Retrieval -- the vector search.
     """
-    
-    def __init__(
-        self, 
-        rag_search: Optional[RAGSearch] = None,
-        ontology_search: Optional[OntologySearch] = None
-    ):
+
+    def __init__(self, rag_search: Optional[RAGSearch] = None):
         self._rag_search = rag_search
-        self._ontology_search = ontology_search
-        self._executor = ThreadPoolExecutor(max_workers=2)
-    
+        self._executor = ThreadPoolExecutor(max_workers=1)
+
     @property
     def rag_search(self) -> RAGSearch:
         if self._rag_search is None:
             self._rag_search = get_rag_search()
         return self._rag_search
-    
-    @property
-    def ontology_search(self) -> OntologySearch:
-        if self._ontology_search is None:
-            self._ontology_search = get_ontology_search()
-        return self._ontology_search
-    
+
     def search_sync(
-        self, 
-        query: str, 
+        self,
+        query: str,
         top_k: int = 20,
         domain_filter: Optional[str] = None
     ) -> List[ConceptCandidate]:
         """
         동기 방식 Stage 1 검색.
-        
-        ThreadPoolExecutor로 병렬 실행.
+
+        The search runs on the executor so that a hung index raises ``TimeoutError``
+        after five seconds instead of holding the mapping worker.
         """
-        print(f"[Stage 1] Starting parallel search for: '{query}'")
-        
-        # Submit parallel tasks
+        print(f"[Stage 1] Starting search for: '{query}'")
+
         rag_future = self._executor.submit(
             self.rag_search.search, query, top_k, domain_filter
         )
-        onto_future = self._executor.submit(
-            self.ontology_search.search_by_name, query, top_k, domain_filter
-        )
-        
-        # Wait for both
         rag_results = rag_future.result(timeout=5.0)
-        onto_results = onto_future.result(timeout=5.0)
-        
-        print(f"[Stage 1] RAG: {len(rag_results)}, Ontology: {len(onto_results)}")
-        
-        # RRF Fusion
-        fused = reciprocal_rank_fusion(rag_results, onto_results)
-        
-        # Return top-k
-        top_results = fused[:top_k]
-        print(f"[Stage 1] Fused {len(fused)} → Top-{len(top_results)}")
-        
+
+        top_results = rag_results[:top_k]
+        print(f"[Stage 1] RAG: {len(rag_results)} → Top-{len(top_results)}")
         return top_results
-    
+
     async def search_async(
-        self, 
-        query: str, 
+        self,
+        query: str,
         top_k: int = 20,
         domain_filter: Optional[str] = None
     ) -> List[ConceptCandidate]:
         """
         비동기 방식 Stage 1 검색.
-        
-        asyncio.gather로 병렬 실행.
         """
-        print(f"[Stage 1] Starting async parallel search for: '{query}'")
-        
+        print(f"[Stage 1] Starting async search for: '{query}'")
+
         loop = asyncio.get_event_loop()
-        
-        # Run searches in parallel using executor
-        rag_task = loop.run_in_executor(
+        rag_results = await loop.run_in_executor(
             self._executor,
             lambda: self.rag_search.search(query, top_k, domain_filter)
         )
-        onto_task = loop.run_in_executor(
-            self._executor,
-            lambda: self.ontology_search.search_by_name(query, top_k, domain_filter)
-        )
-        
-        rag_results, onto_results = await asyncio.gather(rag_task, onto_task)
-        
-        print(f"[Stage 1] RAG: {len(rag_results)}, Ontology: {len(onto_results)}")
-        
-        # RRF Fusion
-        fused = reciprocal_rank_fusion(rag_results, onto_results)
-        
-        return fused[:top_k]
-    
+
+        print(f"[Stage 1] RAG: {len(rag_results)}")
+        return rag_results[:top_k]
+
     def __del__(self):
         """Cleanup executor"""
         self._executor.shutdown(wait=False)

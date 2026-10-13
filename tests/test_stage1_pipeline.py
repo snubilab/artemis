@@ -1,13 +1,12 @@
 """
 Phase 2 Unit Tests: Stage 1 Pipeline
 
-RRF, RAG Search, Ontology Search 단위 테스트
+RRF, RAG Search, Stage 1 단위 테스트
 """
 import pytest
 from unittest.mock import patch, MagicMock
 
 from src.agents.conceptset.rag_search import RAGSearch, ConceptCandidate
-from src.agents.conceptset.ontology_search import OntologySearch
 from src.agents.conceptset.rank_fusion import reciprocal_rank_fusion, weighted_reciprocal_rank_fusion
 from src.agents.conceptset.stage1_pipeline import Stage1Pipeline
 
@@ -149,44 +148,21 @@ class TestRAGSearch:
         assert results[0].domain_id == "Condition"
     
     @patch('src.agents.conceptset.rag_search.get_collection')
-    def test_search_empty_db(self, mock_get_collection):
-        """빈 DB 처리"""
+    def test_should_raise_when_the_vector_index_fails(self, mock_get_collection):
+        """A failed query is not an empty answer.
+
+        The vector search is the RAG fallback's only candidate source. Returned as ``[]``,
+        a broken index reads downstream as "the vocabulary has no counterpart" and the
+        criterion is refused with a mapping verdict; raised, it is recorded as the failure
+        it is (``_unmappedCriteria`` with the exception, ``refusalCode`` None).
+        """
         mock_collection = MagicMock()
-        mock_collection.query.side_effect = Exception("Empty DB")
+        mock_collection.query.side_effect = RuntimeError("index unavailable")
         mock_get_collection.return_value = mock_collection
-        
+
         searcher = RAGSearch()
-        results = searcher.search("anything")
-        
-        assert results == []
-
-
-class TestOntologySearch:
-    """Ontology Search 테스트 (Mocked)"""
-    
-    @patch('src.agents.conceptset.ontology_search.SessionLocal')
-    def test_search_by_name(self, mock_session_local):
-        """이름으로 검색"""
-        mock_session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.fetchall.return_value = [
-            MagicMock(
-                concept_id=201820,
-                concept_name="Type 2 Diabetes",
-                domain_id="Condition",
-                vocabulary_id="SNOMED",
-                concept_class_id="Clinical Finding"
-            )
-        ]
-        mock_session.execute.return_value = mock_result
-        mock_session_local.return_value = mock_session
-        
-        searcher = OntologySearch()
-        results = searcher.search_by_name("diabetes")
-        
-        assert len(results) == 1
-        assert results[0].concept_id == 201820
-        assert results[0].source == "ontology"
+        with pytest.raises(RuntimeError, match="index unavailable"):
+            searcher.search("anything")
 
 
 class TestStage1Pipeline:
@@ -194,37 +170,30 @@ class TestStage1Pipeline:
     
     def test_pipeline_initialization(self):
         """파이프라인 초기화"""
-        # Mock으로 의존성 주입
         mock_rag = MagicMock()
-        mock_ontology = MagicMock()
-        
-        pipeline = Stage1Pipeline(
-            rag_search=mock_rag,
-            ontology_search=mock_ontology
-        )
-        
+
+        pipeline = Stage1Pipeline(rag_search=mock_rag)
+
         assert pipeline.rag_search == mock_rag
-        assert pipeline.ontology_search == mock_ontology
-    
-    def test_search_sync(self):
-        """동기 검색"""
-        mock_rag = MagicMock()
-        mock_ontology = MagicMock()
-        
-        mock_rag.search.return_value = [
-            ConceptCandidate(concept_id=1, concept_name="A")
-        ]
-        mock_ontology.search_by_name.return_value = [
-            ConceptCandidate(concept_id=2, concept_name="B")
-        ]
-        
-        pipeline = Stage1Pipeline(
-            rag_search=mock_rag,
-            ontology_search=mock_ontology
+
+    def test_should_return_only_the_vector_candidates_when_searching(self, monkeypatch):
+        """No concept is found by matching the query inside ``concept_name``.
+
+        The LIKE '%query%' search over concept names (RFC-016 rule 2: reading OMOP concept
+        names as text) used to be fused with the vector results by rank, so a name match
+        could take half of the top ten. A name search that would return an extra concept is
+        installed here; it must not reach the result.
+        """
+        monkeypatch.setattr(
+            "src.agents.conceptset.ontology_search.OntologySearch.search_by_name",
+            lambda *a, **k: [ConceptCandidate(concept_id=2, concept_name="B")],
+            raising=False,
         )
-        
+        mock_rag = MagicMock()
+        mock_rag.search.return_value = [ConceptCandidate(concept_id=1, concept_name="A")]
+
+        pipeline = Stage1Pipeline(rag_search=mock_rag)
         results = pipeline.search_sync("test query")
-        
-        assert len(results) == 2
+
+        assert [c.concept_id for c in results] == [1]
         mock_rag.search.assert_called_once()
-        mock_ontology.search_by_name.assert_called_once()

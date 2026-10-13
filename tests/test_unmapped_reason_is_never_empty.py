@@ -173,18 +173,20 @@ class TestTheRefusalVocabularyIsClosed:
 
 
 class TestTheRealMechanism:
-    """The five-second ontology timeout, reproduced through the real pipeline.
+    """The five-second Stage-1 timeout, reproduced through the real pipeline.
 
     Everything from `_map_criterion` down to `concurrent.futures.Future.result` is the
     shipped code here: the real `ConceptSetRecommender`, the real `Stage2Pipeline`, the
     real `Stage1Pipeline`, and a real `TimeoutError` raised by a real future that really
-    did not finish in time. Only the two leaf searchers are stubs -- one slow, one fast --
-    because a genuine timeout needs something genuinely slow to wait on.
+    did not finish in time. Only the leaf searcher is a stub, and a slow one, because a
+    genuine timeout needs something genuinely slow to wait on. (The defect was found on
+    the ontology name search, which has since been removed; the vector search is Stage 1's
+    only searcher and carries the same deadline.)
 
     Nothing in this test constructs a `TimeoutError`, which is the point. A test that
     raises the exception itself proves the recording; only this one proves that what the
-    pipeline raises when the ontology search hangs is an exception with an empty `str()`,
-    which is the fact the whole defect rested on.
+    pipeline raises when the search hangs is an exception with an empty `str()`, which is
+    the fact the whole defect rested on.
     """
 
     @staticmethod
@@ -195,16 +197,15 @@ class TestTheRealMechanism:
         from src.agents.conceptset.stage1_pipeline import Stage1Pipeline
         from src.agents.conceptset.stage2_pipeline import Stage2Pipeline
 
-        rag = type("_Rag", (), {"search": staticmethod(lambda *a, **k: [])})()
-        onto = type(
-            "_Onto",
+        rag = type(
+            "_Rag",
             (),
             # Longer than the 5.0s deadline the pipeline itself sets, by enough that the
             # timeout is not a race, and short enough that the worker is finished a
             # couple of seconds after the test stops waiting on it.
-            {"search_by_name": staticmethod(lambda *a, **k: time.sleep(7.0) or [])},
+            {"search": staticmethod(lambda *a, **k: time.sleep(7.0) or [])},
         )()
-        stage1 = Stage1Pipeline(rag_search=rag, ontology_search=onto)
+        stage1 = Stage1Pipeline(rag_search=rag)
         stage2 = Stage2Pipeline(stage1=stage1, phoebe=MagicMock())
 
         router = MagicMock()

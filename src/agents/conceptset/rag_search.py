@@ -57,23 +57,18 @@ class RAGSearch:
             ConceptCandidate 리스트 (score 높은 순)
         """
         print(f"[RAG Search] Query: '{query_text}' (n={n_results})")
-        
-        try:
-            # Build where clause for filtering
-            where_clause = None
-            if domain_filter:
-                where_clause = {"domain_id": domain_filter}
-            
-            results = self.collection.query(
-                query_texts=[query_text],
-                n_results=n_results,
-                where=where_clause,
-                include=["metadatas", "distances", "documents"]
-            )
-        except Exception as e:
-            print(f"[RAG Search] Failed (DB might be empty): {e}")
-            return []
-        
+
+        # A failed query raises. It used to print and return [], which the RAG fallback
+        # reads as "no candidate" and turns into a mapping refusal -- a failure recorded
+        # as a verdict about the vocabulary.
+        where_clause = {"domain_id": domain_filter} if domain_filter else None
+        results = self.collection.query(
+            query_texts=[query_text],
+            n_results=n_results,
+            where=where_clause,
+            include=["metadatas", "distances", "documents"]
+        )
+
         candidates = []
         if results and results['ids'] and results['ids'][0]:
             ids = results['ids'][0]
