@@ -144,7 +144,7 @@ DELIVERY_SCRIPTS = tuple(
 DATA_SUFFIXES = frozenset({".json", ".yaml", ".yml", ".txt", ".csv", ".tsv"})
 
 # sha256 of the baseline's sorted pending keys (see check 4). Changing it is the growth step.
-PENDING_BASELINE_SHA256 = "29817585cc861cd9c2100f275aba5271ef9b201c4bf6cf78e642a673d35a531f"
+PENDING_BASELINE_SHA256 = "4e8eaea9a3549acfc201d1f46384fad9f3ccb65504ea45b8dd29692bf987b605"
 
 RE_MODULES = frozenset({"re", "regex"})
 RE_FUNCTIONS = frozenset(

@@ -1,0 +1,97 @@
+"""The ledger checks in ``tests/test_no_text_rules.py``, each shown failing on its own case.
+
+A check that only ever passes is indistinguishable from one that does nothing, so every
+check here is driven into its failure, from the real event where one exists.
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from tests import test_no_text_rules as guard
+
+# The pending list as it stood before the 2026-10-13 guard extension: the two A7 regexes.
+PRE_EXTENSION_KEYS = [
+    ["src/agents/agent1/criteria_dedup.py", "_CONJUNCTION_MARKER", "re"],
+    ["src/agents/agent1/criteria_dedup.py", "_DISJUNCTION_MARKER", "re"],
+]
+
+
+def test_should_reject_the_2026_10_13_growth_when_the_baseline_predates_it(tmp_path, monkeypatch):
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text(json.dumps({"keys": PRE_EXTENSION_KEYS}), encoding="utf-8")
+    monkeypatch.setattr(guard, "BASELINE_PATH", baseline)
+    monkeypatch.setattr(guard, "PENDING_BASELINE_SHA256", guard.baseline_digest(PRE_EXTENSION_KEYS))
+    with pytest.raises(AssertionError, match="the pending list only shrinks") as raised:
+        guard.test_should_not_grow_the_pending_list_when_the_baseline_is_unchanged()
+    grown = str(raised.value).count("  (")
+    pending = sum(1 for entry in guard.load_ledger() if entry["kind"] == "pending")
+    assert grown == pending - len(PRE_EXTENSION_KEYS), raised.value
+
+
+def test_should_reject_a_baseline_edit_when_the_pinned_hash_is_unchanged(tmp_path, monkeypatch):
+    recorded = json.loads(guard.BASELINE_PATH.read_text(encoding="utf-8"))
+    recorded["keys"].append(["src/services/tte_service.py", "TTEService.any_method", "literal"])
+    edited = tmp_path / "baseline.json"
+    edited.write_text(json.dumps(recorded), encoding="utf-8")
+    monkeypatch.setattr(guard, "BASELINE_PATH", edited)
+    with pytest.raises(AssertionError, match="PENDING_BASELINE_SHA256"):
+        guard.test_should_not_grow_the_pending_list_when_the_baseline_is_unchanged()
+
+
+def test_should_report_a_pending_rule_as_gone_when_no_site_of_its_sink_remains_in_its_symbol(
+    monkeypatch,
+):
+    stale = {
+        "file": "src/agents/agent1/criteria_dedup.py",
+        "symbol": "dedup_enabled",
+        "sink": "re",
+        "kind": "pending",
+        "inventory_id": "A7",
+        "status": "dormant",
+        "decides": "nothing: dedup_enabled holds no regex",
+        "reason": "negative case for check 2",
+    }
+    entries = [*guard._ledger_entries(), stale]
+    monkeypatch.setattr(guard, "_ledger_entries", lambda: entries)
+    with pytest.raises(AssertionError, match="dedup_enabled re"):
+        guard.test_should_find_every_pending_rule_in_the_code_when_it_is_still_listed()
+
+
+def test_should_keep_a_pending_rule_pending_when_its_pattern_is_edited_and_not_removed(
+    tmp_path, monkeypatch
+):
+    """Keyed by fingerprint, an edited regex left its pending entry 'removed' and its new
+    text unlisted; keyed by (file, symbol, sink) it stays pending until the sink is gone."""
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    module = tmp_path / "rule.py"
+    pending = {("rule.py", "_CONJUNCTION_MARKER", "re")}
+    module.write_text(
+        'import re\n_CONJUNCTION_MARKER = re.compile(r"\\band\\b|\\bplus\\b")\n', encoding="utf-8"
+    )
+    before = guard.scan_paths([module])
+    module.write_text(
+        'import re\n_CONJUNCTION_MARKER = re.compile(r"\\band\\b")\n', encoding="utf-8"
+    )
+    edited = guard.scan_paths([module])
+    assert before[0].fingerprint != edited[0].fingerprint
+    assert all(guard._covered(site, set(), pending) for site in edited)
+    module.write_text("_CONJUNCTION_MARKER = None\n", encoding="utf-8")
+    assert not {(s.file, s.symbol, s.sink) for s in guard.scan_paths([module])} & pending
+
+
+def test_should_fail_when_a_rule_module_holds_no_pending_rule(monkeypatch):
+    # The real event: both modules sat in RULE_MODULES after their rules were removed
+    # (criterion_seed A10, disease_anchor C8 in 37bd1d8), so check 3 checked nothing.
+    stale = frozenset({"src/utils/criterion_seed.py", "src/utils/disease_anchor.py"})
+    monkeypatch.setattr(guard, "RULE_MODULES", stale)
+    with pytest.raises(AssertionError, match="hold no pending rule"):
+        guard.test_should_not_allow_any_site_when_it_lives_in_a_rule_module()
+
+
+def test_should_scan_a_file_when_only_the_ledger_names_it(monkeypatch):
+    named = {"file": "scripts/prompt_ab.py", "fingerprint": "re:x", "kind": "allowed"}
+    monkeypatch.setattr(guard, "_ledger_entries", lambda: [named])
+    assert guard.ROOT / "scripts" / "prompt_ab.py" in guard.scanned_files()
