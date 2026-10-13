@@ -1,0 +1,21 @@
+{
+  "about": "The pending text rules the guard accepts. tests/test_no_text_rules.py requires every pending ledger key to be listed here and this list to hash to PENDING_BASELINE_SHA256. Growing it is a reviewed step: change this file and the hash in one commit and say why in the commit message. Removing a rule needs no change here.",
+  "recorded": {
+    "date": "2026-10-13",
+    "tree": "p3-guard branched from p3-mapper-fixes 79b9a3f",
+    "step": "initial baseline: the two pending A7 regexes the ledger held before the guard extension, re-keyed by (file, symbol, sink)",
+    "pending": 2
+  },
+  "keys": [
+    [
+      "src/agents/agent1/criteria_dedup.py",
+      "_CONJUNCTION_MARKER",
+      "re"
+    ],
+    [
+      "src/agents/agent1/criteria_dedup.py",
+      "_DISJUNCTION_MARKER",
+      "re"
+    ]
+  ]
+}
