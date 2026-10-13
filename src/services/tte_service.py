@@ -6464,111 +6464,6 @@ class TTEService:
                 rec["drug_class"], rec["ingredients"],
             )
 
-    def _resolve_class_drug_concept_set(
-        self, class_name: str, ingredients: list[str]
-    ) -> dict[str, Any] | None:
-        """Build one Drug concept set (with descendants) from a class's ingredient names.
-
-        Resolves each ingredient to its standard RxNorm Ingredient concept and unions
-        them, reusing the same expression builder as the exact-ingredient path.
-        """
-        names = [i.strip().lower() for i in (ingredients or []) if i and i.strip()]
-        if not names:
-            return None
-        try:
-            import psycopg2
-
-            from src.settings import settings
-
-            conn = psycopg2.connect(settings.DATABASE_URL)
-            try:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        f"""
-                        SELECT concept_id FROM {settings.CDM_SCHEMA}.concept
-                        WHERE LOWER(concept_name) = ANY(%s)
-                          AND standard_concept = 'S'
-                          AND concept_class_id = 'Ingredient'
-                          AND vocabulary_id = 'RxNorm'
-                          AND invalid_reason IS NULL
-                        """,
-                        (names,),
-                    )
-                    ids = [int(r[0]) for r in cur.fetchall()]
-            finally:
-                conn.close()
-        except Exception as exc:
-            logging.debug("[TTE] class concept lookup failed for '%s': %s", class_name, exc)
-            return None
-        if not ids:
-            return None
-        candidates = self._fetch_concept_candidates(ids)
-        if not candidates:
-            return None
-        from src.agents.conceptset.expression_builder import get_expression_builder
-
-        # roll_up=False: DrugEra is ingredient-level, so no descendant expansion is
-        # needed — and roll_up's overbroad filter would otherwise drop high-descendant
-        # ingredients like sitagliptin (the most-used DPP-4i) from the comparator set.
-        expr = get_expression_builder().build_expression(
-            candidates, roll_up=False, criterion_name=class_name
-        ).expression.to_atlas_json()
-        if not expr.get("items"):
-            return None
-        return {"name": f"{class_name} (recommended comparator)", "expression": expr}
-
-    def _treatment_atc_class(self, drug_name: str) -> str:
-        """The treatment drug's own ATC-4th class name (context for the literature query)."""
-        drug = (drug_name or "").strip()
-        if not drug:
-            return ""
-        try:
-            import psycopg2
-
-            from src.settings import settings
-
-            conn = psycopg2.connect(settings.DATABASE_URL)
-        except Exception:
-            return ""
-        S = settings.CDM_SCHEMA
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"""SELECT concept_id FROM {S}.concept WHERE LOWER(concept_name) = LOWER(%s)
-                        AND vocabulary_id = 'RxNorm' AND concept_class_id = 'Ingredient'
-                        AND standard_concept = 'S' AND invalid_reason IS NULL""",
-                    (drug,),
-                )
-                row = cur.fetchone()
-                if not row:
-                    return ""
-                cur.execute(
-                    f"""SELECT concept_id_2 FROM {S}.concept_relationship
-                        WHERE concept_id_1 = %s AND relationship_id = 'RxNorm - ATC pr lat'
-                          AND invalid_reason IS NULL""",
-                    (row[0],),
-                )
-                prim = cur.fetchone()
-                if not prim:
-                    return ""
-                cur.execute(f"SELECT concept_class_id, concept_name FROM {S}.concept WHERE concept_id = %s", (prim[0],))
-                cc = cur.fetchone()
-                if cc and cc[0] == "ATC 4th":
-                    return cc[1]
-                cur.execute(
-                    f"""SELECT c.concept_name FROM {S}.concept_ancestor ca
-                        JOIN {S}.concept c ON c.concept_id = ca.ancestor_concept_id
-                        WHERE ca.descendant_concept_id = %s AND c.vocabulary_id = 'ATC'
-                          AND c.concept_class_id = 'ATC 4th'""",
-                    (prim[0],),
-                )
-                r = cur.fetchone()
-                return r[0] if r else ""
-        except Exception:
-            return ""
-        finally:
-            conn.close()
-
     # ------------------------------------------------------------------
     # ADR-029: criterion feasibility gating (direct CDM prevalence counts;
     # ACHILLES is only an optional fast-triage accelerator, not required)
@@ -6675,10 +6570,16 @@ class TTEService:
 
         # Literature-FIRST: prior emulations / comparative-effectiveness studies name the
         # CV-neutral active comparator; the CDM only grounds feasibility (below).
+        #
+        # No treatment class is passed. It used to be found by matching the arm name
+        # against ``concept_name`` -- a text rule over vocabulary names -- and the
+        # recommendation it fed is only logged, never applied (below), so it changed no
+        # output. The P3 runs never reached this call: indication was unknown for all three
+        # placebo comparators.
         try:
             result = recommend_from_literature(
                 treatment_arm_name,
-                self._treatment_atc_class(treatment_arm_name),
+                "",
                 indication,
                 self._recommender_outcome(study),
                 trial_name=(study or {}).get("name"),

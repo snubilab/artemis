@@ -114,3 +114,35 @@ class TestBuildRecommendedPlaceboComparatorCirce:
 
         assert circe == {"kind": "derived"}
         fallback.assert_called_once()
+
+    def test_should_not_look_up_the_arm_name_in_the_vocabulary_when_asking_for_a_recommendation(
+        self,
+    ) -> None:
+        """The treatment's ATC class used to be found by matching the arm name against
+        ``concept_name`` (a text rule over vocabulary names, inventory class C). The
+        recommendation is logged and never applied, so the class it carried changed no
+        output; it is now not resolved at all, and no database is reached for it."""
+        svc = _make_service()
+        asked: list[tuple[Any, ...]] = []
+        connects: list[Any] = []
+
+        def recommend(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            asked.append(args)
+            return {"recommendation": None}
+
+        def connect(*args: Any, **kwargs: Any) -> Any:
+            connects.append(args)
+            raise ConnectionError("no database in this test")
+
+        with patch.object(
+            svc, "_build_disease_based_comparator_circe", return_value={"kind": "derived"}
+        ), patch(
+            "src.agents.comparator.recommender.recommend_from_literature", side_effect=recommend
+        ), patch("psycopg2.connect", side_effect=connect):
+            circe = svc._build_recommended_placebo_comparator_circe(
+                _fake_eligibility(), "Empagliflozin", study=_fake_study(), time_params={}
+            )
+
+        assert circe == {"kind": "derived"}
+        assert connects == []
+        assert asked == [("Empagliflozin", "", "Type 2 Diabetes", "MACE")]
