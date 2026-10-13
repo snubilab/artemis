@@ -107,7 +107,8 @@ def process_single_rule(rule: TROYRule, troy_json: Dict, db_pool: ThreadedConnec
                     ids = []
                     meta = {"error": str(e), "processing_ms": (time.time() - _start) * 1000}
                 rule_cache_misses += 1
-                if agent2_cache and ids:
+                # A mapping a failed stage left as seeds alone is not an answer to replay.
+                if agent2_cache and ids and not _detail.mapping_failures():
                     new_cache_entries.append({"entity_text": qt, "domain_hint": query_domain, "concept_ids": ids})
 
             all_agent2_ids.extend(ids)

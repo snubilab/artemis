@@ -25,6 +25,7 @@ from typing import Any
 import pytest
 
 from src.agents.agent2.agent2_cache import Agent2Cache
+from src.models.ir import MappingResult
 
 ROOT = Path(__file__).resolve().parents[1]
 TEXT = "type 2 diabetes"
@@ -89,11 +90,8 @@ class _Agent2:
 
     def process_with_details(self, text: str, domain_hint: str | None = None) -> Any:
         self.domains.append(domain_hint)
-        return SimpleNamespace(
-            concept_ids=[100 if domain_hint == "Measurement" else 200],
-            processing_time_ms=0.0,
-            overbroad_concept_ids=[],
-        )
+        # The type Agent 2 returns: the script reads its recorded failures before caching.
+        return MappingResult(concept_ids=[100 if domain_hint == "Measurement" else 200])
 
 
 def test_should_map_again_when_benchmark_a_direct_meets_one_name_under_another_domain(

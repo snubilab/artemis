@@ -239,7 +239,8 @@ def _invoke_agent2_with_split(entity_text: str, domain: str, cur, cache=None):
             ids, meta = invoke_agent2(sq, domain=domain)
             all_raw_ids.extend(ids)
             misses += 1
-            if cache:
+            # An Agent 2 exception (empty ids) or a stage failure is not an answer to replay.
+            if cache and not (meta.get("error") or meta.get("mapping_failures")):
                 new_entries.append({"entity_text": sq, "domain_hint": domain, "concept_ids": ids})
     
     # Batch write new cache entries (single I/O)
