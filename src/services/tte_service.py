@@ -5351,8 +5351,9 @@ class TTEService:
                 batch_results = _retriever.batch_search(
                     expanded_texts, n_results=60, domain_hints=domain_hints,
                 )
-                for idx, text in enumerate(expanded_texts):
-                    candidates = batch_results.get(text, [])
+                # By position: query `idx` was asked under this criterion's own domain hint,
+                # and one seed asked under two hints is two queries with two pools.
+                for idx, candidates in enumerate(batch_results.by_index):
                     if candidates:
                         pre_fetched[idx] = candidates
 

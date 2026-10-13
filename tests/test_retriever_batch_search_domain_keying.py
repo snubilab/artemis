@@ -96,24 +96,17 @@ class TestSameTextUnderTwoDomainHints:
         results = r.batch_search(
             ["metformin", "metformin"], n_results=5, domain_hints=["Drug", "Condition"],
         )
-        assert [c.domain_id for c in results[("metformin", "Drug")]] == ["Drug"]
-        assert [c.domain_id for c in results[("metformin", "Condition")]] == ["Condition"]
-        assert results.get(("metformin", "Observation"), []) == []
+        assert [c.domain_id for c in results.by_pair[("metformin", "Drug")]] == ["Drug"]
+        assert [c.domain_id for c in results.by_pair[("metformin", "Condition")]] == ["Condition"]
+        assert results.by_pair.get(("metformin", "Observation"), []) == []
 
-    def test_should_record_the_text_whose_key_is_ambiguous(self, two_hints):
-        r = _retriever(two_hints)
-        results = r.batch_search(
-            ["metformin", "metformin"], n_results=5, domain_hints=["Drug", "Condition"],
-        )
-        assert results.colliding_texts == ["metformin"], \
-            "a text-keyed read on this batch cannot be correct; it must not be silent"
-
-    def test_should_not_call_a_text_ambiguous_when_the_hint_is_the_same(self, two_hints):
+    def test_should_answer_both_positions_when_one_text_is_queried_twice_under_one_hint(
+        self, two_hints
+    ):
         r = _retriever(two_hints)
         results = r.batch_search(
             ["metformin", "metformin"], n_results=5, domain_hints=["Drug", "Drug"],
         )
-        assert results.colliding_texts == []
         assert [c.concept_id for c in results.by_index[0]] == [1503297]
         assert [c.concept_id for c in results.by_index[1]] == [1503297]
 
@@ -145,30 +138,10 @@ class TestOneFailingGroupDoesNotEraseAnother:
         assert results.by_index[1] == []
 
 
-class TestBackwardCompatibleTextKeyedView:
-    def test_should_still_answer_a_text_key_for_the_existing_consumer(self, two_hints):
-        """tte_service.py:4800 does `batch_results.get(text, [])`. That consumer is
-        unchanged by this fix and must keep working on the non-colliding case."""
-        r = _retriever(two_hints)
-        results = r.batch_search(
-            ["metformin", "type 2 diabetes"], n_results=5,
-            domain_hints=["Drug", "Condition"],
-        )
-        assert [c.concept_id for c in results.get("metformin", [])] == [1503297]
-        assert [c.concept_id for c in results.get("type 2 diabetes", [])] == [201826]
-        assert results.get("never queried", []) == []
-
-    def test_should_behave_as_a_mapping(self, two_hints):
-        r = _retriever(two_hints)
-        results = r.batch_search(["metformin"], n_results=5, domain_hints=["Drug"])
-        assert "metformin" in results
-        assert len(results) == 1
-        assert list(results.keys()) == ["metformin"]
-
+class TestTheResultObject:
     def test_should_return_an_empty_result_for_no_queries(self, two_hints):
         r = _retriever(two_hints)
         results = r.batch_search([], n_results=5)
-        assert len(results) == 0
         assert results.by_index == []
         assert two_hints.calls == []
 

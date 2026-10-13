@@ -1,0 +1,1636 @@
+{
+  "about": "Real store rows for the three 2026-10-14 text-key removals (worktree p3-text-keys), copied verbatim from read-only sources; each section names its source key, study id, role and row ids. Nothing in a row is edited here; a test that varies a field says so itself.",
+  "sources": {
+    "p3_dry_arm_a_store": {
+      "path": "output/site_gap/2026-10-12_p3_dry/arm_a/store/studies.json",
+      "sha256": "5ecedb4eb70ce40527a91bc7af090750712e41e66009bda998fc0c77e9e67994"
+    },
+    "p3_dry_arm_b_store": {
+      "path": "output/site_gap/2026-10-12_p3_dry/arm_b/store/studies.json",
+      "sha256": "aa8fe75f709957c53ea605ea4bc1587b624846bce8391c94734481c8638236e2"
+    }
+  },
+  "leader_age_group": {
+    "source": "p3_dry_arm_b_store",
+    "study": 1,
+    "role": "inclusionCriteria",
+    "rows": [
+      {
+        "id": 33,
+        "description": "Minimum age and risk factors",
+        "domain": "Demographics",
+        "valueConstraint": null,
+        "sourceText": "age",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": true,
+        "mappable": false,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "min. 50 years",
+          "quantity_kind": "other",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 34,
+        "description": "Age threshold for first group",
+        "domain": "Demographics",
+        "valueConstraint": null,
+        "sourceText": "age",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "age min. 50 years at screening",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "50 years",
+          "quantity_kind": "other",
+          "reference_bound": "none"
+        },
+        "_annotationRejected": [
+          {
+            "field": "relation",
+            "value": {
+              "relation": "any",
+              "relation_span": null,
+              "cardinality": null
+            },
+            "reason": "relation_span is not a substring of protocolLine"
+          }
+        ]
+      },
+      {
+        "id": 35,
+        "description": "Cardiovascular disease",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "cardiovascular disease",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "concomitant cardiovascular",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 21,
+        "conceptSetName": "cardiovascular disease",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 36,
+        "description": "Cerebrovascular disease",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "cerebrovascular disease",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "cerebrovascular",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 22,
+        "conceptSetName": "cerebrovascular disease",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 37,
+        "description": "Peripheral vascular disease",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "peripheral vascular disease",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "peripheral vascular disease",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 23,
+        "conceptSetName": "peripheral vascular disease",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 38,
+        "description": "Chronic renal failure",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "chronic renal failure",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "chronic renal failure",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 24,
+        "conceptSetName": "chronic renal failure",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 39,
+        "description": "Chronic heart failure",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "chronic heart failure",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "chronic heart failure",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 25,
+        "conceptSetName": "chronic heart failure",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 40,
+        "description": "Age threshold for second group",
+        "domain": "Demographics",
+        "valueConstraint": null,
+        "sourceText": "age",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "age min. 60 years at screening",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "50 years",
+          "quantity_kind": "other",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 41,
+        "description": "Other specified risk factors of cardiovascular disease",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "other specified risk factors of cardiovascular disease",
+        "protocolLine": "18. Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
+        "protocolSpan": "other specified risk factors of cardiovascular disease",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "PRESENCE",
+        "groupId": "749e4637-61e3-4ac0-bf34-36119d06e51d",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "conditional",
+          "conditional_span": "age min. 60 years at screening and ",
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      }
+    ]
+  },
+  "carmelina_hypersensitivity_group": {
+    "source": "p3_dry_arm_a_store",
+    "study": 9,
+    "role": "exclusionCriteria",
+    "rows": [
+      {
+        "id": 28,
+        "description": "Hypersensitivity to investigational products",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Hypersensitivity",
+        "protocolLine": "Known hypersensitivity or allergy to the investigational products or its excipients",
+        "protocolSpan": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "ade782dc-3b92-45ed-8c84-f735074282c6",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": true,
+        "mappable": false,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        },
+        "_annotationRejected": [
+          {
+            "field": "relation",
+            "value": {
+              "relation": "any",
+              "relation_span": null,
+              "cardinality": null
+            },
+            "reason": "relation_span is not a substring of protocolLine"
+          }
+        ]
+      },
+      {
+        "id": 29,
+        "description": "Hypersensitivity to investigational products",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Hypersensitivity",
+        "protocolLine": "Known hypersensitivity or allergy to the investigational products or its excipients",
+        "protocolSpan": "Hypersensitivity",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 24,
+        "conceptSetName": "Hypersensitivity",
+        "logicType": "ABSENCE",
+        "groupId": "ade782dc-3b92-45ed-8c84-f735074282c6",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 30,
+        "description": "Allergy to investigational products",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Allergy",
+        "protocolLine": "Known hypersensitivity or allergy to the investigational products or its excipients",
+        "protocolSpan": "allergy",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 25,
+        "conceptSetName": "Allergy",
+        "logicType": "ABSENCE",
+        "groupId": "ade782dc-3b92-45ed-8c84-f735074282c6",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 31,
+        "description": "Hypersensitivity to excipients",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Hypersensitivity",
+        "protocolLine": "Known hypersensitivity or allergy to the investigational products or its excipients",
+        "protocolSpan": "Hypersensitivity",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "ade782dc-3b92-45ed-8c84-f735074282c6",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "investigational products",
+              "span": "investigational products"
+            },
+            {
+              "text": "excipients",
+              "span": "excipients"
+            }
+          ],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        },
+        "_annotationRejected": [
+          {
+            "field": "base_span",
+            "value": null,
+            "reason": "not a substring of protocolLine"
+          }
+        ]
+      },
+      {
+        "id": 32,
+        "description": "Allergy to excipients",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Allergy",
+        "protocolLine": "Known hypersensitivity or allergy to the investigational products or its excipients",
+        "protocolSpan": "allergy",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "ade782dc-3b92-45ed-8c84-f735074282c6",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "investigational products",
+              "span": "investigational products"
+            },
+            {
+              "text": "excipients",
+              "span": "excipients"
+            }
+          ],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        },
+        "_annotationRejected": [
+          {
+            "field": "base_span",
+            "value": null,
+            "reason": "not a substring of protocolLine"
+          }
+        ]
+      }
+    ]
+  },
+  "carmelina_revascularisation_group": {
+    "source": "p3_dry_arm_b_store",
+    "study": 9,
+    "role": "exclusionCriteria",
+    "rows": [
+      {
+        "id": 28,
+        "description": "Pre-planned or previous coronary artery re-vascularisation",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "Coronary artery re-vascularisation",
+        "protocolLine": "7. Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or",
+        "protocolSpan": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "f723aaaa-d60b-4a3c-9a87-202ac4d01c96",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": true,
+        "mappable": false,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 29,
+        "description": "Pre-planned Percutaneous Coronary Intervention (PCI)",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "PCI",
+        "protocolLine": "7. Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or",
+        "protocolSpan": "PCI",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 35,
+        "conceptSetName": "Pre-planned Percutaneous Coronary Intervention (PCI)",
+        "logicType": "ABSENCE",
+        "groupId": "f723aaaa-d60b-4a3c-9a87-202ac4d01c96",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "PCI",
+              "span": "PCI"
+            }
+          ],
+          "base_span": "Pre-planned coronary artery re-vascularisation",
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 30,
+        "description": "Pre-planned Coronary Artery Bypass Grafting (CABG)",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "CABG",
+        "protocolLine": "7. Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or",
+        "protocolSpan": "CABG",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 36,
+        "conceptSetName": "Pre-planned Coronary Artery Bypass Grafting (CABG)",
+        "logicType": "ABSENCE",
+        "groupId": "f723aaaa-d60b-4a3c-9a87-202ac4d01c96",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "PCI",
+              "span": "PCI"
+            }
+          ],
+          "base_span": "Pre-planned coronary artery re-vascularisation",
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 31,
+        "description": "Previous Percutaneous Coronary Intervention (PCI)",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "PCI",
+        "protocolLine": "7. Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or",
+        "protocolSpan": "any previous PCI",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "f723aaaa-d60b-4a3c-9a87-202ac4d01c96",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "PCI",
+              "span": "any previous PCI"
+            }
+          ],
+          "base_span": "Pre-planned coronary artery re-vascularisation (PCI, CABG)",
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      }
+    ]
+  },
+  "aristotle_restated_blood_pressure_groups": {
+    "source": "p3_dry_arm_b_store",
+    "study": 3,
+    "role": "exclusionCriteria",
+    "rows": [
+      {
+        "id": 15,
+        "description": "Uncontrolled hypertension",
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 180.0,
+          "valueHigh": null,
+          "unitText": "mm Hg",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "systolic BP or diastolic BP",
+        "protocolLine": "6. Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+        "protocolSpan": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "3d8632c3-f039-481a-bf47-bd25ef00c4dd",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": true,
+        "mappable": false,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": ", or",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 16,
+        "description": "Systolic Blood Pressure Exceeding Threshold",
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 180.0,
+          "valueHigh": null,
+          "unitText": "mm Hg",
+          "referenceBound": "absolute",
+          "unitConceptId": 8876
+        },
+        "sourceText": "systolic BP",
+        "protocolLine": "6. Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+        "protocolSpan": "systolic BP",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 16,
+        "conceptSetName": "systolic BP",
+        "logicType": "ABSENCE",
+        "groupId": "3d8632c3-f039-481a-bf47-bd25ef00c4dd",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        },
+        "_annotationRejected": [
+          {
+            "field": "relation",
+            "value": {
+              "relation": "any",
+              "relation_span": null,
+              "cardinality": null
+            },
+            "reason": "relation_span is not a substring of protocolLine"
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "description": "Diastolic Blood Pressure Exceeding Threshold",
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 100.0,
+          "valueHigh": null,
+          "unitText": "mm Hg",
+          "referenceBound": "absolute",
+          "unitConceptId": 8876
+        },
+        "sourceText": "diastolic BP",
+        "protocolLine": "6. Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+        "protocolSpan": "diastolic BP",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 17,
+        "conceptSetName": "diastolic BP",
+        "logicType": "ABSENCE",
+        "groupId": "3d8632c3-f039-481a-bf47-bd25ef00c4dd",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 18,
+        "description": "Uncontrolled hypertension",
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 100.0,
+          "valueHigh": null,
+          "unitText": "mm Hg",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "systolic BP or diastolic BP",
+        "protocolLine": "6. Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+        "protocolSpan": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "82f6b0eb-9d37-4003-8bbd-2640bc4eaa5e",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": true,
+        "mappable": false,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": ", or",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 19,
+        "description": "Systolic Blood Pressure Exceeding Threshold",
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 180.0,
+          "valueHigh": null,
+          "unitText": "mm Hg",
+          "referenceBound": "absolute",
+          "unitConceptId": 8876
+        },
+        "sourceText": "systolic BP",
+        "protocolLine": "6. Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+        "protocolSpan": "systolic BP",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "82f6b0eb-9d37-4003-8bbd-2640bc4eaa5e",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        },
+        "_annotationRejected": [
+          {
+            "field": "relation",
+            "value": {
+              "relation": "any",
+              "relation_span": null,
+              "cardinality": null
+            },
+            "reason": "relation_span is not a substring of protocolLine"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "description": "Diastolic Blood Pressure Exceeding Threshold",
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 100.0,
+          "valueHigh": null,
+          "unitText": "mm Hg",
+          "referenceBound": "absolute",
+          "unitConceptId": 8876
+        },
+        "sourceText": "diastolic BP",
+        "protocolLine": "6. Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+        "protocolSpan": "diastolic BP",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "82f6b0eb-9d37-4003-8bbd-2640bc4eaa5e",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        }
+      }
+    ]
+  },
+  "carolina_cancer_seed_group": {
+    "source": "p3_dry_arm_a_store",
+    "study": 10,
+    "role": "exclusionCriteria",
+    "rows": [
+      {
+        "id": 65,
+        "description": "Unreliable patient or high risk of non-CV death/cancer",
+        "domain": "Observation",
+        "valueConstraint": null,
+        "sourceText": "Patient reliability or life expectancy",
+        "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "protocolSpan": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": true,
+        "mappable": false,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "non-melanoma skin cancer",
+              "span": "non-melanoma skin cancer"
+            }
+          ],
+          "base_span": "cancer",
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "investigator_judgement",
+          "no_entity_span": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+          "threshold_span": "less than 5 years",
+          "quantity_kind": "duration",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 66,
+        "description": "Investigator assessment of patient reliability",
+        "domain": "Observation",
+        "valueConstraint": null,
+        "sourceText": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration",
+        "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "protocolSpan": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "non-melanoma skin cancer",
+              "span": "non-melanoma skin cancer"
+            }
+          ],
+          "base_span": "cancer",
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "investigator_judgement",
+          "no_entity_span": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+          "threshold_span": "less than 5 years",
+          "quantity_kind": "duration",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 67,
+        "description": "Life expectancy less than 5 years for non-CV causes",
+        "domain": "Observation",
+        "valueConstraint": {
+          "op": "lt",
+          "value": 5.0,
+          "valueHigh": null,
+          "unitText": "years",
+          "referenceBound": "absolute",
+          "unitConceptId": 9448
+        },
+        "sourceText": "life expectancy less than 5 years for non-CV causes",
+        "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "protocolSpan": "has a life expectancy less than 5 years for non-CV causes",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "investigator_judgement",
+          "no_entity_span": "in the opinion of the investigator, would not allow safe participation in the study",
+          "threshold_span": "less than 5 years",
+          "quantity_kind": "duration",
+          "reference_bound": "none"
+        }
+      },
+      {
+        "id": 68,
+        "description": "Cancer other than non-melanoma skin cancer within last 3 years",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "cancer other than non-melanoma skin cancer within last 3 years",
+        "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "protocolSpan": "has cancer other than non-melanoma skin cancer within last 3 years",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 43,
+        "conceptSetName": "Cancer other than non-melanoma skin cancer within last 3 years",
+        "logicType": "ABSENCE",
+        "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "non-melanoma skin cancer",
+              "span": "non-melanoma skin cancer"
+            }
+          ],
+          "base_span": "cancer",
+          "relation": "any",
+          "relation_span": "other than",
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      },
+      {
+        "id": 69,
+        "description": "Other conditions preventing safe participation",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "protocolSpan": "has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": null,
+        "conceptSetName": "",
+        "logicType": "ABSENCE",
+        "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "investigator_judgement",
+          "no_entity_span": "in the opinion of the investigator, would not allow safe participation in the study",
+          "threshold_span": null,
+          "quantity_kind": null,
+          "reference_bound": null
+        }
+      }
+    ]
+  },
+  "empa_reg_glucose_row": {
+    "source": "p3_dry_arm_a_store",
+    "study": 8,
+    "role": "exclusionCriteria",
+    "rows": [
+      {
+        "id": 1,
+        "description": "Uncontrolled hyperglycemia",
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 240.0,
+          "valueHigh": null,
+          "unitText": "mg/dL",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "glucose",
+        "protocolLine": "Uncontrolled hyperglycemia with glucose >240 mg/dL after an overnight fast during placebo run-in and confirmed by a second measurement (not on the same day)",
+        "protocolSpan": "",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": 9,
+        "conceptSetName": "glucose",
+        "logicType": "ABSENCE",
+        "groupId": null,
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": ">240 mg/dL",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        }
+      }
+    ]
+  },
+  "carolina_glucose_row": {
+    "source": "p3_dry_arm_a_store",
+    "study": 10,
+    "role": "exclusionCriteria",
+    "rows": [
+      {
+        "id": 11,
+        "description": "Glucose level >240 mg/dl after overnight fast",
+        "domain": "Measurement",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 240.0,
+          "valueHigh": null,
+          "unitText": "mg/dl",
+          "referenceBound": "absolute",
+          "unitConceptId": 8840
+        },
+        "sourceText": "Glucose",
+        "protocolLine": "Uncontrolled hyperglycaemia with a glucose level >240 mg/dl (>13.3 mmol/L) after an overnight fast during placebo run-in and confirmed by a second measurement (not on the same day)",
+        "protocolSpan": "Glucose",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": 25,
+        "conceptSetName": "Glucose",
+        "logicType": "ABSENCE",
+        "groupId": "54381050-560f-486f-b7c4-3b0f4c11e7e1",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": null,
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": ">240 mg/dl",
+          "quantity_kind": "lab_value",
+          "reference_bound": "none"
+        },
+        "_annotationRejected": [
+          {
+            "field": "specimen",
+            "value": {
+              "specimen": "blood",
+              "specimen_span": null
+            },
+            "reason": "specimen_span is not a substring of protocolLine"
+          }
+        ]
+      }
+    ]
+  }
+}

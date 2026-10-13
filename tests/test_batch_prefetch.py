@@ -46,10 +46,9 @@ class TestBatchSearchSingleQuery:
 
         result = retriever.batch_search(["heart failure"], n_results=10)
 
-        assert "heart failure" in result
-        assert len(result["heart failure"]) == 2
-        assert result["heart failure"][0].concept_id == 1234
-        assert result["heart failure"][0].concept_name == "Heart failure"
+        assert len(result.by_index[0]) == 2
+        assert result.by_index[0][0].concept_id == 1234
+        assert result.by_index[0][0].concept_name == "Heart failure"
         mock_collection.query.assert_called_once()
 
 
@@ -68,11 +67,9 @@ class TestBatchSearchMultipleQueries:
 
         result = retriever.batch_search(["diabetes", "metformin"], n_results=5)
 
-        assert len(result) == 2
-        assert "diabetes" in result
-        assert "metformin" in result
-        assert result["diabetes"][0].concept_id == 1234
-        assert result["metformin"][0].concept_id == 9999
+        assert len(result.by_index) == 2
+        assert result.by_index[0][0].concept_id == 1234
+        assert result.by_index[1][0].concept_id == 9999
 
 
 class TestBatchSearchDomainHintGrouping:
@@ -98,7 +95,7 @@ class TestBatchSearchDomainHintGrouping:
         assert mock_collection.query.call_count == 1
         call_kwargs = mock_collection.query.call_args[1]
         assert call_kwargs["where"] == {"domain_id": "Condition"}
-        assert len(result) == 2
+        assert len(result.by_index) == 2
 
     def test_different_domain_hints_produce_separate_calls(self, retriever, mock_collection):
         # First call for Condition, second for Drug
@@ -124,9 +121,9 @@ class TestBatchSearchDomainHintGrouping:
         )
 
         assert mock_collection.query.call_count == 2
-        assert len(result) == 2
-        assert result["heart failure"][0].domain_id == "Condition"
-        assert result["metformin"][0].domain_id == "Drug"
+        assert len(result.by_index) == 2
+        assert result.by_index[0][0].domain_id == "Condition"
+        assert result.by_index[1][0].domain_id == "Drug"
 
     def test_none_domain_hints_batched_without_filter(self, retriever, mock_collection):
         mock_collection.query.return_value = _make_query_result(
@@ -152,10 +149,10 @@ class TestBatchSearchDomainHintGrouping:
 
 
 class TestBatchSearchEdgeCases:
-    def test_empty_input_returns_empty_dict(self, retriever, mock_collection):
+    def test_empty_input_returns_no_results(self, retriever, mock_collection):
         result = retriever.batch_search([], n_results=5)
 
-        assert result == {}
+        assert result.by_index == []
         mock_collection.query.assert_not_called()
 
     def test_chromadb_error_returns_empty_results_with_warning(self, retriever, mock_collection, caplog):
@@ -164,7 +161,7 @@ class TestBatchSearchEdgeCases:
         with caplog.at_level(logging.WARNING):
             result = retriever.batch_search(["heart failure"], n_results=5)
 
-        assert result == {"heart failure": []}
+        assert result.by_index == [[]]
         assert any("batch_search" in record.message.lower() or "chroma" in record.message.lower() for record in caplog.records)
 
 
@@ -187,7 +184,7 @@ class TestBatchSearchScoring:
             domain_hints=["Condition"],
         )
 
-        candidates = result["heart failure"]
+        candidates = result.by_index[0]
         # SNOMED should rank higher (lower adjusted_score) than ICD10CM at same distance
         snomed = next(c for c in candidates if c.vocabulary_id == "SNOMED")
         icd = next(c for c in candidates if c.vocabulary_id == "ICD10CM")
@@ -208,7 +205,7 @@ class TestBatchSearchScoring:
 
         result = retriever.batch_search(["heart failure"], n_results=10)
 
-        candidates = result["heart failure"]
+        candidates = result.by_index[0]
         exact = next(c for c in candidates if c.concept_name == "Heart failure")
         other = next(c for c in candidates if c.concept_name == "Cardiac insufficiency")
         assert exact.adjusted_score == other.adjusted_score
@@ -261,10 +258,8 @@ class TestBatchSearchChunking:
         call_sizes = [len(c.kwargs["query_texts"]) for c in mock_collection.query.call_args_list]
         assert call_sizes == [50, 50, 20]
         # All 120 queries should have results
-        assert len(result) == 120
-        for q in queries:
-            assert q in result
-            assert len(result[q]) == 1
+        assert len(result.by_index) == 120
+        assert all(len(pool) == 1 for pool in result.by_index)
 
     def test_batch_search_small_input_single_call(self, retriever, mock_collection):
         """Queries within max_batch_size should produce a single ChromaDB call."""
@@ -278,7 +273,7 @@ class TestBatchSearchChunking:
         result = retriever.batch_search(queries, n_results=5, max_batch_size=50)
 
         assert mock_collection.query.call_count == 1
-        assert len(result) == 30
+        assert len(result.by_index) == 30
 
     def test_batch_search_env_override(self, retriever, mock_collection, monkeypatch):
         """CHROMA_BATCH_SIZE=10 should override default max_batch_size."""
@@ -297,4 +292,4 @@ class TestBatchSearchChunking:
         assert mock_collection.query.call_count == 3
         call_sizes = [len(c.kwargs["query_texts"]) for c in mock_collection.query.call_args_list]
         assert call_sizes == [10, 10, 5]
-        assert len(result) == 25
+        assert len(result.by_index) == 25

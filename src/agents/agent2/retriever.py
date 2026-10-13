@@ -16,31 +16,22 @@ class CandidateConcept(BaseModel):
     adjusted_score: float = 0.0  # After preference scoring (lower is better)
 
 
-class BatchSearchResults(dict):
+class BatchSearchResults:
     """What `ConceptRetriever.batch_search` returns.
 
     A query is ``(text, domain_hint)``, not ``text``. The hint becomes ChromaDB's
     ``where={"domain_id": hint}`` filter and is passed to `_score_candidates` as
     ``domain_hint``, so the same text under two hints is two searches over two
-    pools, scored under two different policies. Keying the return on text alone
-    collided them and the later domain group silently overwrote the earlier.
+    pools, scored under two different policies.
 
-    That was not a cosmetic loss. The pool is a hard short-circuit downstream --
-    `agent2/workflow.py` logs "skipping primary ChromaDB search" and uses it as the
-    ENTIRE primary candidate set -- so the overwritten criterion was mapped against
-    a pool retrieved under a domain filter it never asked for, and the +0.50
-    domain-mismatch penalty in `_score_candidates` had already run against the
-    *writing* group's hint, so it never fired on the mismatch it exists for.
+    `by_index` is the answer: one entry per `query_texts` position, always the result
+    of THAT query. `by_pair` keys on ``(text, hint)``, the query itself.
 
-    `by_index` is the authoritative surface: one entry per `query_texts` position,
-    always the result of THAT query. `by_pair` keys on ``(text, hint)``.
-
-    The dict view stays keyed on text so the existing consumer keeps working
-    (`tte_service.py`, ``batch_results.get(text, [])``). On a colliding text that
-    view cannot be right in either direction, so it is first-wins and the text is
-    named in `colliding_texts` and logged. A consumer that needs correctness on a
-    colliding batch must read `by_index` (or key on the pair, which
-    ``__getitem__``/``get`` accept as a tuple).
+    There is no view keyed on text alone. It answered a text issued under two hints
+    with the first hint's pool, and that pool is a hard short-circuit downstream --
+    `agent2/workflow.py` uses it as the ENTIRE primary candidate set -- so the second
+    criterion was mapped against a pool retrieved under a domain filter it never asked
+    for. The seeded build reads `by_index` (`TTEService._build_seeded_target_circe`).
     """
 
     def __init__(
@@ -50,35 +41,10 @@ class BatchSearchResults(dict):
         by_index: List[List[CandidateConcept]],
     ):
         self.by_index: List[List[CandidateConcept]] = list(by_index)
-        self.by_pair: Dict[tuple, List[CandidateConcept]] = {}
-        hints_by_text: Dict[str, set] = {}
-        text_view: Dict[str, List[CandidateConcept]] = {}
-        for text, hint, candidates in zip(query_texts, hints, self.by_index):
-            self.by_pair[(text, hint)] = candidates
-            hints_by_text.setdefault(text, set()).add(hint)
-            if text not in text_view:
-                text_view[text] = candidates
-        self.colliding_texts: List[str] = [
-            text for text, seen in hints_by_text.items() if len(seen) > 1
-        ]
-        super().__init__(text_view)
-        if self.colliding_texts:
-            logger.warning(
-                "batch_search: %d query text(s) were issued under more than one "
-                "domain_hint (%s); the text-keyed view holds only the first of each. "
-                "Read by_index or key on (text, hint).",
-                len(self.colliding_texts), ", ".join(sorted(self.colliding_texts)[:5]),
-            )
-
-    def __getitem__(self, key):
-        if isinstance(key, tuple):
-            return self.by_pair[key]
-        return super().__getitem__(key)
-
-    def get(self, key, default=None):
-        if isinstance(key, tuple):
-            return self.by_pair.get(key, default)
-        return super().get(key, default)
+        self.by_pair: Dict[tuple, List[CandidateConcept]] = {
+            (text, hint): candidates
+            for text, hint, candidates in zip(query_texts, hints, self.by_index)
+        }
 
 # Vocabulary preferences per domain (lower bonus = higher priority).
 #
@@ -377,9 +343,8 @@ class ConceptRetriever:
         avoid exceeding ChromaDB limits.
 
         Every write below is positional: a query's result is stored at its own
-        index in ``query_texts``, never under a key another query can share. The
-        text-keyed view survives on the return object for existing consumers --
-        see `BatchSearchResults` for why it cannot be the authoritative one.
+        index in ``query_texts``, never under a key another query can share -- see
+        `BatchSearchResults` for why there is no text-keyed view.
         """
         hints: List[Optional[str]] = [
             (domain_hints[idx] if domain_hints and idx < len(domain_hints) else None)

@@ -22,6 +22,7 @@ from src.agents.agent2.criterion_cache import (
     CriterionCacheEntry,
     CriterionResultCache,
 )
+from src.agents.agent2.retriever import BatchSearchResults
 from src.models.ir import MappingResult
 
 
@@ -252,7 +253,9 @@ class TestBatchPreFetchIntegration:
         """T7.3: When batch_search returns empty for a criterion, the per-criterion
         retriever.search fallback in _slow_path runs (pre_fetched_candidates=None)."""
         # Arrange — batch_search returns empty for the criterion
-        mock_batch_search.return_value = {}  # no results for any query
+        mock_batch_search.return_value = BatchSearchResults(
+            ["History of Stroke"], ["Condition"], [[]]
+        )  # no results for the one query
 
         # _recommend_seeded_concept_set for the target cohort
         mock_recommend.return_value = {
@@ -297,7 +300,7 @@ class TestBatchPreFetchIntegration:
         mock_batch_search.assert_called_once()
 
         # Assert — _build_seeded_eligibility_rule was called with pre_fetched_candidates=None
-        # because batch_search returned empty dict and thus pre_fetched[0] is None
+        # because batch_search returned an empty pool and thus pre_fetched[0] is None
         mock_build_rule.assert_called_once()
         call_kwargs = mock_build_rule.call_args
         assert call_kwargs.kwargs.get("pre_fetched_candidates") is None
@@ -322,16 +325,17 @@ class TestBatchPreFetchIntegration:
         """T7.4: Criteria with different domains produce separate batch calls
         (batch_search is called once with all queries; grouping happens inside
         batch_search itself via domain_hints parameter)."""
-        # Arrange — batch_search returns results keyed by expanded text
+        # Arrange — batch_search answers each query position
         drug_candidate = MagicMock()
         drug_candidate.concept_id = 100
         cond_candidate = MagicMock()
         cond_candidate.concept_id = 200
 
-        mock_batch_search.return_value = {
-            "Metformin": [drug_candidate],
-            "History of Stroke": [cond_candidate],
-        }
+        mock_batch_search.return_value = BatchSearchResults(
+            ["Metformin", "History of Stroke"],
+            ["Drug", "Condition"],
+            [[drug_candidate], [cond_candidate]],
+        )
 
         mock_recommend.return_value = {
             "name": "Target Drug",
