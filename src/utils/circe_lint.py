@@ -3205,6 +3205,13 @@ DROP_OUTCOME_RULE_KEPT = "rule-kept"
 #: ``tests/test_delivery_gate_anchors_the_census_to_the_store.py``.
 CRITERION_CONCEPT_SET_REFS_KEY = "_criterionConceptSetRefs"
 
+#: Where ``TTEService.process_eligibility`` keeps the same map in its artifact's payload.
+#: It pops :data:`CRITERION_CONCEPT_SET_REFS_KEY` out of the expression it proposes, so the
+#: stored ``structuredExpression`` never carries it and this payload key is the map's only
+#: record; ``scripts/export_seeded_cohorts.py`` reads it from there into the delivered file.
+#: Owned here, beside the file key, so producer and export import one spelling.
+CRITERION_CONCEPT_SET_REFS_PAYLOAD_KEY = "criterionConceptSetRefs"
+
 
 def _prune_group_expression(
     node: dict[str, Any], where: str, dropped: list[dict[str, Any]]

@@ -196,6 +196,9 @@ class TestTheExporterRefusesAnIncompleteExport:
             def get_study(self, study_id):
                 return study
 
+            def list_artifacts(self, study_id):
+                return []
+
         class _Service:
             def __init__(self, store):
                 self.store = store

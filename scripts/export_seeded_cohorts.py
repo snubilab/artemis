@@ -44,6 +44,10 @@ This script:
    was added nothing in either script mentioned those keys, so an arm carrying
    unmapped protocol exclusions was written, linted clean and approved — see check
    (i) in ``scripts/verify_circe_delivery.py``.
+7. Writes the criterion -> concept-set map (``_criterionConceptSetRefs``) into each
+   per-arm file, from the one artifact that proposed the stored expression -- see
+   :func:`criterion_concept_set_refs`. Without it the gate's checks (j) and (aa) fail
+   closed on every file and its accounting anchor does not run.
 """
 
 from __future__ import annotations
@@ -203,6 +207,62 @@ def _collect_build_failures(generated: Any) -> dict[str, str]:
     return found
 
 
+def criterion_concept_set_refs(
+    study: dict[str, Any], artifacts: list[dict[str, Any]]
+) -> tuple[dict[str, Any] | None, str]:
+    """The criterion -> concept-set map for the expression the store holds, and its source.
+
+    ``_build_seeded_target_circe`` writes the map into the expression it builds, and
+    ``process_eligibility`` pops it before proposing that expression, keeping it only in its
+    artifact's payload. This export replays the stored expression, so until the map was
+    copied here no exported file carried it: the delivery gate's check (j) failed closed on
+    every file, (aa) on every file with a pair, and its ``mapped`` anchor never ran.
+
+    The map is taken from the one place that describes THIS expression:
+
+    * the stored expression itself, when it still carries one (a store built without the
+      draft path) -- the build has already copied it into every arm;
+    * otherwise the artifact whose proposed ``structuredExpression`` EQUALS the stored one.
+      A codeset id means something only inside the expression it was minted in, so a map
+      from any other expression -- an earlier run of the same capability, say -- names the
+      wrong sets. Two artifacts proposing the stored expression with different maps leave
+      it undetermined, and none is returned.
+
+    :param study: the store study being exported.
+    :param artifacts: every artifact the store holds for that study.
+    :returns: ``(map, where it came from)``, or ``(None, why there is none)`` -- in which
+        case the file goes without a map and the gate fails closed on it, as before.
+    """
+    from src.utils.circe_lint import (
+        CRITERION_CONCEPT_SET_REFS_KEY,
+        CRITERION_CONCEPT_SET_REFS_PAYLOAD_KEY,
+    )
+
+    stored = (study.get("eligibility") or {}).get("structuredExpression") or {}
+    if isinstance(stored.get(CRITERION_CONCEPT_SET_REFS_KEY), dict):
+        return deepcopy(stored[CRITERION_CONCEPT_SET_REFS_KEY]), "the stored expression"
+    if not stored:
+        return None, "the study stores no structuredExpression"
+    maps: dict[str, dict[str, Any]] = {}
+    for artifact in artifacts:
+        payload = artifact.get("payload") or {}
+        proposed = ((payload.get("proposedChanges") or {}).get("eligibility") or {}).get(
+            "structuredExpression"
+        )
+        refs = payload.get(CRITERION_CONCEPT_SET_REFS_PAYLOAD_KEY)
+        if proposed == stored and isinstance(refs, dict):
+            maps[str(artifact.get("id"))] = refs
+    ids = ", ".join(sorted(maps))
+    distinct = {json.dumps(refs, sort_keys=True) for refs in maps.values()}
+    if len(distinct) == 1:
+        return deepcopy(next(iter(maps.values()))), f"artifact {ids}"
+    if not maps:
+        return None, "no artifact proposed the stored expression with a map"
+    return None, (
+        f"artifacts {ids} proposed the stored expression with {len(distinct)} different maps"
+    )
+
+
 class _OwnRecordsOnly(logging.Filter):
     """Admit this project's own log records and nothing else.
 
@@ -292,6 +352,7 @@ def main(argv: list[str] | None = None) -> int:
     from src.services.tte_service import TTEService
     from src.services.tte_store import TTEStore
     from src.utils.circe_lint import (
+        CRITERION_CONCEPT_SET_REFS_KEY,
         DROPPED_CRITERIA_KEY,
         contradictory_absence_rules,
         domain_mismatched_criteria,
@@ -333,6 +394,14 @@ def main(argv: list[str] | None = None) -> int:
         store_domain, store_concept_ids = entry_concept_ids(store_structured)
         study_arms = study.get("treatmentArms") or []
         comparator_arm_name = study_arms[1].get("name") if len(study_arms) > 1 else None
+        refs, refs_source = criterion_concept_set_refs(
+            study, service.store.list_artifacts(study_id)
+        )
+        print(
+            f"study {study_id}: {CRITERION_CONCEPT_SET_REFS_KEY} "
+            + (f"from {refs_source}" if refs is not None else f"NOT written -- {refs_source}"),
+            file=sys.stderr,
+        )
 
         captured: list[dict[str, Any]] = []
 
@@ -365,6 +434,10 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             produced_roles.add(role)
             expression = deepcopy(item["expression"])
+            # Before the lints and the accounting below, which read it too. A map the build
+            # carried describes what was built and is kept.
+            if refs is not None:
+                expression.setdefault(CRITERION_CONCEPT_SET_REFS_KEY, deepcopy(refs))
             file_path = out_dir / f"{slug}_{role}.circe.json"
             with file_path.open("w", encoding="utf-8") as fh:
                 json.dump(expression, fh, indent=2)
@@ -508,6 +581,7 @@ def main(argv: list[str] | None = None) -> int:
                 "arm_names": [a.get("name") for a in study_arms],
                 "expected_arms": expected_arm_roles(study),
                 "produced_arms": sorted(produced_roles),
+                "criterion_concept_set_refs": refs_source if refs is not None else None,
             }
         )
 
