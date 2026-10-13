@@ -20,14 +20,11 @@ from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 
 import openai
-from langchain_core.exceptions import OutputParserException
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.utils.json import parse_json_markdown
 from pydantic import BaseModel, Field
 
 from src.utils.exceptions import LLMConfigurationError
-from src.utils.llm import _is_vllm_model, get_llm, resolve_model
+from src.utils.llm import StrictJsonOutputParser, _is_vllm_model, get_llm, resolve_model
 from src.agents.agent2.kg_expander import KGConcept
 from src.agents.agent2.critic_cache import CriticCache
 
@@ -171,22 +168,6 @@ def _warn_if_critic_leaves_local(critic_model: str) -> None:
     )
 
 
-class _StrictJsonOutputParser(JsonOutputParser):
-    """``JsonOutputParser`` without its partial-JSON repair.
-
-    The stock parser closes an unterminated reply and returns whatever selections it
-    completed, so a reply cut off at ``max_tokens`` read as a shorter answer and was
-    cached as one. Here an unterminated reply is a parse failure like any other.
-    """
-
-    def parse_result(self, result, *, partial: bool = False) -> Any:
-        text = result[0].text.strip()
-        try:
-            return parse_json_markdown(text, parser=json.loads)
-        except json.JSONDecodeError as e:
-            raise OutputParserException(f"Invalid json output: {text}", llm_output=text) from e
-
-
 @dataclass(frozen=True)
 class CriticOutcome:
     """What one critic call produced.
@@ -259,7 +240,7 @@ Concepts with assessment="contradicted" are filtered out."""
 # The output contract, written out instead of LangChain's ``get_format_instructions()``.
 # That text appended a sample object, a counterexample and this module's own pydantic
 # docstrings to the system prompt. Field names and meanings follow ``CriticSelection`` /
-# ``CriticResult``; ``_StrictJsonOutputParser`` parses the answer.
+# ``CriticResult``; ``StrictJsonOutputParser`` parses the answer.
 _OUTPUT_CONTRACT = """Return ONLY a JSON object with these keys:
 - selected_concepts: an array with one object per candidate you evaluated. Each object has:
   - concept_id: integer, the candidate's OMOP Concept ID.
@@ -299,7 +280,7 @@ class ConceptCritic:
         self._self_reflect = os.environ.get(
             "AGENT2_CRITIC_SELF_REFLECT", "true"
         ).lower() == "true"
-        self.parser = _StrictJsonOutputParser(pydantic_object=CriticResult)
+        self.parser = StrictJsonOutputParser(pydantic_object=CriticResult)
 
         reflection_section = _SELF_REFLECTION_INSTRUCTIONS if self._self_reflect else ""
 

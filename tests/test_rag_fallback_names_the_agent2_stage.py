@@ -25,6 +25,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from src.models.ir import MappingResult
 from src.services.tte_service import TTEService
 from src.utils.criterion_refusal import REFUSAL_NO_CONCEPT_MAPPING, CriterionRefused
 
@@ -50,9 +51,8 @@ def _agent2_returning_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         agent2_workflow.Agent2Workflow,
         "process_with_details",
-        lambda self, *a, **k: SimpleNamespace(
-            concept_ids=[], overbroad_concept_ids=[], route_path="rag_only"
-        ),
+        # The type Agent 2 returns: the empty-answer branch reads its recorded failures.
+        lambda self, *a, **k: MappingResult(concept_ids=[], route_path="rag_only"),
     )
 
 

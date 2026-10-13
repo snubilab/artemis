@@ -15,6 +15,9 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatResult, ChatGeneration, LLMResult
 from langchain_core.callbacks import BaseCallbackHandler, CallbackManagerForLLMRun
+from langchain_core.exceptions import OutputParserException
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.utils.json import parse_json_markdown
 from src.settings import settings
 from src.utils.exceptions import LLMConfigurationError, LLMTruncationError
 
@@ -519,6 +522,25 @@ def extract_answer(content: str) -> tuple[str, str]:
             return value.strip(), "last_json"
 
     return content, "none"
+
+
+class StrictJsonOutputParser(JsonOutputParser):
+    """``JsonOutputParser`` without its partial-JSON repair.
+
+    The stock parser closes an unterminated reply and returns what it completed, so a
+    reply cut off mid-item read as a shorter answer: the critic's reply cut inside its
+    third selection came back as ``[10, 20, 21]`` and was cached, the reranker's top-N
+    reply cut inside its second id came back as ``[198185, 4627]``. Here an unterminated
+    reply is ``Invalid json output`` like any other unparseable one. Code fences are still
+    stripped. Every ``prompt | llm | parser`` chain that reads JSON uses this one.
+    """
+
+    def parse_result(self, result: list, *, partial: bool = False) -> Any:
+        text = result[0].text.strip()
+        try:
+            return parse_json_markdown(text, parser=json.loads)
+        except json.JSONDecodeError as e:
+            raise OutputParserException(f"Invalid json output: {text}", llm_output=text) from e
 
 
 class ReasoningStrippedChatModel(BaseChatModel):

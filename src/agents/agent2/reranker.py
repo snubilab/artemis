@@ -1,12 +1,12 @@
+import json
 import logging
 from typing import List, Optional, Dict, Any
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
 from src.utils.env_flags import env_flag_enabled
-from src.utils.llm import get_llm
+from src.utils.llm import StrictJsonOutputParser, get_llm
 from src.agents.agent2.retriever import CandidateConcept
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ Do NOT select concepts from an unrelated clinical domain, even when a candidate'
 
 #: The single-select output contract, written out instead of LangChain's
 #: ``get_format_instructions()``, which appends a sample object and a counterexample.
-#: Field names and meanings follow ``RerankResult``; ``JsonOutputParser`` still parses.
+#: Field names and meanings follow ``RerankResult``; ``StrictJsonOutputParser`` parses.
 _SINGLE_SELECT_OUTPUT = """Return ONLY a JSON object with these keys:
 - selected_concept_id: integer, the ID of the best-matching candidate, or null if none fits.
 - reasoning: string, a brief explanation of why this concept was selected."""
@@ -59,6 +59,42 @@ TOPN_SYSTEM_PROMPT = (
 )
 
 
+class RerankerFailed(RuntimeError):
+    """The reranker's answer could not be used, so no candidate was selected.
+
+    The message is the single-line failure reason the workflow records on the
+    MappingResult. Raised instead of answering, because every answer this module can
+    give -- a selection, an empty list, None -- is also what a working reranker says.
+    """
+
+
+def _failure_reason(exc: Exception) -> str:
+    """One line naming ``exc``, capped as the critic caps its reason."""
+    reason = " ".join(f"{type(exc).__name__}: {exc}".split())
+    return reason[:300] + " ..." if len(reason) > 300 else reason
+
+
+def _selected_ids(response: Any) -> list:
+    """The top-N answer's ids, or [] when the model said no candidate fits.
+
+    A reply that is not an object, or that does not refuse and carries no
+    ``selected_ids`` list, is a broken reply, not "nothing fits": read as the latter it
+    became a gap recorded like a genuine no-match.
+
+    :raises ValueError: the reply is not the requested answer.
+    """
+    if not isinstance(response, dict):
+        raise ValueError(f"reranker reply is not a JSON object: {json.dumps(response)[:200]}")
+    if _refused(response):
+        return []
+    ids = response.get("selected_ids")
+    if not isinstance(ids, list):
+        raise ValueError(
+            f"reranker reply carries no selected_ids list: {json.dumps(response)[:200]}"
+        )
+    return ids
+
+
 def _refused(response: dict) -> bool:
     """Whether the model answered "none of these fit".
 
@@ -85,7 +121,7 @@ class ConceptReranker:
     
     def __init__(self):
         self.llm = get_llm(temperature=0.0, json_mode=True)
-        self.parser = JsonOutputParser(pydantic_object=RerankResult)
+        self.parser = StrictJsonOutputParser(pydantic_object=RerankResult)
 
         domain_aware = env_flag_enabled("AGENT2_RERANKER_DOMAIN_AWARE")
         domain_section = _DOMAIN_GROUNDING_INSTRUCTION if domain_aware else ""
@@ -111,7 +147,7 @@ class ConceptReranker:
             ("system", TOPN_SYSTEM_PROMPT),
             ("user", "Clinical term: {user_query}\n\nCandidates:\n{candidates_text}")
         ])
-        self._topn_chain = self._topn_prompt | self.llm | JsonOutputParser()
+        self._topn_chain = self._topn_prompt | self.llm | StrictJsonOutputParser()
 
     def rerank(self, user_query: str, candidates: List[CandidateConcept]) -> Optional[CandidateConcept]:
         """
@@ -122,7 +158,10 @@ class ConceptReranker:
             candidates: List of candidate concepts from vector search
             
         Returns:
-            Best matching CandidateConcept or None
+            Best matching CandidateConcept, or None when the model chose none
+
+        Raises:
+            RerankerFailed: the call failed or its reply could not be parsed.
         """
         if not candidates:
             return None
@@ -137,21 +176,18 @@ class ConceptReranker:
                 "user_query": user_query,
                 "candidates_text": candidates_text,
             })
-            
-            selected_id = result.get("selected_concept_id")
-            
-            if selected_id:
-                # Find the candidate object to return
-                for c in candidates:
-                    if c.concept_id == selected_id:
-                        return c
-            
-            return None
-            
         except Exception as e:
-            logger.warning(f"Reranking failed: {e}")
-            # Fallback: return None for safety
-            return None
+            reason = _failure_reason(e)
+            logger.warning(f"[Reranker] Reranking failed: {reason}")
+            raise RerankerFailed(reason) from e
+
+        selected_id = result.get("selected_concept_id") if isinstance(result, dict) else None
+        if selected_id:
+            # Find the candidate object to return
+            for c in candidates:
+                if c.concept_id == selected_id:
+                    return c
+        return None
 
     def rerank_topn(
         self, user_query: str, candidates: List[CandidateConcept], top_n: int = 3
@@ -162,6 +198,12 @@ class ConceptReranker:
         Instead of selecting a single best, instructs the LLM to pick the 
         top_n most relevant concepts. This prevents losing correct candidates
         at the reranking bottleneck.
+
+        :returns: the selection, most relevant first; empty when the model said no
+            candidate fits.
+        :raises RerankerFailed: the call failed, or its reply is not complete JSON
+            carrying ``selected_ids`` (one counted "[Reranker] Top-N reranking failed"
+            line, nothing selected).
         """
         if not candidates:
             return []
@@ -173,38 +215,34 @@ class ConceptReranker:
                 f"| Class: {c.concept_class_id} | Vocab: {c.vocabulary_id}\n"
             )
 
+        # One call, one answer. A failed call used to fall back to the single-select
+        # prompt and use its pick: a second question, answered from a different prompt,
+        # recorded as this one's selection.
         try:
             result = self._topn_chain.invoke({
                 "user_query": user_query,
                 "candidates_text": candidates_text,
                 "top_n": top_n,
             })
-
-            if _refused(result):
-                logger.info(
-                    "[Reranker] '%s': no candidate denotes the term (%d offered) — selecting none",
-                    user_query, len(candidates),
-                )
-                return []
-
-            selected_ids = result.get("selected_ids", [])
-            if not selected_ids:
-                return []
-
-            # Map back to CandidateConcept objects, preserving order
-            id_to_candidate = {c.concept_id: c for c in candidates}
-            selected = []
-            for sid in selected_ids[:top_n]:
-                if sid in id_to_candidate:
-                    selected.append(id_to_candidate[sid])
-            
-            logger.info(f"[Reranker] Top-{top_n}: selected {len(selected)} from {len(candidates)} candidates")
-            return selected
-
+            selected_ids = _selected_ids(result)
         except Exception as e:
-            logger.warning(f"Top-N reranking failed: {e}, falling back to top-1")
-            single = self.rerank(user_query, candidates)
-            return [single] if single else []
+            reason = _failure_reason(e)
+            logger.warning(f"[Reranker] Top-N reranking failed: {reason}")
+            raise RerankerFailed(reason) from e
+
+        if _refused(result):
+            logger.info(
+                "[Reranker] '%s': no candidate denotes the term (%d offered) — selecting none",
+                user_query, len(candidates),
+            )
+            return []
+
+        # Map back to CandidateConcept objects, preserving order
+        id_to_candidate = {c.concept_id: c for c in candidates}
+        selected = [id_to_candidate[sid] for sid in selected_ids[:top_n] if sid in id_to_candidate]
+
+        logger.info(f"[Reranker] Top-{top_n}: selected {len(selected)} from {len(candidates)} candidates")
+        return selected
 
     def rerank_batch(
         self, 
@@ -222,6 +260,9 @@ class ConceptReranker:
             
         Returns:
             List of best matching CandidateConcept or None for each query
+
+        Raises:
+            RerankerFailed: the batch, or any query in it, failed.
         """
         if not queries_with_candidates:
             return []
@@ -257,37 +298,16 @@ class ConceptReranker:
         if not valid_inputs:
             return [None] * len(queries_with_candidates)
         
-        try:
-            # Run batch with concurrency control
-            batch_responses = self.chain.batch(
-                valid_inputs,
-                config={"max_concurrency": max_concurrency},
-                return_exceptions=True
-            )
-            
-            # Map results back
-            results: List[Optional[CandidateConcept]] = [None] * len(queries_with_candidates)
-            
-            for result_idx, orig_idx in enumerate(valid_indices):
-                response = batch_responses[result_idx]
-                candidates = original_candidates[orig_idx]
-                
-                if isinstance(response, Exception):
-                    logger.warning(f"Batch reranking failed for index {orig_idx}: {response}")
-                    results[orig_idx] = None
-                else:
-                    selected_id = response.get("selected_concept_id")
-                    if selected_id:
-                        for c in candidates:
-                            if c.concept_id == selected_id:
-                                results[orig_idx] = c
-                                break
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"Batch reranking failed: {e}")
-            return [None] * len(queries_with_candidates)
+        responses = self._batch(self.chain, valid_inputs, max_concurrency, "Batch reranking")
+        results: List[Optional[CandidateConcept]] = [None] * len(queries_with_candidates)
+        for response, orig_idx in zip(responses, valid_indices):
+            selected_id = response.get("selected_concept_id") if isinstance(response, dict) else None
+            if selected_id:
+                for c in original_candidates[orig_idx]:
+                    if c.concept_id == selected_id:
+                        results[orig_idx] = c
+                        break
+        return results
 
     def rerank_topn_batch(
         self,
@@ -300,6 +320,7 @@ class ConceptReranker:
         
         Each item in queries_with_candidates should have 'query' and 'candidates' keys.
         Returns a list of lists, each containing up to top_n CandidateConcept objects.
+        Raises RerankerFailed when the batch, or any query in it, failed.
         """
         if not queries_with_candidates:
             return []
@@ -336,42 +357,57 @@ class ConceptReranker:
         if not batch_inputs:
             return results
 
+        responses = self._batch(
+            self._topn_chain, batch_inputs, max_concurrency, f"Batch top-{top_n} reranking",
+            read=_selected_ids,
+        )
+        for (response, ids), orig_idx in zip(responses, valid_indices):
+            candidates = original_candidates[orig_idx]
+            if _refused(response):
+                logger.info(
+                    "[Reranker] '%s': no candidate denotes the term (%d offered) — selecting none",
+                    queries_with_candidates[orig_idx].get("query", ""), len(candidates),
+                )
+                continue
+            id_to_candidate = {c.concept_id: c for c in candidates}
+            results[orig_idx] = [id_to_candidate[sid] for sid in ids[:top_n] if sid in id_to_candidate]
+
+        logger.info(f"[Reranker] Batch top-{top_n}: processed {len(valid_indices)} queries")
+        return results
+
+    @staticmethod
+    def _batch(chain, inputs: list, max_concurrency: int, what: str, read=None) -> list:
+        """Run ``chain`` over ``inputs``; every answer, or RerankerFailed naming each failure.
+
+        One failed item fails the batch: its slot cannot say "failed" in a list whose
+        entries are selections, and an empty slot is what "no candidate fits" looks like.
+
+        :param read: applied to each answer (raising on a broken one); its result is
+            paired with the answer when given.
+        :raises RerankerFailed: the batch call, or any item's call or answer, failed.
+        """
         try:
-            batch_responses = self._topn_chain.batch(
-                batch_inputs,
-                config={"max_concurrency": max_concurrency},
-                return_exceptions=True,
+            responses = chain.batch(
+                inputs, config={"max_concurrency": max_concurrency}, return_exceptions=True
             )
-
-            for result_idx, orig_idx in enumerate(valid_indices):
-                response = batch_responses[result_idx]
-                candidates = original_candidates[orig_idx]
-
-                if isinstance(response, Exception):
-                    logger.warning(f"Batch top-N reranking failed for index {orig_idx}: {response}")
-                    continue
-
-                if _refused(response):
-                    logger.info(
-                        "[Reranker] '%s': no candidate denotes the term (%d offered) — selecting none",
-                        queries_with_candidates[orig_idx].get("query", ""), len(candidates),
-                    )
-                    continue
-
-                selected_ids = response.get("selected_ids", [])
-                id_to_candidate = {c.concept_id: c for c in candidates}
-                for sid in selected_ids[:top_n]:
-                    if sid in id_to_candidate:
-                        results[orig_idx].append(id_to_candidate[sid])
-
-            logger.info(
-                f"[Reranker] Batch top-{top_n}: processed {len(valid_indices)} queries"
-            )
-            return results
-
         except Exception as e:
-            logger.error(f"Batch top-N reranking failed: {e}")
-            return results
+            reason = _failure_reason(e)
+            logger.warning(f"[Reranker] {what} failed: {reason}")
+            raise RerankerFailed(reason) from e
+
+        out, failed = [], []
+        for index, response in enumerate(responses):
+            try:
+                if isinstance(response, Exception):
+                    raise response
+                out.append((response, read(response)) if read else response)
+            except Exception as e:
+                failed.append(f"#{index}: {_failure_reason(e)}")
+        if failed:
+            reason = f"{len(failed)} of {len(inputs)} queries failed: " + "; ".join(failed)
+            logger.warning(f"[Reranker] {what} failed: {reason}")
+            raise RerankerFailed(reason)
+        return out
 
 
 # Lazy singleton

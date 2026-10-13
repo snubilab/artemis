@@ -493,6 +493,12 @@ class MappingResult(BaseModel):
                     "alone, no KG candidate admitted), or None when it answered or did not "
                     "run. A mapping carrying this is not cached."
     )
+    reranker_failure: Optional[str] = Field(
+        default=None,
+        description="Why the reranker's answer could not be used (no seed was selected, so "
+                    "concept_ids is empty), or None when it answered. A mapping carrying "
+                    "this is not cached."
+    )
 
     # Processing metadata
     processing_time_ms: float = 0.0
@@ -500,13 +506,16 @@ class MappingResult(BaseModel):
     def mapping_failures(self) -> List[Dict[str, Any]]:
         """Every failure this mapping recorded, in the shape the store and the gate read.
 
-        Each one left the mapping built from the seeds alone (``seedsOnly``): a refused
-        expansion admits no KG candidate, and a failed critic selects none.
+        ``seedsOnly`` says what the failure left: a refused expansion admits no KG
+        candidate and a failed critic selects none, so the mapping is the seeds alone
+        (True); a failed reranker selected no seed, so there is no mapping (False).
 
         :returns: one ``{"stage", "reason", "seedsOnly"}`` record per failure; empty when
             nothing failed.
         """
         failures = []
+        if self.reranker_failure:
+            failures.append({"stage": "reranker", "reason": self.reranker_failure, "seedsOnly": False})
         if self.kg_expansion_failure:
             failures.append({"stage": "kg_expansion", "reason": self.kg_expansion_failure, "seedsOnly": True})
         if self.critic_failure:

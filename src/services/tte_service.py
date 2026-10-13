@@ -8426,6 +8426,10 @@ class TTEService:
         agent2_exc: Exception | None = None
         agent2_empty = False
         agent2_route = ""
+        # The failures Agent 2 recorded on the way to an empty answer (a reranker whose
+        # answer could not be used selects no seed). The fallback's mapping is what such
+        # a criterion gets, so they ride on it: an empty Agent 2 answer is not a no-match.
+        agent2_failures: list[dict[str, Any]] = []
         try:
             from src.agents.agent2.workflow import Agent2Workflow
             from src.agents.conceptset.expression_builder import get_expression_builder
@@ -8531,6 +8535,10 @@ class TTEService:
             # to chain; the fallback's refusal has to say it in words instead.
             agent2_empty = True
             agent2_route = str(getattr(mapping_result, "route_path", "") or "")
+            agent2_failures = [
+                {**failure, "query": normalized_seed}
+                for failure in mapping_result.mapping_failures()
+            ]
         except Exception as exc:
             agent2_exc = exc
             import structlog
@@ -8551,19 +8559,32 @@ class TTEService:
         # into the message. Neither changes WHAT is raised: a refusal stays a refusal
         # with its code intact, and a failure stays a failure.
         try:
-            return self._recommend_seeded_concept_set_rag_fallback(
+            fallback = self._recommend_seeded_concept_set_rag_fallback(
                 normalized_seed, expected_domain=expected_domain
             )
         except Exception as fallback_exc:
             if agent2_exc is not None:
                 raise fallback_exc from agent2_exc
             if agent2_empty and isinstance(fallback_exc, CriterionRefused):
+                failed = "".join(
+                    f"; {failure['stage']}: {failure['reason']}" for failure in agent2_failures
+                )
                 raise CriterionRefused(
-                    f"{fallback_exc} (Agent 2 returned no concepts, route={agent2_route})",
+                    f"{fallback_exc} (Agent 2 returned no concepts, route={agent2_route}{failed})",
                     code=fallback_exc.code,
                     detail=fallback_exc.detail,
                 )
             raise
+        if agent2_failures:
+            from src.api.models.tte import CriterionMappingMetadata
+
+            metadata = fallback.get("mapping_metadata") or CriterionMappingMetadata(
+                queryUsed=normalized_seed
+            )
+            fallback["mapping_metadata"] = metadata.model_copy(
+                update={"mappingFailures": [*agent2_failures, *metadata.mappingFailures]}
+            )
+        return fallback
 
     def _recommend_seeded_concept_set_rag_fallback(
         self,

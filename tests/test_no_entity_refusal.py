@@ -23,6 +23,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from src.models.ir import MappingResult
 from src.services.criterion_annotation import ANNOTATION_KEY, validate_annotation
 from src.services.tte_service import TTEService
 from src.utils.criterion_refusal import (
@@ -176,9 +177,8 @@ def test_should_keep_the_fallback_code_through_the_agent2_wrapper(monkeypatch):
     monkeypatch.setattr(
         agent2_workflow.Agent2Workflow,
         "process_with_details",
-        lambda self, *a, **k: SimpleNamespace(
-            concept_ids=[], overbroad_concept_ids=[], route_path="rag_only"
-        ),
+        # The type Agent 2 returns: the empty-answer branch reads its recorded failures.
+        lambda self, *a, **k: MappingResult(concept_ids=[], route_path="rag_only"),
     )
     recommender = MagicMock()
     recommender.recommend.return_value = SimpleNamespace(

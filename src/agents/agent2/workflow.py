@@ -56,7 +56,7 @@ def _get_db_pool():
 
 from src.agents.agent2.regex_rules import CodePatternMatcher
 from src.agents.agent2.retriever import retriever, CandidateConcept
-from src.agents.agent2.reranker import get_reranker
+from src.agents.agent2.reranker import RerankerFailed, get_reranker
 from src.agents.agent2.logic import logician
 from src.agents.agent2.abbreviation_expander import expand_abbreviation, expand_in_context
 from src.agents.agent2.drug_class_expander import expand_drug_class_via_vocab
@@ -467,17 +467,27 @@ class Agent2Workflow:
 
         result.route_path = route_path
         result.slow_path_count += 1
-        concept_ids = self._slow_path(
-            query_text, context, domain_hint=domain_hint,
-            pre_fetched_candidates=pre_fetched_candidates,
-        )
-        
+        try:
+            concept_ids = self._slow_path(
+                query_text, context, domain_hint=domain_hint,
+                pre_fetched_candidates=pre_fetched_candidates,
+            )
+        except RerankerFailed as e:
+            # Refused, not degraded: no seed was chosen, so there is nothing to map. The
+            # reranker logged the one counted line; the reason is recorded here, and a
+            # mapping carrying it is never cached.
+            concept_ids = []
+            result.reranker_failure = str(e)
+
         if not concept_ids:
             # Gap Analysis (Pattern 3)
             result.gap_report.add_gap(
                 item_id="Q_01",
                 original_text=query_text,
-                reason="No OMOP mapping found",
+                reason=(
+                    f"Reranker failed: {result.reranker_failure}"
+                    if result.reranker_failure else "No OMOP mapping found"
+                ),
                 domain=domain_hint,
                 attempted_searches=[query_text]
             )
