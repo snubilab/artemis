@@ -295,12 +295,6 @@ def _render_tte_report_narrative() -> str:
     return _joined(recorder.calls)
 
 
-def _render_dedup_judge() -> str:
-    from src.agents.agent1 import criteria_dedup_judge
-
-    return criteria_dedup_judge._render_prompt(f"{STUB} candidate", [f"{STUB} one", f"{STUB} two"])
-
-
 def _render_criterion_annotation() -> str:
     """Through ``annotate_eligibility`` with the model replaced, over a group label (so the
     members block is rendered), its member, and a row of the same role on another line (so
@@ -480,12 +474,6 @@ PROMPTS: dict[str, PromptSpec] = {
             "Propensity score weighting did NOT achieve adequate covariate balance. "
             "The reported effect estimate is highly vulnerable to residual confounding.",
         }),
-    ),
-    "agent1.dedup_judge": PromptSpec(
-        _render_dedup_judge,
-        tokens=frozenset({"restatement", "conjunction_of_alternatives", "negation_of_alternative",
-                          "distinct", "verdict", "matched_alternatives", "reason"}),
-        placeholders=frozenset({"one short sentence"}),
     ),
     "agent2.specimen_critic": PromptSpec(
         _render_specimen_critic, tokens=frozenset({"accepted", "any"}),
@@ -824,7 +812,6 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
         7, ("agent1.parse", "agent1.parse_nct", "agent1.threshold_review"),
     ),
     "src/agents/agent1/segmentation.py": (3, ("agent1.eligibility_segmentation",)),
-    "src/agents/agent1/criteria_dedup_judge.py": (2, ("agent1.dedup_judge",)),
     "src/agents/planner/decomposer.py": (3, ("planner",)),
     "src/agents/agent2/reranker.py": (3, ("agent2.reranker_single_select", "agent2.reranker_topn")),
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),

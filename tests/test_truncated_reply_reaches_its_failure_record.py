@@ -250,14 +250,6 @@ def test_should_refuse_a_cut_agent1_extraction():
         decomposer._invoke_and_extract([], what="Agent 1 NCT extraction")
 
 
-def test_should_give_no_verdict_for_a_cut_dedup_judge_reply():
-    from src.agents.agent1.criteria_dedup_judge import _parse_response
-
-    reply = json.dumps({"verdict": "restatement", "matched_alternatives": [1, 2], "reason": "same"})
-    with pytest.raises(ValueError):
-        _parse_response(_cut_inside(reply, "same"), ["a", "b"])
-
-
 def test_should_record_a_caveat_and_no_candidate_for_a_cut_comparator_reply():
     from src.agents.comparator import recommender
 
