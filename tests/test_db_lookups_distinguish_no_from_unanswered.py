@@ -8,6 +8,10 @@ queries in one `try`, logged at DEBUG, and returned its NO-MATCH value on any ex
     _unique_ingredient_ids_by_name  -> {}
     _subsumed_concept_pairs         -> None
 
+The last two were deleted on 2026-10-14 with the concept-set name repair that was their
+only caller (`_repair_stale_drug_concept_sets`, a concept-set NAME read as an RxNorm
+Ingredient name), so the two lookups below are what remain.
+
 `None` from the first is what `_recommend_seeded_concept_set` reads as "this seed is not
 an ingredient name", so a pool exhaustion or a connect failure sends a drug seed down the
 embedding path -- the path that answers "linagliptin" with sitagliptin and "warfarin"
@@ -60,12 +64,6 @@ LOOKUPS = [
         None,
     ),
     ("_fetch_concept_candidates", lambda s: s._fetch_concept_candidates([1594973]), []),
-    (
-        "_unique_ingredient_ids_by_name",
-        lambda s: s._unique_ingredient_ids_by_name({"linagliptin"}),
-        {},
-    ),
-    ("_subsumed_concept_pairs", lambda s: s._subsumed_concept_pairs({(1, 2)}), set()),
 ]
 
 
@@ -103,11 +101,3 @@ def test_should_not_reroute_a_drug_seed_to_embedding_search_when_the_database_is
     with patch("psycopg2.connect", side_effect=OSError("no route to host")):
         with pytest.raises(DBConnectionError):
             svc._exact_ingredient_mapping("linagliptin")
-
-
-def test_should_leave_the_repair_declining_only_for_a_real_empty_subsumption():
-    """`_subsumed_concept_pairs` no longer has a None channel to decline on."""
-    svc = _build_service()
-    conn = _connection(rows=[])
-    with patch("psycopg2.connect", return_value=conn):
-        assert svc._subsumed_concept_pairs({(1, 2)}) == set()

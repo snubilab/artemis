@@ -62,7 +62,6 @@ def _service(failures):
     svc._recommend_seeded_concept_set = lambda seed, **_k: _mapped(failures)
     svc._drug_anchored_entry = lambda: False
     svc._swap_primary_to_disease = lambda base, *_a, **_k: base
-    svc._repair_stale_drug_concept_sets = lambda base: None
     return svc
 
 

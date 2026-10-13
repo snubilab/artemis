@@ -95,7 +95,6 @@ def service(monkeypatch) -> TTEService:
         raise ValueError("No concept mapping found for " + repr(seed_text.strip()))
 
     monkeypatch.setattr(svc, "_recommend_seeded_concept_set", fake_recommend)
-    monkeypatch.setattr(svc, "_repair_stale_drug_concept_sets", lambda base: None)
     return svc
 
 

@@ -111,9 +111,6 @@ def service(monkeypatch) -> TTEService:
         }
 
     monkeypatch.setattr(svc, "_recommend_seeded_concept_set", fake_recommend)
-    # The repair pass needs a live vocabulary database; it already fails open, and
-    # stubbing it keeps this test about the entry choice rather than about psycopg2.
-    monkeypatch.setattr(svc, "_repair_stale_drug_concept_sets", lambda base: None)
     return svc
 
 
