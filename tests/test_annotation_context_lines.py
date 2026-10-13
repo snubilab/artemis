@@ -339,7 +339,6 @@ def _no_database() -> Any:
 @pytest.fixture
 def service(monkeypatch) -> TTEService:
     monkeypatch.setattr("src.agents.agent2.workflow.Agent2Workflow", _Agent2IsStubbed)
-    monkeypatch.setattr("src.agents.agent2.query_expander.QueryExpander", _Agent2IsStubbed)
     monkeypatch.setattr("src.agents.agent2.retriever.ConceptRetriever", _Agent2IsStubbed)
     svc = TTEService.__new__(TTEService)
 

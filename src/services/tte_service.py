@@ -5312,10 +5312,8 @@ class TTEService:
         if total_mappable > 0:
             try:
                 from src.agents.agent2.retriever import ConceptRetriever
-                from src.agents.agent2.query_expander import QueryExpander
                 from src.agents.agent2.abbreviation_expander import expand_abbreviation, expand_in_context
 
-                _qe = QueryExpander()
                 _retriever = ConceptRetriever()
 
                 expanded_texts: list[str] = []
@@ -5335,7 +5333,6 @@ class TTEService:
                         if ctx_exp != raw_text:
                             raw_text = ctx_exp
                     domain = (criterion.get("domain") or "").strip() or None
-                    raw_text = _qe.expand(raw_text, domain_hint=domain)
                     expanded_texts.append(raw_text)
                     domain_hints.append(domain)
 
@@ -8520,7 +8517,7 @@ class TTEService:
             except Exception as exc:
                 logging.debug("Criterion cache lookup failed: %s", exc)
 
-        # Primary path: Agent 2 full pipeline (ATC, UMLS, reranker, critic)
+        # Primary path: Agent 2 full pipeline (ATC, reranker, critic)
         #
         # How this stage ended is kept, because the RAG fallback below runs whether it
         # raised or merely came back empty, and if the fallback then fails too its

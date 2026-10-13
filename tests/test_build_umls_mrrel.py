@@ -1,5 +1,4 @@
-"""Behaviour of scripts/build_umls_mrrel.py and the expander's missing-data warning."""
-import logging
+"""Behaviour of scripts/build_umls_mrrel.py."""
 import sqlite3
 import sys
 from pathlib import Path
@@ -7,8 +6,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import build_umls_mrrel  # noqa: E402
-
-from src.agents.agent2 import drug_class_expander  # noqa: E402
 
 
 def _rrf_line(cui1, rel, cui2, rela, sab, suppress="N"):
@@ -37,14 +34,3 @@ def test_should_keep_only_isa_rows_from_listed_sources_when_building(tmp_path):
         ("C_DRUG", "C_CLASS", "inverse_isa", "MED-RT"),
         ("C_CLASS", "C_DRUG", "isa", "MED-RT"),
     ]
-
-
-def test_should_warn_when_umls_sqlite_is_missing(tmp_path, monkeypatch, caplog):
-    monkeypatch.setattr(drug_class_expander, "_MRREL_DB_PATH", str(tmp_path / "none.sqlite"))
-    monkeypatch.setattr(drug_class_expander, "_MRCONSO_DB_PATH", str(tmp_path / "none2.sqlite"))
-
-    with caplog.at_level(logging.WARNING, logger=drug_class_expander.logger.name):
-        result = drug_class_expander.expand_drug_class_via_umls("anticoagulants", None, "cdm")
-
-    assert result == (None, [])
-    assert any("not available" in r.getMessage() for r in caplog.records)

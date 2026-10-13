@@ -195,7 +195,6 @@ def expander(monkeypatch):
     asked = []
 
     def _install(hits, ingredients=INGREDIENTS):
-        monkeypatch.setattr(dce, "expand_drug_class_via_umls", lambda *a, **k: (None, []))
 
         class _Collection:
             def query(self, query_texts, n_results):

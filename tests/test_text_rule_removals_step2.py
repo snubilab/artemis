@@ -106,7 +106,6 @@ class _Agent2IsStubbed:
 @pytest.fixture
 def service(monkeypatch):
     monkeypatch.setattr("src.agents.agent2.workflow.Agent2Workflow", _Agent2IsStubbed)
-    monkeypatch.setattr("src.agents.agent2.query_expander.QueryExpander", _Agent2IsStubbed)
     monkeypatch.setattr("src.agents.agent2.retriever.ConceptRetriever", _Agent2IsStubbed)
     svc = TTEService.__new__(TTEService)
     asked: list[str] = []
@@ -203,7 +202,6 @@ class TestADrugQueryIsExpandedWhole:
             workflow_mod.logician, "roll_up_to_rxnorm_ingredients", lambda ids: list(ids)
         )
         flow = workflow_mod.Agent2Workflow.__new__(workflow_mod.Agent2Workflow)
-        flow._query_expander = MagicMock(expand=lambda text, domain_hint=None: text)
 
         result = flow.process_with_details(query, domain_hint="Drug")
 

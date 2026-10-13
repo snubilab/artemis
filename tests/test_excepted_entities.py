@@ -143,7 +143,6 @@ class _TableMapper(TTEService):
 @pytest.fixture
 def mapper(monkeypatch):
     monkeypatch.setattr("src.agents.agent2.workflow.Agent2Workflow", _Agent2IsStubbed)
-    monkeypatch.setattr("src.agents.agent2.query_expander.QueryExpander", _Agent2IsStubbed)
     monkeypatch.setattr("src.agents.agent2.retriever.ConceptRetriever", _Agent2IsStubbed)
     monkeypatch.setenv("CRITERION_CACHE_ENABLED", "false")
 

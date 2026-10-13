@@ -41,7 +41,6 @@ def _mock_db_conn(ingredient_ids: list[int]) -> MagicMock:
 # Patch targets
 # ---------------------------------------------------------------------------
 
-_UMLS_PATCH = "src.agents.agent2.drug_class_expander.expand_drug_class_via_umls"
 _CHROMA_PATCH = "src.utils.vector.get_chroma_client"
 _SETTINGS_PATCH = "src.agents.agent2.drug_class_expander.Settings"
 
@@ -76,7 +75,6 @@ def test_atc_distance_above_threshold_is_rejected():
     mock_db = _mock_db_conn(ingredient_ids=[1, 2, 3, 4])
 
     with (
-        patch(_UMLS_PATCH, return_value=(None, [])),
         patch(_CHROMA_PATCH, return_value=mock_client),
         patch.dict(os.environ, {}, clear=False),
     ):
@@ -118,7 +116,6 @@ def test_atc_distance_below_threshold_is_accepted():
     mock_db = _mock_db_conn(ingredient_ids=ingredient_ids)
 
     with (
-        patch(_UMLS_PATCH, return_value=(None, [])),
         patch(_CHROMA_PATCH, return_value=mock_client),
     ):
         os.environ.pop("AGENT2_ATC_DISTANCE_THRESHOLD", None)
@@ -164,7 +161,6 @@ def test_env_var_overrides_distance_threshold():
         mock_db = _mock_db_conn(ingredient_ids=ingredient_ids)
 
         with (
-            patch(_UMLS_PATCH, return_value=(None, [])),
             patch(_CHROMA_PATCH, return_value=mock_client),
             patch.dict(os.environ, {"AGENT2_ATC_DISTANCE_THRESHOLD": "0.3"}),
         ):

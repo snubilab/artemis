@@ -9,7 +9,8 @@ changes nothing, the test pins the unchanged output on every candidate row.
 * A3  ``LogicDecomposer._normalize_drug_entity_text`` -- stripped parentheticals and a
   trailing "or other <word>" from a Drug ``entity_text``.
 * A13 ``query_expander._CURATED_EXPANSIONS`` -- rewrote the retrieval query for eGFR,
-  NSTEMI, TIA and Stroke.
+  NSTEMI, TIA and Stroke. The expander itself went later, with the UMLS lookup that was
+  all it had left.
 * A15 ``nlu_router.TEMPORAL_KEYWORDS`` -- refused a RAG-fallback seed containing a window
   word before the intent separator saw it.
 * A23 ``TTEService._extract_eligibility_concept_ids_for_outcome`` -- split the outcome
@@ -29,7 +30,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.agents.agent1 import parser
-from src.agents.agent2.query_expander import QueryExpander
+from src.agents.agent2 import workflow as agent2_workflow
 from src.agents.conceptset.nlu_router import IntentResult, NLURouter
 from src.services.tte_service import TTEService
 
@@ -115,14 +116,21 @@ A13_ROWS = [
 def test_should_query_the_retriever_with_the_seed_when_it_was_on_the_curated_list(
     monkeypatch: pytest.MonkeyPatch, study_id: int, role: str, criterion_id: int
 ) -> None:
-    """The twelve mapped rows behind the candidate's 24 ``[QueryExpander] Expanded`` lines."""
-    monkeypatch.delenv("AGENT2_QUERY_EXPAND", raising=False)
+    """The twelve mapped rows behind the candidate's 24 ``[QueryExpander] Expanded`` lines:
+    Agent 2 asks the retriever for the seed as Agent 1 wrote it."""
     row = _row(study_id, role, criterion_id)
     assert row["sourceText"] in {"eGFR", "NSTEMI", "TIA", "Stroke"}
+    asked: list[str] = []
 
-    assert QueryExpander(umls_expander=None).expand(row["sourceText"], row["domain"]) == (
-        row["sourceText"]
-    )
+    def search(query: str, *args: Any, **kwargs: Any) -> list[Any]:
+        asked.append(query)
+        return []
+
+    monkeypatch.setattr(agent2_workflow.retriever, "search", search)
+    workflow = agent2_workflow.Agent2Workflow()
+    workflow.process_with_details(row["sourceText"], domain_hint=row["domain"])
+
+    assert asked == [row["sourceText"]]
 
 
 # --------------------------------------------------------------------------- #

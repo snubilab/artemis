@@ -122,8 +122,6 @@ def _process(reranker):
 
     workflow = wf.Agent2Workflow()
     workflow._reranker = reranker
-    workflow._umls_expander = MagicMock(is_available=False)
-    workflow._query_expander = MagicMock(expand=lambda q, domain_hint=None: q)
     with patch.object(wf, "expand_abbreviation", return_value=("q", False)), \
             patch.object(wf, "expand_in_context", side_effect=lambda q: q), \
             patch.object(wf, "_exact_name_concept", side_effect=AssertionError("DB reached")), \

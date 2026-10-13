@@ -237,14 +237,12 @@ class TestBatchPreFetchIntegration:
     @patch("src.services.tte_service.TTEService._recommend_seeded_concept_set")
     @patch("src.agents.agent2.abbreviation_expander.expand_in_context", side_effect=lambda x: x)
     @patch("src.agents.agent2.abbreviation_expander.expand_abbreviation", side_effect=lambda x: (x, False))
-    @patch("src.agents.agent2.query_expander.QueryExpander.expand", side_effect=lambda x, **kw: x)
     @patch("src.agents.agent2.retriever.ConceptRetriever.__init__", return_value=None)
     @patch("src.agents.agent2.retriever.ConceptRetriever.batch_search")
     def test_empty_batch_result_falls_back_to_per_criterion_search(
         self,
         mock_batch_search,
         mock_retriever_init,
-        mock_qe_expand,
         mock_expand_abbr,
         mock_expand_ctx,
         mock_recommend,
@@ -309,14 +307,12 @@ class TestBatchPreFetchIntegration:
     @patch("src.services.tte_service.TTEService._recommend_seeded_concept_set")
     @patch("src.agents.agent2.abbreviation_expander.expand_in_context", side_effect=lambda x: x)
     @patch("src.agents.agent2.abbreviation_expander.expand_abbreviation", side_effect=lambda x: (x, False))
-    @patch("src.agents.agent2.query_expander.QueryExpander.expand", side_effect=lambda x, **kw: x)
     @patch("src.agents.agent2.retriever.ConceptRetriever.__init__", return_value=None)
     @patch("src.agents.agent2.retriever.ConceptRetriever.batch_search")
     def test_domain_grouped_batch_produces_separate_calls(
         self,
         mock_batch_search,
         mock_retriever_init,
-        mock_qe_expand,
         mock_expand_abbr,
         mock_expand_ctx,
         mock_recommend,

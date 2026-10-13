@@ -60,7 +60,6 @@ from src.agents.agent2.reranker import RerankerFailed, get_reranker
 from src.agents.agent2.logic import logician
 from src.agents.agent2.abbreviation_expander import expand_abbreviation, expand_in_context
 from src.agents.agent2.drug_class_expander import expand_drug_class_via_vocab
-from src.agents.agent2.umls_synonym_expander import get_umls_expander
 from src.agents.agent2.kg_expander import admit_within_seed_closure, get_kg_expander
 from src.agents.agent2.critic import get_critic
 from src.agents.agent2.concept_set_refiner import RefinerLookupError, get_concept_set_refiner
@@ -295,15 +294,7 @@ class Agent2Workflow:
     
     def __init__(self):
         self._reranker = None
-        self._umls_expander = None
 
-    @property
-    def umls_expander(self):
-        """Lazy load UMLS synonym expander."""
-        if self._umls_expander is None:
-            self._umls_expander = get_umls_expander()
-        return self._umls_expander
-    
     @property
     def reranker(self):
         """Lazy load reranker."""
@@ -396,17 +387,6 @@ class Agent2Workflow:
                 logger.info(f"[Agent 2] In-context abbreviation: '{query_text}' → '{ctx_expanded}'")
                 query_text = ctx_expanded
 
-        # Step 0a-bis: UMLS-backed query pre-expansion for short abbreviations
-        # Resolves ambiguous abbreviations (MI, GLP-1) to canonical clinical
-        # form BEFORE embedding search. Gated by AGENT2_QUERY_EXPAND env var.
-        from src.agents.agent2.query_expander import QueryExpander
-        if not hasattr(self, '_query_expander'):
-            self._query_expander = QueryExpander(umls_expander=self.umls_expander)
-        original_query = query_text
-        query_text = self._query_expander.expand(query_text, domain_hint=domain_hint)
-        if query_text != original_query:
-            logger.info(f"[Agent 2] Query pre-expanded: '{original_query}' -> '{query_text}'")
-
         # Step 0b: Drug Class Expansion via ATC Vocabulary (RFC-006)
         # Gate: Only attempt ATC expansion when Agent 1 classifies domain as "Drug".
         # Without this gate, ATC matches non-drug queries catastrophically
@@ -457,7 +437,7 @@ class Agent2Workflow:
             # TODO: Implement direct DB lookup by code
             # For now, continue to vector search
         
-        # Step 1: every query takes the slow path (LLM reranker + UMLS expansion). The
+        # Step 1: every query takes the slow path (LLM reranker). The
         # fast path and the word-pattern router that chose it were removed (P5): the
         # router's verdict had been overwritten to "slow" here for every query, so it
         # decided nothing. `force_slow_path` is accepted for callers and has no effect.
@@ -577,36 +557,9 @@ class Agent2Workflow:
         """
         Slow path: Vector search + Top-N LLM reranking.
         KG expansion is handled in post-processing (_kg_expand_and_critique).
-        
-        Enhanced with UMLS Multi-query: synonym-expanded queries are searched
-        in parallel and their candidates merged before reranking.
         """
         logger.info(f"[Agent 2] Slow path for: '{query_text}' (domain={domain_hint})")
-        
-        # UMLS full-form rewrite: use UMLS synonyms to augment primary search.
-        # This prevents embedding confusion (e.g., "fibrinolytic" ≈ "fibrinogen")
-        # by adding diverse alternative query terms from UMLS (e.g., "Thrombolytic Drug").
-        umls_rewrites: list[str] = []
-        if self.umls_expander.is_available:
-            cuis = self.umls_expander.get_cuis(query_text, domain_hint=domain_hint)
-            if cuis:
-                all_syns = self.umls_expander.get_synonyms_for_cui(
-                    cuis[0], max_synonyms=10,
-                    preferred_sabs=["SNOMEDCT_US", "NCI", "MSH", "RXNORM"]
-                )
-                # Pick up to 2 synonyms with different root words
-                query_root = query_text.split()[0].lower() if query_text.split() else ""
-                for s in all_syns:
-                    s_root = s.split()[0].lower() if s.split() else ""
-                    if s_root != query_root and s.lower() != query_text.lower():
-                        umls_rewrites.append(s)
-                        if len(umls_rewrites) >= 2:
-                            break
-                if umls_rewrites:
-                    logger.info(
-                        f"[Agent 2] UMLS diverse rewrites for '{query_text}': {umls_rewrites}"
-                    )
-        
+
         # Primary search — use batch pre-fetched candidates when available
         if pre_fetched_candidates:
             candidates = list(pre_fetched_candidates)
@@ -616,39 +569,6 @@ class Agent2Workflow:
             )
         else:
             candidates = retriever.search(query_text, domain_hint=domain_hint)
-        
-        # Search with UMLS diverse rewrites and merge candidates
-        for rewrite in umls_rewrites:
-            rewrite_candidates = retriever.search(rewrite, domain_hint=domain_hint)
-            seen_ids = {c.concept_id for c in candidates}
-            for rc in rewrite_candidates:
-                if rc.concept_id not in seen_ids:
-                    seen_ids.add(rc.concept_id)
-                    candidates.append(rc)
-        
-        # UMLS Multi-query: expand synonyms and merge additional candidates (parallel)
-        if self.umls_expander.is_available:
-            synonyms = self.umls_expander.expand(query_text, max_synonyms=3, domain_hint=domain_hint)
-            if synonyms:
-                seen_ids = {c.concept_id for c in candidates}
-                with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(synonyms))) as pool:
-                    futures = [
-                        pool.submit(retriever.search, syn, 10, domain_hint)
-                        for syn in synonyms
-                    ]
-                    for future in futures:
-                        try:
-                            syn_candidates = future.result()
-                            for sc in syn_candidates:
-                                if sc.concept_id not in seen_ids:
-                                    seen_ids.add(sc.concept_id)
-                                    candidates.append(sc)
-                        except Exception as e:
-                            logger.warning(f"[Agent 2] Synonym search failed: {e}")
-                logger.info(
-                    f"[Agent 2] UMLS multi-query: {len(synonyms)} synonyms → "
-                    f"{len(candidates)} total candidates"
-                )
         
         if not candidates:
             logger.info("[Agent 2][LINEAGE] retriever → 0 candidates")

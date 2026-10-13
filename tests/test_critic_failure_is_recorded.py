@@ -94,7 +94,6 @@ def _process(monkeypatch, critic):
     monkeypatch.setattr(wf, "get_kg_expander", lambda: _Expander())
     monkeypatch.setattr(wf, "get_critic", lambda: critic)
     workflow = wf.Agent2Workflow()
-    workflow._query_expander = MagicMock(expand=lambda q, domain_hint=None: q)
     with patch("src.agents.agent2.workflow.expand_abbreviation", return_value=("q", False)), \
          patch("src.agents.agent2.workflow.expand_in_context", return_value="q"), \
          patch.object(wf.Agent2Workflow, "_slow_path", return_value=[SEED]), \

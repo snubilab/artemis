@@ -1,9 +1,8 @@
 """
 Medical Abbreviation Expander for Agent 2.
 
-DEPRECATED: Hardcoded dictionary removed. Abbreviation expansion is now
-handled by the UMLS Synonym Expander (umls_synonym_expander.py) which
-uses MRCONSO for broader, more generalizable coverage.
+DEPRECATED: Hardcoded dictionary removed, and no other module expands
+abbreviations either: the query reaches retrieval as Agent 1 wrote it.
 
 These functions are kept as no-ops for backward compatibility.
 """

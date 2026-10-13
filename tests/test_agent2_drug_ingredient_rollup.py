@@ -49,19 +49,11 @@ def test_process_with_details_rolls_up_final_drug_ids():
     fake_conn = MagicMock()
     fake_pool.getconn.return_value = fake_conn
 
-    class _FakeQueryExpander:
-        def __init__(self, umls_expander=None):
-            self.umls_expander = umls_expander
-
-        def expand(self, query_text, domain_hint=None):
-            return query_text
-
     with (
         patch("src.agents.agent2.workflow.expand_abbreviation", return_value=("ticagrelor", False)),
         patch("src.agents.agent2.workflow.expand_in_context", return_value="ticagrelor"),
         patch("src.agents.agent2.workflow._get_db_pool", return_value=fake_pool),
         patch("src.agents.agent2.workflow.expand_drug_class_via_vocab", return_value=(None, [])),
-        patch("src.agents.agent2.query_expander.QueryExpander", _FakeQueryExpander),
         patch.object(Agent2Workflow, "_slow_path", return_value=[855208]),
         patch.object(Agent2Workflow, "_kg_expand_and_critique", return_value=([855208, 855221], [], False)),
         patch("src.agents.agent2.workflow.logician.roll_up_to_rxnorm_ingredients", return_value=[40241186]) as mock_rollup,

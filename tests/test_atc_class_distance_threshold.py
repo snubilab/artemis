@@ -68,14 +68,8 @@ class _Conn:
 
 @pytest.fixture
 def atc(monkeypatch):
-    """Route the expander at a stub ATC collection and a stub OMOP connection.
-
-    UMLS is stubbed to find nothing, matching production: the remap logged
-    "MRREL/MRCONSO SQLite not available" 37 times, so ATC is the only live path.
-    """
+    """Route the expander at a stub ATC collection and a stub OMOP connection."""
     def _install(name, distance):
-        monkeypatch.setattr(dce, "expand_drug_class_via_umls",
-                            lambda *a, **k: (None, []))
         collection = _Collection(name, distance)
         monkeypatch.setattr("src.utils.vector.get_chroma_client",
                             lambda: type("C", (), {"get_collection": lambda _s, _n: collection})())
@@ -207,7 +201,6 @@ def ranked_atc(monkeypatch):
                A08AX[0]: (*A08A, "ATC 3rd")}
 
     def _install(ranking):
-        monkeypatch.setattr(dce, "expand_drug_class_via_umls", lambda *a, **k: (None, []))
         monkeypatch.setattr(dce, "atc_parent", lambda _c, _s, cid: parents.get(cid))
         collection = _RankedCollection(ranking)
         monkeypatch.setattr("src.utils.vector.get_chroma_client",
