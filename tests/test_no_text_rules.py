@@ -1955,6 +1955,17 @@ def test_should_find_every_pending_rule_in_the_code_when_it_is_still_listed():
     )
 
 
+def test_should_name_an_existing_file_when_an_entry_is_listed():
+    # An entry for a deleted file is never checked, so it would silently allow the same rule
+    # if a file of that name came back.
+    missing = [e for e in load_ledger() if not (ROOT / e["file"]).exists()]
+    assert not missing, (
+        f"{len(missing)} ledger entr(y/ies) name a file that no longer exists; "
+        f"delete them from {LEDGER_PATH.name}:\n"
+        + "\n".join(f"  {e['kind']} {e['inventory_id']} {e['file']}" for e in missing)
+    )
+
+
 def test_should_not_allow_any_site_when_it_lives_in_a_rule_module():
     entries = load_ledger()
     pending_files = {e["file"] for e in entries if e["kind"] == "pending"}
