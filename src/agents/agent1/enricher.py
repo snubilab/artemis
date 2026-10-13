@@ -4,13 +4,12 @@ Enriches TrialData from NCT API with criteria from PubMed design papers.
 
 Three strategies:
 - "replace": Use PubMed criteria if richer than NCT (default)
-- "merge": Combine unique criteria from both sources
+- "merge": every criterion of both sources, the held ones first
 - "supplement_priority": per section, the PDF's criteria when it yields that section,
   else the criteria already held (the registry's)
 """
 import logging
 from typing import Dict, List, Literal
-from difflib import SequenceMatcher
 
 from src.agents.agent1.nct_fetcher import TrialData
 
@@ -29,7 +28,7 @@ def enrich_trial_data(
         trial_data: Original TrialData from NCT API
         pubmed_criteria: Dict with "inclusion" and "exclusion" lists
                          extracted from PubMed paper
-        strategy: "replace" (use richer source), "merge" (combine unique),
+        strategy: "replace" (use richer source), "merge" (every criterion of both sources),
                   or "supplement_priority" (per section: the PDF's criteria when it
                   yields that section, else the criteria already held)
 
@@ -73,35 +72,29 @@ def _pick_richer(nct_criteria: List[str], pubmed_criteria: List[str]) -> List[st
 def _merge_criteria(
     nct_criteria: List[str],
     pubmed_criteria: List[str],
-    similarity_threshold: float = 0.7,
 ) -> List[str]:
+    """Every criterion of both sources: the held ones, then the paper's, each in order.
+
+    No criterion is dropped here as a duplicate of another. A whole-string similarity
+    ratio used to decide that (>= 0.7, inventory E7), which reads the wording of two
+    criteria to judge whether they state one fact. Measured on the reingest inputs of
+    the six evaluated trials it removed one criterion -- PLATO's design-paper
+    "Increased risk of bradycardiac events" (0.83 against the main paper's "an
+    increased risk of bradycardia,") -- and let at least five restatements in the same
+    merge through at 0.23-0.56, so it never gave the guarantee it appeared to.
+    A restatement reaches extraction as its own criterion. It is collapsed afterwards
+    only where the model gives both copies identical structured fields
+    (``restated_distinctness.distinctness_key``); where it does not, both stay and the
+    restatement is visible in the IR rather than decided away here. Exact repeats are
+    removed with the whitespace cleaning in
+    ``parser._normalize_trial_data_for_stable_hash``.
+
+    :param nct_criteria: the criteria already held (the registry's, plus any paper
+        merged before this one).
+    :param pubmed_criteria: this paper's criteria for the same section.
+    :returns: ``nct_criteria`` followed by ``pubmed_criteria``.
     """
-    Merge criteria from two sources, deduplicating by similarity.
-    
-    Args:
-        nct_criteria: Criteria from NCT API
-        pubmed_criteria: Criteria from PubMed paper
-        similarity_threshold: Min similarity ratio to consider duplicate
-        
-    Returns:
-        Merged list of unique criteria
-    """
-    merged = list(nct_criteria)
-
-    for pub_item in pubmed_criteria:
-        is_duplicate = False
-        for nct_item in nct_criteria:
-            similarity = SequenceMatcher(
-                None, pub_item.lower(), nct_item.lower()
-            ).ratio()
-            if similarity >= similarity_threshold:
-                is_duplicate = True
-                break
-
-        if not is_duplicate:
-            merged.append(pub_item)
-
-    return merged
+    return list(nct_criteria) + list(pubmed_criteria)
 
 
 def _supplement_priority_merge(

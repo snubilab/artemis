@@ -734,6 +734,11 @@ def test_should_take_a_section_from_the_trials_own_document_when_it_yields_one(
 
 def test_should_keep_unioning_main_papers_on_the_merge_path(monkeypatch):
     """PLATO has no protocol or supplement PDF: its three papers are role ``main`` and
-    take the merge strategy, which this change does not touch."""
+    take the merge strategy, which appends every criterion of each paper after the ones
+    already held. The design paper's bradycardia exclusion used to be dropped as a
+    duplicate of the main paper's on a 0.83 string ratio (E7); it reaches extraction now,
+    like the other restatements in the same merge that the ratio never caught."""
     trial_data = enriched_trial(monkeypatch, "PLATO")
-    assert (len(trial_data.inclusion_criteria), len(trial_data.exclusion_criteria)) == (8, 23)
+    assert (len(trial_data.inclusion_criteria), len(trial_data.exclusion_criteria)) == (8, 24)
+    assert "Increased risk of bradycardiac events" in trial_data.exclusion_criteria
+    assert "an increased risk of bradycardia," in trial_data.exclusion_criteria

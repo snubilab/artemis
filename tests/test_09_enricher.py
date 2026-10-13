@@ -112,3 +112,28 @@ class TestTrialDataEnrichment:
         assert len(enriched.inclusion_criteria) >= 3
         # Both sources' exclusions
         assert len(enriched.exclusion_criteria) >= 2
+
+    def test_should_keep_every_paper_criterion_when_its_wording_resembles_a_held_one(self):
+        """
+        Given: A held criterion and a paper criterion whose wording is close
+        When:  enrich_trial_data merges the two sources
+        Then:  Both survive, held first, each source in its own order
+
+        PLATO's merge is the real event: the design paper's "Increased risk of
+        bradycardiac events" scored 0.83 against the main paper's "an increased
+        risk of bradycardia," and was dropped, while the same merge kept "Oral
+        anticoagulation therapy that cannot be stopped" beside "a need for oral
+        anticoagulation" (0.44). How alike two strings read decides nothing here;
+        restatements are collapsed downstream on the extraction's own fields.
+        """
+        from src.agents.agent1.enricher import enrich_trial_data
+
+        held = ["an increased risk of bradycardia,", "Dialysis required"]
+        paper = ["Increased risk of bradycardiac events", "Pregnancy or lactation"]
+        trial_data = TrialData(nct_id="NCT00391872", inclusion_criteria=[], exclusion_criteria=held)
+
+        enriched = enrich_trial_data(
+            trial_data, {"inclusion": [], "exclusion": paper}, strategy="merge"
+        )
+
+        assert enriched.exclusion_criteria == held + paper
