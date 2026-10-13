@@ -709,13 +709,13 @@ class PipelineSupervisor:
 
     @staticmethod
     def _collect_rule_entities(rule, source, section="inclusion", rule_idx=0):
-        """Collect entity texts from a rule, including sub_criteria.
+        """Collect entity texts from a rule: one per sub-criterion, or the rule's own.
 
         Each entity gets a stable `entity_key` for pipeline-wide identity tracking.
 
-        Applies Hierarchical Expansion: when a composite rule has sub_criteria,
-        the original rule name is also included if not already present.
-        (See §11 in BENCHMARK_CONSOLIDATED_REPORT.md — A' vs A: +6.7pp recall)
+        A group's own entity text is not mapped: the assembler builds a group from its
+        sub-criteria. It used to be added when its lower-cased text differed from every
+        sub-criterion's, a text comparison that decided which entities were mapped.
         """
         entities = []
         parent_key = rule.name.lower().replace(" ", "_") if rule.name else None
@@ -726,17 +726,6 @@ class PipelineSupervisor:
                         "text": sc.entity_text, "domain": sc.domain,
                         "source": source, "parent_rule": parent_key,
                         "entity_key": f"{source}:{section}:{rule_idx}:{sub_idx}",
-                    })
-            if rule.entity_text:
-                decomposed = {e["text"].lower() for e in entities}
-                original = rule.entity_text.lower()
-                if original not in decomposed:
-                    primary_domain = entities[0]["domain"] if entities else (rule.domain or "Condition")
-                    # Original text gets sub_idx = -1 (sentinel for "parent original")
-                    entities.insert(0, {
-                        "text": rule.entity_text, "domain": primary_domain,
-                        "source": source, "parent_rule": parent_key,
-                        "entity_key": f"{source}:{section}:{rule_idx}:-1",
                     })
         elif rule.entity_text:
             entities.append({

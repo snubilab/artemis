@@ -371,12 +371,10 @@ class TestEntityKey:
             ],
         )
         entities = PipelineSupervisor._collect_rule_entities(rule, "target", "inclusion", 2)
-        # Hierarchical expansion: original text + 2 sub_criteria
-        assert len(entities) == 3
-        # Original gets sub_idx=-1 and is inserted at position 0
-        assert entities[0]["entity_key"] == "target:inclusion:2:-1"
-        assert entities[1]["entity_key"] == "target:inclusion:2:0"
-        assert entities[2]["entity_key"] == "target:inclusion:2:1"
+        # One entity per sub-criterion; the group's own text is not mapped (the assembler
+        # builds a group from its sub-criteria).
+        keys = [e["entity_key"] for e in entities]
+        assert keys == ["target:inclusion:2:0", "target:inclusion:2:1"]
 
     def test_exclusion_rule_key(self):
         """Exclusion rules should use section='exclusion'."""
