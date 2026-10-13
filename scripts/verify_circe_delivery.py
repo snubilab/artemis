@@ -747,6 +747,44 @@ def emitted_criterion_keys(expression: dict[str, Any]) -> set[tuple[str, str]] |
     return keys
 
 
+def demographic_rule_keys(
+    expression: dict[str, Any],
+    index: dict[tuple[str, str], dict[str, Any]],
+    lost: set[tuple[str, str]],
+    emitted: set[tuple[str, str]] | None,
+) -> set[tuple[str, str]]:
+    """``{(role, criterionId)}`` for every criterion the file emitted as a demographic rule.
+
+    A demographic rule (``DemographicCriteriaList``, an Age) mints no concept set, so
+    ``_criterionConceptSetRefs`` never names its criterion, and the file carries no other
+    per-criterion record of it. It is read off the census partition instead: a store
+    criterion of a demographic domain that no refusal record, no skip record and no refs
+    entry names. Every demographic rule comes from one such row, so when their number equals
+    ``_generationCensus.demographicRules`` the two are the same set; when it does not -- a
+    row that left the file with no record, or a demographic row mapped as a concept set in a
+    file with no refs map to say so -- nothing is credited, and the caller re-judges as before.
+
+    :param expression: the delivered file.
+    :param index: the store study's criteria, from :func:`criteria_index`.
+    :param lost: the criteria a refusal or skip record names.
+    :param emitted: :func:`emitted_criterion_keys` of the file, or None.
+    :returns: the criteria credited as demographic rules; empty when the census disagrees.
+    """
+    # Deferred for the reason `skipped_criteria_violations` gives.
+    from src.api.models.tte import DEMOGRAPHIC_DOMAINS
+
+    census = expression.get("_generationCensus")
+    claimed = census.get("demographicRules") if isinstance(census, dict) else None
+    candidates = {
+        key
+        for key, row in index.items()
+        if key not in lost
+        and (emitted is None or key not in emitted)
+        and (row.get("domain") or "").strip() in DEMOGRAPHIC_DOMAINS
+    }
+    return candidates if isinstance(claimed, int) and claimed == len(candidates) else set()
+
+
 def dropped_criteria_violations(records: Any) -> list[str]:
     """Whether each ``_droppedCriteria`` record actually describes a legal drop.
 
@@ -1639,8 +1677,13 @@ def _group_label_violations(
     unmapped_keys: set[tuple[str, str]],
     skipped_by_key: dict[tuple[str, str], dict[str, Any]],
     emitted: set[tuple[str, str]] | None,
+    demographic: set[tuple[str, str]],
 ) -> list[str]:
-    """Re-derive a ``group-label`` permit from the store rows of its own group."""
+    """Re-derive a ``group-label`` permit from the store rows of its own group.
+
+    ``demographic`` is :func:`demographic_rule_keys` of the file: members that emitted an Age,
+    which mints no concept set and so is absent from ``emitted``.
+    """
     violations: list[str] = []
     if not label.get("isGroupLabel"):
         violations.append(
@@ -1698,6 +1741,7 @@ def _group_label_violations(
             criterion
             for key, criterion in members
             if applied_value_constraint(criterion) is None
+            and key not in demographic
             and (emitted is None or key not in emitted)
             and key not in skipped_by_key
             and refusal_codes.get(key, REFUSAL_STRANDED_GROUP_THRESHOLD)
@@ -1853,6 +1897,9 @@ def skipped_criteria_violations(
     # and `_restatement_survivor` needs it to tell a survivor that emitted from one
     # that was itself skipped. `None` (no refs map recorded) reconciles nothing.
     emitted = emitted_criterion_keys(expression)
+    # A member that emitted an Age emitted, though no concept set says so (CARMELINA
+    # inclusion 29 under its label 28 after the age hand-down).
+    demographic = demographic_rule_keys(expression, index, lost, emitted)
 
     violations: list[str] = []
     for position, record in enumerate(records):
@@ -1884,6 +1931,7 @@ def skipped_criteria_violations(
                     unmapped_keys,
                     skipped_by_key,
                     emitted,
+                    demographic,
                 )
             )
         elif reason == "demographic-no-rule":

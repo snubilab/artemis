@@ -305,5 +305,144 @@
         }
       }
     ]
+  },
+  "carmelina_age_label_arm_b_build_620d1a0": {
+    "about": "TTEService._build_seeded_target_circe at commit 620d1a0 (before the age hand-down) over the rows of carmelina_age_label_arm_b, offline, with the mapper stub of tests/test_group_label_emits_no_demographic_rule.py; the expression exactly as built.",
+    "commit": "620d1a0",
+    "rows": "carmelina_age_label_arm_b",
+    "expression": {
+      "ConceptSets": [
+        {
+          "expression": {
+            "items": [
+              {
+                "concept": {
+                  "CONCEPT_CLASS_ID": "Clinical Finding",
+                  "CONCEPT_ID": 313217,
+                  "CONCEPT_NAME": "Atrial fibrillation",
+                  "DOMAIN_ID": "Condition",
+                  "VOCABULARY_ID": "SNOMED"
+                },
+                "includeDescendants": true,
+                "isExcluded": false
+              }
+            ]
+          },
+          "id": 1,
+          "name": "AF cohort"
+        }
+      ],
+      "InclusionRules": [],
+      "PrimaryCriteria": {
+        "CriteriaList": [
+          {
+            "ConditionOccurrence": {
+              "CodesetId": 1
+            }
+          }
+        ],
+        "ObservationWindow": {
+          "PostDays": 0,
+          "PriorDays": 365
+        },
+        "PrimaryCriteriaLimit": {
+          "Type": "First"
+        }
+      },
+      "_criterionConceptSetRefs": {},
+      "_criterionMappingMetadata": {},
+      "_defaultedWindowCriteria": [],
+      "_generationCensus": {
+        "demographicRules": 0,
+        "mappable": 0,
+        "mapped": 0,
+        "skipped": 3,
+        "skippedByReason": {
+          "demographic-no-rule": 1,
+          "group-label": 1,
+          "restated-distinctness-duplicate": 1
+        },
+        "total": 3,
+        "unmapped": 0
+      },
+      "_mappingFailureCriteria": [],
+      "_missingEntityCriteria": [],
+      "_planningFailureCriteria": [],
+      "_restatedDemographicsCollapse": [],
+      "_restatedDistinctnessCollapse": [
+        {
+          "distinctnessKey": {
+            "domain": "Demographics",
+            "logicType": "PRESENCE",
+            "sourceText": "Age",
+            "valueConstraint": "null",
+            "window": "{\"end\":0,\"start\":-180}"
+          },
+          "domain": "Demographics",
+          "droppedIds": [
+            30
+          ],
+          "reason": "restated-distinctness-duplicate",
+          "role": "inclusion",
+          "survivorId": 29,
+          "survivorRule": "first-in-document-order"
+        }
+      ],
+      "_restatedIntactGroups": [],
+      "_restatedRuleCollapse": [],
+      "_restoredUnitCriteria": [],
+      "_ruleIndexMeta": {},
+      "_skippedCriteria": [
+        {
+          "criterionId": "28",
+          "domain": "Demographics",
+          "isGroupLabel": true,
+          "label": "Age",
+          "reason": "group-label",
+          "role": "inclusion"
+        },
+        {
+          "criterionId": "29",
+          "domain": "Demographics",
+          "isGroupLabel": false,
+          "label": "Age",
+          "reason": "demographic-no-rule",
+          "role": "inclusion"
+        },
+        {
+          "criterionId": "30",
+          "domain": "Demographics",
+          "isGroupLabel": false,
+          "label": "Age",
+          "reason": "restated-distinctness-duplicate",
+          "role": "inclusion"
+        }
+      ],
+      "_specimenDecisions": [],
+      "_unmappedCriteria": [],
+      "_unrepresentableThresholds": [
+        {
+          "criterionId": "29",
+          "isGroupLabel": false,
+          "label": "Age",
+          "quantityKind": "other",
+          "reason": "threshold-not-representable",
+          "role": "inclusion",
+          "thresholdSpan": "18 years",
+          "valueConstraint": null
+        },
+        {
+          "criterionId": "30",
+          "isGroupLabel": false,
+          "label": "Age",
+          "quantityKind": "other",
+          "reason": "threshold-not-representable",
+          "role": "inclusion",
+          "thresholdSpan": "18 years",
+          "valueConstraint": null
+        }
+      ],
+      "_valueRangeConversions": []
+    }
   }
 }
