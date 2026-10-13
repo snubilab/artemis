@@ -51,14 +51,14 @@ TOP5 = [
     (3004211, "Insulin NPH [Mass] of Dose", 83.158),
 ]
 
-#: What the RAG fallback put in CARMELINA codeset 6 (id, name, domain, vocabulary).
+#: What the RAG fallback put in CARMELINA codeset 6 (id, name, domain, vocabulary, class).
 FALLBACK_PICK = [
-    (40486005, "Change in insulin dose", "Procedure", "SNOMED"),
-    (45766743, "Insulin dose changed", "Observation", "SNOMED"),
+    (40486005, "Change in insulin dose", "Procedure", "SNOMED", "Procedure"),
+    (45766743, "Insulin dose changed", "Observation", "SNOMED", "Context-dependent"),
     (37170144, "Mean total daily insulin dose delivered by continuous subcutaneous "
-               "infusion of insulin", "Measurement", "SNOMED"),
-    (3027380, "Insulin ultralente [Mass] of Dose", "Measurement", "LOINC"),
-    (3007380, "Insulin regular [Mass] of Dose", "Measurement", "LOINC"),
+               "infusion of insulin", "Measurement", "SNOMED", "Observable Entity"),
+    (3027380, "Insulin ultralente [Mass] of Dose", "Measurement", "LOINC", "Lab Test"),
+    (3007380, "Insulin regular [Mass] of Dose", "Measurement", "LOINC", "Lab Test"),
 ]
 
 #: The store row for CARMELINA inclusion #9, as the delivery candidate holds it.
@@ -153,9 +153,9 @@ def _fallback_mapping(seed: str, expected_domain: str | None = None) -> dict[str
     items = [
         {"concept": {"CONCEPT_ID": cid, "CONCEPT_NAME": name, "CONCEPT_CODE": str(cid),
                      "DOMAIN_ID": domain, "VOCABULARY_ID": vocab,
-                     "CONCEPT_CLASS_ID": "Clinical Finding", "STANDARD_CONCEPT": "S"},
+                     "CONCEPT_CLASS_ID": concept_class, "STANDARD_CONCEPT": "S"},
          "includeDescendants": True, "isExcluded": False, "includeMapped": False}
-        for cid, name, domain, vocab in FALLBACK_PICK
+        for cid, name, domain, vocab, concept_class in FALLBACK_PICK
     ]
     return {
         "name": seed,
@@ -165,7 +165,7 @@ def _fallback_mapping(seed: str, expected_domain: str | None = None) -> dict[str
             allCandidates=[
                 MappingCandidateItem(conceptId=cid, conceptName=name, score=1.0,
                                      source="rag", included=True)
-                for cid, name, _d, _v in FALLBACK_PICK
+                for cid, name, *_ in FALLBACK_PICK
             ],
             rerankMethod="rag_fallback",
             queryUsed=seed,
@@ -267,6 +267,10 @@ def carmelina_circe(monkeypatch):
             return real(svc, seed, **kwargs)
 
     monkeypatch.setattr(svc, "_recommend_seeded_concept_set", mapper)
+    # The specimen step reads its two LOINC lab tests' System and Property from the
+    # vocabulary database. It runs after the mapping and does not touch the failure record.
+    monkeypatch.setattr(svc, "_refine_measurement_specimen",
+                        lambda expression, **_k: (expression, None))
     return svc._build_seeded_target_circe({
         "targetCohortName": TARGET,
         "inclusionCriteria": [json.loads(json.dumps(CRITERION))],
