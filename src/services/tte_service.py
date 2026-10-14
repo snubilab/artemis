@@ -77,6 +77,7 @@ from src.api.models.tte import (
 from src.models.ir import ProvisionalSectionSource, ProvisionalStudyIR
 from src.pipeline.webapi_client import CohortTableReference, WebAPIClient, WebAPIError
 from src.services.criterion_annotation import (
+    AGREEMENT_RECORDS_KEY,
     CONDITIONAL_EXPLANATION,
     CONDITIONAL_REASON,
     EXTRACTED_CONDITIONAL_KEY,
@@ -90,6 +91,7 @@ from src.services.criterion_annotation import (
     StatedRelation,
     THRESHOLD_NOT_REPRESENTABLE_REASON,
     UNREPRESENTABLE_THRESHOLDS_KEY,
+    agreement_records,
     annotate_eligibility,
     applied_value_constraint,
     conditional_skips,
@@ -5060,6 +5062,15 @@ class TTEService:
                     "conditionalSpan": decision.span,
                     "conditionalDecidedBy": decision.decided_by,
                     "conditionalSource": decision.source,
+                    # The agreement call that confirmed the deciding row's `conditional`
+                    # (criterion_annotation.agree); None when Agent 1's flag decided, or
+                    # for an annotation stored before the agreement step.
+                    "conditionalAgreement": (
+                        {"promptVersion": decision.agreement_version,
+                         "cacheKey": decision.agreement_key}
+                        if decision.agreement_key is not None
+                        else None
+                    ),
                 },
             )
 
@@ -5110,6 +5121,13 @@ class TTEService:
         unrepresentable_thresholds = unrepresentable_threshold_records(
             inc_criteria, "inclusion"
         ) + unrepresentable_threshold_records(exc_criteria, "exclusion")
+        # The annotation's agreement call: per row it was made for, the excepted entities,
+        # conditional and no-entity decision a second wording confirmed or took away
+        # (`criterion_annotation.agree`). The build reads only the agreed annotation; this
+        # is the record of what the agreement changed, so the file says it.
+        annotation_agreements = agreement_records(inc_criteria, "inclusion") + agreement_records(
+            exc_criteria, "exclusion"
+        )
         # ...and a dose or statistical threshold skips the WHOLE criterion (a group label
         # takes its members), recorded under its own reason, which the delivery gate counts
         # as criterion loss (coordinator, 2026-10-12).
@@ -5806,6 +5824,9 @@ class TTEService:
             # annotation says no value filter represents (see
             # `criterion_annotation.unrepresentable_threshold_records`) ...
             UNREPRESENTABLE_THRESHOLDS_KEY: unrepresentable_thresholds,
+            # Same present-and-empty contract: what the annotation's agreement call kept and
+            # dropped, per criterion it was made for (`criterion_annotation.agreement_records`).
+            AGREEMENT_RECORDS_KEY: annotation_agreements,
             # ... and the units restored from a dropped trailing exponent, with the LOINC
             # property of the criterion's own concepts that verified each one.
             RESTORED_UNIT_CRITERIA_KEY: sorted(

@@ -95,3 +95,25 @@ def span_in_line(span: Any, line: Any) -> bool:
         return False
     probe = comparison_form(span)
     return bool(probe) and probe in comparison_form(line)
+
+
+def span_offsets(span: Any, line: Any) -> tuple[int, int] | None:
+    """Where a quoted fragment sits in the line it was quoted from.
+
+    The same check as :func:`span_in_line`, returning the place instead of a yes: the offsets,
+    in ``line`` itself, of the first stretch whose comparison form is the fragment's. Two
+    fragments quoted from one line are the same stretch of it exactly when their offsets are
+    equal, however each was re-wrapped or re-cased, so offsets compare *where* two answers
+    quoted without reading what either says.
+
+    :param span: the fragment the model returned.
+    :param line: the text it claims to quote, usually the row's ``protocolLine``.
+    :returns: ``(start, end)``, with ``line[start:end]`` the stretch the fragment matched, or
+        None when :func:`span_in_line` would say False.
+    """
+    if not span_in_line(span, line):
+        return None
+    probe = comparison_form(span)
+    form, index = fold(line)
+    start = form.index(probe)
+    return index[start], index[start + len(probe) - 1] + 1

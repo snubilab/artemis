@@ -295,13 +295,12 @@ def _render_tte_report_narrative() -> str:
     return _joined(recorder.calls)
 
 
-def _render_criterion_annotation() -> str:
-    """Through ``annotate_eligibility`` with the model replaced, over a group label (so the
-    members block is rendered) and its member; the cache is off so nothing is written."""
+def _annotation_calls(reply: str) -> list[str]:
+    """Every call ``annotate_eligibility`` makes with the model replaced, over a group label (so
+    the members block is rendered) and its member; the cache is off so nothing is written."""
     from src.services import criterion_annotation
 
-    recorder = _Recorder(reply='{"record_requirement": "required", "conditional_span": null, '
-                               '"excepted_entities": [], "base_span": null}')
+    recorder = _Recorder(reply=reply)
     common = {"domain": "Drug", "protocolLine": f"{STUB} line", "logicType": "PRESENCE",
               "window": {"start": -56, "end": 0}, "valueConstraint": None, "groupId": "g"}
     rows = [
@@ -314,7 +313,30 @@ def _render_criterion_annotation() -> str:
         criterion_annotation.annotate_eligibility(
             {"inclusionCriteria": rows, "exclusionCriteria": []}, model="stub-model",
         )
-    return _joined(recorder.calls)
+    return recorder.calls
+
+
+def _render_criterion_annotation() -> str:
+    """The first call: an answer that fills nothing the agreement compares, so no second call."""
+    return _joined(_annotation_calls(
+        '{"record_requirement": "required", "conditional_span": null, '
+        '"excepted_entities": [], "base_span": null}'
+    ))
+
+
+def _render_criterion_annotation_agreement() -> str:
+    """The agreement call (``AGREEMENT_SYSTEM_PROMPT`` + ``AGREEMENT_PROMPT``): the first answer
+    fills ``no_entity`` with a fragment of the line, so every row gets its second call. Only the
+    second calls are returned, so this prompt is linted on its own."""
+    from src.services import criterion_annotation
+
+    calls = _annotation_calls(
+        f'{{"record_requirement": "required", "no_entity": "refers_elsewhere", '
+        f'"no_entity_span": "{STUB} line"}}'
+    )
+    second = [c for c in calls if c.startswith(criterion_annotation.AGREEMENT_SYSTEM_PROMPT)]
+    assert len(second) == len(calls) // 2 == 2, "the agreement call was not made for every row"
+    return _joined(second)
 
 
 def _render_specimen_critic() -> str:
@@ -495,6 +517,10 @@ PROMPTS: dict[str, PromptSpec] = {
         }),
     ),
 }
+# The agreement call asks the same fields in other words: the same declared tokens.
+PROMPTS["criterion_annotation.agreement"] = PromptSpec(
+    _render_criterion_annotation_agreement, tokens=PROMPTS["criterion_annotation"].tokens,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -816,7 +842,9 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/conceptset/clinical_reranker.py": (2, ("conceptset.clinical_reranker",)),
     "src/agents/comparator/recommender.py": (2, ("comparator.literature",)),
     "src/services/tte_service.py": (6, ("tte.analysis_finalizer", "tte.report_narrative")),
-    "src/services/criterion_annotation.py": (3, ("criterion_annotation",)),
+    "src/services/criterion_annotation.py": (
+        3, ("criterion_annotation", "criterion_annotation.agreement"),
+    ),
     "src/utils/llm.py": (6, "transport: builds the chat client get_llm returns and appends "
                             "/no_think to the caller's last message; carries no prompt of its own"),
 }

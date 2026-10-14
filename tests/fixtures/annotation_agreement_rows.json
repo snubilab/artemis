@@ -1,0 +1,1127 @@
+{
+ "about": "Real rows of the 2026-10-12 P3 dry run and the real gemma-4-E4B answers stage 2 of the over-fill A/B recorded for them (repeat 1 of the `current` and `placebo` arms), with the two arms' prompts from plan.json and, per row, the sha256 of the prompt stage 2 sent (the harness's own render()). Read by tests/test_annotation_agreement.py. Rows copied verbatim from each store.",
+ "provenance": {
+  "results": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/stage2_20261014_101708/results.jsonl",
+  "resultsSha256": "7452451c5d60c5065fb0eb9f8eab7b3d0db19ae8b256f7467b00aed2e73fbb9e",
+  "plan": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/stage2_20261014_101708/plan.json",
+  "planSha256": "019fc591db1f6786f06f05bf2cf5ef032cdfc472188d7ab1cdced1655b77e07f",
+  "measuredSha": "5028579f6fa5ea9fb112883cb22d1dfeef2e38cc",
+  "model": "vllm/google/gemma-4-E4B-it",
+  "stores": {
+   "smoke": {
+    "path": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/arm_smoke/store/studies.json",
+    "sha256": "afbb96c050b87aac1e6dfde5b5e03360535b13e8de03f41eca1ea0ff9f90ec11"
+   },
+   "a": {
+    "path": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/arm_a/store/studies.json",
+    "sha256": "5ecedb4eb70ce40527a91bc7af090750712e41e66009bda998fc0c77e9e67994"
+   }
+  },
+  "classification": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/classification.json",
+  "classificationSha256": "d220bda3a534ae1cbf50c8f2ed05febd475da2a0f7fa5d79ceabeba941c78b33"
+ },
+ "stage2Prompts": {
+  "current": {
+   "system": "You annotate one eligibility criterion of a clinical trial protocol.\n\nThe criterion has already been extracted from a line of the protocol, and you do not change any extracted field. You read that protocol line and record the facts the fields below define about the criterion, each together with the fragment of the protocol line that states it.\n\nEvery fragment you return is copied from the protocol line character for character: no paraphrase, no expanded abbreviation, no added word. A fragment that does not occur in the protocol line is discarded together with the answer it supports.\n\nReturn one JSON object and nothing else.",
+   "userTemplate": "Protocol line:\n{protocol_line}\n\nExtracted criterion:\n- Role: {role}\n- Entity text: {entity_text}\n- Description: {description}\n- Domain: {domain}\n- Logic type: {logic_type}\n- Window: {window}\n- Value constraint: {value_constraint}\n- Group label: {group_label}\n- Members: {members}\n\nFields to return:\n\n`record_requirement` states what this criterion asks of the patient's record of the entity it names, as the protocol line states it. One of:\n- `required`: the patient meets the criterion only if a record of the entity exists.\n- `forbidden`: the patient meets the criterion only if no record of the entity exists.\n- `conditional`: the line applies the criterion only to patients who already have a record of the entity, or who belong to a subgroup the line names; a patient without that record or outside that subgroup is not filtered by this criterion at all.\n\n`conditional_span` is the fragment of the protocol line that limits the criterion to those patients. It is required when `record_requirement` is `conditional` and null otherwise.\n\n`excepted_entities` lists the entities the protocol line explicitly removes from the set that this criterion's entity names, one entry per removed entity: `text` is the name of the removed entity to look up in a clinical vocabulary, and `span` is the fragment of the protocol line that names it. It is an empty list when the line removes nothing from that set.\n\n`base_span` is the fragment of the protocol line that names the set the excepted entities are removed from. It is required when `excepted_entities` is not empty and null otherwise.\n\n`relation` states how the protocol line combines the members listed above into this criterion, read without the criterion's logic type. One of:\n- `all`: the criterion holds only when every member holds.\n- `any`: the criterion holds when at least one member holds.\n- `at_least`: the criterion holds when at least a stated number of members hold.\nIt is null when the criterion has no members.\n\n`relation_span` is the fragment of the protocol line that states how the members combine. It is required when `relation` is not null and null otherwise.\n\n`cardinality` is the stated number of members, as an integer, when `relation` is `at_least`, and null otherwise.\n\n`timing` states when, relative to the patient's entry into the trial, the protocol line places what this criterion describes. One of:\n- `prior`: before entry.\n- `at_index`: at entry.\n- `prospective`: after entry, as something planned or expected to happen.\n\n`window_span` is the fragment of the protocol line that places the criterion in time. It is required when `timing` is `prospective`; otherwise it is that fragment when the line states one, and null when the line does not.\n\n`route` lists the routes of administration the protocol line restricts this criterion's drug to. Each entry is one of the route values a clinical vocabulary attaches to drug dose forms: {route_values}. A value covers the routes the vocabulary files under it: `topical` covers `transdermal`, and `respiratory_tract` covers `nasal`. When the line restricts the drug by where in the body it acts rather than by naming a route, list every route value by which a drug of that kind acts there. The list holds the single value `any` when the line places no restriction on route, and when the criterion's entity is not a drug.\n\n`route_span` is the fragment of the protocol line that states the route restriction. It is required when `route` is not `any` and null otherwise.\n\n`specimen` states the body material in which the protocol line says the quantity this criterion measures is taken. One of:\n- `blood`: blood, or a fraction separated from blood.\n- `urine`: urine.\n- `other`: a body material that is neither blood nor urine.\n- `any`: the line names no body material, or the criterion measures no quantity.\n\n`specimen_span` is the fragment of the protocol line that names the body material. It is required when `specimen` is not `any` and null otherwise.\n\n`no_entity` states whether the protocol line names, for this criterion, a clinical entity that a clinical vocabulary could hold. One of:\n- `none`: the line names such an entity.\n- `refers_elsewhere`: the line names no such entity and identifies what the criterion is about only by pointing elsewhere: to an item, list, table or appendix of the protocol, or to a product known only by its role in a study.\n- `investigator_judgement`: the line names no such entity and leaves the criterion to the investigator's assessment.\n\n`no_entity_span` is the fragment of the protocol line that points elsewhere or states the assessment. It is required when `no_entity` is not `none` and null otherwise.\n\n`threshold_span` is the fragment of the protocol line that states the numeric threshold this criterion compares its own entity against: the comparison, the number, and the unit or the reference limit, as written. It is null when the line states no numeric threshold for this criterion's entity.\n\n`quantity_kind` states what the number in `threshold_span` measures. One of:\n- `lab_value`: a value that a laboratory test or a clinical measurement records for the patient.\n- `dose`: an amount of a drug that is given, taken or prescribed.\n- `duration`: how long a condition, a treatment or a state has lasted or must last.\n- `count`: a number of events, of episodes, or of listed items that must hold.\n- `statistical`: a quantity of the trial's statistical design rather than of the patient.\n- `other`: any other quantity.\nIt is null when `threshold_span` is null.\n\n`reference_bound` states what the number in `threshold_span` is compared against. One of:\n- `uln`: a multiple of the upper limit of the normal range of the laboratory that measured it.\n- `lln`: a multiple of the lower limit of the normal range of the laboratory that measured it.\n- `none`: the number itself, in the unit that `threshold_span` states.\nIt is null when `threshold_span` is null.\n\nOutput JSON:\n{{\"record_requirement\": \"<required|forbidden|conditional>\", \"conditional_span\": \"<fragment of the protocol line, or null>\", \"excepted_entities\": [{{\"text\": \"<entity name>\", \"span\": \"<fragment of the protocol line>\"}}], \"base_span\": \"<fragment of the protocol line, or null>\", \"relation\": \"<all|any|at_least, or null>\", \"relation_span\": \"<fragment of the protocol line, or null>\", \"cardinality\": \"<integer, or null>\", \"timing\": \"<prior|at_index|prospective>\", \"window_span\": \"<fragment of the protocol line, or null>\", \"route\": [\"<route value or any>\"], \"route_span\": \"<fragment of the protocol line, or null>\", \"specimen\": \"<blood|urine|other|any>\", \"specimen_span\": \"<fragment of the protocol line, or null>\", \"no_entity\": \"<none|refers_elsewhere|investigator_judgement>\", \"no_entity_span\": \"<fragment of the protocol line, or null>\", \"threshold_span\": \"<fragment of the protocol line, or null>\", \"quantity_kind\": \"<lab_value|dose|duration|count|statistical|other, or null>\", \"reference_bound\": \"<uln|lln|none, or null>\"}}"
+  },
+  "placebo": {
+   "system": "You annotate one eligibility criterion of a clinical trial protocol.\n\nThe criterion was already extracted from one line of the protocol, and no extracted field is yours to change. You read that protocol line and record the facts that the fields below define about the criterion, each one with the fragment of the protocol line that states it.\n\nEvery fragment you return is copied from the protocol line character for character: no paraphrase, no expanded abbreviation, no added word. A fragment that does not occur in the protocol line is discarded together with the answer it supports.\n\nReturn one JSON object and nothing else.",
+   "userTemplate": "Protocol line:\n{protocol_line}\n\nExtracted criterion:\n- Role: {role}\n- Entity text: {entity_text}\n- Description: {description}\n- Domain: {domain}\n- Logic type: {logic_type}\n- Window: {window}\n- Value constraint: {value_constraint}\n- Group label: {group_label}\n- Members: {members}\n\nFields to return:\n\n`record_requirement` states what this criterion asks of the patient's record of the entity it names, as the protocol line states it. One of:\n- `required`: the patient meets the criterion only if a record of the entity exists.\n- `forbidden`: the patient meets the criterion only if no record of the entity exists.\n- `conditional`: the protocol line restricts the criterion to patients who already have a record of the entity, or to patients in a subgroup that the line names; this criterion does not filter a patient who lacks that record or is not in that subgroup.\n\n`conditional_span` is the fragment of the protocol line that restricts the criterion to those patients. It is required when `record_requirement` is `conditional`, and null in every other case.\n\n`excepted_entities` lists, one entry for each, the entities that the protocol line explicitly removes from the set named by this criterion's entity: `text` is the removed entity's name to look up in a clinical vocabulary, and `span` is the fragment of the protocol line naming it. When the line removes nothing from that set, it is an empty list.\n\n`base_span` is the fragment of the protocol line naming the set from which the excepted entities are removed. It is required when `excepted_entities` is not empty, and null in every other case.\n\n`relation` states how the protocol line combines the members listed above into this criterion, read without the criterion's logic type. One of:\n- `all`: the criterion holds only when every member holds.\n- `any`: the criterion holds when at least one member holds.\n- `at_least`: the criterion holds when at least a stated number of members hold.\nIt is null when the criterion has no members.\n\n`relation_span` is the fragment of the protocol line that states how the members combine. It is required when `relation` is not null and null otherwise.\n\n`cardinality` is the stated number of members, as an integer, when `relation` is `at_least`, and null otherwise.\n\n`timing` states when, relative to the patient's entry into the trial, the protocol line places what this criterion describes. One of:\n- `prior`: before entry.\n- `at_index`: at entry.\n- `prospective`: after entry, as something planned or expected to happen.\n\n`window_span` is the fragment of the protocol line that places the criterion in time. It is required when `timing` is `prospective`; otherwise it is that fragment when the line states one, and null when the line does not.\n\n`route` lists the routes of administration the protocol line restricts this criterion's drug to. Each entry is one of the route values a clinical vocabulary attaches to drug dose forms: {route_values}. A value covers the routes the vocabulary files under it: `topical` covers `transdermal`, and `respiratory_tract` covers `nasal`. When the line restricts the drug by where in the body it acts rather than by naming a route, list every route value by which a drug of that kind acts there. The list holds the single value `any` when the line places no restriction on route, and when the criterion's entity is not a drug.\n\n`route_span` is the fragment of the protocol line that states the route restriction. It is required when `route` is not `any` and null otherwise.\n\n`specimen` states the body material in which the protocol line says the quantity this criterion measures is taken. One of:\n- `blood`: blood, or a fraction separated from blood.\n- `urine`: urine.\n- `other`: a body material that is neither blood nor urine.\n- `any`: the line names no body material, or the criterion measures no quantity.\n\n`specimen_span` is the fragment of the protocol line that names the body material. It is required when `specimen` is not `any` and null otherwise.\n\n`no_entity` states whether, for this criterion, the protocol line names a clinical entity that could be held in a clinical vocabulary. One of:\n- `none`: such an entity is named by the line.\n- `refers_elsewhere`: no such entity is named by the line, which identifies what the criterion concerns only by pointing elsewhere: to an item, a list, a table or an appendix of the protocol, or to a product known only by its role in a study.\n- `investigator_judgement`: no such entity is named by the line, which leaves the criterion to the assessment of the investigator.\n\n`no_entity_span` is the fragment of the protocol line that points elsewhere or states the assessment. It is required when `no_entity` is not `none` and null otherwise.\n\n`threshold_span` is the fragment of the protocol line that states the numeric threshold this criterion compares its own entity against: the comparison, the number, and the unit or the reference limit, as written. It is null when the line states no numeric threshold for this criterion's entity.\n\n`quantity_kind` states what the number in `threshold_span` measures. One of:\n- `lab_value`: a value that a laboratory test or a clinical measurement records for the patient.\n- `dose`: an amount of a drug that is given, taken or prescribed.\n- `duration`: how long a condition, a treatment or a state has lasted or must last.\n- `count`: a number of events, of episodes, or of listed items that must hold.\n- `statistical`: a quantity of the trial's statistical design rather than of the patient.\n- `other`: any other quantity.\nIt is null when `threshold_span` is null.\n\n`reference_bound` states what the number in `threshold_span` is compared against. One of:\n- `uln`: a multiple of the upper limit of the normal range of the laboratory that measured it.\n- `lln`: a multiple of the lower limit of the normal range of the laboratory that measured it.\n- `none`: the number itself, in the unit that `threshold_span` states.\nIt is null when `threshold_span` is null.\n\nOutput JSON:\n{{\"record_requirement\": \"<required|forbidden|conditional>\", \"conditional_span\": \"<fragment of the protocol line, or null>\", \"excepted_entities\": [{{\"text\": \"<entity name>\", \"span\": \"<fragment of the protocol line>\"}}], \"base_span\": \"<fragment of the protocol line, or null>\", \"relation\": \"<all|any|at_least, or null>\", \"relation_span\": \"<fragment of the protocol line, or null>\", \"cardinality\": \"<integer, or null>\", \"timing\": \"<prior|at_index|prospective>\", \"window_span\": \"<fragment of the protocol line, or null>\", \"route\": [\"<route value or any>\"], \"route_span\": \"<fragment of the protocol line, or null>\", \"specimen\": \"<blood|urine|other|any>\", \"specimen_span\": \"<fragment of the protocol line, or null>\", \"no_entity\": \"<none|refers_elsewhere|investigator_judgement>\", \"no_entity_span\": \"<fragment of the protocol line, or null>\", \"threshold_span\": \"<fragment of the protocol line, or null>\", \"quantity_kind\": \"<lab_value|dose|duration|count|statistical|other, or null>\", \"reference_bound\": \"<uln|lln|none, or null>\"}}"
+  }
+ },
+ "promptSha256Of": "sha256 of json.dumps([system, user], ensure_ascii=False), utf-8",
+ "rows": [
+  {
+   "trial": "carmelina",
+   "studyId": 9,
+   "role": "exclusion",
+   "id": "16",
+   "storeArm": "a",
+   "case": "excepted entities the placebo wording does not give: all dropped",
+   "category": "target",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "none",
+    "exc": [],
+    "base": [],
+    "outcome": null
+   },
+   "row": {
+    "id": 16,
+    "description": "Elevated AST",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 3.0,
+     "valueHigh": null,
+     "unitText": "",
+     "referenceBound": "uln",
+     "unitConceptId": null
+    },
+    "sourceText": "AST (SGOT)",
+    "protocolLine": "Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP) ≥ 3 x upper limit of normal (ULN) as determined at Visit 1",
+    "protocolSpan": "AST (SGOT)",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": 17,
+    "conceptSetName": "serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP)",
+    "logicType": "ABSENCE",
+    "groupId": "690a5910-89c7-49df-83bc-4051f7c46ed7",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "ALT (SGPT)",
+       "span": "ALT (SGPT)"
+      },
+      {
+       "text": "alkaline phosphatase (AP)",
+       "span": "alkaline phosphatase (AP)"
+      }
+     ],
+     "base_span": "serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP)",
+     "relation": "any",
+     "relation_span": "or",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "blood",
+     "specimen_span": "serum",
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 3 x upper limit of normal (ULN)",
+     "quantity_kind": "lab_value",
+     "reference_bound": "uln"
+    }
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"ALT (SGPT)\", \"span\": \"ALT (SGPT)\"}, {\"text\": \"alkaline phosphatase (AP)\", \"span\": \"alkaline phosphatase (AP)\"}], \"base_span\": \"serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP)\", \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"blood\", \"specimen_span\": \"serum\", \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 3 x upper limit of normal (ULN)\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"uln\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"blood\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 3 x upper limit of normal (ULN)\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"uln\"}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "b84c11f1180d7b585c3c9448d0db8061bf7a99bbbda421078d02250518e10273",
+    "placebo": "48d83767ce7f1db6699d84482c90cf785066b70cd6e803462358fdd99b54c956"
+   }
+  },
+  {
+   "trial": "leader",
+   "studyId": 1,
+   "role": "exclusion",
+   "id": "16",
+   "storeArm": "a",
+   "case": "excepted entities with no span in common: all dropped",
+   "category": "target",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "none",
+    "exc": [],
+    "base": [],
+    "outcome": null
+   },
+   "row": {
+    "id": 16,
+    "description": "Carotid Artery Revascularization",
+    "domain": "Procedure",
+    "valueConstraint": null,
+    "sourceText": "carotid artery revascularization",
+    "protocolLine": "Currently planned coronary, carotid, or peripheral artery revascularization",
+    "protocolSpan": "carotid",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": 31,
+    "conceptSetName": "Carotid Artery Revascularization",
+    "logicType": "ABSENCE",
+    "groupId": "0e8eebe4-d2a8-4a13-9dc2-f5548bf9551a",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "coronary artery revascularization",
+       "span": "coronary"
+      },
+      {
+       "text": "peripheral artery revascularization",
+       "span": "peripheral"
+      }
+     ],
+     "base_span": "coronary, carotid, or peripheral artery revascularization",
+     "relation": "any",
+     "relation_span": ", ",
+     "cardinality": null,
+     "timing": null,
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "timing",
+      "value": {
+       "timing": "prospective",
+       "window_span": null
+      },
+      "reason": "window_span is not a substring of protocolLine"
+     }
+    ]
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"coronary artery revascularization\", \"span\": \"coronary\"}, {\"text\": \"peripheral artery revascularization\", \"span\": \"peripheral\"}], \"base_span\": \"coronary, carotid, or peripheral artery revascularization\", \"relation\": \"any\", \"relation_span\": \", \", \"cardinality\": null, \"timing\": \"prospective\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"carotid artery revascularization\", \"span\": \"carotid\"}], \"base_span\": \"coronary, carotid, or peripheral artery revascularization\", \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prospective\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "e81768dd409af62903c82ede11ff4d2eb10b23a5a1ffda6d24ff20b16ba0a046",
+    "placebo": "fef3128b2846656d1fab47e0554f8fa4a2b55f341162b61d4736bf1f84e85937"
+   }
+  },
+  {
+   "trial": "carmelina",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "6",
+   "storeArm": "a",
+   "case": "three excepted entities, one confirmed: only it is kept",
+   "category": "target",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "none",
+    "exc": [],
+    "base": [],
+    "outcome": null
+   },
+   "row": {
+    "id": 6,
+    "description": "Exclusion of SGLT-2 inhibitors if recent",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "SGLT-2 inhibitors",
+    "protocolLine": "Male or female patients who are drug-naïve or pre-treated with any antidiabetic background therapy, excluding treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors if ≥ 7 consecutive days",
+    "protocolSpan": "",
+    "window": {
+     "start": -7,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "85eaf366-a77a-4872-9575-829727a43f5b",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "GLP-1 receptor agonists",
+       "span": "GLP-1 receptor agonists"
+      },
+      {
+       "text": "DPP-4 inhibitors",
+       "span": "DPP-4 inhibitors"
+      },
+      {
+       "text": "SGLT-2 inhibitors",
+       "span": "SGLT-2 inhibitors"
+      }
+     ],
+     "base_span": "any antidiabetic background therapy",
+     "relation": "any",
+     "relation_span": "or",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "if ≥ 7 consecutive days",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 7 consecutive days",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    }
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"GLP-1 receptor agonists\", \"span\": \"GLP-1 receptor agonists\"}, {\"text\": \"DPP-4 inhibitors\", \"span\": \"DPP-4 inhibitors\"}, {\"text\": \"SGLT-2 inhibitors\", \"span\": \"SGLT-2 inhibitors\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"if ≥ 7 consecutive days\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 7 consecutive days\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"SGLT-2 inhibitors\", \"span\": \"SGLT-2 inhibitors\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"null\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"if ≥ 7 consecutive days\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 7 consecutive days\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "619395c5eec284e6b266151e914915be607aee568560af650a5c01d093a65b3f",
+    "placebo": "c58e30ad4a5679321035fea5381cfedc7d83e51f2e8842fe6b91efc323064aa6"
+   }
+  },
+  {
+   "trial": "empa-reg",
+   "studyId": 8,
+   "role": "exclusion",
+   "id": "19",
+   "storeArm": "a",
+   "case": "a correct exception both wordings give: kept",
+   "category": "fill_control",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "none",
+    "exc": [
+     "basal cell carcinoma"
+    ],
+    "base": [
+     "cancer"
+    ],
+    "outcome": null
+   },
+   "row": {
+    "id": 19,
+    "description": "Cancer diagnosis",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Malignant neoplasm",
+    "protocolLine": "Medical history of cancer (except for basal cell carcinoma) and/or treatment for cancer within the last 5 years",
+    "protocolSpan": "Cancer",
+    "window": {
+     "start": -1825,
+     "end": 0
+    },
+    "conceptSetId": 20,
+    "conceptSetName": "Cancer diagnosis",
+    "logicType": "ABSENCE",
+    "groupId": "5b63d51f-beb9-48f2-891f-9204dc4ef798",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "basal cell carcinoma",
+       "span": "basal cell carcinoma"
+      }
+     ],
+     "base_span": "cancer",
+     "relation": "any",
+     "relation_span": "and/or",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "within the last 5 years",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "duration",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"basal cell carcinoma\", \"span\": \"basal cell carcinoma\"}], \"base_span\": \"cancer\", \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within the last 5 years\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"basal cell carcinoma\", \"span\": \"basal cell carcinoma\"}], \"base_span\": \"cancer\", \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within the last 5 years\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "03b70ecc63e5c052b6bce62527aa821896e9720a2ee95deed380ad59aca039a9",
+    "placebo": "df4e10c3cad093709d1abbfb14e29a5f35a50e2cb1154ab56f629bd4275247aa"
+   }
+  },
+  {
+   "trial": "leader",
+   "studyId": 1,
+   "role": "exclusion",
+   "id": "41",
+   "storeArm": "a",
+   "case": "three correct exceptions both wordings give: kept",
+   "category": "fill_control",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "none",
+    "exc": [
+     "human NPH insulin",
+     "long-acting insulin analogue",
+     "premixed insulin"
+    ],
+    "base": [
+     "insulin"
+    ],
+    "outcome": null
+   },
+   "row": {
+    "id": 41,
+    "description": "Insulin other than premixed insulin",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "insulin other than premixed insulin",
+    "protocolLine": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "protocolSpan": "insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin",
+    "window": {
+     "start": -90,
+     "end": 0
+    },
+    "conceptSetId": 49,
+    "conceptSetName": "insulin",
+    "logicType": "ABSENCE",
+    "groupId": "5b6dddd4-ab8e-4634-9123-7e5d90d9e15c",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "human NPH insulin",
+       "span": "human NPH insulin"
+      },
+      {
+       "text": "long-acting insulin analogue",
+       "span": "long-acting insulin analogue"
+      },
+      {
+       "text": "premixed insulin",
+       "span": "premixed insulin"
+      }
+     ],
+     "base_span": "insulin",
+     "relation": "any",
+     "relation_span": "other than",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "within 3 months prior to screening",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"insulin\", \"relation\": \"any\", \"relation_span\": \"other than\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"insulin\", \"relation\": \"any\", \"relation_span\": \"other than\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "eeed7f295cbd00f418c56940a433811dd8928137b0416cc7c6d58e36d7819801",
+    "placebo": "cd4a569ab092f0eb1abe0ae18a50bc396ba0e2251b814dd15fc9596630b68e44"
+   }
+  },
+  {
+   "trial": "aristotle",
+   "studyId": 3,
+   "role": "exclusion",
+   "id": "15",
+   "storeArm": "a",
+   "case": "conditional the placebo wording answers `required`: dropped",
+   "category": "target",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "none",
+    "exc": [],
+    "base": [],
+    "outcome": null
+   },
+   "row": {
+    "id": 15,
+    "description": "Uncontrolled hypertension (Systolic)",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "gt",
+     "value": 180.0,
+     "valueHigh": null,
+     "unitText": "mm Hg",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "Systolic blood pressure",
+    "protocolLine": "Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "5e6814cd-b7d9-4b6e-8198-0315f26942e5",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": ", or",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none"
+    }
+   },
+   "members": [
+    {
+     "id": 16,
+     "description": "Systolic Blood Pressure Exceeding Threshold",
+     "domain": "Measurement",
+     "valueConstraint": {
+      "op": "gt",
+      "value": 180.0,
+      "valueHigh": null,
+      "unitText": "mm Hg",
+      "referenceBound": "absolute",
+      "unitConceptId": 8876
+     },
+     "sourceText": "Systolic blood pressure",
+     "protocolLine": "Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+     "protocolSpan": "systolic BP",
+     "window": {
+      "start": -180,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "ABSENCE",
+     "groupId": "5e6814cd-b7d9-4b6e-8198-0315f26942e5",
+     "groupType": "ALL",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "at_index",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+      "quantity_kind": "lab_value",
+      "reference_bound": "none"
+     },
+     "_annotationRejected": [
+      {
+       "field": "relation",
+       "value": {
+        "relation": "any",
+        "relation_span": null,
+        "cardinality": null
+       },
+       "reason": "relation_span is not a substring of protocolLine"
+      }
+     ]
+    },
+    {
+     "id": 17,
+     "description": "Diastolic Blood Pressure Exceeding Threshold",
+     "domain": "Measurement",
+     "valueConstraint": {
+      "op": "gt",
+      "value": 100.0,
+      "valueHigh": null,
+      "unitText": "mm Hg",
+      "referenceBound": "absolute",
+      "unitConceptId": 8876
+     },
+     "sourceText": "Diastolic blood pressure",
+     "protocolLine": "Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)",
+     "protocolSpan": "diastolic BP",
+     "window": {
+      "start": -180,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "ABSENCE",
+     "groupId": "5e6814cd-b7d9-4b6e-8198-0315f26942e5",
+     "groupType": "ALL",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "at_index",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg",
+      "quantity_kind": "lab_value",
+      "reference_bound": "none"
+     }
+    }
+   ],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \", or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \", or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "b2208f2c4bef90b5595bc6dd2e1e8853f907b36bd03b32374e568d970cf10c66",
+    "placebo": "f84e96c1768128052871b85e4966f57a62f72b2a52115b15a48f990644146552"
+   }
+  },
+  {
+   "trial": "aristotle",
+   "studyId": 3,
+   "role": "inclusion",
+   "id": "4",
+   "storeArm": "a",
+   "case": "conditional both wordings give: kept",
+   "category": "fill_control",
+   "expected": {
+    "rr": "conditional",
+    "ne": "none",
+    "exc": [],
+    "base": [],
+    "outcome": null
+   },
+   "row": {
+    "id": 4,
+    "description": "AF/Flutter documentation",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "",
+    "protocolLine": "If not in atrial fibrillation/flutter at the time of enrollment, must have atrial fibrillation/flutter documented on two separate occasions, not due to a reversible cause at least 2 weeks apart in the 12 months prior to enrollment. Atrial fibrillation/flutter may be documented by ECG, or as an episode lasting at least one minute on a rhythm strip,",
+    "protocolSpan": "",
+    "window": {
+     "start": -365,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": null,
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "If not in atrial fibrillation/flutter at the time of enrollment",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "documented on two separate occasions",
+     "cardinality": 2,
+     "timing": "prior",
+     "window_span": "in the 12 months prior to enrollment",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "count",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"If not in atrial fibrillation/flutter at the time of enrollment\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"at_least\", \"relation_span\": \"documented on two separate occasions\", \"cardinality\": 2, \"timing\": \"prior\", \"window_span\": \"in the 12 months prior to enrollment\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"count\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"If not in atrial fibrillation/flutter at the time of enrollment\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"at_least\", \"relation_span\": \"documented on two separate occasions\", \"cardinality\": 2, \"timing\": \"prior\", \"window_span\": \"in the 12 months prior to enrollment\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"count\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "e209239fd7d04fd5f07ddb4b581f9a8ca00009a76a25603c7ff64e3f3e2c94f6",
+    "placebo": "40fdd8b43d2d7ad13045c1ae1c68b938dc47adf228597059a2a0aab7dd045b99"
+   }
+  },
+  {
+   "trial": "leader",
+   "studyId": 1,
+   "role": "exclusion",
+   "id": "40",
+   "storeArm": "a",
+   "case": "investigator_judgement the placebo wording answers `none`: dropped; exceptions kept",
+   "category": "target",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "none",
+    "exc": [
+     "human NPH insulin",
+     "long-acting insulin analogue",
+     "premixed insulin"
+    ],
+    "base": [
+     "insulin"
+    ],
+    "outcome": null
+   },
+   "row": {
+    "id": 40,
+    "description": "Insulin other than long-acting insulin analogue",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "insulin other than long-acting insulin analogue",
+    "protocolLine": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "protocolSpan": "insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin",
+    "window": {
+     "start": -90,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "5b6dddd4-ab8e-4634-9123-7e5d90d9e15c",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "human NPH insulin",
+       "span": "human NPH insulin"
+      },
+      {
+       "text": "long-acting insulin analogue",
+       "span": "long-acting insulin analogue"
+      },
+      {
+       "text": "premixed insulin",
+       "span": "premixed insulin"
+      }
+     ],
+     "base_span": "insulin",
+     "relation": "any",
+     "relation_span": "other than",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "within 3 months prior to screening",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "investigator_judgement",
+     "no_entity_span": "Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"insulin\", \"relation\": \"any\", \"relation_span\": \"other than\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": \"Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"Use of insulin\", \"relation\": \"any\", \"relation_span\": \"other than\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "0e7a6bb5b395f2ce248add4ed920b833488703e1a41f60d5e602bad69e26e335",
+    "placebo": "c0d797593e19f1fde05e0feca2cd99cdae0cd7109576be92246286a1e51cb06f"
+   }
+  },
+  {
+   "trial": "carolina",
+   "studyId": 10,
+   "role": "exclusion",
+   "id": "69",
+   "storeArm": "a",
+   "case": "investigator_judgement both wordings give: kept",
+   "category": "fill_control",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "not_none",
+    "exc": [],
+    "base": [],
+    "outcome": null
+   },
+   "row": {
+    "id": 69,
+    "description": "Other conditions preventing safe participation",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+    "protocolLine": "Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+    "protocolSpan": "has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "277529f7-27f1-402d-8a49-cd8823dc2d9e",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "investigator_judgement",
+     "no_entity_span": "in the opinion of the investigator, would not allow safe participation in the study",
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": \"in the opinion of the investigator, would not allow safe participation in the study\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": \"in the opinion of the investigator\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "7de676e000bf34fc6843d50f9d6b72f5b3080005bb957a73bd19e052f8f5eddc",
+    "placebo": "f574f23288fb60fe15c990c1c214d66d27225b9bd38a52a087bf3c88582800f2"
+   }
+  },
+  {
+   "trial": "declare",
+   "studyId": 13,
+   "role": "exclusion",
+   "id": "48",
+   "storeArm": "smoke",
+   "case": "refers_elsewhere against investigator_judgement: dropped (same value required)",
+   "category": "target",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "not_none",
+    "exc": [],
+    "base": [],
+    "outcome": "skip"
+   },
+   "row": {
+    "id": 48,
+    "description": "Involvement in study planning",
+    "domain": "Procedure",
+    "valueConstraint": null,
+    "sourceText": "Involvement in the planning of the study",
+    "protocolLine": "14. Involvement in the planning and/or conduct of the study or other dapagliflozin studies (applies to AZ, BMS, Hadassah and Thrombolysis in Myocardial Infarction [TIMI] or representative staff and/or staff at the study site)",
+    "protocolSpan": "Involvement in the planning and/or conduct of the study or other dapagliflozin studies",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "8fbff945-b7e6-4565-a01f-b862f9c35786",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "dapagliflozin studies",
+       "span": "other dapagliflozin studies"
+      }
+     ],
+     "base_span": "Involvement in the planning and/or conduct of the study",
+     "relation": "any",
+     "relation_span": "and/or",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "refers_elsewhere",
+     "no_entity_span": "Involvement in the planning and/or conduct of the study or other dapagliflozin studies (applies to AZ, BMS, Hadassah and Thrombolysis in Myocardial Infarction [TIMI] or representative staff and/or staff at the study site)",
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"dapagliflozin studies\", \"span\": \"other dapagliflozin studies\"}], \"base_span\": \"Involvement in the planning and/or conduct of the study\", \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"refers_elsewhere\", \"no_entity_span\": \"Involvement in the planning and/or conduct of the study or other dapagliflozin studies (applies to AZ, BMS, Hadassah and Thrombolysis in Myocardial Infarction [TIMI] or representative staff and/or staff at the study site)\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": \"Involvement in the planning and/or conduct of the study or other dapagliflozin studies (applies to AZ, BMS, Hadassah and Thrombolysis in Myocardial Infarction [TIMI] or representative staff and/or staff at the study site)\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "ef61554f0c3f59c4a725265830389be66bdc334e4dc847b246d21d67ba83e9a4",
+    "placebo": "cc4032cb3b77335cc375c13f31892c56a2acfe234d2d7c495b5e2d8c138095d4"
+   }
+  },
+  {
+   "trial": "declare",
+   "studyId": 13,
+   "role": "exclusion",
+   "id": "2",
+   "storeArm": "smoke",
+   "case": "the current answer fills none of the three fields: no second call",
+   "category": "neighbour_control",
+   "expected": {
+    "rr": "not_conditional",
+    "ne": "none",
+    "exc": [],
+    "base": [],
+    "outcome": null
+   },
+   "row": {
+    "id": 2,
+    "description": "Current or recent pioglitazone use",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "pioglitazone",
+    "protocolLine": "2. Current or recent (within 24 months) treatment with pioglitazone and/or use of pioglitazone for a total of 2 years or more during lifetime",
+    "protocolSpan": "Current or recent (within 24 months) treatment with pioglitazone",
+    "window": {
+     "start": -24,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "0c78a3f0-9520-4ffa-87d7-c768f9d68df2",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "and/or",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "within 24 months",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "a total of 2 years or more during lifetime",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    },
+    "_windowDisagreement": {
+     "windowSpan": "within 24 months",
+     "statedDays": [
+      720
+     ],
+     "window": {
+      "start": -24,
+      "end": 0
+     }
+    }
+   },
+   "members": [],
+   "answers": {
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 24 months\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"a total of 2 years or more during lifetime\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Current or recent (within 24 months) treatment with pioglitazone and/or use of pioglitazone for a total of 2 years or more during lifetime\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 24 months\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"2 years or more\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "stage2PromptSha256": {
+    "current": "9c26f78df7e8db3d5562a4d9dc4d97e930e4f649492bf70fd7211413e8e769e8",
+    "placebo": "2b26e4281934c49fa6aa752388fcf403036bbff85a2303e15d34b5dbdf0b0860"
+   }
+  }
+ ]
+}

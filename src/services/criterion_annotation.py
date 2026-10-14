@@ -42,12 +42,28 @@ is not in the line makes its field absent -- the row then takes the default beha
 and the rejection is recorded on the row under :data:`ANNOTATION_REJECTED_KEY` so it can
 be counted. Nothing here reads the line, the description or the entity as words.
 
+Agreement. Three fields are kept only when a second call, asked the same question in other
+words (:data:`AGREEMENT_SYSTEM_PROMPT`, :data:`AGREEMENT_PROMPT`), gives them too: each
+excepted entity (and with it ``base_span``), ``record_requirement: conditional``, and a
+``no_entity`` other than ``none``. Measured with gemma-4-E4B in stage 2 of the over-fill A/B
+(``output/site_gap/2026-10-12_p3_dry/overfill/analysis_stage2/``): a wrong excepted entity
+changes under almost any rewording while a correct one recurs -- under the second wording 27
+of 27 correct spans reappear and 37 of 126 wrong ones do -- so keeping only what both answers
+give fixed 44.7 of 62 wrong-exception rows and broke 0 of 113 controls. The second call is
+made only when the first validated answer fills one of the three, because the rule only ever
+reverts a fill (:func:`agree`). What the second answer confirmed and what it took away are
+recorded on the row under :data:`AGREEMENT_KEY`, carried onto the conditional skip record,
+and listed in the built expression under :data:`AGREEMENT_RECORDS_KEY`. Every comparison is
+of offsets in ``protocolLine`` (:func:`~src.utils.span_match.span_offsets`) or of enum
+values; nothing reads either answer's words.
+
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
 rebuild reaches it.
 
 Cache: one JSONL file, keyed on the prompt text, the prompt version, the resolved model
-and the rendered inputs (protocol line plus the extracted fields). The path is
+and the rendered inputs (protocol line plus the extracted fields). The agreement call is
+cached under its own key (its own system prompt, template and version). The path is
 ``ARTEMIS_ANNOTATION_CACHE_PATH`` when set, so a run can isolate its cache;
 ``ARTEMIS_ANNOTATION_CACHE=0`` disables it. Failed calls are never cached.
 """
@@ -68,16 +84,27 @@ from typing import Any
 
 from src.services.loinc_specimen import MEASUREMENT_DOMAIN
 from src.services.route_subtraction import AdministrationRoute
-from src.utils.span_match import span_in_line
+from src.utils.span_match import span_in_line, span_offsets
 
 logger = logging.getLogger(__name__)
 
-#: Bumped whenever either prompt below changes meaning; part of the cache key.
-ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-v1"
+#: Bumped whenever either prompt below changes meaning, or what is stored from the answer
+#: does (the agreement step); part of the first call's cache key. The wording itself is the
+#: one ``rfc016-steps1-4-v1`` sent, which stage 2 of the over-fill A/B measured as `current`.
+ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-agreement-v1"
+#: The agreement call's version (:data:`AGREEMENT_SYSTEM_PROMPT`, :data:`AGREEMENT_PROMPT`);
+#: part of its cache key, bumped whenever either of those changes.
+AGREEMENT_PROMPT_VERSION = "rfc016-steps1-4-agreement-placebo-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
 ANNOTATION_REJECTED_KEY = "_annotationRejected"
+#: The row key of the agreement record (:func:`agree`): present exactly when the second call
+#: was made, and holding what it kept and dropped, its answer, version and cache key.
+AGREEMENT_KEY = "_annotationAgreement"
+#: Expression key: one record per criterion the second call was made for
+#: (:func:`agreement_records`), present and empty when there was none.
+AGREEMENT_RECORDS_KEY = "_annotationAgreementRecords"
 #: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
 UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
 #: The ``reason`` each of those records carries.
@@ -342,6 +369,158 @@ about only by pointing elsewhere: to an item, list, table or appendix of the pro
 a product known only by its role in a study.
 - `investigator_judgement`: the line names no such entity and leaves the criterion to the \
 investigator's assessment.
+
+`no_entity_span` is the fragment of the protocol line that points elsewhere or states the \
+assessment. It is required when `no_entity` is not `none` and null otherwise.
+
+`threshold_span` is the fragment of the protocol line that states the numeric threshold this \
+criterion compares its own entity against: the comparison, the number, and the unit or the \
+reference limit, as written. It is null when the line states no numeric threshold for this \
+criterion's entity.
+
+`quantity_kind` states what the number in `threshold_span` measures. One of:
+- `lab_value`: a value that a laboratory test or a clinical measurement records for the patient.
+- `dose`: an amount of a drug that is given, taken or prescribed.
+- `duration`: how long a condition, a treatment or a state has lasted or must last.
+- `count`: a number of events, of episodes, or of listed items that must hold.
+- `statistical`: a quantity of the trial's statistical design rather than of the patient.
+- `other`: any other quantity.
+It is null when `threshold_span` is null.
+
+`reference_bound` states what the number in `threshold_span` is compared against. One of:
+- `uln`: a multiple of the upper limit of the normal range of the laboratory that measured it.
+- `lln`: a multiple of the lower limit of the normal range of the laboratory that measured it.
+- `none`: the number itself, in the unit that `threshold_span` states.
+It is null when `threshold_span` is null.
+
+Output JSON:
+{{"record_requirement": "<required|forbidden|conditional>", \
+"conditional_span": "<fragment of the protocol line, or null>", \
+"excepted_entities": [{{"text": "<entity name>", "span": "<fragment of the protocol line>"}}], \
+"base_span": "<fragment of the protocol line, or null>", \
+"relation": "<all|any|at_least, or null>", \
+"relation_span": "<fragment of the protocol line, or null>", \
+"cardinality": "<integer, or null>", \
+"timing": "<prior|at_index|prospective>", \
+"window_span": "<fragment of the protocol line, or null>", \
+"route": ["<route value or any>"], \
+"route_span": "<fragment of the protocol line, or null>", \
+"specimen": "<blood|urine|other|any>", \
+"specimen_span": "<fragment of the protocol line, or null>", \
+"no_entity": "<none|refers_elsewhere|investigator_judgement>", \
+"no_entity_span": "<fragment of the protocol line, or null>", \
+"threshold_span": "<fragment of the protocol line, or null>", \
+"quantity_kind": "<lab_value|dose|duration|count|statistical|other, or null>", \
+"reference_bound": "<uln|lln|none, or null>"}}"""
+
+# The agreement call's wording (see the module docstring): the two prompts above with the
+# system prompt's second paragraph and the definitions of the three compared fields --
+# `conditional` and `conditional_span`, `excepted_entities` and `base_span`, and `no_entity` --
+# reworded with the same meaning and nothing added. It is the over-fill A/B's stage-2 `placebo`
+# arm, character for character (scripts/check_annotation_agreement_identity.py); every other
+# definition is identical to the first call's, so the second answer is asked the same question
+# in other words.
+AGREEMENT_SYSTEM_PROMPT = """You annotate one eligibility criterion of a clinical trial protocol.
+
+The criterion was already extracted from one line of the protocol, and no extracted field is \
+yours to change. You read that protocol line and record the facts that the fields below \
+define about the criterion, each one with the fragment of the protocol line that states it.
+
+Every fragment you return is copied from the protocol line character for character: no \
+paraphrase, no expanded abbreviation, no added word. A fragment that does not occur in the \
+protocol line is discarded together with the answer it supports.
+
+Return one JSON object and nothing else."""
+
+AGREEMENT_PROMPT = """Protocol line:
+{protocol_line}
+
+Extracted criterion:
+- Role: {role}
+- Entity text: {entity_text}
+- Description: {description}
+- Domain: {domain}
+- Logic type: {logic_type}
+- Window: {window}
+- Value constraint: {value_constraint}
+- Group label: {group_label}
+- Members: {members}
+
+Fields to return:
+
+`record_requirement` states what this criterion asks of the patient's record of the entity \
+it names, as the protocol line states it. One of:
+- `required`: the patient meets the criterion only if a record of the entity exists.
+- `forbidden`: the patient meets the criterion only if no record of the entity exists.
+- `conditional`: the protocol line restricts the criterion to patients who already have a \
+record of the entity, or to patients in a subgroup that the line names; this criterion does \
+not filter a patient who lacks that record or is not in that subgroup.
+
+`conditional_span` is the fragment of the protocol line that restricts the criterion to those \
+patients. It is required when `record_requirement` is `conditional`, and null in every other \
+case.
+
+`excepted_entities` lists, one entry for each, the entities that the protocol line explicitly \
+removes from the set named by this criterion's entity: `text` is the removed entity's name to \
+look up in a clinical vocabulary, and `span` is the fragment of the protocol line naming it. \
+When the line removes nothing from that set, it is an empty list.
+
+`base_span` is the fragment of the protocol line naming the set from which the excepted \
+entities are removed. It is required when `excepted_entities` is not empty, and null in every \
+other case.
+
+`relation` states how the protocol line combines the members listed above into this \
+criterion, read without the criterion's logic type. One of:
+- `all`: the criterion holds only when every member holds.
+- `any`: the criterion holds when at least one member holds.
+- `at_least`: the criterion holds when at least a stated number of members hold.
+It is null when the criterion has no members.
+
+`relation_span` is the fragment of the protocol line that states how the members combine. \
+It is required when `relation` is not null and null otherwise.
+
+`cardinality` is the stated number of members, as an integer, when `relation` is \
+`at_least`, and null otherwise.
+
+`timing` states when, relative to the patient's entry into the trial, the protocol line \
+places what this criterion describes. One of:
+- `prior`: before entry.
+- `at_index`: at entry.
+- `prospective`: after entry, as something planned or expected to happen.
+
+`window_span` is the fragment of the protocol line that places the criterion in time. It is \
+required when `timing` is `prospective`; otherwise it is that fragment when the line states \
+one, and null when the line does not.
+
+`route` lists the routes of administration the protocol line restricts this criterion's drug \
+to. Each entry is one of the route values a clinical vocabulary attaches to drug dose forms: \
+{route_values}. A value covers the routes the vocabulary files under it: `topical` covers \
+`transdermal`, and `respiratory_tract` covers `nasal`. When the line restricts the drug by \
+where in the body it acts rather than by naming a route, list every route value by which a \
+drug of that kind acts there. The list holds the single value `any` when the line places no \
+restriction on route, and when the criterion's entity is not a drug.
+
+`route_span` is the fragment of the protocol line that states the route restriction. It is \
+required when `route` is not `any` and null otherwise.
+
+`specimen` states the body material in which the protocol line says the quantity this \
+criterion measures is taken. One of:
+- `blood`: blood, or a fraction separated from blood.
+- `urine`: urine.
+- `other`: a body material that is neither blood nor urine.
+- `any`: the line names no body material, or the criterion measures no quantity.
+
+`specimen_span` is the fragment of the protocol line that names the body material. It is \
+required when `specimen` is not `any` and null otherwise.
+
+`no_entity` states whether, for this criterion, the protocol line names a clinical entity \
+that could be held in a clinical vocabulary. One of:
+- `none`: such an entity is named by the line.
+- `refers_elsewhere`: no such entity is named by the line, which identifies what the \
+criterion concerns only by pointing elsewhere: to an item, a list, a table or an appendix of \
+the protocol, or to a product known only by its role in a study.
+- `investigator_judgement`: no such entity is named by the line, which leaves the criterion \
+to the assessment of the investigator.
 
 `no_entity_span` is the fragment of the protocol line that points elsewhere or states the \
 assessment. It is required when `no_entity` is not `none` and null otherwise.
@@ -778,15 +957,22 @@ def _members_text(members: Sequence[Mapping[str, Any]]) -> str:
     return "".join(lines)
 
 
-def render_prompt(row: Mapping[str, Any], members: Sequence[Mapping[str, Any]], role: str) -> str:
+def render_prompt(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    template: str = ANNOTATION_PROMPT,
+) -> str:
     """The user message for one rule: its protocol line and its already-extracted fields.
 
     :param row: the store criterion row.
     :param members: the rows of its group when ``row`` is a group label, else empty.
     :param role: ``inclusion`` or ``exclusion``.
+    :param template: :data:`ANNOTATION_PROMPT`, or :data:`AGREEMENT_PROMPT` for the
+        agreement call; both take the same fields.
     :returns: the rendered prompt.
     """
-    return ANNOTATION_PROMPT.format(
+    return template.format(
         protocol_line=str(row.get(_LINE) or ""),
         role=role,
         entity_text=_text(row.get("sourceText")),
@@ -827,11 +1013,28 @@ def cache_enabled() -> bool:
     return os.environ.get(_CACHE_ENABLED_ENV) != "0"
 
 
-def cache_key(prompt: str, model: str) -> str:
+def cache_key(
+    prompt: str,
+    model: str,
+    *,
+    version: str | None = None,
+    system: str | None = None,
+) -> str:
     """:param prompt: the rendered user prompt (protocol line + extracted fields).
-    :param model: the resolved model string. :returns: a stable SHA-256 key."""
+    :param model: the resolved model string.
+    :param version: the prompt version; :data:`ANNOTATION_PROMPT_VERSION` when None.
+    :param system: the system prompt; :data:`ANNOTATION_SYSTEM_PROMPT` when None. The
+        agreement call passes its own version and system prompt, so the two calls of one row
+        never share a key.
+    :returns: a stable SHA-256 key."""
     payload = json.dumps(
-        [ANNOTATION_PROMPT_VERSION, ANNOTATION_SYSTEM_PROMPT, prompt, model], ensure_ascii=False
+        [
+            ANNOTATION_PROMPT_VERSION if version is None else version,
+            ANNOTATION_SYSTEM_PROMPT if system is None else system,
+            prompt,
+            model,
+        ],
+        ensure_ascii=False,
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -912,16 +1115,197 @@ def _parse(content: Any) -> Any:
         return json.loads(value)
 
 
-def _complete(llm: Any, prompt: str) -> Any:
+def _complete(llm: Any, prompt: str, system: str = ANNOTATION_SYSTEM_PROMPT) -> Any:
     from langchain_core.messages import HumanMessage, SystemMessage
 
     from src.utils.llm import raise_if_truncated
 
-    response = llm.invoke(
-        [SystemMessage(content=ANNOTATION_SYSTEM_PROMPT), HumanMessage(content=prompt)]
-    )
+    response = llm.invoke([SystemMessage(content=system), HumanMessage(content=prompt)])
     raise_if_truncated(response, what="criterion annotation")
     return _parse(response.content)
+
+
+def _ask(
+    llm: Any,
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    *,
+    model: str,
+    template: str,
+    system: str,
+    version: str,
+) -> tuple[str, str, Any, str | None]:
+    """One call with one wording, or its cached answer. Never raises for a model failure.
+
+    :returns: ``(outcome, key, payload, error)``: outcome ``cached``, ``called`` or ``error``;
+        the cache key the answer is (or would be) stored under; the parsed answer (None on
+        error); the failure as ``Type: message`` (None unless outcome is ``error``). A failed
+        call is never cached.
+    """
+    prompt = render_prompt(row, members, role, template)
+    key = cache_key(prompt, model, version=version, system=system)
+    cached = _cache_get(key)
+    if cached is not None:
+        return "cached", key, cached.get("payload"), None
+    try:
+        payload = _complete(llm, prompt, system)
+    except Exception as exc:
+        return "error", key, None, f"{type(exc).__name__}: {exc}"
+    _cache_put(key, {"payload": payload, "model": model, "promptVersion": version})
+    return "called", key, payload, None
+
+
+def needs_agreement(fields: Mapping[str, Any]) -> bool:
+    """Whether a validated answer fills a field :func:`agree` compares: an excepted entity,
+    ``record_requirement: conditional``, or a ``no_entity`` other than ``none``.
+
+    :param fields: the first answer, as :func:`validate_annotation` returns it.
+    :returns: True when the agreement call is needed. The rule only ever reverts a fill, so a
+        row whose first answer fills none of the three would come out the same without it.
+    """
+    return (
+        bool(fields.get(FIELD_EXCEPTED_ENTITIES))
+        or fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value
+        or fields.get(FIELD_NO_ENTITY) not in (None, NoEntity.NONE.value)
+    )
+
+
+def _located(entry: Mapping[str, Any], protocol_line: str) -> dict[str, Any]:
+    """An excepted entity as the agreement record stores it: with the offsets it was compared on."""
+    offsets = span_offsets(entry.get(FIELD_SPAN), protocol_line)
+    return {
+        FIELD_TEXT: entry.get(FIELD_TEXT),
+        FIELD_SPAN: entry.get(FIELD_SPAN),
+        "offsets": list(offsets) if offsets is not None else None,
+    }
+
+
+def agree(
+    first: Mapping[str, Any], second: Mapping[str, Any], protocol_line: str
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Keep each fill of the first answer the rule compares only when the second gives it too.
+
+    Both answers are :func:`validate_annotation` output for the same row, so every fragment
+    compared here is already verified in ``protocol_line``.
+
+    * ``excepted_entities``: an entity is kept when an entity of the second answer sits at the
+      same offsets in ``protocol_line`` (:func:`~src.utils.span_match.span_offsets`) -- the same
+      stretch of the line, whatever its ``text`` says. ``base_span`` stays the first answer's
+      while at least one entity survives; when none does, it goes with them.
+    * ``record_requirement: conditional`` is kept when the second answer also says
+      ``conditional``. Otherwise ``record_requirement`` and ``conditional_span`` become None:
+      the value a rejected field takes. The build reads only whether the value is
+      ``conditional`` (:func:`conditional_skips`), so None, ``required`` and ``forbidden`` are
+      built alike; None asserts neither polarity, which neither answer agreed on.
+    * ``no_entity`` other than ``none`` is kept when the second answer gives the same value.
+      Otherwise ``no_entity`` and ``no_entity_span`` become None, which
+      :func:`stated_no_entity` reads as ``none``.
+
+    No field is filled from the second answer: the rule only ever reverts a fill.
+
+    :param first: the first answer's validated fields.
+    :param second: the agreement call's validated fields; empty when that call failed, so
+        nothing is confirmed.
+    :param protocol_line: the row's ``protocolLine``.
+    :returns: ``(fields, kept, dropped)``: the first answer with the unconfirmed fills
+        reverted, and per field what was confirmed and what was taken away.
+    """
+    fields = {**first, FIELD_EXCEPTED_ENTITIES: list(first.get(FIELD_EXCEPTED_ENTITIES) or [])}
+    kept: dict[str, Any] = {}
+    dropped: dict[str, Any] = {}
+
+    entries = fields[FIELD_EXCEPTED_ENTITIES]
+    if entries:
+        confirmed = {
+            span_offsets(entry.get(FIELD_SPAN), protocol_line)
+            for entry in second.get(FIELD_EXCEPTED_ENTITIES) or []
+            if isinstance(entry, Mapping)
+        } - {None}
+        verdicts = [span_offsets(e.get(FIELD_SPAN), protocol_line) in confirmed for e in entries]
+        survivors = [e for e, ok in zip(entries, verdicts) if ok]
+        lost = [e for e, ok in zip(entries, verdicts) if not ok]
+        fields[FIELD_EXCEPTED_ENTITIES] = survivors
+        if survivors:
+            kept[FIELD_EXCEPTED_ENTITIES] = [_located(e, protocol_line) for e in survivors]
+            kept[FIELD_BASE_SPAN] = first.get(FIELD_BASE_SPAN)
+        if lost:
+            dropped[FIELD_EXCEPTED_ENTITIES] = [_located(e, protocol_line) for e in lost]
+        if not survivors:
+            dropped[FIELD_BASE_SPAN] = first.get(FIELD_BASE_SPAN)
+            fields[FIELD_BASE_SPAN] = None
+
+    if first.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value:
+        decision = {"value": RecordRequirement.CONDITIONAL.value,
+                    "span": first.get(FIELD_CONDITIONAL_SPAN)}
+        if second.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value:
+            kept[FIELD_RECORD_REQUIREMENT] = decision
+        else:
+            dropped[FIELD_RECORD_REQUIREMENT] = decision
+            fields[FIELD_RECORD_REQUIREMENT] = None
+            fields[FIELD_CONDITIONAL_SPAN] = None
+
+    value = first.get(FIELD_NO_ENTITY)
+    if value not in (None, NoEntity.NONE.value):
+        decision = {"value": value, "span": first.get(FIELD_NO_ENTITY_SPAN)}
+        if second.get(FIELD_NO_ENTITY) == value:
+            kept[FIELD_NO_ENTITY] = decision
+        else:
+            dropped[FIELD_NO_ENTITY] = decision
+            fields[FIELD_NO_ENTITY] = None
+            fields[FIELD_NO_ENTITY_SPAN] = None
+    return fields, kept, dropped
+
+
+def _agreement(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    first: Mapping[str, Any],
+    *,
+    first_key: str,
+    model: str,
+    llm: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Make the agreement call for one row and apply :func:`agree`.
+
+    :returns: the agreed fields and the record stored under :data:`AGREEMENT_KEY`.
+    """
+    line = str(row.get(_LINE))
+    outcome, key, payload, error = _ask(
+        llm, row, members, role, model=model, template=AGREEMENT_PROMPT,
+        system=AGREEMENT_SYSTEM_PROMPT, version=AGREEMENT_PROMPT_VERSION,
+    )
+    second, second_rejected = ({}, []) if error is not None else validate_annotation(payload, line)
+    fields, kept, dropped = agree(first, second, line)
+    record: dict[str, Any] = {
+        "promptVersion": AGREEMENT_PROMPT_VERSION,
+        "model": model,
+        "cacheKey": key,
+        "firstCacheKey": first_key,
+        "outcome": outcome,
+        "kept": kept,
+        "dropped": dropped,
+        "second": None if error is not None else {
+            FIELD_RECORD_REQUIREMENT: second.get(FIELD_RECORD_REQUIREMENT),
+            FIELD_CONDITIONAL_SPAN: second.get(FIELD_CONDITIONAL_SPAN),
+            FIELD_EXCEPTED_ENTITIES: [
+                _located(e, line) for e in second.get(FIELD_EXCEPTED_ENTITIES) or []
+            ],
+            FIELD_BASE_SPAN: second.get(FIELD_BASE_SPAN),
+            FIELD_NO_ENTITY: second.get(FIELD_NO_ENTITY),
+            FIELD_NO_ENTITY_SPAN: second.get(FIELD_NO_ENTITY_SPAN),
+        },
+    }
+    if error is not None:
+        record["error"] = error
+        logger.warning(
+            "[annotation] agreement call failed for row %s (%s); its fills are dropped: %s",
+            row.get(_ID), error, sorted(dropped),
+        )
+    if second_rejected:
+        record["secondRejected"] = second_rejected
+    return fields, record
 
 
 def annotate_row(
@@ -934,40 +1318,47 @@ def annotate_row(
 ) -> str:
     """Annotate one rule in place. Never raises for a model failure.
 
+    The first call uses :data:`ANNOTATION_PROMPT`. When its validated answer fills a field
+    :func:`agree` compares (:func:`needs_agreement`), a second call with
+    :data:`AGREEMENT_PROMPT` follows, its answer is validated the same way, and the stored
+    annotation keeps only what both answers give; the record of that goes under
+    :data:`AGREEMENT_KEY`. A row whose first answer fills none of the three gets no second
+    call and no record.
+
     :param row: the store criterion row; gains :data:`ANNOTATION_KEY` and, when a field
-        was dropped, :data:`ANNOTATION_REJECTED_KEY`.
+        was dropped, :data:`ANNOTATION_REJECTED_KEY` (the first answer's rejections).
     :param members: the rows of its group when ``row`` is a group label, else empty.
     :param role: ``inclusion`` or ``exclusion``.
     :param model: the resolved model, recorded and part of the cache key.
     :param llm: the chat model handle (built once per run by the caller).
-    :returns: ``no-line``, ``cached``, ``called`` or ``error``.
+    :returns: the first call's outcome: ``no-line``, ``cached``, ``called`` or ``error``. The
+        agreement call's outcome is on the row's record.
     """
     line = row.get(_LINE)
     if not isinstance(line, str) or not line.strip():
         # Nothing to check a fragment against, so nothing the model said could be kept.
         return "no-line"
-    prompt = render_prompt(row, members, role)
-    key = cache_key(prompt, model)
-    cached = _cache_get(key)
-    outcome = "cached"
-    if cached is not None:
-        payload = cached.get("payload")
-    else:
-        outcome = "called"
-        try:
-            payload = _complete(llm, prompt)
-        except Exception as exc:
-            row[ANNOTATION_KEY] = {
-                "promptVersion": ANNOTATION_PROMPT_VERSION,
-                "model": model,
-                "error": f"{type(exc).__name__}: {exc}",
-            }
-            row.pop(ANNOTATION_REJECTED_KEY, None)
-            return "error"
-        _cache_put(
-            key, {"payload": payload, "model": model, "promptVersion": ANNOTATION_PROMPT_VERSION}
-        )
+    outcome, key, payload, error = _ask(
+        llm, row, members, role, model=model, template=ANNOTATION_PROMPT,
+        system=ANNOTATION_SYSTEM_PROMPT, version=ANNOTATION_PROMPT_VERSION,
+    )
+    if error is not None:
+        row[ANNOTATION_KEY] = {
+            "promptVersion": ANNOTATION_PROMPT_VERSION,
+            "model": model,
+            "error": error,
+        }
+        row.pop(ANNOTATION_REJECTED_KEY, None)
+        row.pop(AGREEMENT_KEY, None)
+        return "error"
     fields, rejected = validate_annotation(payload, line)
+    if needs_agreement(fields):
+        fields, record = _agreement(
+            row, members, role, fields, first_key=key, model=model, llm=llm
+        )
+        row[AGREEMENT_KEY] = record
+    else:
+        row.pop(AGREEMENT_KEY, None)
     row[ANNOTATION_KEY] = {"promptVersion": ANNOTATION_PROMPT_VERSION, "model": model, **fields}
     if rejected:
         row[ANNOTATION_REJECTED_KEY] = rejected
@@ -1039,7 +1430,9 @@ def annotate_eligibility(
 
     :param eligibility: carries ``inclusionCriteria`` and ``exclusionCriteria`` rows.
     :param model: model override; defaults to the pipeline's resolved model.
-    :returns: outcome counts, plus ``rejected`` (rows that lost at least one field).
+    :returns: outcome counts, plus ``rejected`` (rows that lost at least one field) and the
+        agreement call's counts: ``agreementCalls`` (rows it was made for), ``agreementError``
+        (rows where it failed) and ``agreementDropped`` (rows that lost a fill to it).
     """
     from src.utils.llm import resolve_model
 
@@ -1067,6 +1460,12 @@ def annotate_eligibility(
     counts["windowDisagreement"] = sum(
         1 for row, _m, _role in jobs if row.get(WINDOW_DISAGREEMENT_KEY)
     )
+    agreements = [
+        record for row, _m, _role in jobs if isinstance(record := row.get(AGREEMENT_KEY), Mapping)
+    ]
+    counts["agreementCalls"] = len(agreements)
+    counts["agreementError"] = sum(1 for record in agreements if record.get("outcome") == "error")
+    counts["agreementDropped"] = sum(1 for record in agreements if record.get("dropped"))
     logger.info("[annotation] model=%s version=%s %s", resolved, ANNOTATION_PROMPT_VERSION, counts)
     return counts
 
@@ -1074,6 +1473,25 @@ def annotate_eligibility(
 # --------------------------------------------------------------------------- #
 # Readers
 # --------------------------------------------------------------------------- #
+
+
+def agreement_records(rows: Iterable[Any], role: str) -> list[dict[str, Any]]:
+    """What the agreement call kept and dropped, one record per row it was made for.
+
+    Written into the built expression under :data:`AGREEMENT_RECORDS_KEY` (present and empty
+    when no row needed it), so the file says which fills a second wording took away, and which
+    excepted entities, conditionals and no-entity decisions it confirmed -- with the call's
+    version and cache key.
+
+    :param rows: one role's store rows.
+    :param role: ``inclusion`` or ``exclusion``.
+    :returns: ``[{criterionId, role, **the row's agreement record}]``, in store order.
+    """
+    return [
+        {"criterionId": str(row.get(_ID, "")), "role": role, **record}
+        for row in rows
+        if isinstance(row, Mapping) and isinstance(record := row.get(AGREEMENT_KEY), Mapping)
+    ]
 
 
 def _annotation(row: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -1090,11 +1508,25 @@ class ConditionalSkip:
     :param decided_by: the id of the row whose decision this is -- the row itself, or
         the group label it sits under.
     :param source: :data:`SOURCE_ANNOTATION` or :data:`SOURCE_EXTRACTION`.
+    :param agreement_version: the agreement call's prompt version, when the deciding row's
+        ``conditional`` was confirmed by it (:data:`AGREEMENT_KEY`); None otherwise.
+    :param agreement_key: that call's cache key; None otherwise.
     """
 
     span: str | None
     decided_by: str
     source: str
+    agreement_version: str | None = None
+    agreement_key: str | None = None
+
+
+def _confirmed_by(row: Mapping[str, Any], field: str) -> tuple[str | None, str | None]:
+    """The agreement call that kept ``field`` on this row: ``(promptVersion, cacheKey)``, or
+    ``(None, None)`` when no agreement record keeps it."""
+    record = row.get(AGREEMENT_KEY)
+    if not isinstance(record, Mapping) or field not in (record.get("kept") or {}):
+        return None, None
+    return record.get("promptVersion"), record.get("cacheKey")
 
 
 def _own_conditional(row: Mapping[str, Any]) -> ConditionalSkip | None:
@@ -1103,8 +1535,13 @@ def _own_conditional(row: Mapping[str, Any]) -> ConditionalSkip | None:
     if annotation.get(
         FIELD_RECORD_REQUIREMENT
     ) == RecordRequirement.CONDITIONAL.value and span_in_line(span, row.get(_LINE)):
+        version, key = _confirmed_by(row, FIELD_RECORD_REQUIREMENT)
         return ConditionalSkip(
-            span=span, decided_by=str(row.get(_ID, "")), source=SOURCE_ANNOTATION
+            span=span,
+            decided_by=str(row.get(_ID, "")),
+            source=SOURCE_ANNOTATION,
+            agreement_version=version,
+            agreement_key=key,
         )
     if row.get(EXTRACTED_CONDITIONAL_KEY) is True:
         return ConditionalSkip(

@@ -388,7 +388,10 @@ class TestProcessEligibilityAnnotatesBeforeMapping:
                 section_source=section,
             )
         assert status == "completed"
-        assert len(llm.calls) == 1
+        # The annotation call, and the agreement call its `conditional` asks for (the stub
+        # answers both the same way, so the conditional is kept).
+        assert len(llm.calls) == 2
+        assert llm.calls[1].startswith(annotation_mod.AGREEMENT_SYSTEM_PROMPT)
         assert seen["rows"][0][ANNOTATION_KEY]["record_requirement"] == "conditional"
         stored = payload["proposedChanges"]["eligibility"]["inclusionCriteria"][0]
         assert stored[ANNOTATION_KEY]["conditional_span"] == CARMELINA_SPAN
