@@ -20,11 +20,19 @@ from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 
 import openai
+from langchain_core.exceptions import OutputParserException
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from src.utils.exceptions import LLMConfigurationError
-from src.utils.llm import StrictJsonOutputParser, _is_vllm_model, get_llm, resolve_model
+from src.utils.llm import (
+    StrictJsonOutputParser,
+    _is_vllm_model,
+    finish_reason,
+    get_llm,
+    resolve_model,
+    token_usage,
+)
 from src.agents.agent2.kg_expander import KGConcept
 from src.agents.agent2.critic_cache import CriticCache
 
@@ -51,6 +59,18 @@ _UNSERVABLE_STATUS = frozenset({401, 403, 404})
 # grouped output schema (2026-08-11); that schema was measured and reverted, but the
 # hole it exposed is real and the guard stays.
 _CRITIC_PROMPT_VERSION = "2026-10-12-no-library-format-instructions"
+
+# The reply budget, in completion tokens. A reply judges each candidate in its own entry,
+# and google/gemma-4-E4B-it often lists every candidate. Measured 2026-10-14 in the critic
+# A/B (333 calls): the 24 replies that ended finish_reason "length" at the former 4096 were
+# all on 49-, 51- and 54-candidate inputs and had reached entry 41-45 at 91-100 tokens per
+# entry, so the full list needs ~4.7-5.4k tokens; complete replies ran at a median of 120
+# tokens per entry. In P3 arms A and B, 16/159 and 20/200 critic calls (45-54 candidates)
+# show the same cut in their logs, and the strict parser rejects every cut reply, so each of
+# those criteria kept its seeds alone. Prompts reach ~4k tokens; prompt + 8192 stays far
+# inside the served 65536 context. The cap stays finite on purpose: a model that never stops
+# (hari-q3-8b once ran a whole benchmark into the context ceiling) fails fast and visibly.
+_CRITIC_MAX_TOKENS = 8192
 
 
 def _concept_rows(concept_ids: List[int]) -> Dict[int, tuple]:
@@ -169,15 +189,108 @@ def _warn_if_critic_leaves_local(critic_model: str) -> None:
 
 
 @dataclass(frozen=True)
+class CriticCompletion:
+    """How one critic reply ended, as the server reported it; None where it said nothing.
+
+    :param finish_reason: ``stop`` for a reply that ended, ``length`` for one cut at the budget.
+    :param completion_tokens: tokens the reply used.
+    :param prompt_tokens: tokens the request used.
+    """
+
+    finish_reason: Optional[str] = None
+    completion_tokens: Optional[int] = None
+    prompt_tokens: Optional[int] = None
+
+    @classmethod
+    def of(cls, message: Any) -> "CriticCompletion":
+        """Read the counts off a model message; any other object reads as unreported."""
+        usage = token_usage(message)
+        return cls(
+            finish_reason(message), usage.get("completion_tokens"), usage.get("prompt_tokens")
+        )
+
+    def describe(self) -> str:
+        return f"finish_reason={self.finish_reason}, completion_tokens={self.completion_tokens}"
+
+
+@dataclass(frozen=True)
 class CriticOutcome:
     """What one critic call produced.
 
     :param concept_ids: the selection, or the seeds alone when ``failure`` is set.
     :param failure: why the critic's answer could not be used (one line), or None.
+    :param completion: how the model's reply ended; None when no model call was made
+        (cache hit, nothing to judge) or the call raised before a reply arrived.
     """
 
     concept_ids: List[int]
     failure: Optional[str] = None
+    completion: Optional[CriticCompletion] = None
+
+
+@dataclass(frozen=True)
+class _CriticReply:
+    """The parsed reply together with how it ended."""
+
+    value: Any
+    completion: CriticCompletion
+
+
+class _CriticReplyParser(StrictJsonOutputParser):
+    """``StrictJsonOutputParser`` that keeps how the reply ended next to what it said.
+
+    The parser is the last step that sees the model's message, which is where the server's
+    ``finish_reason`` and token counts live. It returns them with the parsed value, and
+    attaches them to a parse failure as ``critic_completion``, so the critic can log them for
+    every call and name them in the failure it records. Parsing itself is unchanged: a cut
+    or malformed reply is still ``Invalid json output``, never repaired.
+    """
+
+    def parse_result(self, result: list, *, partial: bool = False) -> Any:
+        completion = CriticCompletion.of(getattr(result[0], "message", None))
+        try:
+            value = super().parse_result(result, partial=partial)
+        except OutputParserException as e:
+            e.critic_completion = completion
+            raise
+        return _CriticReply(value, completion)
+
+
+def _log_completion(
+    completion: Optional[CriticCompletion], reply: str, *,
+    query: str, domain_hint: Optional[str], model: str, n_candidates: int,
+) -> None:
+    """One ``[Critic] Completion {json}`` line per model call, so a run counts cut replies directly.
+
+    :param reply: ``parsed`` (the reply was JSON), ``unparseable`` (it was not), or ``none``
+        (the call raised before a reply arrived).
+    """
+    c = completion or CriticCompletion()
+    logger.info("[Critic] Completion %s", json.dumps({
+        "query": query, "domain": domain_hint, "model": model, "candidates": n_candidates,
+        "max_tokens": _CRITIC_MAX_TOKENS, "finish_reason": c.finish_reason,
+        "completion_tokens": c.completion_tokens, "prompt_tokens": c.prompt_tokens, "reply": reply,
+    }, ensure_ascii=False, sort_keys=True))
+
+
+def _ask(chain: Any, payload: Dict[str, str], **call: Any) -> tuple:
+    """Invoke the critic chain once and log how its reply ended.
+
+    :returns: (the parsed reply, its :class:`CriticCompletion`); the completion is None when
+        the chain is not the critic's own (it then returns the parsed value alone).
+    :raises: whatever the chain raised; a parse failure carries ``critic_completion``.
+    """
+    try:
+        reply = chain.invoke(payload)
+    except Exception as e:
+        completion = getattr(e, "critic_completion", None)
+        _log_completion(completion, "none" if completion is None else "unparseable", **call)
+        raise
+    if isinstance(reply, _CriticReply):
+        _log_completion(reply.completion, "parsed", **call)
+        return reply.value, reply.completion
+    _log_completion(None, "parsed", **call)
+    return reply, None
 
 
 # ── Output Schema ──────────────────────────────────────────
@@ -268,19 +381,13 @@ class ConceptCritic:
     """
 
     def __init__(self):
-        # 4096 against a largest-legitimate-output of 2,161 tokens, measured on
-        # Qwen2.5-7B with the real prompt. Inert for a model that terminates; for
-        # one that does not it turns a 25-minute silent runaway into a fast visible
-        # parse failure. hari-q3-8b ran an entire benchmark truncating at the
-        # context ceiling, and the handler in evaluate() turned every one of those
-        # into a seed-only fallback that nothing in the output distinguished from
-        # success.
-        self._default_llm = get_llm(temperature=0.0, json_mode=True, max_tokens=4096)
+        # The budget and why it is 8192: see _CRITIC_MAX_TOKENS.
+        self._default_llm = get_llm(temperature=0.0, json_mode=True, max_tokens=_CRITIC_MAX_TOKENS)
         self._cache = CriticCache()
         self._self_reflect = os.environ.get(
             "AGENT2_CRITIC_SELF_REFLECT", "true"
         ).lower() == "true"
-        self.parser = StrictJsonOutputParser(pydantic_object=CriticResult)
+        self.parser = _CriticReplyParser(pydantic_object=CriticResult)
 
         reflection_section = _SELF_REFLECTION_INSTRUCTIONS if self._self_reflect else ""
 
@@ -491,18 +598,25 @@ class ConceptCritic:
         # rebuilt the model and the chain on every single call.
         model_name = select_critic_model(domain_hint)
         if model_name is not None:
-            llm = get_llm(model_name=model_name, temperature=0.0, json_mode=True, max_tokens=4096)
+            llm = get_llm(
+                model_name=model_name, temperature=0.0, json_mode=True,
+                max_tokens=_CRITIC_MAX_TOKENS,
+            )
             chain = self.prompt | llm | self.parser
         else:
             chain = self._default_chain
-        logger.info(f"[Critic] Model: {resolve_model(model_name)} (domain={domain_hint})")
+        model = resolve_model(model_name)
+        logger.info(f"[Critic] Model: {model} (domain={domain_hint})")
 
+        completion: Optional[CriticCompletion] = None
         try:
-            result = chain.invoke({
-                "query": full_query,
-                "candidates_text": candidates_text,
-            })
-            
+            result, completion = _ask(
+                chain,
+                {"query": full_query, "candidates_text": candidates_text},
+                query=query, domain_hint=domain_hint, model=model,
+                n_candidates=len(all_concept_ids),
+            )
+
             # A reply without the selections is a broken reply, not "nothing selected":
             # read as the latter it returned the seeds and cached them as the answer.
             if not isinstance(result, dict) or not isinstance(result.get("selected_concepts"), list):
@@ -561,11 +675,11 @@ class ConceptCritic:
             if not selected:
                 logger.warning("[Critic] No concepts selected, falling back to seed concepts")
                 self._cache.put(cache_key, seed_concept_ids)
-                return CriticOutcome(seed_concept_ids)
+                return CriticOutcome(seed_concept_ids, completion=completion)
 
             # Cache the result for future identical queries
             self._cache.put(cache_key, selected)
-            return CriticOutcome(selected)
+            return CriticOutcome(selected, completion=completion)
 
         except Exception as e:
             # A wrong model id or a dead credential fails identically on every
@@ -579,12 +693,18 @@ class ConceptCritic:
                     f"provider (HTTP {e.status_code}): {e}"
                 ) from e
             # Seeds, uncached, with the reason the caller records on the mapping. A parse
-            # failure quotes the whole reply, so the recorded reason keeps its head only.
+            # failure quotes the whole reply, so the recorded reason keeps its head only,
+            # followed by how the reply ended: a reply cut at the budget reads
+            # "finish_reason=length" where it is recorded, not only in the log.
             reason = " ".join(f"{type(e).__name__}: {e}".split())
             if len(reason) > 300:
                 reason = reason[:300] + " ..."
+            if completion is None:
+                completion = getattr(e, "critic_completion", None)
+            if completion is not None:
+                reason = f"{reason} ({completion.describe()})"
             logger.error(f"[Critic] Evaluation failed: {reason}")
-            return CriticOutcome(list(seed_concept_ids), failure=reason)
+            return CriticOutcome(list(seed_concept_ids), failure=reason, completion=completion)
 
 
 # ── Singleton ──────────────────────────────────────────────
