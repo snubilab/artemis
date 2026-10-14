@@ -555,10 +555,7 @@ ACCOUNTING_KEYS = ("_generationCensus", "_unmappedCriteria", "_skippedCriteria")
 #: record's ``conditionalSpan`` is a substring
 #: of the ``protocolLine`` of the row that decided it (the criterion itself, or a group
 #: label whose group contains it) -- the one text check the annotation design permits,
-#: so the reason cannot carry a criterion out on a span its own line does not hold. A
-#: conditional span recorded with ``conditionalSpanLine`` (another line of the role, which
-#: the annotation prompt showed) is checked against that line instead, and the line must
-#: itself be the ``protocolLine`` of a store row of the same study and the same role.
+#: so the reason cannot carry a criterion out on a span its own line does not hold.
 #: A record the gate cannot re-judge — one naming a criterion absent
 #: from the store, or a collapse list absent from the file — fails closed.
 #:
@@ -1958,7 +1955,6 @@ def skipped_criteria_violations(
                     reason=CONDITIONAL_REASON,
                     span_key="conditionalSpan",
                     decided_by_key="conditionalDecidedBy",
-                    line_key="conditionalSpanLine",
                 )
             )
         elif reason == PROSPECTIVE_REASON:
@@ -1997,7 +1993,6 @@ def _annotation_skip_violations(
     reason: str,
     span_key: str,
     decided_by_key: str,
-    line_key: str | None = None,
 ) -> list[str]:
     """Re-judge one permit the annotation decided (conditional or prospective) from the store.
 
@@ -2007,11 +2002,6 @@ def _annotation_skip_violations(
     group label whose group (nested groups included) contains it. A record with no span --
     for the conditional reason, Agent 1's ``conditional`` flag alone, never confirmed by a
     quoted fragment -- fails.
-
-    A conditional span may instead come from another line of the deciding row's role, which
-    the annotation prompt showed (``line_key``: ``conditionalSpanLine``). That line must itself
-    be the ``protocolLine`` of a store row of the same study and the same role, exactly, and
-    hold the span; a null line means the deciding row's own line, as above.
     """
     decided_by = str(record.get(decided_by_key) or criterion_id).strip()
     decider = index.get((role, decided_by))
@@ -2021,26 +2011,8 @@ def _annotation_skip_violations(
             "the store study does not carry, so the permit cannot be re-judged"
         ]
     span = record.get(span_key)
-    recorded_line = record.get(line_key) if line_key else None
     line = decider.get("protocolLine")
-    if recorded_line is not None:
-        role_lines = {row.get("protocolLine") for (row_role, _id), row in index.items()
-                      if row_role == role}
-        if not isinstance(recorded_line, str) or recorded_line not in role_lines:
-            return [
-                f"{where} is recorded as {reason} on a span from the line "
-                f"{recorded_line!r}, which is not the protocolLine of any {role} row of "
-                "the store study: the annotation was shown only that role's lines, so "
-                "nothing in the protocol supports the skip"
-            ]
-        if not span_in_line(span, recorded_line):
-            return [
-                f"{where} is recorded as {reason} but its span {span!r} is not a "
-                f"substring of the recorded line {recorded_line!r}: no fragment of the "
-                "protocol supports the skip, so this is a criterion lost under a permit "
-                "that does not cover it"
-            ]
-    elif not span_in_line(span, line):
+    if not span_in_line(span, line):
         return [
             f"{where} is recorded as {reason} but its span {span!r} is not a "
             f"substring of the deciding row #{decided_by}'s protocolLine {line!r}: no "

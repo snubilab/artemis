@@ -5058,9 +5058,6 @@ class TTEService:
                 criterion, role, CONDITIONAL_REASON, CONDITIONAL_EXPLANATION,
                 extra={
                     "conditionalSpan": decision.span,
-                    # The other line of the role the span was verified in; None for the
-                    # deciding row's own line. The delivery gate re-checks it.
-                    "conditionalSpanLine": decision.span_line,
                     "conditionalDecidedBy": decision.decided_by,
                     "conditionalSource": decision.source,
                 },

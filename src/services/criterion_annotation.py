@@ -42,16 +42,6 @@ is not in the line makes its field absent -- the row then takes the default beha
 and the rejection is recorded on the row under :data:`ANNOTATION_REJECTED_KEY` so it can
 be counted. Nothing here reads the line, the description or the entity as words.
 
-The prompt also shows the trial's other ``protocolLine`` values of the row's role
-(:func:`context_lines`), for one decision only: whether the criterion applies to every
-patient or only to record holders or a subgroup. A line read alone can state a requirement
-that another line of the same role makes conditional (CARMELINA inclusion 7 against
-inclusion 2, which admits drug-naive patients). ``conditional_span`` alone may be quoted from
-one of those lines; the line it verified in is recorded verbatim under
-:data:`FIELD_CONDITIONAL_SPAN_LINE`, and the build and the delivery gate re-check the span
-against that line, which must itself be a ``protocolLine`` of the same role
-(:func:`conditional_span_holds`).
-
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
 rebuild reaches it.
@@ -83,7 +73,7 @@ from src.utils.span_match import span_in_line
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever either prompt below changes meaning; part of the cache key.
-ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-context-v1"
+ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -102,12 +92,6 @@ PLANNER_EXCEPTED_KEY = "exceptedEntities"
 #: Output fields, as the prompt names them and as the row stores them.
 FIELD_RECORD_REQUIREMENT = "record_requirement"
 FIELD_CONDITIONAL_SPAN = "conditional_span"
-#: Not an output field: set by :func:`validate_annotation`, never read from the answer. The
-#: other ``protocolLine`` of the row's role that ``conditional_span`` was verified in, verbatim;
-#: None when it was verified in the row's own line (and on every annotation stored before the
-#: prompt showed other lines). Readers re-check the span against this line, so none of them
-#: re-derives the lines the prompt showed.
-FIELD_CONDITIONAL_SPAN_LINE = "conditional_span_line"
 FIELD_EXCEPTED_ENTITIES = "excepted_entities"
 FIELD_BASE_SPAN = "base_span"
 FIELD_TEXT = "text"
@@ -267,17 +251,12 @@ states it.
 
 Every fragment you return is copied from the protocol line character for character: no \
 paraphrase, no expanded abbreviation, no added word. A fragment that does not occur in the \
-protocol line is discarded together with the answer it supports. The one exception is \
-`conditional_span`, which may instead be copied, character for character, from one of the \
-trial's other lines given with the criterion; it is discarded when it occurs in none of them.
+protocol line is discarded together with the answer it supports.
 
 Return one JSON object and nothing else."""
 
 ANNOTATION_PROMPT = """Protocol line:
 {protocol_line}
-
-The trial's other {role} lines:
-{context_lines}
 
 Extracted criterion:
 - Role: {role}
@@ -300,13 +279,8 @@ it names, as the protocol line states it. One of:
 of the entity, or who belong to a subgroup the line names; a patient without that record or \
 outside that subgroup is not filtered by this criterion at all.
 
-The trial's other {role} lines are given for one purpose only: to decide whether this \
-criterion applies to every patient, or only to patients who already have a record of the \
-entity or who belong to a subgroup. Every other field is read from the protocol line alone.
-
-`conditional_span` is the fragment that limits the criterion to those patients, copied from \
-the protocol line or from one of the trial's other {role} lines. It is required when \
-`record_requirement` is `conditional` and null otherwise.
+`conditional_span` is the fragment of the protocol line that limits the criterion to those \
+patients. It is required when `record_requirement` is `conditional` and null otherwise.
 
 `excepted_entities` lists the entities the protocol line explicitly removes from the set \
 that this criterion's entity names, one entry per removed entity: `text` is the name of the \
@@ -514,17 +488,12 @@ def _check_timing(
 
 
 def validate_annotation(
-    payload: Any, protocol_line: str, context: Sequence[str] = ()
+    payload: Any, protocol_line: str
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Keep each field whose evidence is in the line; record why any other was dropped.
 
     :param payload: the model's parsed JSON object.
     :param protocol_line: the row's ``protocolLine``.
-    :param context: the other lines of the row's role the prompt showed
-        (:func:`context_lines`). Only ``conditional_span`` may be quoted from one of them:
-        it is accepted from the first line, in the order given, that holds it, and that
-        line is recorded under :data:`FIELD_CONDITIONAL_SPAN_LINE`. Every other fragment
-        is checked against ``protocol_line`` alone.
     :returns: ``(fields, rejections)``. ``fields`` always carries every output key; a
         rejected field is None (``record_requirement``, ``base_span``, ``relation``,
         ``timing`` and their spans, the three threshold fields) or left out of the list
@@ -533,7 +502,6 @@ def validate_annotation(
     fields: dict[str, Any] = {
         FIELD_RECORD_REQUIREMENT: None,
         FIELD_CONDITIONAL_SPAN: None,
-        FIELD_CONDITIONAL_SPAN_LINE: None,
         FIELD_EXCEPTED_ENTITIES: [],
         FIELD_BASE_SPAN: None,
         FIELD_RELATION: None,
@@ -565,20 +533,13 @@ def validate_annotation(
             )
         )
     elif value == RecordRequirement.CONDITIONAL.value and not span_in_line(span, protocol_line):
-        source = next((line for line in context if span_in_line(span, line)), None)
-        if source is None:
-            rejected.append(
-                _rejection(
-                    FIELD_RECORD_REQUIREMENT,
-                    {FIELD_RECORD_REQUIREMENT: raw, FIELD_CONDITIONAL_SPAN: span},
-                    f"{FIELD_CONDITIONAL_SPAN} is not a substring of protocolLine"
-                    + (" or of any other line of its role shown" if context else ""),
-                )
+        rejected.append(
+            _rejection(
+                FIELD_RECORD_REQUIREMENT,
+                {FIELD_RECORD_REQUIREMENT: raw, FIELD_CONDITIONAL_SPAN: span},
+                f"{FIELD_CONDITIONAL_SPAN} is not a substring of protocolLine",
             )
-        else:
-            fields[FIELD_RECORD_REQUIREMENT] = value
-            fields[FIELD_CONDITIONAL_SPAN] = span
-            fields[FIELD_CONDITIONAL_SPAN_LINE] = source
+        )
     else:
         fields[FIELD_RECORD_REQUIREMENT] = value
         if value == RecordRequirement.CONDITIONAL.value:
@@ -817,51 +778,16 @@ def _members_text(members: Sequence[Mapping[str, Any]]) -> str:
     return "".join(lines)
 
 
-def context_lines(row: Mapping[str, Any], rows: Sequence[Mapping[str, Any]]) -> list[str]:
-    """The trial's other protocol lines of the row's role, as the prompt shows them.
-
-    Every ``protocolLine`` of ``rows`` (the row's role, in store order) once, by exact
-    string; the row's own line and blank lines left out. Machine identity only: nothing
-    here reads a line's words.
-
-    :param row: the store criterion row being annotated.
-    :param rows: every row of its role, the row itself included.
-    :returns: the lines, verbatim.
-    """
-    seen = {row.get(_LINE) or ""}
-    lines: list[str] = []
-    for other in rows:
-        line = other.get(_LINE)
-        if not isinstance(line, str) or not line.strip() or line in seen:
-            continue
-        seen.add(line)
-        lines.append(line)
-    return lines
-
-
-def _context_text(lines: Sequence[str]) -> str:
-    return "\n".join(f"- {_text(line)}" for line in lines) or "none"
-
-
-def render_prompt(
-    row: Mapping[str, Any],
-    members: Sequence[Mapping[str, Any]],
-    role: str,
-    context: Sequence[str] = (),
-) -> str:
-    """The user message for one rule: its protocol line, the other lines of its role, and
-    its already-extracted fields.
+def render_prompt(row: Mapping[str, Any], members: Sequence[Mapping[str, Any]], role: str) -> str:
+    """The user message for one rule: its protocol line and its already-extracted fields.
 
     :param row: the store criterion row.
     :param members: the rows of its group when ``row`` is a group label, else empty.
     :param role: ``inclusion`` or ``exclusion``.
-    :param context: the other lines of its role (:func:`context_lines`); ``none`` is
-        shown when empty.
     :returns: the rendered prompt.
     """
     return ANNOTATION_PROMPT.format(
         protocol_line=str(row.get(_LINE) or ""),
-        context_lines=_context_text(context),
         role=role,
         entity_text=_text(row.get("sourceText")),
         description=_text(row.get("description")),
@@ -1005,7 +931,6 @@ def annotate_row(
     *,
     model: str,
     llm: Any,
-    context: Sequence[str] = (),
 ) -> str:
     """Annotate one rule in place. Never raises for a model failure.
 
@@ -1015,15 +940,13 @@ def annotate_row(
     :param role: ``inclusion`` or ``exclusion``.
     :param model: the resolved model, recorded and part of the cache key.
     :param llm: the chat model handle (built once per run by the caller).
-    :param context: the other lines of its role (:func:`context_lines`), shown in the
-        prompt and the only lines besides its own that ``conditional_span`` may come from.
     :returns: ``no-line``, ``cached``, ``called`` or ``error``.
     """
     line = row.get(_LINE)
     if not isinstance(line, str) or not line.strip():
         # Nothing to check a fragment against, so nothing the model said could be kept.
         return "no-line"
-    prompt = render_prompt(row, members, role, context)
+    prompt = render_prompt(row, members, role)
     key = cache_key(prompt, model)
     cached = _cache_get(key)
     outcome = "cached"
@@ -1044,7 +967,7 @@ def annotate_row(
         _cache_put(
             key, {"payload": payload, "model": model, "promptVersion": ANNOTATION_PROMPT_VERSION}
         )
-    fields, rejected = validate_annotation(payload, line, context)
+    fields, rejected = validate_annotation(payload, line)
     row[ANNOTATION_KEY] = {"promptVersion": ANNOTATION_PROMPT_VERSION, "model": model, **fields}
     if rejected:
         row[ANNOTATION_REJECTED_KEY] = rejected
@@ -1121,31 +1044,28 @@ def annotate_eligibility(
     from src.utils.llm import resolve_model
 
     resolved = resolve_model(model)
-    jobs: list[tuple[dict[str, Any], list[Mapping[str, Any]], str, list[str]]] = []
+    jobs: list[tuple[dict[str, Any], list[Mapping[str, Any]], str]] = []
     for role, key in _ROLE_ROWS:
         rows = [r for r in eligibility.get(key) or [] if isinstance(r, dict)]
-        jobs += [(row, _members_of(row, rows), role, context_lines(row, rows)) for row in rows]
+        jobs += [(row, _members_of(row, rows), role) for row in rows]
     counts: dict[str, int] = {}
     if not jobs:
         return counts
     needs_model = any(
-        isinstance(r.get(_LINE), str) and r.get(_LINE).strip() for r, *_rest in jobs
+        isinstance(r.get(_LINE), str) and r.get(_LINE).strip() for r, _m, _role in jobs
     )
     llm = _build_llm(resolved) if needs_model else None
     with ThreadPoolExecutor(max_workers=_workers()) as pool:
         outcomes = list(
             pool.map(
-                lambda job: annotate_row(
-                    job[0], job[1], job[2], model=resolved, llm=llm, context=job[3]
-                ),
-                jobs,
+                lambda job: annotate_row(job[0], job[1], job[2], model=resolved, llm=llm), jobs
             )
         )
     for outcome in outcomes:
         counts[outcome] = counts.get(outcome, 0) + 1
-    counts["rejected"] = sum(1 for row, *_rest in jobs if row.get(ANNOTATION_REJECTED_KEY))
+    counts["rejected"] = sum(1 for row, _m, _role in jobs if row.get(ANNOTATION_REJECTED_KEY))
     counts["windowDisagreement"] = sum(
-        1 for row, *_rest in jobs if row.get(WINDOW_DISAGREEMENT_KEY)
+        1 for row, _m, _role in jobs if row.get(WINDOW_DISAGREEMENT_KEY)
     )
     logger.info("[annotation] model=%s version=%s %s", resolved, ANNOTATION_PROMPT_VERSION, counts)
     return counts
@@ -1165,58 +1085,26 @@ def _annotation(row: Mapping[str, Any]) -> Mapping[str, Any]:
 class ConditionalSkip:
     """Why a row is recorded as a conditional skip.
 
-    :param span: the fragment of the deciding row's line (or of ``span_line``), None when
-        only Agent 1's ``conditional`` flag decided (the gate then refuses the permit).
+    :param span: the fragment of the deciding row's line, None when only Agent 1's
+        ``conditional`` flag decided (the gate then refuses the permit).
     :param decided_by: the id of the row whose decision this is -- the row itself, or
         the group label it sits under.
     :param source: :data:`SOURCE_ANNOTATION` or :data:`SOURCE_EXTRACTION`.
-    :param span_line: the other ``protocolLine`` of the role that holds ``span``
-        (:data:`FIELD_CONDITIONAL_SPAN_LINE`); None when ``span`` is in the deciding row's
-        own line.
     """
 
     span: str | None
     decided_by: str
     source: str
-    span_line: str | None = None
 
 
-def conditional_span_holds(
-    span: Any, span_line: Any, own_line: Any, role_lines: frozenset[str]
-) -> bool:
-    """Whether a conditional span is in the line it is recorded against.
-
-    With no recorded line, that is the row's own line. With one, the line must itself be a
-    ``protocolLine`` of the same role (exact string) and hold the span: the prompt showed
-    the model only that role's lines, so a span from anywhere else supports nothing.
-
-    :param span: the accepted ``conditional_span``.
-    :param span_line: its :data:`FIELD_CONDITIONAL_SPAN_LINE`.
-    :param own_line: the deciding row's ``protocolLine``.
-    :param role_lines: every ``protocolLine`` of the deciding row's role.
-    :returns: True when the span verifies.
-    """
-    if span_line is None:
-        return span_in_line(span, own_line)
-    return isinstance(span_line, str) and span_line in role_lines and span_in_line(span, span_line)
-
-
-def _own_conditional(
-    row: Mapping[str, Any], role_lines: frozenset[str]
-) -> ConditionalSkip | None:
+def _own_conditional(row: Mapping[str, Any]) -> ConditionalSkip | None:
     annotation = _annotation(row)
     span = annotation.get(FIELD_CONDITIONAL_SPAN)
-    span_line = annotation.get(FIELD_CONDITIONAL_SPAN_LINE)
     if annotation.get(
         FIELD_RECORD_REQUIREMENT
-    ) == RecordRequirement.CONDITIONAL.value and conditional_span_holds(
-        span, span_line, row.get(_LINE), role_lines
-    ):
+    ) == RecordRequirement.CONDITIONAL.value and span_in_line(span, row.get(_LINE)):
         return ConditionalSkip(
-            span=span,
-            decided_by=str(row.get(_ID, "")),
-            source=SOURCE_ANNOTATION,
-            span_line=span_line,
+            span=span, decided_by=str(row.get(_ID, "")), source=SOURCE_ANNOTATION
         )
     if row.get(EXTRACTED_CONDITIONAL_KEY) is True:
         return ConditionalSkip(
@@ -1258,22 +1146,15 @@ def conditional_skips(rows: Iterable[Any]) -> dict[str, ConditionalSkip]:
     """The rows of one role that are not emitted because they are conditional.
 
     A row is conditional when its own accepted annotation says so (with a fragment that
-    is in its line, or in the other line of this role it records:
-    :func:`conditional_span_holds`) or when Agent 1 flagged it. A conditional group label
-    takes every row of its group, nested groups included, with it: the members are the
-    presence rule the label describes, and emitting them alone would emit what the label's
-    decision removes.
+    is in its line) or when Agent 1 flagged it. A conditional group label takes every row
+    of its group, nested groups included, with it: the members are the presence rule the
+    label describes, and emitting them alone would emit what the label's decision removes.
 
     :param rows: one role's store rows.
     :returns: criterion id (stringified) -> the decision.
     """
     rows = [r for r in rows if isinstance(r, Mapping)]
-    role_lines = frozenset(line for r in rows if isinstance(line := r.get(_LINE), str))
-    own = {
-        str(r.get(_ID, "")): skip
-        for r in rows
-        if (skip := _own_conditional(r, role_lines)) is not None
-    }
+    own = {str(r.get(_ID, "")): skip for r in rows if (skip := _own_conditional(r)) is not None}
     return _with_group_members(rows, own)
 
 
