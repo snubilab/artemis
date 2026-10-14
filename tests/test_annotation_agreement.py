@@ -245,14 +245,21 @@ class TestNoEntity:
         assert statement is not None and statement.kind.value == "investigator_judgement"
         assert _agreement(row)["kept"]["no_entity"]["value"] == "investigator_judgement"
 
-    def test_should_drop_no_entity_when_the_two_answers_give_different_values(self):
-        """DECLARE exclusion 48: `current` refers_elsewhere, `placebo` investigator_judgement. The
-        rule keeps a no_entity fill only when both answers give the same value."""
+    def test_should_keep_no_entity_when_both_answers_name_a_non_none_value(self):
+        """DECLARE exclusion 48 (expected: names no entity): `current` says refers_elsewhere,
+        `placebo` investigator_judgement. Both say the line names no entity, which is the one
+        thing the build reads (either value is refused as an unmappable placeholder), so the
+        first answer's value and fragment are kept. Its excepted entity, which `placebo` does not
+        give, is still dropped."""
         row, _llm = _annotate(("declare", "exclusion", "48"))
 
-        assert row[ANNOTATION_KEY]["no_entity"] is None
-        assert _agreement(row)["dropped"]["no_entity"]["value"] == "refers_elsewhere"
-        assert _agreement(row)["second"]["no_entity"] == "investigator_judgement"
+        statement = stated_no_entity(row)
+        assert statement is not None and statement.kind.value == "refers_elsewhere"
+        record = _agreement(row)
+        assert record["kept"]["no_entity"]["value"] == "refers_elsewhere"
+        assert record["second"]["no_entity"] == "investigator_judgement"
+        assert "no_entity" not in record["dropped"]
+        assert _spans(record["dropped"]["excepted_entities"]) == ["other dapagliflozin studies"]
 
 
 # --------------------------------------------------------------------------- #

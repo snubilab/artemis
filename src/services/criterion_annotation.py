@@ -1198,9 +1198,13 @@ def agree(
       the value a rejected field takes. The build reads only whether the value is
       ``conditional`` (:func:`conditional_skips`), so None, ``required`` and ``forbidden`` are
       built alike; None asserts neither polarity, which neither answer agreed on.
-    * ``no_entity`` other than ``none`` is kept when the second answer gives the same value.
-      Otherwise ``no_entity`` and ``no_entity_span`` become None, which
-      :func:`stated_no_entity` reads as ``none``.
+    * ``no_entity`` other than ``none`` is kept -- the first answer's value and fragment --
+      when the second answer also gives a value other than ``none``, whichever one. The build
+      reads only whether the line names no entity: either value is refused as an unmappable
+      placeholder (``TTEService._refuse_line_naming_no_entity``). Otherwise ``no_entity`` and
+      ``no_entity_span`` become None, which :func:`stated_no_entity` reads as ``none``.
+      Measured on stage 2: requiring the same value instead broke one more control (DECLARE
+      exclusion 48, refers_elsewhere against investigator_judgement) for no extra fix.
 
     No field is filled from the second answer: the rule only ever reverts a fill.
 
@@ -1248,7 +1252,7 @@ def agree(
     value = first.get(FIELD_NO_ENTITY)
     if value not in (None, NoEntity.NONE.value):
         decision = {"value": value, "span": first.get(FIELD_NO_ENTITY_SPAN)}
-        if second.get(FIELD_NO_ENTITY) == value:
+        if second.get(FIELD_NO_ENTITY) not in (None, NoEntity.NONE.value):
             kept[FIELD_NO_ENTITY] = decision
         else:
             dropped[FIELD_NO_ENTITY] = decision

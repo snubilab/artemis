@@ -962,7 +962,7 @@
    "role": "exclusion",
    "id": "48",
    "storeArm": "smoke",
-   "case": "refers_elsewhere against investigator_judgement: dropped (same value required)",
+   "case": "refers_elsewhere against investigator_judgement: both name no entity, kept",
    "category": "target",
    "expected": {
     "rr": "not_conditional",
