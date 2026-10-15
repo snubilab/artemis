@@ -224,6 +224,9 @@ class SpecimenPlan:
     violations: tuple[tuple[int, tuple[str, ...]], ...] = ()
     judged: bool | None = None
     accepted: tuple[SpecimenOption, ...] = ()
+    #: The stated unit's LOINC property is no lab-test member's: the unit and the set name
+    #: different quantities, so the criterion cannot be emitted as either.
+    unit_contradicts_every_member: bool = False
 
     @property
     def changed(self) -> bool:
@@ -387,11 +390,16 @@ class SpecimenVerdict:
 
     violations: tuple[tuple[LabTest, tuple[str, ...]], ...] = ()
     declined: str | None = None
+    unit_contradicts_every_member: bool = False
 
     @property
     def severity(self) -> str | None:
         if not self.violations:
             return None
+        # The builder refuses such a criterion, so one that was delivered is a defect, not a
+        # decline to respect.
+        if self.unit_contradicts_every_member:
+            return "FAIL"
         return "WARN" if self.declined else "FAIL"
 
 
@@ -418,7 +426,11 @@ def specimen_verdict(
         judge=judge,
     )
     violations = tuple((lab_tests[cid], reasons) for cid, reasons in plan.violations)
-    return SpecimenVerdict(violations=violations, declined=plan.declined if violations else None)
+    return SpecimenVerdict(
+        violations=violations,
+        declined=plan.declined if violations else None,
+        unit_contradicts_every_member=plan.unit_contradicts_every_member,
+    )
 
 
 def offered(test: LabTest) -> bool:
@@ -493,8 +505,9 @@ def plan_specimen_refinement(
        candidate of the analyte whose option was accepted. When the judge gives no answer the
        specimen is not decided: every member votes, only the unit's property removes, and
        nothing is added.
-    5. Decline rather than leave the set without a single lab test: the unit then contradicts
-       every member, which is an extraction defect the gate reports, not a specimen choice.
+    5. Decline rather than leave the set without a single lab test. When the unit's property is
+       no member's, ``unit_contradicts_every_member`` is set: the builder refuses that criterion
+       and the gate FAILs a delivered one -- the unit and the set name different quantities.
 
     A declined plan still carries its ``violations``, so the gate can report them as a WARN.
     Non-LOINC members are never touched.
@@ -546,17 +559,18 @@ def plan_specimen_refinement(
 
     added = tuple(t for t in candidates.get(analyte, []) if judged and option_of(t).key in accepted)
     if len(violations) == len(lab) and not added:
-        if unit_prop and all(any("contradicts" in r for r in rs) for _, rs in violations):
+        if unit_prop and all(t.property != unit_prop for t in lab):
             why = (
                 f"the unit's property {unit_prop!r} contradicts every LOINC lab test in the set "
-                f"and the vocabulary offers no {analyte!r} test in it, so the extracted unit is "
-                f"the suspect"
+                f"and the vocabulary offers no {analyte!r} test in it"
             )
-        else:
-            why = (
-                f"refinement would leave no LOINC lab-test member ({len(violations)} removed, none "
-                f"added{'' if numeric_bound else ': no additions without a numeric bound'})"
+            return SpecimenPlan(
+                analyte=analyte, declined=why, unit_contradicts_every_member=True, **common
             )
+        why = (
+            f"refinement would leave no LOINC lab-test member ({len(violations)} removed, none "
+            f"added{'' if numeric_bound else ': no additions without a numeric bound'})"
+        )
         return SpecimenPlan(analyte=analyte, declined=why, **common)
     return SpecimenPlan(analyte=analyte, removed=violations, added=added, **common)
 

@@ -185,6 +185,7 @@ from src.utils.criterion_refusal import (
     REFUSAL_NO_CONCEPT_MAPPING,
     REFUSAL_RERANKER_NO_MATCH,
     REFUSAL_STRANDED_GROUP_THRESHOLD,
+    REFUSAL_UNIT_CONTRADICTS_SET,
     REFUSAL_UNMAPPABLE_PLACEHOLDER,
     SEED_CAUSED_REFUSAL_CODES,
     CriterionRefused,
@@ -7264,6 +7265,12 @@ class TTEService:
             if callable(close):
                 close()
         label = criterion.get("sourceText") or criterion.get("description")
+        if plan.unit_contradicts_every_member:
+            raise CriterionRefused(
+                f"the stated unit contradicts the concept set of {label!r}: {plan.declined}",
+                code=REFUSAL_UNIT_CONTRADICTS_SET,
+                detail=plan.declined,
+            )
         if plan.declined:
             logging.info("[TTE] specimen refinement declined for %r: %s", label, plan.declined)
         elif plan.changed:

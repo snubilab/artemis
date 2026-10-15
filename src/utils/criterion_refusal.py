@@ -191,6 +191,16 @@ REFUSAL_MISSING_ENTITY_TEXT = "missing-entity-text"
 #: subtraction that failed.
 REFUSAL_EXCEPTION_NOT_APPLIED = "exception-not-applied"
 
+#: The criterion states a unit whose LOINC property (UCUM unit -> property, machine format) is
+#: no lab-test member's ``Has property``, and the vocabulary offers no test of the set's analyte
+#: in that property. The unit and the set name different quantities, so the rule as emitted
+#: reads one analyte in another's unit. A2 delivered CAROLINA inclusion 27 that way: 'eGFR'
+#: holding natriuretic peptide B tests under a mL/min/1.73 m2 bound. Refused rather than
+#: emitted with the wrong analyte; decided by `loinc_specimen.plan_specimen_refinement`, with
+#: no analyte name read. NEVER permitted by the delivery gate, and not seed-caused: it is
+#: decided after the mapper answered.
+REFUSAL_UNIT_CONTRADICTS_SET = "unit-contradicts-set"
+
 #: The codes a SUBSTITUTED SEED can cause, and therefore the only ones
 #: :data:`REFUSAL_MISSING_ENTITY_TEXT` may re-code. Every one of them is a verdict ON
 #: THE SEED: the vocabulary was asked this text and had nothing, or answered from the
@@ -244,6 +254,7 @@ REFUSAL_CODES = frozenset(
         REFUSAL_MISSING_ENTITY_TEXT,
         REFUSAL_UNSTATED_UNIT_BOUND,
         REFUSAL_EXCEPTION_NOT_APPLIED,
+        REFUSAL_UNIT_CONTRADICTS_SET,
     }
 )
 

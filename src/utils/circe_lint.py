@@ -3736,7 +3736,8 @@ def specimen_mismatched_measurement_criteria(
     codeset, and a codeset with no record is judged on its property alone (RFC-016 step 4 --
     the rule name and concept set name are not read). Severity is
     ``src.services.loinc_specimen.specimen_verdict``: FAIL when the builder would repair the
-    set, WARN -- with the builder's own decline reason -- when it declines.
+    set, WARN -- with the builder's own decline reason -- when it declines, and FAIL again when
+    the stated unit's property is no member's (the builder refuses that criterion).
 
     :param expression: a CIRCE cohort expression.
     :param lab_tests: concept id -> ``LabTest`` for every id :func:`measurement_lab_test_ids`

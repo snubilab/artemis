@@ -296,7 +296,8 @@ class TestTheDeliveredShapeFails:
 
 
 class TestTheDeclinedSetsWarn:
-    """Refinement (c): a finding on a set the builder declines to repair is a WARN, with reason."""
+    """Refinement (c): a finding on a set the builder declines to repair is a WARN, with reason --
+    except a unit contradicting every member, which the builder refuses."""
 
     def test_should_warn_with_the_reason_when_no_analyte_holds_a_majority(self):
         lookup = {t.concept_id: t for t in (ALT_SP, AST_SP, AST_RBC)}
@@ -312,14 +313,20 @@ class TestTheDeclinedSetsWarn:
         assert fail == [] and len(warn) == 1, (fail, warn)
         assert "no analyte majority" in warn[0] and "3005435" in warn[0]
 
-    def test_should_warn_when_the_unit_contradicts_every_member_and_nothing_can_be_added(self):
-        """EMPA-REG codeset 37: eGFR extracted in mL/min, every member is /1.73 sq M."""
+    def test_should_fail_when_the_unit_contradicts_every_member_and_nothing_can_be_added(self):
+        """EMPA-REG codeset 37: eGFR extracted in mL/min, every member is /1.73 sq M.
+
+        Was a WARN until 2026-10-15. The builder now refuses a criterion whose stated unit's
+        property is no member's (`tests/test_unit_contradicts_every_lab_test.py`), so a
+        delivered one is a defect. This row's protocol line itself writes "ml/min" for an MDRD
+        GFR, so its set is the right analyte and the refusal costs a correct concept set.
+        """
         fail, warn = _findings(
             _cohort([_lab(EGFR)], name="Glomerular Filtration Rate", unit=ML_MIN),
             {EGFR.concept_id: EGFR},
         )
-        assert fail == [] and len(warn) == 1, (fail, warn)
-        assert "contradicts" in warn[0] and "declined" in warn[0]
+        assert warn == [] and len(fail) == 1, (fail, warn)
+        assert "contradicts" in fail[0]
 
     def test_should_warn_when_the_critic_rejected_the_only_specimen_the_set_holds(self):
         cohort = _cohort(
