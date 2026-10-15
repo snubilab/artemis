@@ -202,7 +202,9 @@ def collect_mapping_entities(cohort, source_label):
             "source": source_label,
             "parent_rule": None,
         })
-    for rule in cohort.inclusion_rules + cohort.exclusion_rules:
+    # parent_rule groups a rule's sub-criteria for the consolidator: the rule's position,
+    # never its name (two rules may share one).
+    for rule_idx, rule in enumerate(cohort.inclusion_rules + cohort.exclusion_rules):
         if rule.sub_criteria:
             for sc in rule.sub_criteria:
                 if sc.entity_text:
@@ -210,7 +212,7 @@ def collect_mapping_entities(cohort, source_label):
                         "entity_text": sc.entity_text,
                         "domain": sc.domain,
                         "source": source_label,
-                        "parent_rule": rule.name,
+                        "parent_rule": f"{source_label}:{rule_idx}",
                     })
         elif rule.entity_text:
             entities.append({

@@ -118,8 +118,7 @@ def _step2_map_parallel(ir: ARTEMISRequest, workers: int) -> Tuple[List[Dict], A
     mapped_sets = []
     
     def _map_entity(i, entity):
-        raw_rule = entity.get("parent_rule")
-        rule_context = raw_rule.replace("_", " ").title() if raw_rule else None
+        rule_context = entity.get("rule_context")
         try:
             emr = map_single_entity(
                 entity["text"],

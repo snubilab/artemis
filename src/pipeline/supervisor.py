@@ -397,15 +397,12 @@ class PipelineSupervisor:
     def _map_single_entity_work_item(index: int, entity: dict) -> dict:
         started = time.perf_counter()
         try:
-            raw_rule = entity.get("parent_rule")
-            rule_context = raw_rule.replace("_", " ").title() if raw_rule else None
-
             from src.agents.agent2.map_entity import map_single_entity
 
             emr = map_single_entity(
                 entity["text"],
                 domain_hint=entity.get("domain"),
-                rule_context=rule_context,
+                rule_context=entity.get("rule_context"),
             )
             return {
                 "index": index,
@@ -658,15 +655,22 @@ class PipelineSupervisor:
         A group's own entity text is not mapped: the assembler builds a group from its
         sub-criteria. It used to be added when its lower-cased text differed from every
         sub-criterion's, a text comparison that decided which entities were mapped.
+
+        `parent_rule` -- the key the consolidator groups sibling sets under -- is the rule's
+        position. It used to be the lower-cased rule name, so two rules sharing a name (and a
+        target and comparator repeating one) were merged into one concept set. The name
+        reaches the mapper only as `rule_context`, prompt text it does not branch on.
         """
         entities = []
-        parent_key = rule.name.lower().replace(" ", "_") if rule.name else None
+        parent_key = f"{source}:{section}:{rule_idx}"
+        rule_context = rule.name.replace("_", " ").title() if rule.name else None
         if rule.sub_criteria:
             for sub_idx, sc in enumerate(rule.sub_criteria):
                 if sc.entity_text:
                     entities.append({
                         "text": sc.entity_text, "domain": sc.domain,
                         "source": source, "parent_rule": parent_key,
+                        "rule_context": rule_context,
                         "entity_key": f"{source}:{section}:{rule_idx}:{sub_idx}",
                     })
         elif rule.entity_text:
