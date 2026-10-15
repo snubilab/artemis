@@ -179,6 +179,18 @@ REFUSAL_UNSTATED_UNIT_BOUND = "unstated-unit-bound"
 #: loss. What changes is which defect a reader is sent to look at.
 REFUSAL_MISSING_ENTITY_TEXT = "missing-entity-text"
 
+#: The criterion's protocol line states an exception (its verified ``excepted_entities``) and
+#: the exception could not be applied: an excepted phrase did not map, or every included
+#: member of the base set is excepted, so subtracting would leave nothing. Emitting the base
+#: unsubtracted instead -- what the build did until 2026-10-15 -- ships the excepted entities
+#: inside the set the protocol took them out of: A2 delivered LEADER exclusion 40 as all 29
+#: insulins (the protocol allows NPH, long-acting and premixed) and CAROLINA exclusion 68 as
+#: every cancer, non-melanoma skin cancer included. Refused, so the loss is visible.
+#:
+#: NEVER permitted by the delivery gate, and not seed-caused: the base set mapped; it is the
+#: subtraction that failed.
+REFUSAL_EXCEPTION_NOT_APPLIED = "exception-not-applied"
+
 #: The codes a SUBSTITUTED SEED can cause, and therefore the only ones
 #: :data:`REFUSAL_MISSING_ENTITY_TEXT` may re-code. Every one of them is a verdict ON
 #: THE SEED: the vocabulary was asked this text and had nothing, or answered from the
@@ -231,6 +243,7 @@ REFUSAL_CODES = frozenset(
         REFUSAL_UNREADABLE_VALUE_FILTER,
         REFUSAL_MISSING_ENTITY_TEXT,
         REFUSAL_UNSTATED_UNIT_BOUND,
+        REFUSAL_EXCEPTION_NOT_APPLIED,
     }
 )
 

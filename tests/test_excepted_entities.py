@@ -139,6 +139,17 @@ class _TableMapper(TTEService):
     def _exact_ingredient_match_enabled(self) -> bool:
         return False
 
+    def _vocabulary_lookup(self, items):
+        """The stub ids as the vocabulary relates them: non-melanoma skin cancer under cancer.
+
+        A base span's set is kept only when its closure shares a concept with the row's own
+        seed's set (`TTEService._closures_overlap`), which reads this instead of Postgres.
+        """
+        from src.services.conceptset_closure import PrefetchedVocabulary
+
+        ids = {item.concept_id for item in items} | set(NMSC)
+        return PrefetchedVocabulary({cid: None for cid in ids}, {cid: set(NMSC) for cid in CANCER})
+
 
 @pytest.fixture
 def mapper(monkeypatch):
@@ -193,7 +204,8 @@ class TestEmpaRegExclusion30:
         concept_set = _concept_set_of(_build(svc, exclusion=[row]), "exclusion", 30)
         assert _ids(concept_set, excluded=True) == sorted(T2DM)
         assert _ids(concept_set, excluded=False) == sorted(ENDOCRINE)
-        assert svc.asked == ["endocrine disorder", "type 2 diabetes"]
+        # ...then the row's own seed, which the base span's set is checked against.
+        assert svc.asked == ["endocrine disorder", "type 2 diabetes", "Endocrine disorder"]
 
     def test_should_keep_the_seed_and_record_why_when_no_base_span_is_given(self, mapper):
         svc = mapper(self.TABLE)
@@ -249,7 +261,11 @@ class TestASeedThatCarriesTheWholeClause:
         )
         assert ANNOTATION_REJECTED_KEY not in row
         concept_set = _concept_set_of(_build(svc, exclusion=[row]), "exclusion", 68)
-        assert svc.asked == ["cancer", "non-melanoma skin cancer"]
+        assert svc.asked == [
+            "cancer",
+            "non-melanoma skin cancer",
+            "cancer other than non-melanoma skin cancer within last 3 years",
+        ]
         assert _ids(concept_set, excluded=False) == sorted(CANCER)
         assert _ids(concept_set, excluded=True) == sorted(NMSC)
 
@@ -282,6 +298,7 @@ class TestASeedThatCarriesTheWholeClause:
             "human NPH insulin",
             "long-acting insulin analogue",
             "premixed insulin",
+            " ".join(LEADER[criterion_id]["sourceText"].split()),
         ]
         assert _ids(concept_set, excluded=True) == sorted(NPH + LONG_ACTING + PREMIXED)
         assert _ids(concept_set, excluded=False) == sorted(OTHER_INSULIN)

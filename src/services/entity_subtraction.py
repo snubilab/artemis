@@ -53,11 +53,15 @@ class EntityException:
     :param text: the name the repaired concept set carries.
     :param base: the set the criterion names, mapped as usual (the mapper seed).
     :param excepted: the entities to subtract from it, one mappable name each.
+    :param own: the seed the row would get with no exception (its own entity text). When it
+        differs from ``base`` -- the base span seeded the mapper -- the base set is kept only
+        if it shares a concept with this seed's set.
     """
 
     text: str
     base: str = ""
     excepted: list[str] = field(default_factory=list)
+    own: str = ""
 
 
 @dataclass(frozen=True)
@@ -179,11 +183,14 @@ class ExceptionResolution:
         not applied and the caller must fall back to its existing behaviour.
     :param subtraction: what was applied, None on a fallback.
     :param fallback_reason: why nothing was applied; empty when something was.
+    :param base: the base phrase's own mapping, before any subtraction; None when it did not
+        map.
     """
 
     mapping: dict | None = None
     subtraction: EntitySubtraction | None = None
     fallback_reason: str = ""
+    base: dict | None = None
 
 
 def _included_concepts(mapping: dict) -> list[ExceptedConcept]:
@@ -228,6 +235,7 @@ def resolve_entity_exception(exception, map_phrase) -> ExceptionResolution:
     if not base_items:
         return ExceptionResolution(
             fallback_reason=f"base phrase {exception.base!r} mapped to no concepts")
+    mapped_base = base
 
     excepted: list[ExceptedConcept] = []
     for phrase in exception.excepted:
@@ -235,19 +243,21 @@ def resolve_entity_exception(exception, map_phrase) -> ExceptionResolution:
             mapped = map_phrase(phrase)
         except Exception as exc:
             return ExceptionResolution(
-                fallback_reason=f"excepted phrase {phrase!r} did not map: {exc}")
+                fallback_reason=f"excepted phrase {phrase!r} did not map: {exc}", base=mapped_base)
         concepts = _included_concepts(mapped)
         if not concepts:
             return ExceptionResolution(
-                fallback_reason=f"excepted phrase {phrase!r} mapped to no concepts")
+                fallback_reason=f"excepted phrase {phrase!r} mapped to no concepts",
+                base=mapped_base,
+            )
         excepted.extend(concepts)
 
     subtraction = apply_entity_subtraction(base_items, excepted)
     if subtraction.refused:
-        return ExceptionResolution(fallback_reason=subtraction.refused)
+        return ExceptionResolution(fallback_reason=subtraction.refused, base=mapped_base)
 
     repaired = dict(base)
     repaired["expression"] = dict(base.get("expression") or {})
     repaired["expression"]["items"] = subtraction.items
     repaired["name"] = exception.text
-    return ExceptionResolution(mapping=repaired, subtraction=subtraction)
+    return ExceptionResolution(mapping=repaired, subtraction=subtraction, base=mapped_base)

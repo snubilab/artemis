@@ -495,6 +495,10 @@ class CriterionMappingMetadata(TTEModel):
     # the "query" it was asked): {"stage", "reason", "seedsOnly", "query"}. Empty when
     # every stage ran. The build lists these criteria under _mappingFailureCriteria.
     mappingFailures: list[dict[str, Any]] = Field(default_factory=list)
+    # Why a stated exception and its base span were dropped and the row mapped on its own
+    # entity text instead (the base span's set shares no concept with the row's own). None
+    # when no exception was dropped.
+    exceptionDropped: str | None = None
 
 
 class ReRecommendRequest(TTEModel):

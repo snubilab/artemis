@@ -243,6 +243,18 @@ def resolve_concept_set(concept_set: dict, lookup: VocabularyLookup) -> ClosureR
     )
 
 
+def closures_overlap(items_a: list[dict], items_b: list[dict], lookup: VocabularyLookup) -> bool:
+    """Whether two Circe item lists resolve to closures sharing at least one concept id.
+
+    :param items_a: one concept set's ``expression.items``.
+    :param items_b: the other's.
+    :param lookup: vocabulary facts covering both lists' items.
+    """
+    resolved_a = resolve_concept_set({"expression": {"items": items_a}}, lookup).concept_ids
+    resolved_b = resolve_concept_set({"expression": {"items": items_b}}, lookup).concept_ids
+    return bool(resolved_a & resolved_b)
+
+
 def concept_set_name(concept_set: dict) -> str:
     return str(concept_set.get("name") or f"ConceptSet {concept_set.get('id')}")
 

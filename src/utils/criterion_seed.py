@@ -40,9 +40,18 @@ def criterion_mapper_seed(criterion: Mapping[str, Any]) -> str:
     """
     from src.services.criterion_annotation import stated_base
 
-    base = stated_base(criterion)
-    if base:
-        return base
+    return stated_base(criterion) or criterion_own_seed(criterion)
+
+
+def criterion_own_seed(criterion: Mapping[str, Any]) -> str:
+    """The seed ``criterion`` would get with no stated exception: its ``entity_text``
+    (``sourceText``), else its ``description``, whitespace-collapsed.
+
+    What a base span seeded in its place is checked against (``TTEService``: the base span's
+    set is kept only when its closure shares a concept with this seed's).
+
+    :param criterion: a store eligibility-criterion dict.
+    """
     return " ".join(
         ((criterion.get("sourceText") or criterion.get("description") or "").strip()).split()
     )

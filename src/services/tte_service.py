@@ -179,6 +179,7 @@ from src.utils.circe_lint import (
 from src.utils.criterion_refusal import (
     REFUSAL_EMPTY_CONCEPT_SET,
     REFUSAL_EMPTY_SEED,
+    REFUSAL_EXCEPTION_NOT_APPLIED,
     REFUSAL_INTENT_UNPARSED,
     REFUSAL_MISSING_ENTITY_TEXT,
     REFUSAL_NO_CONCEPT_MAPPING,
@@ -192,6 +193,7 @@ from src.utils.criterion_seed import (
     MISSING_ENTITY_CRITERIA_KEY,
     criterion_entity_text_missing,
     criterion_mapper_seed,
+    criterion_own_seed,
     missing_entity_record,
     seeded_on_description,
 )
@@ -6883,6 +6885,7 @@ class TTEService:
             text=" ".join(str(criterion.get("description") or seed).split()),
             base=seed,
             excepted=[entry["text"] for entry in excepted],
+            own=criterion_own_seed(criterion) or seed,
         )
 
     def _build_seeded_eligibility_rule(
@@ -7867,6 +7870,30 @@ class TTEService:
             for cid, name, form, route_ids in rows
         ]
 
+    def _vocabulary_lookup(self, items: list[Any]) -> Any:
+        """Vocabulary facts (CONCEPT, CONCEPT_ANCESTOR) covering ``items``, one batched read.
+
+        :param items: ``ConceptSetItem`` records.
+        :raises psycopg2.Error: the vocabulary could not be read -- not swallowed: an unchecked
+            base span would be kept on no evidence.
+        """
+        from src.services.conceptset_closure import PostgresVocabulary
+        from src.settings import settings
+
+        with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
+            return vocab.prefetch(items)
+
+    def _closures_overlap(
+        self, items_a: list[dict[str, Any]], items_b: list[dict[str, Any]]
+    ) -> bool:
+        """Whether two concept sets' Circe closures share a concept id."""
+        from src.services.conceptset_closure import ConceptSetItem, closures_overlap
+
+        lookup = self._vocabulary_lookup(
+            [ConceptSetItem.from_circe_item(item) for item in [*items_a, *items_b]]
+        )
+        return closures_overlap(items_a, items_b, lookup)
+
     def _fetch_concept_records(self, concept_ids: list[int]) -> dict[int, Any]:
         """The CONCEPT rows for these ids, as ``ConceptRecord`` (one batched query).
 
@@ -8068,6 +8095,47 @@ class TTEService:
                     return mapped
 
                 _resolution = resolve_entity_exception(_exception, _map_phrase)
+                # A base span seeded the mapper in place of the row's own entity text. Its
+                # set is kept only when its closure shares a concept with the own seed's;
+                # otherwise the base span named something else (A2: ARISTOTLE exclusion 3
+                # 'AST > 2X ULN' seeded on 'an alternative causative factor' shipped LOINC
+                # 'Confounding factors'), and the row is mapped on its own entity text with
+                # neither the exception nor the base span. Ids and concept_ancestor only.
+                _own = " ".join((_exception.own or "").split())
+                if _own and _own != seed:
+                    _own_mapping = self._recommend_seeded_concept_set(
+                        _own,
+                        expected_domain=expected_domain,
+                        workflow=workflow,
+                        resolving_entity_exception=True,
+                    )
+                    _base_items = (
+                        ((_resolution.base or {}).get("expression") or {}).get("items") or []
+                    )
+                    _own_items = (_own_mapping.get("expression") or {}).get("items") or []
+                    if not _base_items or not self._closures_overlap(_base_items, _own_items):
+                        _why = (
+                            f"base span {_exception.base!r} "
+                            + (
+                                f"did not map ({_resolution.fallback_reason})"
+                                if not _base_items
+                                else f"resolves to a set sharing no concept with the row's own "
+                                f"entity {_own!r}"
+                            )
+                            + f"; exception {_exception.excepted} dropped, mapped on {_own!r}"
+                        )
+                        logging.warning("[TTE] entity exception on '%s' dropped: %s", seed, _why)
+                        from src.api.models.tte import CriterionMappingMetadata
+
+                        _metadata = _own_mapping.get(
+                            "mapping_metadata"
+                        ) or CriterionMappingMetadata(queryUsed=_own)
+                        return {
+                            **_own_mapping,
+                            "mapping_metadata": _metadata.model_copy(
+                                update={"exceptionDropped": _why}
+                            ),
+                        }
                 if _resolution.mapping is not None:
                     logging.info(
                         "[TTE] entity exception on '%s': base=%r excepted=%s -> "
@@ -8086,12 +8154,15 @@ class TTEService:
                             update={"mappingFailures": _phrase_failures}
                         )
                     return _resolution.mapping
-                # Said out loud. A silent fallback here is indistinguishable from
-                # the defect it was written to repair.
-                logging.warning(
-                    "[TTE] entity exception on '%s' NOT applied, mapping the whole "
-                    "phrase as before: %s",
-                    seed, _resolution.fallback_reason,
+                # The exception cannot be applied. Mapping the base whole instead ships the
+                # excepted entities inside the set the protocol took them out of (A2: LEADER
+                # exclusion 40 as all 29 insulins, CAROLINA exclusion 68 as every cancer), so
+                # the row is refused and the loss is recorded rather than hidden.
+                raise CriterionRefused(
+                    f"exception {_exception.excepted} stated for {seed!r} could not be applied: "
+                    f"{_resolution.fallback_reason}",
+                    code=REFUSAL_EXCEPTION_NOT_APPLIED,
+                    detail=_resolution.fallback_reason,
                 )
 
         # Defect B fix: for drug seeds, an EXACT standard RxNorm Ingredient name
