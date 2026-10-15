@@ -1,0 +1,2380 @@
+{
+ "about": "Real rows of the 2026-10-12 P3 dry run (arm A / arm B stores, copied verbatim) and the real gemma-4-E4B answers the cf / pf re-check recorded for them (repeat 1 of `cf` = current + the record_change block, `pf` = placebo + the same block), with, per row, the sha256 of the prompt each arm was sent (the harness's render; json.dumps([system, user]), utf-8). Rows chosen before any answer existed. Written by overfill/analysis_cfpf/make_record_change_fixture.py. Read by tests/test_record_change_go_nogo.py.",
+ "provenance": {
+  "results": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/cfpf_20261015_075611/results.jsonl",
+  "resultsSha256": "0507ec97ee8f0c27965a2e6c3b5aca2f32a5ebfd9e14c564fcbbbb0dfdcf62d2",
+  "plan": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/cfpf_20261015_075611/plan.json",
+  "planSha256": "08004eb7b736266c484295443b4f14d2f10c88f772ca364f68f4cea283936581",
+  "complete": {
+   "planned": 456,
+   "fresh": 456,
+   "errors": {},
+   "seconds": 6196
+  },
+  "measuredSha": "5028579f6fa5ea9fb112883cb22d1dfeef2e38cc",
+  "model": "vllm/google/gemma-4-E4B-it",
+  "stores": {
+   "a": {
+    "path": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/arm_a/store/studies.json",
+    "sha256": "5ecedb4eb70ce40527a91bc7af090750712e41e66009bda998fc0c77e9e67994"
+   },
+   "b": {
+    "path": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/arm_b/store/studies.json",
+    "sha256": "aa8fe75f709957c53ea605ea4bc1587b624846bce8391c94734481c8638236e2"
+   }
+  },
+  "classificationStabilitySha256": "17d60e3cdf0560be9329aaa3a327e3d9d85ec324e92d2cad28496540b37b0dfb"
+ },
+ "rows": [
+  {
+   "trial": "carmelina",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "7",
+   "storeArm": "a",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 7,
+    "description": "Stable antidiabetic background medication for 8 weeks",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "",
+    "protocolLine": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": 3,
+    "conceptSetName": "Stable antidiabetic background medication for 8 weeks",
+    "logicType": "PRESENCE",
+    "groupId": null,
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "for at least 8 weeks prior to",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "duration",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ],
+    "seededOnDescription": true,
+    "mapperSeed": "Stable antidiabetic background medication for 8 weeks"
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"8 weeks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "d64cd36db7545e92e466166b32497b209290c99cfe192257154662691ef11efe",
+    "pf": "29dd74c54942d3082671428333febc1630fd6f0e8a63b73efa305d9e1040976c"
+   }
+  },
+  {
+   "trial": "carolina",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "37",
+   "storeArm": "a",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 37,
+    "description": "Stable anti-diabetic background medication",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "dd6fa83b-9e7b-4e93-bf43-a0deef399326",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "insulin",
+       "span": "without short term use of insulin"
+      }
+     ],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "for at least 8 weeks prior V1a",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "base_span",
+      "value": null,
+      "reason": "not a substring of protocolLine"
+     },
+     {
+      "field": "relation",
+      "value": {
+       "relation": "all",
+       "relation_span": null,
+       "cardinality": null
+      },
+      "reason": "relation_span is not a substring of protocolLine"
+     },
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "duration",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [
+    {
+     "id": 38,
+     "description": "Anti-diabetic medication",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Anti-diabetic medication",
+     "protocolLine": "Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": 16,
+     "conceptSetName": "Anti-diabetic medication",
+     "logicType": "PRESENCE",
+     "groupId": "dd6fa83b-9e7b-4e93-bf43-a0deef399326",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "insulin",
+        "span": "short term use of insulin"
+       }
+      ],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": "for at least 8 weeks prior V1a",
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+     },
+     "_annotationRejected": [
+      {
+       "field": "base_span",
+       "value": null,
+       "reason": "not a substring of protocolLine"
+      },
+      {
+       "field": "relation",
+       "value": {
+        "relation": "all",
+        "relation_span": null,
+        "cardinality": null
+       },
+       "reason": "relation_span is not a substring of protocolLine"
+      }
+     ]
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin.\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "44c897a0474290a6fbdaecc029ce4de4533e6d7ca1466a14acfe55e3c00e9613",
+    "pf": "ad144b241a0abdce136ccc9a865f9f0188bb40dbf742216b2d9310e18ce0bbf3"
+   }
+  },
+  {
+   "trial": "carolina",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "38",
+   "storeArm": "a",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 38,
+    "description": "Anti-diabetic medication",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": 16,
+    "conceptSetName": "Anti-diabetic medication",
+    "logicType": "PRESENCE",
+    "groupId": "dd6fa83b-9e7b-4e93-bf43-a0deef399326",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "insulin",
+       "span": "short term use of insulin"
+      }
+     ],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "for at least 8 weeks prior V1a",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "base_span",
+      "value": null,
+      "reason": "not a substring of protocolLine"
+     },
+     {
+      "field": "relation",
+      "value": {
+       "relation": "all",
+       "relation_span": null,
+       "cardinality": null
+      },
+      "reason": "relation_span is not a substring of protocolLine"
+     }
+    ]
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin.\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "aa115631fd0a8ce07e9a366f7a8b22f21483a83eb0fba3f4e24ba315f49af926",
+    "pf": "24e4292e6319566ddca0e995ae4545d239bbb308511abafd7d960233291d9fc6"
+   }
+  },
+  {
+   "trial": "carolina",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "41",
+   "storeArm": "a",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 41,
+    "description": "Stable anti-diabetic background for 8 weeks",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "stable anti-diabetic background for at least 8 wks before study start",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": 17,
+    "conceptSetName": "Anti-diabetic medication",
+    "logicType": "PRESENCE",
+    "groupId": null,
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "before study start",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "at least 8 wks",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    }
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"stable anti-diabetic background\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 wks before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"stable anti-diabetic background\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "334bcf438c744145ee6c9712307e54bbcb4a7705e2fe74d35e06e741577ed812",
+    "pf": "a3099b92cb287eb988dc4f7c0e985f2c802f5972dbe1e1461b42101e40da4fa3"
+   }
+  },
+  {
+   "trial": "carmelina@b",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "9",
+   "storeArm": "b",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 9,
+    "description": "Stable antidiabetic background medication",
+    "domain": "Observation",
+    "valueConstraint": null,
+    "sourceText": "Antidiabetic background medication",
+    "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "for at least 8 weeks prior to",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "relation",
+      "value": {
+       "relation": "any",
+       "relation_span": null,
+       "cardinality": null
+      },
+      "reason": "relation_span is not a substring of protocolLine"
+     },
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "duration",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [
+    {
+     "id": 10,
+     "description": "Metformin use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Metformin",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "conditional",
+      "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "at least 8 weeks",
+      "quantity_kind": "duration",
+      "reference_bound": "none"
+     }
+    },
+    {
+     "id": 11,
+     "description": "Sulfonylurea use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Sulfonylurea",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "conditional",
+      "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "at least 8 weeks",
+      "quantity_kind": "duration",
+      "reference_bound": "none"
+     }
+    },
+    {
+     "id": 12,
+     "description": "DPP-4 inhibitor use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "DPP-4 inhibitor",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "conditional",
+      "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "at least 8 weeks",
+      "quantity_kind": "duration",
+      "reference_bound": "none"
+     }
+    },
+    {
+     "id": 13,
+     "description": "SGLT2 inhibitor use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "SGLT2 inhibitor",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": 6,
+     "conceptSetName": "SGLT2 inhibitor",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": "for at least 8 weeks prior to",
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+     },
+     "_annotationRejected": [
+      {
+       "field": "quantity_kind",
+       "value": {
+        "threshold_span": null,
+        "quantity_kind": "duration",
+        "reference_bound": "none"
+       },
+       "reason": "given without a threshold_span"
+      }
+     ]
+    },
+    {
+     "id": 14,
+     "description": "GLP-1 receptor agonist use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "GLP-1 receptor agonist",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "conditional",
+      "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "at least 8 weeks",
+      "quantity_kind": "duration",
+      "reference_bound": "none"
+     }
+    },
+    {
+     "id": 15,
+     "description": "Insulin use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Insulin",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "conditional",
+      "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "at least 8 weeks",
+      "quantity_kind": "duration",
+      "reference_bound": "none"
+     }
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "82a03281e7c2ee633a2c7fd00f19c90d3bd815ce3f416310351b71a28c5d710d",
+    "pf": "335f213584e4f048fa305c441f4aad7a84a24d18c205d3f2efab009155315a73"
+   }
+  },
+  {
+   "trial": "carolina@b",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "28",
+   "storeArm": "b",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 28,
+    "description": "Stable anti-diabetic background medication",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "12. Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "1f66b5f1-f1fe-4294-8b8b-a9e64b95e89d",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "Insulin",
+       "span": "without short term use of insulin"
+      }
+     ],
+     "base_span": "Anti-diabetic background medication",
+     "relation": "all",
+     "relation_span": "and",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "for at least 8 weeks prior V1a",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "duration",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [
+    {
+     "id": 29,
+     "description": "Anti-diabetic medication (general)",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Anti-diabetic medication",
+     "protocolLine": "12. Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": 20,
+     "conceptSetName": "Anti-diabetic medication (general)",
+     "logicType": "PRESENCE",
+     "groupId": "1f66b5f1-f1fe-4294-8b8b-a9e64b95e89d",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "insulin",
+        "span": "short term use of insulin"
+       }
+      ],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": "for at least 8 weeks prior V1a",
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+     },
+     "_annotationRejected": [
+      {
+       "field": "base_span",
+       "value": null,
+       "reason": "not a substring of protocolLine"
+      },
+      {
+       "field": "relation",
+       "value": {
+        "relation": "all",
+        "relation_span": null,
+        "cardinality": null
+       },
+       "reason": "relation_span is not a substring of protocolLine"
+      },
+      {
+       "field": "quantity_kind",
+       "value": {
+        "threshold_span": null,
+        "quantity_kind": "duration",
+        "reference_bound": "none"
+       },
+       "reason": "given without a threshold_span"
+      }
+     ]
+    },
+    {
+     "id": 30,
+     "description": "Insulin use exclusion",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Insulin",
+     "protocolLine": "12. Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+     "protocolSpan": "without short term use of insulin",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": 21,
+     "conceptSetName": "Insulin use exclusion",
+     "logicType": "PRESENCE",
+     "groupId": "1f66b5f1-f1fe-4294-8b8b-a9e64b95e89d",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "insulin",
+        "span": "insulin"
+       }
+      ],
+      "base_span": "short term use of",
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+     }
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"Insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": null, \"relation\": \"all\", \"relation_span\": \"and\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"Insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "b026553543767086f90d8fbaf8ca6c9ea4929d39d509e3b92d2baf23752e5c1d",
+    "pf": "321b9fb2ba78fa7afaaca3e1c8a2c106d592a4193ee21c1d43197bed5b63db8d"
+   }
+  },
+  {
+   "trial": "carolina@b",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "29",
+   "storeArm": "b",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 29,
+    "description": "Anti-diabetic medication (general)",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "12. Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": 20,
+    "conceptSetName": "Anti-diabetic medication (general)",
+    "logicType": "PRESENCE",
+    "groupId": "1f66b5f1-f1fe-4294-8b8b-a9e64b95e89d",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "insulin",
+       "span": "short term use of insulin"
+      }
+     ],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "for at least 8 weeks prior V1a",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "base_span",
+      "value": null,
+      "reason": "not a substring of protocolLine"
+     },
+     {
+      "field": "relation",
+      "value": {
+       "relation": "all",
+       "relation_span": null,
+       "cardinality": null
+      },
+      "reason": "relation_span is not a substring of protocolLine"
+     },
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "duration",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"short term use of insulin\"}], \"base_span\": null, \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin.\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication (unchanged daily dose)\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "b434848fa34ab874317198c6b24f89573b571bce44125366956df483ed0339c1",
+    "pf": "99cbfabd29f535f4b3be92b7ffd28bfeaf4a1722aad46d5aed90759c0bb7e2e3"
+   }
+  },
+  {
+   "trial": "carolina@b",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "44",
+   "storeArm": "b",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 44,
+    "description": "Stable anti-diabetic background for 8 weeks",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "22. stable anti-diabetic background for at least 8 wks before study start",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "b01c6600-72cb-4c6b-b4e3-a1847150267c",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "before study start",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "at least 8 wks",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    },
+    "_annotationRejected": [
+     {
+      "field": "relation",
+      "value": {
+       "relation": "any",
+       "relation_span": null,
+       "cardinality": null
+      },
+      "reason": "relation_span is not a substring of protocolLine"
+     }
+    ]
+   },
+   "members": [
+    {
+     "id": 45,
+     "description": "Presence of any anti-diabetic medication",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Anti-diabetic medication",
+     "protocolLine": "22. stable anti-diabetic background for at least 8 wks before study start",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": 26,
+     "conceptSetName": "Anti-diabetic medication",
+     "logicType": "PRESENCE",
+     "groupId": "b01c6600-72cb-4c6b-b4e3-a1847150267c",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": "at least 8 wks before study start",
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+     },
+     "_annotationRejected": [
+      {
+       "field": "quantity_kind",
+       "value": {
+        "threshold_span": null,
+        "quantity_kind": "duration",
+        "reference_bound": "none"
+       },
+       "reason": "given without a threshold_span"
+      }
+     ]
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"stable anti-diabetic background\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 wks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "3b10fde2996a37938837744f2bee363cc00f81cc080dab0a20f4a090b152ff9a",
+    "pf": "bc03a13383c9e520ce27c5aa204064036940c1ea306bcf668d5ba7ad5a0713f1"
+   }
+  },
+  {
+   "trial": "carolina@b",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "45",
+   "storeArm": "b",
+   "group": "gonogo",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 45,
+    "description": "Presence of any anti-diabetic medication",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "22. stable anti-diabetic background for at least 8 wks before study start",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": 26,
+    "conceptSetName": "Anti-diabetic medication",
+    "logicType": "PRESENCE",
+    "groupId": "b01c6600-72cb-4c6b-b4e3-a1847150267c",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "at least 8 wks before study start",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "duration",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"stable anti-diabetic background\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "8e868fbbecec29025151fa7db9e9195f1b96deaed9927bb62ea6622c3c60c275",
+    "pf": "2a7047055e97bbd5d4ef99966eb59133f410ff6e157167313da339a6af409fe4"
+   }
+  },
+  {
+   "trial": "carmelina@b",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "10",
+   "storeArm": "b",
+   "group": "member",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 10,
+    "description": "Metformin use",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Metformin",
+    "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "at least 8 weeks",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    }
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "d00eadae41dc1f946c6c2ae600446076825e237a4eefadb2c942c414ad03cea0",
+    "pf": "f40a493be11f1f827f309f3bb5a40c3fef02e8ce17f1a907ceac9f8c3dfbebfb"
+   }
+  },
+  {
+   "trial": "carmelina@b",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "11",
+   "storeArm": "b",
+   "group": "member",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 11,
+    "description": "Sulfonylurea use",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Sulfonylurea",
+    "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "at least 8 weeks",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    }
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"null\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "c6f7855bf3f36f77a1199754584e395cfc2bcbbebddfff029598c7cc868b0a2c",
+    "pf": "e578855becbcc85ba31f665cb88ab7443c2edc4bd706c166b65b6ce6b124288f"
+   }
+  },
+  {
+   "trial": "carmelina@b",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "12",
+   "storeArm": "b",
+   "group": "member",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 12,
+    "description": "DPP-4 inhibitor use",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "DPP-4 inhibitor",
+    "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "at least 8 weeks",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    }
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose)\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "fbbd78441c78a4728c86b236734dd3909b04433d080a754085261ad87729cfbc",
+    "pf": "77979902105441b1ea1c60915bb9907ad14734959f04921219503779cedcbb30"
+   }
+  },
+  {
+   "trial": "carmelina@b",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "13",
+   "storeArm": "b",
+   "group": "member",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 13,
+    "description": "SGLT2 inhibitor use",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "SGLT2 inhibitor",
+    "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": 6,
+    "conceptSetName": "SGLT2 inhibitor",
+    "logicType": "PRESENCE",
+    "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "for at least 8 weeks prior to",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "duration",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "30063ef292754c73d17906116c4c28e034ddf49480bc54e7a9886d04a2f435ef",
+    "pf": "411c0218ccd9d6d6265cc2876c898bbe4afa2452564c2b2d9e97904c7bd66b6e"
+   }
+  },
+  {
+   "trial": "carmelina@b",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "14",
+   "storeArm": "b",
+   "group": "member",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 14,
+    "description": "GLP-1 receptor agonist use",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "GLP-1 receptor agonist",
+    "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "at least 8 weeks",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    }
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose)\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "b0d3df004a025c319ebd4054aee5c85649f025ee8ed747018c436937b7805fe8",
+    "pf": "caad33e4743a994783f2661ae821d0d9cbd083508300a0fea833dcc127daa3ea"
+   }
+  },
+  {
+   "trial": "carmelina@b",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "15",
+   "storeArm": "b",
+   "group": "member",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 15,
+    "description": "Insulin use",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Insulin",
+    "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "at least 8 weeks",
+     "quantity_kind": "duration",
+     "reference_bound": "none"
+    }
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose)\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "d8f42eca0092974b3c38a5f659c28e96b1d2be7e48a2f83ca95c90e32ce7871c",
+    "pf": "dfd5e3bf3ef420d45bd40999ce49cb79985995f7743e7ab00057f97ce8343900"
+   }
+  },
+  {
+   "trial": "carolina",
+   "studyId": 10,
+   "role": "exclusion",
+   "id": "19",
+   "storeArm": "a",
+   "group": "change",
+   "stabExpected": [
+    "changed",
+    "stable"
+   ],
+   "row": {
+    "id": 19,
+    "description": "Change in thyroid hormone dose",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Thyroid hormone",
+    "protocolLine": "Change in dose of thyroid hormones within 6 weeks prior informed consent",
+    "protocolSpan": "",
+    "window": {
+     "start": -42,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "7c9d9ae9-fc55-4605-ac4f-16b9516e8f68",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "within 6 weeks prior",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "quantity_kind",
+      "value": {
+       "threshold_span": null,
+       "quantity_kind": "dose",
+       "reference_bound": "none"
+      },
+      "reason": "given without a threshold_span"
+     }
+    ]
+   },
+   "members": [
+    {
+     "id": 20,
+     "description": "Change in thyroid hormone dose",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Thyroid hormone",
+     "protocolLine": "Change in dose of thyroid hormones within 6 weeks prior informed consent",
+     "protocolSpan": "Thyroid hormone",
+     "window": {
+      "start": -42,
+      "end": 0
+     },
+     "conceptSetId": 31,
+     "conceptSetName": "Thyroid hormone",
+     "logicType": "ABSENCE",
+     "groupId": "7c9d9ae9-fc55-4605-ac4f-16b9516e8f68",
+     "groupType": "ALL",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "prior",
+      "window_span": "within 6 weeks prior",
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+     },
+     "_annotationRejected": [
+      {
+       "field": "quantity_kind",
+       "value": {
+        "threshold_span": null,
+        "quantity_kind": "dose",
+        "reference_bound": "none"
+       },
+       "reason": "given without a threshold_span"
+      }
+     ]
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 6 weeks prior\", \"record_change\": \"changed\", \"record_change_span\": \"Change in dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"dose\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"within 6 weeks prior informed consent\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 6 weeks prior informed consent\", \"record_change\": \"changed\", \"record_change_span\": \"Change in dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"dose\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "b9d8a648ed86804d577cf93b2c64ad996203b3acb2213db08defc803926e130f",
+    "pf": "c369470a2fb87557f1aa12d76e385a050fc10d9790b0e3d37e970ccd2a58353c"
+   }
+  },
+  {
+   "trial": "leader",
+   "studyId": 1,
+   "role": "inclusion",
+   "id": "29",
+   "storeArm": "a",
+   "group": "control",
+   "stabExpected": [
+    "none"
+   ],
+   "row": {
+    "id": 29,
+    "description": "Unstable angina with ECG changes",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Unstable angina",
+    "protocolLine": "History of symptomatic CHD documented by positive exercise stress test or any cardiac imaging or unstable angina with ECG changes",
+    "protocolSpan": "unstable angina with ECG changes",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": 16,
+    "conceptSetName": "Unstable angina",
+    "logicType": "PRESENCE",
+    "groupId": "95d84118-4ad1-48a7-87ce-761e1a97de15",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "or",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "10c680541dcf7a87a49cc127552e92792960efdba815fe211d1fcf7352723a5a",
+    "pf": "f8ac121f720d0450edebbd459652e25302749ec401581dd2c0fb05da8bd822b6"
+   }
+  },
+  {
+   "trial": "plato",
+   "studyId": 2,
+   "role": "inclusion",
+   "id": "21",
+   "storeArm": "a",
+   "group": "control",
+   "stabExpected": [
+    "none"
+   ],
+   "row": {
+    "id": 21,
+    "description": "ST-segment depression or coexisting disorder in >=2 transient elevation >= 1 mm contiguous leads or new in two or more 2 contiguous leads",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 2.0,
+     "valueHigh": null,
+     "unitText": "transient elevation ≥ 1 mm contiguous leads",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "ST-segment changes",
+    "protocolLine": "ST-segment depression or coexisting disorder) in ≥2 transient elevation ≥ 1 mm contiguous leads or new in two or more 2 contiguous leads",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "e5115ac5-8727-49c6-8333-00115bd7e4c7",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "or",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "threshold_span",
+      "value": {
+       "threshold_span": "≥1 mm",
+       "quantity_kind": "lab_value",
+       "reference_bound": "none"
+      },
+      "reason": "not a substring of protocolLine"
+     }
+    ]
+   },
+   "members": [
+    {
+     "id": 22,
+     "description": "ST-segment depression",
+     "domain": "Measurement",
+     "valueConstraint": {
+      "op": "gte",
+      "value": 2.0,
+      "valueHigh": null,
+      "unitText": "transient elevation >= 1 mm contiguous leads or new in two or more 2 contiguous leads",
+      "referenceBound": "absolute",
+      "unitConceptId": null
+     },
+     "sourceText": "ST-segment depression",
+     "protocolLine": "ST-segment depression or coexisting disorder) in ≥2 transient elevation ≥ 1 mm contiguous leads or new in two or more 2 contiguous leads",
+     "protocolSpan": "ST-segment depression",
+     "window": {
+      "start": -180,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "e5115ac5-8727-49c6-8333-00115bd7e4c7",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": "any",
+      "relation_span": "or",
+      "cardinality": null,
+      "timing": "at_index",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+     },
+     "_annotationRejected": [
+      {
+       "field": "threshold_span",
+       "value": {
+        "threshold_span": "≥1 mm",
+        "quantity_kind": "lab_value",
+        "reference_bound": "none"
+       },
+       "reason": "not a substring of protocolLine"
+      }
+     ]
+    },
+    {
+     "id": 23,
+     "description": "Transient ST-segment elevation",
+     "domain": "Measurement",
+     "valueConstraint": {
+      "op": "gte",
+      "value": 1.0,
+      "valueHigh": null,
+      "unitText": "mm contiguous leads or new in two or more 2 contiguous leads",
+      "referenceBound": "absolute",
+      "unitConceptId": null
+     },
+     "sourceText": "transient elevation",
+     "protocolLine": "ST-segment depression or coexisting disorder) in ≥2 transient elevation ≥ 1 mm contiguous leads or new in two or more 2 contiguous leads",
+     "protocolSpan": "transient elevation",
+     "window": {
+      "start": -180,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "e5115ac5-8727-49c6-8333-00115bd7e4c7",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true,
+     "annotation": {
+      "promptVersion": "rfc016-steps1-4-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": "any",
+      "relation_span": "or",
+      "cardinality": null,
+      "timing": "at_index",
+      "window_span": null,
+      "route": [
+       "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+     },
+     "_annotationRejected": [
+      {
+       "field": "threshold_span",
+       "value": {
+        "threshold_span": "≥1 mm",
+        "quantity_kind": "lab_value",
+        "reference_bound": "none"
+       },
+       "reason": "not a substring of protocolLine"
+      }
+     ]
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥1 mm\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥1 mm\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "3454be5305559c8702b5dd5cae732a858b383abf707b4733994b2ff0ed91dbd2",
+    "pf": "5e0323e176cf63e6fb8118bfffdc957c6a3c0437437ef7f366907d743a893ed4"
+   }
+  },
+  {
+   "trial": "carmelina",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "4",
+   "storeArm": "a",
+   "group": "control",
+   "stabExpected": [
+    "none"
+   ],
+   "row": {
+    "id": 4,
+    "description": "Exclusion of GLP-1 receptor agonists if recent",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "GLP-1 receptor agonists",
+    "protocolLine": "Male or female patients who are drug-naïve or pre-treated with any antidiabetic background therapy, excluding treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors if ≥ 7 consecutive days",
+    "protocolSpan": "",
+    "window": {
+     "start": -7,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "85eaf366-a77a-4872-9575-829727a43f5b",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "GLP-1 receptor agonists",
+       "span": "GLP-1 receptor agonists"
+      }
+     ],
+     "base_span": "any antidiabetic background therapy",
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "if ≥ 7 consecutive days",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "_annotationRejected": [
+     {
+      "field": "relation",
+      "value": {
+       "relation": "null",
+       "relation_span": null,
+       "cardinality": null
+      },
+      "reason": "not one of ['all', 'any', 'at_least']"
+     }
+    ]
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"GLP-1 receptor agonists\", \"span\": \"GLP-1 receptor agonists\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"if ≥ 7 consecutive days\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"GLP-1 receptor agonists\", \"span\": \"GLP-1 receptor agonists\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"null\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"≥ 7 consecutive days\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "476de712c75128da690e2e0b453164c0924c6176c9a6abb38d9275ff93adba85",
+    "pf": "f3047fd30370605bfba40b3d33f42200e74dcfcbaeaa635423827fe2c87b4326"
+   }
+  },
+  {
+   "trial": "carolina",
+   "studyId": 10,
+   "role": "exclusion",
+   "id": "3",
+   "storeArm": "a",
+   "group": "control",
+   "stabExpected": [
+    "none"
+   ],
+   "row": {
+    "id": 3,
+    "description": "Rosiglitazone use",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Rosiglitazone",
+    "protocolLine": "Any history and/or current treatment with other antidiabetic drugs (e.g rosiglitazone, pioglitazone, GLP-1 analogue/agonists, DPP-IV inhibitors or any insulin) prior to informed consent. Note 1: This also includes clinical trials where these antidiabetic drugs have been provided to the patient. Note 2: Previous short term use of insulin (up to two consecutive weeks) is allowed (e.g. during hospitalisation) if taken at least 8 weeks prior informed consent",
+    "protocolSpan": "rosiglitazone",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "conceptSetId": 19,
+    "conceptSetName": "Rosiglitazone use",
+    "logicType": "ABSENCE",
+    "groupId": "1e870937-6fcb-4d42-899e-89d43371f2c9",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "rosiglitazone",
+       "span": "rosiglitazone"
+      }
+     ],
+     "base_span": "other antidiabetic drugs",
+     "relation": "any",
+     "relation_span": "and/or",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "members": [],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"rosiglitazone\", \"span\": \"rosiglitazone\"}, {\"text\": \"pioglitazone\", \"span\": \"pioglitazone\"}, {\"text\": \"GLP-1 analogue/agonists\", \"span\": \"GLP-1 analogue/agonists\"}, {\"text\": \"DPP-IV inhibitors\", \"span\": \"DPP-IV inhibitors\"}, {\"text\": \"insulin\", \"span\": \"insulin\"}], \"base_span\": \"other antidiabetic drugs\", \"relation\": \"any\", \"relation_span\": \", \", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "cfpfPromptSha256": {
+    "cf": "1ffcc5e13d551609d4df26e0b62ee1b59e06ac055793698717f2af3e3ba15787",
+    "pf": "5c0e8349f9c1d3ed8e960da423d0600b72cc221e3ffc0b2f4a9c05bc459578bd"
+   }
+  }
+ ]
+}
