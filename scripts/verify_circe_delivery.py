@@ -380,13 +380,17 @@ from src.services.conceptset_closure import (  # noqa: E402
     iter_items,
 )
 from src.services.criterion_annotation import (  # noqa: E402
+    AGREEMENT_RECORDS_KEY,
     CONDITIONAL_REASON,
     PROSPECTIVE_REASON,
     RECORD_CHANGE_REASON,
+    RECORD_CHANGE_RECORDS_KEY,
     UNREPRESENTABLE_THRESHOLDS_KEY,
     ThresholdUse,
+    agreement_records,
     applied_value_constraint,
     group_descendants,
+    record_change_records,
     span_in_line,
     threshold_use,
 )
@@ -1431,6 +1435,61 @@ def planning_failure_findings(expression: dict[str, Any]) -> tuple[list[str], st
         for record in records
     ]
     return [f"planning failed ({len(records)}): {'; '.join(described)}"], ""
+
+
+def annotation_record_findings(expression: dict[str, Any], study: dict[str, Any]) -> list[str]:
+    """Check (ae): the file's annotation record lists against the store rows it was built from.
+
+    ``_annotationAgreementRecords`` and ``_recordChangeRecords`` are read off the store rows by
+    :func:`agreement_records` / :func:`record_change_records`. Recomputed here from the rows and
+    compared per ``(role, criterionId)``: a record the file lost, one no row carries, or one that
+    differs from its row's fails. A list absent from the file fails only when the rows fill it
+    (an artifact older than the record carries no rows that would).
+
+    :param expression: the delivered CIRCE expression.
+    :param study: the store study the expression was built from.
+    :returns: one failure per list that disagrees with the rows, empty when both agree.
+    """
+    eligibility = study.get("eligibility") or {}
+    inc = eligibility.get("inclusionCriteria") or []
+    exc = eligibility.get("exclusionCriteria") or []
+    failures = []
+    for key, records_of in (
+        (AGREEMENT_RECORDS_KEY, agreement_records),
+        (RECORD_CHANGE_RECORDS_KEY, record_change_records),
+    ):
+        stored = {
+            (r["role"], r["criterionId"]): r
+            for r in records_of(inc, "inclusion") + records_of(exc, "exclusion")
+        }
+        listed_raw = expression.get(key)
+        if listed_raw is None and not stored:
+            continue
+        listed = {
+            (str(r.get("role")), str(r.get("criterionId"))): r
+            for r in listed_raw or []
+            if isinstance(r, dict)
+        }
+        missing = sorted(stored.keys() - listed.keys())
+        extra = sorted(listed.keys() - stored.keys())
+        differ = sorted(k for k in stored.keys() & listed.keys() if stored[k] != listed[k])
+        unkeyed = len(listed_raw or []) - len(listed)  # malformed or repeated records
+        if missing or extra or differ or unkeyed or listed_raw is None:
+            parts = [
+                f"{label}: " + ", ".join(f"{role} #{cid}" for role, cid in keys)
+                for label, keys in (
+                    ("store rows record, file omits", missing),
+                    ("file lists, no store row records", extra),
+                    ("file record differs from its store row", differ),
+                )
+                if keys
+            ]
+            if unkeyed:
+                parts.append(f"{unkeyed} record(s) malformed or listed twice")
+            if listed_raw is None:
+                parts.append(f"file has no {key} while {len(stored)} store row(s) record one")
+            failures.append(f"{key} disagrees with the store rows ({'; '.join(parts)})")
+    return failures
 
 
 def _label_of(row: dict[str, Any]) -> str:
@@ -3399,6 +3458,9 @@ def main(argv: list[str] | None = None) -> int:
         # re-plan recomputes, not what the protocol intends -- a failure, not a WARN.
         failed_planning, planning_failure_clause = planning_failure_findings(expression)
         reasons.extend(failed_planning)
+
+        # (ae) the annotation record lists against the store rows they are read off.
+        reasons.extend(annotation_record_findings(expression, study))
 
         # (i) the file's own drop records: recorded criterion loss, and whether the
         # census that reports it still balances on the delivered artifact.
