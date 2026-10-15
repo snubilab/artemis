@@ -231,12 +231,11 @@ ADR-032의 `threshold_classifier.py`(span 분류기)는 운영 경로 밖에 있
 | `reranker.py` | LLM concept rerank |
 | `critic.py` (+ `critic_cache.py`) | LLM multi-select / 필터 |
 | `kg_expander.py` | Neo4j ancestor/sibling expansion |
-| `umls_synonym_expander.py` / `query_expander.py` | UMLS 동의어·약어 |
 | `drug_class_expander.py` | ATC class → ingredients |
 | `drug_name_normalizer.py` | 약물명 정규화 |
 | `concept_set_refiner.py` | overbroad 감지 |
 | `abbreviation_expander.py` | 약어 사전 |
-| `regex_rules.py` | 코드 패턴 (`CodePatternMatcher`). `complexity_router.py`와 `rule_extractor.py`는 `fa7c41a`에서 삭제됨 — fast path 없이 모든 쿼리가 LLM 경로를 탄다 |
+| `regex_rules.py` | 코드 패턴 (`CodePatternMatcher`). `complexity_router.py`와 `rule_extractor.py`는 `fa7c41a`에서 삭제됨 — fast path 없이 모든 쿼리가 LLM 경로를 탄다. `umls_synonym_expander.py`와 `query_expander.py`(UMLS 동의어·약어)는 `ff473af`에서 삭제됨 |
 | `logic.py` | combination drug / ingredient roll-up |
 | `agent2_cache.py` / `criterion_cache.py` | 결과 캐시 |
 | `map_entity.py` | entity 단위 진입 + retry hooks |
@@ -488,8 +487,9 @@ vLLM 불가 시 `candidates`가 비고 문헌만 반환한다.
 | `src/pipeline/orchestrator.py` | 최상위 — `run_supervisor()` |
 | `src/pipeline/supervisor_agent.py` | LangGraph 6-stage + review_* + selective retry |
 | `src/pipeline/supervisor.py` | Cohort-definition 하위 오케스트레이션 + `post_agent2_check` |
-| `src/pipeline/mapping_retry.py` | selective retry 정책 / domain correction |
 | `src/pipeline/cohort_pipeline.py` | backward-compat thin wrapper |
+
+`src/pipeline/mapping_retry.py`(Loop 1 재매핑)는 `25087a1`에서 Loop 1과 함께 삭제됐다.
 | `src/services/tte_service.py` | TTE HTTP capability → agent 체인 경계 |
 
 Supervisor 노드: `trial_node` → `mapping_node` → `assembly_node` → `extraction_node` → `analysis_node` → `reporting_node` (+ 각 `review_*`).

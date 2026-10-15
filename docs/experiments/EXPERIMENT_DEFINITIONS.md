@@ -49,7 +49,6 @@ NCT ID (e.g., NCT01179048)
 | Enricher         | `src/agents/agent1/enricher.py`              | PubMed/PDF criteria enrich     |
 | Trial Parser     | `src/agents/agent1/parser.py`                | `parse_nct()`, `parse()`       |
 | Mapping Workflow | `src/agents/agent2/workflow.py`              | Agent 2 전체 흐름              |
-| UMLS Expander    | `src/agents/agent2/umls_synonym_expander.py` | UMLS synonym + MRSTY filter    |
 | Drug Class       | `src/agents/agent2/drug_class_expander.py`   | MRREL/ATC drug class expansion |
 | Refiner          | `src/agents/agent2/concept_set_refiner.py`   | includeDescendants 정책        |
 | Assembler        | `src/agents/agent3/assembler.py`             | Circe JSON 조립                |

@@ -68,12 +68,13 @@ graph TD
 | [reranker.py](../src/agents/agent2/reranker.py)                           | LLM 기반 Top-N 리랭킹 (single + batch)                          | 327L |
 | [kg_expander.py](../src/agents/agent2/kg_expander.py)                     | **Neo4j KG-RAG** — IC 기반 Ancestor Climbing + 개념 확장        | 657L |
 | [critic.py](../src/agents/agent2/critic.py)                               | LLM Multi-select Critic (KG 확장 결과 필터링)                   | 265L |
-| [umls_synonym_expander.py](../src/agents/agent2/umls_synonym_expander.py) | UMLS 동의어 확장 (로컬 MRCONSO SQLite)                          | 256L |
 | [abbreviation_expander.py](../src/agents/agent2/abbreviation_expander.py) | 의학 약어 사전 기반 확장 (150+ 약어)                            | 244L |
 | [drug_class_expander.py](../src/agents/agent2/drug_class_expander.py)     | 약물 클래스 → 개별 성분 확장 (ATC 기반, RFC-006)                | 301L |
 | [logic.py](../src/agents/agent2/logic.py)                                 | Logician — 복합 개념 분해 + pruning                             | 82L  |
 | [regex_rules.py](../src/agents/agent2/regex_rules.py)                     | Regex 패턴 정의                                                 | 30L  |
 | [agent2_cache.py](../src/agents/agent2/agent2_cache.py)                   | 캐시 관리 (디스크 기반)                                         | 95L  |
+
+`umls_synonym_expander.py`(UMLS 동의어 확장)는 `ff473af`에서 삭제됐다. 이 문서의 UMLS 확장 서술(위 흐름도 포함)은 그 이전 시점의 기록이다.
 
 ---
 
