@@ -319,3 +319,60 @@ def test_should_not_skip_a_control_for_record_change(spec, service):
     circe = _build(service, _built([spec])[spec[0]])
     assert not [r for r in circe["_skippedCriteria"] if r["reason"] == REASON]
 
+
+# --------------------------------------------------------------------------- #
+# The lint: a row with a kept record_change fill that reached a rule anyway
+# --------------------------------------------------------------------------- #
+
+
+def _bypassed(
+    service: Any, monkeypatch: Any, spec: tuple[str, str, str]
+) -> tuple[dict, dict, dict]:
+    """CARMELINA inclusion 7 annotated from its real answers, built twice: as the build does it,
+    and with the record-change skip bypassed (the construct a producer bug would be)."""
+    eligibility = _built([spec])[spec[0]]
+    honest = _build(service, eligibility)
+    monkeypatch.setattr("src.services.tte_service.record_change_skips", lambda rows: {})
+    bypassed = _build(service, eligibility)
+    return honest, bypassed, {"eligibility": copy.deepcopy(eligibility)}
+
+
+def test_should_find_the_go_nogo_row_when_its_skip_was_bypassed(service, monkeypatch):
+    from src.utils.circe_lint import record_change_occurrence_criteria
+
+    spec = ("carmelina", "inclusion", "7")
+    honest, bypassed, study = _bypassed(service, monkeypatch, spec)
+    assert _emitted(bypassed, "inclusion", "7"), "the bypass did not emit the row"
+    assert record_change_occurrence_criteria(honest, study) == []
+    (finding,) = record_change_occurrence_criteria(bypassed, study)
+    assert "inclusion #7" in finding and "stable" in finding
+
+
+def test_should_fail_the_delivery_gate_on_the_bypassed_row(service, monkeypatch, tmp_path, capsys):
+    import scripts.verify_circe_delivery as gate
+
+    spec = ("carmelina", "inclusion", "7")
+    honest, bypassed, study = _bypassed(service, monkeypatch, spec)
+
+    def run(expression: dict[str, Any], where: Path) -> str:
+        # The gate pins the store it resolved into the environment; each run starts clear
+        # (monkeypatch restores the environment at teardown).
+        for name in ("TTE_STORE_PATH", "TTE_DRUG_ANCHORED_ENTRY"):
+            monkeypatch.delenv(name, raising=False)
+        where.mkdir()
+        stored = {
+            "id": 9, "name": "Study 9", "comparisonMode": "target_minus_treatment",
+            "treatmentArms": [{"name": "linagliptin"}, {"name": "placebo"}],
+            "eligibility": {**study["eligibility"], "structuredExpression": expression},
+        }
+        for role in ("treatment", "comparator"):
+            (where / f"carmelina_{role}.circe.json").write_text(json.dumps(expression))
+        store = where / "studies.json"
+        store.write_text(json.dumps([stored]))
+        rc = gate.main(["--dir", str(where), "--store", str(store), "--map", "carmelina=9"])
+        captured = capsys.readouterr()
+        return f"rc={rc}\n{captured.out}\n{captured.err}"
+
+    clean, caught = run(honest, tmp_path / "honest"), run(bypassed, tmp_path / "bypassed")
+    assert clean.startswith("rc=") and "record_change criterion emitted" not in clean
+    assert caught.startswith("rc=1") and "record_change criterion emitted (1)" in caught, caught

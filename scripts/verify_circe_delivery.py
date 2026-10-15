@@ -166,6 +166,10 @@ Checks per file:
     the patient's past an event the protocol places after entry (CAROLINA's delivered rule
     14 excluded every past PCI/CABG under "Pre-planned coronary artery re-vascularisation
     ... within next 6 months"). See ``src.utils.circe_lint.prospective_occurrence_criteria``.
+    Check (ad) is the same for a row with a kept ``record_change`` fill (recorded as a
+    ``record-change-not-representable`` skip): one that reached a rule anyway is a presence
+    rule where the protocol states that a record stayed the same or changed across a period.
+    See ``src.utils.circe_lint.record_change_occurrence_criteria``.
     The former check (o), which read "or" in a group's protocol line, is removed with the
     rule it checked (RFC-016 step 2, inventory A18).
 
@@ -444,6 +448,7 @@ from src.utils.circe_lint import (  # noqa: E402
     noop_exclusion_rules,
     presence_unit_axes_ids,
     prospective_occurrence_criteria,
+    record_change_occurrence_criteria,
     rule_names,
     specimen_mismatched_measurement_criteria,
     unfiltered_measurement_absence_criteria,
@@ -3373,6 +3378,16 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"prospective criterion emitted ({len(prospective_emitted)}): "
                 f"{'; '.join(prospective_emitted)}"
+            )
+
+        # (ad) a criterion with a kept record_change fill, emitted as an occurrence. The builder
+        # records such a row as a record-change skip; one that reached a rule anyway says only
+        # that the record exists, and every other check here passes it.
+        record_change_emitted = record_change_occurrence_criteria(expression, study)
+        if record_change_emitted:
+            reasons.append(
+                f"record_change criterion emitted ({len(record_change_emitted)}): "
+                f"{'; '.join(record_change_emitted)}"
             )
 
         # (ab) a criterion mapped while a KG/refiner lookup or the critic failed: its concept

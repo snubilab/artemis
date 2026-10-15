@@ -3183,6 +3183,66 @@ def prospective_occurrence_criteria(
     return findings
 
 
+
+def record_change_occurrence_criteria(
+    expression: Mapping[str, Any], study: Mapping[str, Any]
+) -> list[str]:
+    """Locators for a criterion with a kept ``record_change`` fill that the file emitted.
+
+    A row whose agreed annotation says its line requires the records of its entity to stay the
+    same, or to change, across a period ("Stable antidiabetic background medication (unchanged
+    daily dose) for at least 8 weeks") is recorded by the builder as a
+    ``record-change-not-representable`` skip: CIRCE can test that a record exists in a window,
+    not that it stayed the same across one. One that reached a rule anyway says only that the
+    record exists -- the DrugExposure PRESENCE rule (Occurrence Type 2, Count 1) the go/no-go
+    rows shipped as -- and every other check passes it.
+
+    The decision is read with :func:`src.services.criterion_annotation.record_change_skips`
+    (span re-checked against the row's own ``protocolLine``; a label takes its members). Which
+    rows emitted is read as :func:`prospective_occurrence_criteria` reads it: from
+    ``_criterionConceptSetRefs`` when the file carries it, else from the store row's
+    ``conceptSetId`` against the codesets the file's criteria reference.
+
+    No database, no vocabulary, no text read for meaning.
+
+    :param expression: a CIRCE cohort expression.
+    :param study: the store study the expression was built from.
+    :returns: one locator per emitted record-change criterion, empty when none.
+    """
+    from src.services.criterion_annotation import EXCLUSION, INCLUSION, record_change_skips
+
+    eligibility = study.get("eligibility") if isinstance(study, Mapping) else None
+    if not isinstance(eligibility, Mapping):
+        return []
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    referenced: set[Any] = set()
+    for rule in expression.get("InclusionRules") or []:
+        for entry in _walk_criteria_entries(rule.get("expression") or {}):
+            codeset = _leaf_codeset_id(entry)
+            if codeset is not None:
+                referenced.add(codeset)
+
+    findings: list[str] = []
+    for role, key in ((INCLUSION, "inclusionCriteria"), (EXCLUSION, "exclusionCriteria")):
+        rows = [row for row in eligibility.get(key) or [] if isinstance(row, Mapping)]
+        by_id = {str(row.get("id", "")): row for row in rows}
+        for criterion_id, decision in sorted(record_change_skips(rows).items()):
+            row = by_id.get(criterion_id) or {}
+            if isinstance(refs, Mapping):
+                emitted = f"{role}:{criterion_id}" in refs
+            else:
+                emitted = row.get("conceptSetId") is not None and (
+                    row.get("conceptSetId") in referenced
+                )
+            if emitted:
+                findings.append(
+                    f"{role} #{criterion_id} {(row.get('description') or '')!r} has a kept "
+                    f"record_change {decision.value!r} (span {decision.span!r}, decided by "
+                    f"#{decision.decided_by}) and was emitted as an occurrence -- the rule says "
+                    "only that the record exists, not that it stayed the same or changed"
+                )
+    return findings
+
 #: The key ``TTEService._build_emittable_expression`` writes the drop records under.
 #: Spelled once and imported by every reader -- the delivery gate keys its rule-set
 #: reconciliation on it, and a second copy of the string would make that reconciliation
