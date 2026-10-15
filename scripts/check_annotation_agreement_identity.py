@@ -1,4 +1,14 @@
-"""Are production's two annotation prompts byte-identical to stage 2's `current` and `placebo`?
+"""Are production's two annotation prompts byte-identical to the measured `cf` and `pf` arms?
+
+Since the ``record_change`` block (2026-10-15) the first call is stage 2's `current` with that
+block (`cf`) and the agreement call stage 2's `placebo` with the same block (`pf`), measured in
+``overfill/ab_runs/cfpf_*/`` by ``overfill/ab_harness_cfpf.py``; the arms are registered by
+``overfill/prompts_record_change.py``, which ``--harness-module`` imports on the harness side.
+``--arms`` names the plan's two arms, first call then agreement call (``cf,pf``; stage 2's
+``current,placebo`` with ``--harness-module prompts`` checks the pre-block prompts against a
+pre-block tree). Before the block the script read:
+
+Are production's two annotation prompts byte-identical to stage 2's `current` and `placebo`?
 
 The over-fill A/B's stage 2 (``overfill/ab_runs/stage2_*/plan.json``) records, per arm, the system
 prompt and the user template it sent, and the rows it sent them for. The harness rendered each row
@@ -29,11 +39,12 @@ usage:
   RUN=/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry
   P2=/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p2_new
   .venv/bin/python scripts/check_annotation_agreement_identity.py \\
-      --harness-dir $RUN/overfill --plan $RUN/overfill/ab_runs/stage2_20261014_101708/plan.json \\
+      --harness-dir $RUN/overfill --plan $RUN/overfill/ab_runs/cfpf_<stamp>/plan.json \\
       --measured-src /home/bilab/work/projects/Broadsea/.worktrees/p3dry-smoke \\
       --rows $RUN/overfill/rows_smoke.jsonl $RUN/overfill/rows_a.jsonl \\
-             $RUN/overfill/rows_p2new.jsonl \\
+             $RUN/overfill/rows_b.jsonl $RUN/overfill/rows_p2new.jsonl \\
       --store smoke=$RUN/arm_smoke/store/studies.json --store a=$RUN/arm_a/store/studies.json \\
+      --store b=$RUN/arm_b/store/studies.json \\
       --store p2new=$P2/store/studies.json --repair p2new --scratch /tmp/identity
 """
 
@@ -55,8 +66,13 @@ REPO = Path(__file__).resolve().parents[1]
 ROLE_KEYS = {"inclusion": "inclusionCriteria", "exclusion": "exclusionCriteria"}
 #: The studies ``dry_driver.py`` repairs on arm A (its ``STUDIES["a"]``).
 REPAIR_STUDIES = (1, 2, 3, 8, 9, 10)
-#: Plan arm -> which production call sends it.
-ARM_CALL = {"current": 0, "placebo": 1}
+#: Plan arm -> which production call sends it; set from ``--arms`` (first call, agreement call).
+ARM_CALL = {"cf": 0, "pf": 1}
+
+
+def _arm_call(arms: str) -> dict[str, int]:
+    first, second = (a.strip() for a in arms.split(","))
+    return {first: 0, second: 1}
 
 
 def _rows(paths: list[Path]) -> dict[tuple[str, str, str], dict[str, Any]]:
@@ -89,8 +105,12 @@ def _key(tag: str, study_id: Any, role: str, row_id: Any) -> str:
 def harness_side(args: argparse.Namespace) -> dict[str, Any]:
     """Render every plan row with the harness's functions over the measured src."""
     sys.path[:0] = [str(args.harness_dir), str(args.harness_dir.parent)]
+    import importlib  # noqa: PLC0415
+
     import ab_harness as harness  # noqa: PLC0415 -- imports src from PYTHONPATH
     from prompts import arm_prompts  # noqa: PLC0415
+
+    importlib.import_module(args.harness_module)  # registers the plan's arms (cf / pf)
 
     measured = harness.A
     src_root = Path(measured.__file__).resolve().parents[2]
@@ -312,11 +332,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--repair", action="append", default=[], help="store TAG the P3 driver repairs")
     ap.add_argument("--scratch", required=True, type=Path)
     ap.add_argument("--out", type=Path, help="write the counts and every differing key here")
+    ap.add_argument("--arms", default="cf,pf", help="the plan's arms: first call, agreement call")
+    ap.add_argument("--harness-module", default="prompts_record_change",
+                    help="module in --harness-dir that registers those arms")
     ap.add_argument("--side", choices=("harness", "production"), help=argparse.SUPPRESS)
     ap.add_argument("--result", type=Path, help=argparse.SUPPRESS)
     ap.add_argument("--slug-to-id", default="", help=argparse.SUPPRESS)
     raw = list(sys.argv[1:] if argv is None else argv)
     args = ap.parse_args(raw)
+    ARM_CALL.clear()
+    ARM_CALL.update(_arm_call(args.arms))
 
     if args.side is not None:
         result = harness_side(args) if args.side == "harness" else production_side(args)

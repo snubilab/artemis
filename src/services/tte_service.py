@@ -88,6 +88,8 @@ from src.services.criterion_annotation import (
     PLANNER_RELATION_KEY,
     PROSPECTIVE_EXPLANATION,
     PROSPECTIVE_REASON,
+    RECORD_CHANGE_EXPLANATION,
+    RECORD_CHANGE_REASON,
     StatedRelation,
     THRESHOLD_NOT_REPRESENTABLE_REASON,
     UNREPRESENTABLE_THRESHOLDS_KEY,
@@ -96,6 +98,7 @@ from src.services.criterion_annotation import (
     applied_value_constraint,
     conditional_skips,
     prospective_skips,
+    record_change_skips,
     relation_group_type,
     stated_exceptions,
     stated_exceptions_by_codeset,
@@ -5080,6 +5083,24 @@ class TTEService:
                 extra={"windowSpan": decision.span, "timingDecidedBy": decision.decided_by},
             )
 
+        def _record_record_change_skip(criterion: dict[str, Any], role: str, decision: Any) -> None:
+            _record_skip(
+                criterion, role, RECORD_CHANGE_REASON, RECORD_CHANGE_EXPLANATION,
+                extra={
+                    "recordChange": decision.value,
+                    "recordChangeSpan": decision.span,
+                    "recordChangeDecidedBy": decision.decided_by,
+                    # The agreement call that confirmed the deciding row's record_change
+                    # (criterion_annotation.agree); None for an annotation stored without it.
+                    "recordChangeAgreement": (
+                        {"promptVersion": decision.agreement_version,
+                         "cacheKey": decision.agreement_key}
+                        if decision.agreement_key is not None
+                        else None
+                    ),
+                },
+            )
+
         # SPEC-INFRA-003 REQ-001 / REQ-007. Decided once, up front, over the criteria as
         # they arrived: the collapse is a cardinality invariant over a structurally
         # defined class, so it has to see the whole role at once rather than one
@@ -5133,6 +5154,14 @@ class TTEService:
         # as criterion loss (coordinator, 2026-10-12).
         threshold_inclusions = threshold_skips(inc_criteria)
         threshold_exclusions = threshold_skips(exc_criteria)
+        # A rule whose agreed annotation says its line requires the records of its entity to
+        # stay the same, or to change, across a period ("Stable ... (unchanged daily dose) for
+        # at least 8 weeks") has no CIRCE expression: a presence rule says only that the record
+        # exists. Decided by `record_change` (span checked against its line); a label takes its
+        # members. Checked after the threshold skip, so a verified dose or statistical threshold
+        # stays recorded as the criterion loss it is rather than under this permitted reason.
+        record_change_inclusions = record_change_skips(inc_criteria)
+        record_change_exclusions = record_change_skips(exc_criteria)
 
         # Group labels, recorded once mapping is done (see after the mapping pool).
         deferred_labels: list[tuple[dict[str, Any], str]] = []
@@ -5207,6 +5236,11 @@ class TTEService:
                 _record_threshold_skip(criterion, "inclusion", skip)
                 order += 1
                 continue
+            change = record_change_inclusions.get(str(criterion.get("id", "")))
+            if change is not None:
+                _record_record_change_skip(criterion, "inclusion", change)
+                order += 1
+                continue
             # Ahead of the demographic branch: a group label emits no rule of its own,
             # whatever its domain. Checked after it, a Demographics label carrying the
             # group's `gte 18` built an Age rule from the label (ARISTOTLE inclusion 16).
@@ -5257,6 +5291,11 @@ class TTEService:
             skip = threshold_exclusions.get(str(criterion.get("id", "")))
             if skip is not None:
                 _record_threshold_skip(criterion, "exclusion", skip)
+                order += 1
+                continue
+            change = record_change_exclusions.get(str(criterion.get("id", "")))
+            if change is not None:
+                _record_record_change_skip(criterion, "exclusion", change)
                 order += 1
                 continue
             # Ahead of the demographic branch, as in the inclusion loop: a group label

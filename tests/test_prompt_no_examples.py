@@ -339,6 +339,22 @@ def _render_criterion_annotation_agreement() -> str:
     return _joined(second)
 
 
+def _render_criterion_annotation_agreement_record_change() -> str:
+    """The agreement call reached through a ``record_change`` fill alone (the first answer fills
+    no other compared field), so the call site that field opens is linted as well."""
+    from src.services import criterion_annotation
+
+    calls = _annotation_calls(
+        f'{{"record_requirement": "required", "record_change": "stable", '
+        f'"record_change_span": "{STUB} line"}}'
+    )
+    second = [c for c in calls if c.startswith(criterion_annotation.AGREEMENT_SYSTEM_PROMPT)]
+    assert len(second) == len(calls) // 2 == 2, (
+        "a record_change fill did not open the agreement call"
+    )
+    return _joined(second)
+
+
 def _render_specimen_critic() -> str:
     """Through ``judge_specimen_options`` with the model replaced; the cache is off."""
     from src.agents.agent2 import specimen_critic
@@ -514,12 +530,18 @@ PROMPTS: dict[str, PromptSpec] = {
             # RFC-016 step 3: the threshold fields and their enum values.
             "threshold_span", "quantity_kind", "reference_bound", "lab_value", "dose",
             "duration", "count", "statistical", "uln", "lln",
+            # record_change (2026-10-15, the over-fill A/B's fields_stability block) and its values.
+            "record_change", "record_change_span", "stable", "changed",
         }),
     ),
 }
 # The agreement call asks the same fields in other words: the same declared tokens.
 PROMPTS["criterion_annotation.agreement"] = PromptSpec(
     _render_criterion_annotation_agreement, tokens=PROMPTS["criterion_annotation"].tokens,
+)
+PROMPTS["criterion_annotation.agreement.record_change"] = PromptSpec(
+    _render_criterion_annotation_agreement_record_change,
+    tokens=PROMPTS["criterion_annotation"].tokens,
 )
 
 
@@ -843,7 +865,8 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/comparator/recommender.py": (2, ("comparator.literature",)),
     "src/services/tte_service.py": (6, ("tte.analysis_finalizer", "tte.report_narrative")),
     "src/services/criterion_annotation.py": (
-        3, ("criterion_annotation", "criterion_annotation.agreement"),
+        3, ("criterion_annotation", "criterion_annotation.agreement",
+            "criterion_annotation.agreement.record_change"),
     ),
     "src/utils/llm.py": (6, "transport: builds the chat client get_llm returns and appends "
                             "/no_think to the caller's last message; carries no prompt of its own"),

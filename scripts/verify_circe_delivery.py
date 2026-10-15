@@ -69,8 +69,9 @@ Checks per file:
     whose threshold strands no member and at least one of whose members emitted, a
     ``demographic-no-rule`` row must be demographic-domain and carry no bound, a
     restated-* row must have a collapse record naming a survivor that emitted, and a
-    ``conditional-on-existing-record`` or ``prospective-not-observable-at-index`` row must
-    carry a span that is a substring of the deciding row's ``protocolLine``
+    ``conditional-on-existing-record``, ``prospective-not-observable-at-index`` or
+    ``record-change-not-representable`` row must carry a span that is a substring of the
+    deciding row's ``protocolLine``
     (``src.services.criterion_annotation``). An
     ``_unmappedCriteria`` row is permitted only when its ``refusalCode`` says the loss
     is IRREDUCIBLE — see ``PERMITTED_REFUSAL_CODES`` for the axis and for why the
@@ -377,6 +378,7 @@ from src.services.conceptset_closure import (  # noqa: E402
 from src.services.criterion_annotation import (  # noqa: E402
     CONDITIONAL_REASON,
     PROSPECTIVE_REASON,
+    RECORD_CHANGE_REASON,
     UNREPRESENTABLE_THRESHOLDS_KEY,
     ThresholdUse,
     applied_value_constraint,
@@ -534,6 +536,12 @@ ACCOUNTING_KEYS = ("_generationCensus", "_unmappedCriteria", "_skippedCriteria")
 #:   conditional occurrence, and the presence rule it used to ship as dropped the
 #:   drug-naive patients both protocols admit: Ajou's CARMELINA comparator fell
 #:   38,664 -> 1,257 at that rule. Not loss: there is no faithful rule to lose.
+#: * ``RECORD_CHANGE_REASON`` (2026-10-15) — a rule whose agreed annotation says its line
+#:   requires the records of its entity to stay the same, or to change, across a period
+#:   ("Stable ... (unchanged daily dose) for at least 8 weeks"). Not loss: CIRCE can test
+#:   that a record exists in a window, not that it stayed the same across one, so there is
+#:   no faithful rule to lose. Re-judged like the conditional permit, on
+#:   ``recordChangeSpan`` / ``recordChangeDecidedBy``.
 #:
 #: The two collapse spellings are imported from the modules that own them rather
 #: than retyped; the other two are bare literals in ``tte_service.py`` with no
@@ -582,6 +590,7 @@ ALLOWED_SKIP_REASONS = frozenset(
         RESTATED_DISTINCTNESS_REASON,
         CONDITIONAL_REASON,
         PROSPECTIVE_REASON,
+        RECORD_CHANGE_REASON,
     }
 )
 
@@ -1966,6 +1975,15 @@ def skipped_criteria_violations(
                     decided_by_key="timingDecidedBy",
                 )
             )
+        elif reason == RECORD_CHANGE_REASON:
+            violations.extend(
+                _annotation_skip_violations(
+                    where, record, role, criterion_id, criterion, index,
+                    reason=RECORD_CHANGE_REASON,
+                    span_key="recordChangeSpan",
+                    decided_by_key="recordChangeDecidedBy",
+                )
+            )
         else:
             violations.extend(
                 _collapse_violations(
@@ -1994,7 +2012,8 @@ def _annotation_skip_violations(
     span_key: str,
     decided_by_key: str,
 ) -> list[str]:
-    """Re-judge one permit the annotation decided (conditional or prospective) from the store.
+    """Re-judge one permit the annotation decided (conditional, prospective or record-change)
+    from the store.
 
     The decision was the annotation model's, so the gate does not re-decide it. What it
     checks is the evidence the decision rests on: the recorded span is a substring of the

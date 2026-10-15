@@ -16,6 +16,12 @@ or enum values.
 Each case is a real row of the P3 dry run with the two real answers stage 2 recorded for it
 (``tests/fixtures/annotation_agreement_rows.json``). The model is replaced by a stub that
 replays them: the first call gets the `current` answer, the second the `placebo` answer.
+
+Since the ``record_change`` block (2026-10-15) the two calls send stage 2's wordings with that
+block in both (the re-check's `cf` and `pf` arms, ``overfill/ab_runs/cfpf_*``); the identity
+tests pin those prompts, and that the block is their only difference from stage 2's. The
+replayed answers are stage 2's, given to the pre-block prompts: they exercise the rule, which
+the block does not change for these fields.
 """
 
 from __future__ import annotations
@@ -282,29 +288,47 @@ class TestTheSecondCall:
         assert {k: row[ANNOTATION_KEY][k] for k in expected} == expected
 
     @pytest.mark.parametrize("spec", sorted(CASES), ids=lambda s: ":".join(s))
-    def test_should_send_the_prompts_stage_two_sent_as_current_and_placebo(self, spec):
-        """Byte identity, per row: the first call is what stage 2 sent as `current`, the second
-        what it sent as `placebo` (sha256 of the harness's own rendering, from the fixture)."""
+    def test_should_send_the_prompts_the_re_check_sent_as_cf_and_pf(self, spec):
+        """Byte identity, per row: the first call is what the re-check sent as `cf`, the second
+        what it sent as `pf` (sha256 of the harness's own rendering, from the fixture)."""
         _row, llm = _annotate(spec)
-        want = CASES[spec]["stage2PromptSha256"]
+        want = CASES[spec]["cfpfPromptSha256"]
         sent = [
             hashlib.sha256(json.dumps(list(call), ensure_ascii=False).encode("utf-8")).hexdigest()
             for call in llm.calls
         ]
-        assert sent[0] == want["current"]
+        assert sent[0] == want["cf"]
         if len(sent) > 1:
-            assert sent[1] == want["placebo"]
+            assert sent[1] == want["pf"]
 
-    def test_should_hold_the_two_prompts_stage_two_measured(self):
-        prompts = FIXTURE["stage2Prompts"]
+    def test_should_hold_the_two_prompts_the_re_check_measured(self):
+        prompts = FIXTURE["cfpfPrompts"]
         assert (annotation.ANNOTATION_SYSTEM_PROMPT, annotation.ANNOTATION_PROMPT) == (
-            prompts["current"]["system"],
-            prompts["current"]["userTemplate"],
+            prompts["cf"]["system"],
+            prompts["cf"]["userTemplate"],
         )
         assert (annotation.AGREEMENT_SYSTEM_PROMPT, annotation.AGREEMENT_PROMPT) == (
-            prompts["placebo"]["system"],
-            prompts["placebo"]["userTemplate"],
+            prompts["pf"]["system"],
+            prompts["pf"]["userTemplate"],
         )
+
+    @pytest.mark.parametrize(("arm", "stage2_arm"), [("cf", "current"), ("pf", "placebo")])
+    def test_should_differ_from_stage_twos_prompts_by_the_record_change_block_alone(
+        self, arm, stage2_arm
+    ):
+        """The block (definition, then its two output keys) sits once in each prompt, at the same
+        place; taken out, each prompt is the one stage 2 measured, byte for byte."""
+        now, then = FIXTURE["cfpfPrompts"][arm], FIXTURE["stage2Prompts"][stage2_arm]
+        user = now["userTemplate"]
+        start = user.index("`record_change` states whether")
+        end = user.index("`route` lists the routes")
+        keys = (
+            '"record_change": "<stable|changed|none>", '
+            '"record_change_span": "<fragment of the protocol line, or null>", '
+        )
+        assert user.count(keys) == 1
+        assert now["system"] == then["system"]
+        assert (user[:start] + user[end:]).replace(keys, "", 1) == then["userTemplate"]
 
     def test_should_cache_both_calls_under_their_own_keys_and_replay_them(self, tmp_path):
         spec = ("leader", "exclusion", "40")

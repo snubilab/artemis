@@ -33,6 +33,16 @@ line (inventory A2, A4, A18, E3):
   not emitted as an occurrence; it is recorded as a skip under :data:`PROSPECTIVE_REASON`
   (:func:`prospective_skips`).
 
+``record_change`` (+ ``record_change_span``) -- whether the line requires the records of the
+criterion's entity to stay the same (``stable``) or to change (``changed``) across a period it
+states, or neither (``none``). It replaces the deleted ``dose_stability.py`` word rule. CIRCE can
+test that a record exists in a window, not that it stayed the same or changed across one, so a
+criterion with either value is not emitted; it is recorded as a skip under
+:data:`RECORD_CHANGE_REASON` (:func:`record_change_skips`). Measured as the over-fill A/B's
+``fields_stability`` arm (``overfill/ab_runs/fields_stability_20261014_235757/``, gemma-4-E4B):
+``stable`` with a verified span on all 9 go/no-go rows (27/27 answers), 0/96 fills on 32
+controls, ``changed`` on the 6 thyroid "change in dose" exclusions.
+
 The model decides the meaning and quotes the fragment of ``protocolLine`` that supports
 it. Code checks one thing only: that each quoted fragment is a substring of the line
 (:func:`span_in_line`, from :mod:`src.utils.span_match`: the comparison form every span
@@ -42,15 +52,16 @@ is not in the line makes its field absent -- the row then takes the default beha
 and the rejection is recorded on the row under :data:`ANNOTATION_REJECTED_KEY` so it can
 be counted. Nothing here reads the line, the description or the entity as words.
 
-Agreement. Three fields are kept only when a second call, asked the same question in other
+Agreement. Four fields are kept only when a second call, asked the same question in other
 words (:data:`AGREEMENT_SYSTEM_PROMPT`, :data:`AGREEMENT_PROMPT`), gives them too: each
-excepted entity (and with it ``base_span``), ``record_requirement: conditional``, and a
-``no_entity`` other than ``none``. Measured with gemma-4-E4B in stage 2 of the over-fill A/B
+excepted entity (and with it ``base_span``), ``record_requirement: conditional``, a
+``no_entity`` other than ``none``, and a ``record_change`` other than ``none``. Measured with
+gemma-4-E4B in stage 2 of the over-fill A/B
 (``output/site_gap/2026-10-12_p3_dry/overfill/analysis_stage2/``): a wrong excepted entity
 changes under almost any rewording while a correct one recurs -- under the second wording 27
 of 27 correct spans reappear and 37 of 126 wrong ones do -- so keeping only what both answers
 give fixed 44.7 of 62 wrong-exception rows and broke 0 of 113 controls. The second call is
-made only when the first validated answer fills one of the three, because the rule only ever
+made only when the first validated answer fills one of the four, because the rule only ever
 reverts a fill (:func:`agree`). What the second answer confirmed and what it took away are
 recorded on the row under :data:`AGREEMENT_KEY`, carried onto the conditional skip record,
 and listed in the built expression under :data:`AGREEMENT_RECORDS_KEY`. Every comparison is
@@ -89,12 +100,13 @@ from src.utils.span_match import span_in_line, span_offsets
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever either prompt below changes meaning, or what is stored from the answer
-#: does (the agreement step); part of the first call's cache key. The wording itself is the
-#: one ``rfc016-steps1-4-v1`` sent, which stage 2 of the over-fill A/B measured as `current`.
-ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-agreement-v1"
+#: does (the agreement step); part of the first call's cache key. v2 adds the ``record_change``
+#: block: the wording is stage 2's `current` with that block, the over-fill A/B's `cf` arm.
+ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-agreement-v2"
 #: The agreement call's version (:data:`AGREEMENT_SYSTEM_PROMPT`, :data:`AGREEMENT_PROMPT`);
-#: part of its cache key, bumped whenever either of those changes.
-AGREEMENT_PROMPT_VERSION = "rfc016-steps1-4-agreement-placebo-v1"
+#: part of its cache key, bumped whenever either of those changes. v2: stage 2's `placebo`
+#: with the same ``record_change`` block, the `pf` arm.
+AGREEMENT_PROMPT_VERSION = "rfc016-steps1-4-agreement-placebo-v2"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -142,6 +154,8 @@ FIELD_SPECIMEN = "specimen"
 FIELD_SPECIMEN_SPAN = "specimen_span"
 FIELD_NO_ENTITY = "no_entity"
 FIELD_NO_ENTITY_SPAN = "no_entity_span"
+FIELD_RECORD_CHANGE = "record_change"
+FIELD_RECORD_CHANGE_SPAN = "record_change_span"
 #: The one ``route`` entry that states no restriction; it stands alone in the list.
 ROUTE_ANY = "any"
 #: RFC-016 step 3. The three stand or fall together (:func:`validate_annotation`).
@@ -184,6 +198,18 @@ PROSPECTIVE_EXPLANATION = (
     "The protocol line places this criterion after the patient enters the trial (planned "
     "or expected). Nothing at index records it, and emitted as an occurrence it would be "
     "read from the patient's past."
+)
+
+#: Recorded on each criterion whose agreed annotation says its line requires the records of
+#: its entity to stay the same, or to change, across a period (``record_change``); permitted
+#: by the delivery gate only when the recorded span is a substring of the deciding row's
+#: ``protocolLine``.
+RECORD_CHANGE_REASON = "record-change-not-representable"
+RECORD_CHANGE_EXPLANATION = (
+    "The protocol line requires the patient's records of this criterion's entity to stay "
+    "the same, or to change, across a period it states. CIRCE can test that a record "
+    "exists in a window, not that it stayed the same or changed across one; emitted, the "
+    "rule would require only that the record exists."
 )
 
 
@@ -233,9 +259,21 @@ class NoEntity(str, Enum):
     INVESTIGATOR_JUDGEMENT = "investigator_judgement"
 
 
+class RecordChange(str, Enum):
+    """Whether the line requires the records of the entity to stay the same, or to change,
+    across a period the line states (the over-fill A/B's ``fields_stability`` field)."""
+
+    STABLE = "stable"
+    CHANGED = "changed"
+    NONE = "none"
+
+
 _ROUTE_VALUES = frozenset(route.value for route in AdministrationRoute)
 _SPECIMEN_VALUES = frozenset(member.value for member in Specimen)
 _NO_ENTITY_VALUES = frozenset(member.value for member in NoEntity)
+_RECORD_CHANGE_VALUES = frozenset(member.value for member in RecordChange)
+#: The values the build skips a criterion for; ``none`` (and absent) build as before.
+_RECORD_CHANGE_FILLS = frozenset({RecordChange.STABLE.value, RecordChange.CHANGED.value})
 
 
 def _quoted(values: Iterable[str]) -> str:
@@ -340,6 +378,19 @@ places what this criterion describes. One of:
 required when `timing` is `prospective`; otherwise it is that fragment when the line states \
 one, and null when the line does not.
 
+`record_change` states whether the protocol line requires the patient's records of this \
+criterion's entity to stay the same, or to change, across a period that the line states. One of:
+- `stable`: the line requires those records to stay the same across that period.
+- `changed`: the line requires those records to change across that period.
+- `none`: the line requires neither.
+A requirement that the entity be present, or have been present, for a length of time states a \
+duration, not records that stay the same or change. The name of a disease, a condition or a \
+finding is the entity itself, even where the name describes how it runs over time, and states \
+no requirement on the records.
+
+`record_change_span` is the fragment of the protocol line that states the requirement. It is \
+required when `record_change` is not `none` and null otherwise.
+
 `route` lists the routes of administration the protocol line restricts this criterion's drug \
 to. Each entry is one of the route values a clinical vocabulary attaches to drug dose forms: \
 {route_values}. A value covers the routes the vocabulary files under it: `topical` covers \
@@ -403,6 +454,8 @@ Output JSON:
 "cardinality": "<integer, or null>", \
 "timing": "<prior|at_index|prospective>", \
 "window_span": "<fragment of the protocol line, or null>", \
+"record_change": "<stable|changed|none>", \
+"record_change_span": "<fragment of the protocol line, or null>", \
 "route": ["<route value or any>"], \
 "route_span": "<fragment of the protocol line, or null>", \
 "specimen": "<blood|urine|other|any>", \
@@ -414,12 +467,13 @@ Output JSON:
 "reference_bound": "<uln|lln|none, or null>"}}"""
 
 # The agreement call's wording (see the module docstring): the two prompts above with the
-# system prompt's second paragraph and the definitions of the three compared fields --
+# system prompt's second paragraph and the definitions of three of the compared fields --
 # `conditional` and `conditional_span`, `excepted_entities` and `base_span`, and `no_entity` --
-# reworded with the same meaning and nothing added. It is the over-fill A/B's stage-2 `placebo`
-# arm, character for character (scripts/check_annotation_agreement_identity.py); every other
-# definition is identical to the first call's, so the second answer is asked the same question
-# in other words.
+# reworded with the same meaning and nothing added. It is the over-fill A/B's `pf` arm (stage
+# 2's `placebo` plus the `record_change` block, which both prompts carry byte for byte at the
+# same place), character for character (scripts/check_annotation_agreement_identity.py); every
+# other definition is identical to the first call's, so the second answer is asked the same
+# question in other words.
 AGREEMENT_SYSTEM_PROMPT = """You annotate one eligibility criterion of a clinical trial protocol.
 
 The criterion was already extracted from one line of the protocol, and no extracted field is \
@@ -492,6 +546,19 @@ places what this criterion describes. One of:
 required when `timing` is `prospective`; otherwise it is that fragment when the line states \
 one, and null when the line does not.
 
+`record_change` states whether the protocol line requires the patient's records of this \
+criterion's entity to stay the same, or to change, across a period that the line states. One of:
+- `stable`: the line requires those records to stay the same across that period.
+- `changed`: the line requires those records to change across that period.
+- `none`: the line requires neither.
+A requirement that the entity be present, or have been present, for a length of time states a \
+duration, not records that stay the same or change. The name of a disease, a condition or a \
+finding is the entity itself, even where the name describes how it runs over time, and states \
+no requirement on the records.
+
+`record_change_span` is the fragment of the protocol line that states the requirement. It is \
+required when `record_change` is not `none` and null otherwise.
+
 `route` lists the routes of administration the protocol line restricts this criterion's drug \
 to. Each entry is one of the route values a clinical vocabulary attaches to drug dose forms: \
 {route_values}. A value covers the routes the vocabulary files under it: `topical` covers \
@@ -555,6 +622,8 @@ Output JSON:
 "cardinality": "<integer, or null>", \
 "timing": "<prior|at_index|prospective>", \
 "window_span": "<fragment of the protocol line, or null>", \
+"record_change": "<stable|changed|none>", \
+"record_change_span": "<fragment of the protocol line, or null>", \
 "route": ["<route value or any>"], \
 "route_span": "<fragment of the protocol line, or null>", \
 "specimen": "<blood|urine|other|any>", \
@@ -694,6 +763,8 @@ def validate_annotation(
         FIELD_SPECIMEN_SPAN: None,
         FIELD_NO_ENTITY: None,
         FIELD_NO_ENTITY_SPAN: None,
+        FIELD_RECORD_CHANGE: None,
+        FIELD_RECORD_CHANGE_SPAN: None,
     }
     rejected: list[dict[str, Any]] = []
     if not isinstance(payload, Mapping):
@@ -782,6 +853,16 @@ def validate_annotation(
         span_field=FIELD_NO_ENTITY_SPAN,
         values=_NO_ENTITY_VALUES,
         spanless=NoEntity.NONE.value,
+    )
+    _validate_choice(
+        payload,
+        protocol_line,
+        fields,
+        rejected,
+        field=FIELD_RECORD_CHANGE,
+        span_field=FIELD_RECORD_CHANGE_SPAN,
+        values=_RECORD_CHANGE_VALUES,
+        spanless=RecordChange.NONE.value,
     )
     fields.update(_validate_threshold(payload, protocol_line, rejected))
     return fields, rejected
@@ -1158,16 +1239,18 @@ def _ask(
 
 def needs_agreement(fields: Mapping[str, Any]) -> bool:
     """Whether a validated answer fills a field :func:`agree` compares: an excepted entity,
-    ``record_requirement: conditional``, or a ``no_entity`` other than ``none``.
+    ``record_requirement: conditional``, a ``no_entity`` other than ``none``, or a
+    ``record_change`` other than ``none``.
 
     :param fields: the first answer, as :func:`validate_annotation` returns it.
     :returns: True when the agreement call is needed. The rule only ever reverts a fill, so a
-        row whose first answer fills none of the three would come out the same without it.
+        row whose first answer fills none of the four would come out the same without it.
     """
     return (
         bool(fields.get(FIELD_EXCEPTED_ENTITIES))
         or fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value
         or fields.get(FIELD_NO_ENTITY) not in (None, NoEntity.NONE.value)
+        or fields.get(FIELD_RECORD_CHANGE) in _RECORD_CHANGE_FILLS
     )
 
 
@@ -1205,6 +1288,11 @@ def agree(
       ``no_entity_span`` become None, which :func:`stated_no_entity` reads as ``none``.
       Measured on stage 2: requiring the same value instead broke one more control (DECLARE
       exclusion 48, refers_elsewhere against investigator_judgement) for no extra fix.
+    * ``record_change`` ``stable`` or ``changed`` is kept -- the first answer's value and
+      fragment -- when the second answer also gives one of the two, whichever; the same rule
+      shape as ``no_entity``. The build skips the criterion for either value
+      (:func:`record_change_skips`). Otherwise ``record_change`` and ``record_change_span``
+      become None, which builds as ``none``.
 
     No field is filled from the second answer: the rule only ever reverts a fill.
 
@@ -1258,6 +1346,16 @@ def agree(
             dropped[FIELD_NO_ENTITY] = decision
             fields[FIELD_NO_ENTITY] = None
             fields[FIELD_NO_ENTITY_SPAN] = None
+
+    value = first.get(FIELD_RECORD_CHANGE)
+    if value in _RECORD_CHANGE_FILLS:
+        decision = {"value": value, "span": first.get(FIELD_RECORD_CHANGE_SPAN)}
+        if second.get(FIELD_RECORD_CHANGE) in _RECORD_CHANGE_FILLS:
+            kept[FIELD_RECORD_CHANGE] = decision
+        else:
+            dropped[FIELD_RECORD_CHANGE] = decision
+            fields[FIELD_RECORD_CHANGE] = None
+            fields[FIELD_RECORD_CHANGE_SPAN] = None
     return fields, kept, dropped
 
 
@@ -1299,6 +1397,8 @@ def _agreement(
             FIELD_BASE_SPAN: second.get(FIELD_BASE_SPAN),
             FIELD_NO_ENTITY: second.get(FIELD_NO_ENTITY),
             FIELD_NO_ENTITY_SPAN: second.get(FIELD_NO_ENTITY_SPAN),
+            FIELD_RECORD_CHANGE: second.get(FIELD_RECORD_CHANGE),
+            FIELD_RECORD_CHANGE_SPAN: second.get(FIELD_RECORD_CHANGE_SPAN),
         },
     }
     if error is not None:
@@ -1326,7 +1426,7 @@ def annotate_row(
     :func:`agree` compares (:func:`needs_agreement`), a second call with
     :data:`AGREEMENT_PROMPT` follows, its answer is validated the same way, and the stored
     annotation keeps only what both answers give; the record of that goes under
-    :data:`AGREEMENT_KEY`. A row whose first answer fills none of the three gets no second
+    :data:`AGREEMENT_KEY`. A row whose first answer fills none of the four gets no second
     call and no record.
 
     :param row: the store criterion row; gains :data:`ANNOTATION_KEY` and, when a field
@@ -1633,6 +1733,62 @@ def prospective_skips(rows: Iterable[Any]) -> dict[str, ProspectiveSkip]:
     """
     rows = [r for r in rows if isinstance(r, Mapping)]
     own = {str(r.get(_ID, "")): skip for r in rows if (skip := _own_prospective(r)) is not None}
+    return _with_group_members(rows, own)
+
+
+@dataclass(frozen=True)
+class RecordChangeSkip:
+    """Why a row is recorded as a ``record_change`` skip.
+
+    :param span: the ``record_change_span`` of the deciding row, a substring of its line.
+    :param value: ``stable`` or ``changed``.
+    :param decided_by: the id of the deciding row -- the row itself, or its group label.
+    :param agreement_version: the agreement call's prompt version, when it confirmed the
+        deciding row's ``record_change`` (:data:`AGREEMENT_KEY`); None otherwise.
+    :param agreement_key: that call's cache key; None otherwise.
+    """
+
+    span: str
+    value: str
+    decided_by: str
+    agreement_version: str | None = None
+    agreement_key: str | None = None
+
+
+def _own_record_change(row: Mapping[str, Any]) -> RecordChangeSkip | None:
+    annotation = _annotation(row)
+    value = annotation.get(FIELD_RECORD_CHANGE)
+    span = annotation.get(FIELD_RECORD_CHANGE_SPAN)
+    if value in _RECORD_CHANGE_FILLS and span_in_line(span, row.get(_LINE)):
+        version, key = _confirmed_by(row, FIELD_RECORD_CHANGE)
+        return RecordChangeSkip(
+            span=span,
+            value=value,
+            decided_by=str(row.get(_ID, "")),
+            agreement_version=version,
+            agreement_key=key,
+        )
+    return None
+
+
+def record_change_skips(rows: Iterable[Any]) -> dict[str, RecordChangeSkip]:
+    """The rows of one role that are not emitted because their line requires the records of
+    the entity to stay the same, or to change, across a period.
+
+    Decided by the row's own agreed annotation only (``record_change`` ``stable`` or
+    ``changed``, with a ``record_change_span`` re-checked here against its line). CIRCE can
+    test that a record exists in a window, not that it stayed the same or changed across one,
+    so the criterion has no faithful rule. A group label with that decision takes every row of
+    its group with it, nested groups included, as :func:`conditional_skips` does; a member's
+    own decision stands where it has one.
+
+    :param rows: one role's store rows.
+    :returns: criterion id (stringified) -> the decision.
+    """
+    rows = [r for r in rows if isinstance(r, Mapping)]
+    own = {
+        str(r.get(_ID, "")): skip for r in rows if (skip := _own_record_change(r)) is not None
+    }
     return _with_group_members(rows, own)
 
 
