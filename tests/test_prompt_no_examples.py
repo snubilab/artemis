@@ -316,12 +316,26 @@ def _annotation_calls(reply: str) -> list[str]:
     return recorder.calls
 
 
+def _record_change_call(prompt: str) -> bool:
+    """Whether a rendered call is call 3 or 4: they alone carry the record_change block."""
+    from src.services import criterion_annotation
+
+    return criterion_annotation.RECORD_CHANGE_PROMPT_BLOCK.split("\n")[0] in prompt
+
+
 def _render_criterion_annotation() -> str:
-    """The first call: an answer that fills nothing the agreement compares, so no second call."""
-    return _joined(_annotation_calls(
+    """The first call: an answer that fills nothing the agreement compares and no record_change,
+    so no second or fourth call. Call 3, made for every row, is linted on its own."""
+    from src.services import criterion_annotation
+
+    calls = _annotation_calls(
         '{"record_requirement": "required", "conditional_span": null, '
         '"excepted_entities": [], "base_span": null}'
-    ))
+    )
+    first = [c for c in calls if c.startswith(criterion_annotation.ANNOTATION_SYSTEM_PROMPT)
+             and not _record_change_call(c)]
+    assert len(first) == len(calls) // 2 == 2, "calls 1 and 3 were not made for every row"
+    return _joined(first)
 
 
 def _render_criterion_annotation_agreement() -> str:
@@ -335,24 +349,35 @@ def _render_criterion_annotation_agreement() -> str:
         f'"no_entity_span": "{STUB} line"}}'
     )
     second = [c for c in calls if c.startswith(criterion_annotation.AGREEMENT_SYSTEM_PROMPT)]
-    assert len(second) == len(calls) // 2 == 2, "the agreement call was not made for every row"
+    assert len(second) == len(calls) // 3 == 2, "the agreement call was not made for every row"
     return _joined(second)
 
 
-def _render_criterion_annotation_agreement_record_change() -> str:
-    """The agreement call reached through a ``record_change`` fill alone (the first answer fills
-    no other compared field), so the call site that field opens is linted as well."""
+def _render_criterion_annotation_record_change() -> str:
+    """Call 3 (``RECORD_CHANGE_PROMPT``), made for every row with a line; the answer fills no
+    record_change, so no call 4."""
+    calls = _annotation_calls('{"record_requirement": "required", "record_change": "none"}')
+    third = [c for c in calls if _record_change_call(c)]
+    assert len(third) == len(calls) // 2 == 2, "call 3 was not made for every row"
+    return _joined(third)
+
+
+def _render_criterion_annotation_record_change_agreement() -> str:
+    """Call 4 (``RECORD_CHANGE_AGREEMENT_PROMPT``): the answer fills record_change with a
+    fragment of the line, so every row gets it after call 3."""
     from src.services import criterion_annotation
 
     calls = _annotation_calls(
         f'{{"record_requirement": "required", "record_change": "stable", '
         f'"record_change_span": "{STUB} line"}}'
     )
-    second = [c for c in calls if c.startswith(criterion_annotation.AGREEMENT_SYSTEM_PROMPT)]
-    assert len(second) == len(calls) // 2 == 2, (
-        "a record_change fill did not open the agreement call"
-    )
-    return _joined(second)
+    fourth = [
+        c for c in calls
+        if c.startswith(criterion_annotation.RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT)
+        and _record_change_call(c)
+    ]
+    assert len(fourth) == len(calls) // 3 == 2, "a record_change fill did not open call 4"
+    return _joined(fourth)
 
 
 def _render_specimen_critic() -> str:
@@ -530,8 +555,6 @@ PROMPTS: dict[str, PromptSpec] = {
             # RFC-016 step 3: the threshold fields and their enum values.
             "threshold_span", "quantity_kind", "reference_bound", "lab_value", "dose",
             "duration", "count", "statistical", "uln", "lln",
-            # record_change (2026-10-15, the over-fill A/B's fields_stability block) and its values.
-            "record_change", "record_change_span", "stable", "changed",
         }),
     ),
 }
@@ -539,9 +562,16 @@ PROMPTS: dict[str, PromptSpec] = {
 PROMPTS["criterion_annotation.agreement"] = PromptSpec(
     _render_criterion_annotation_agreement, tokens=PROMPTS["criterion_annotation"].tokens,
 )
-PROMPTS["criterion_annotation.agreement.record_change"] = PromptSpec(
-    _render_criterion_annotation_agreement_record_change,
-    tokens=PROMPTS["criterion_annotation"].tokens,
+# Calls 3 and 4 ask the same fields plus record_change (2026-10-15, the over-fill A/B's
+# fields_stability block) and its values.
+_RECORD_CHANGE_TOKENS = PROMPTS["criterion_annotation"].tokens | frozenset({
+    "record_change", "record_change_span", "stable", "changed",
+})
+PROMPTS["criterion_annotation.record_change"] = PromptSpec(
+    _render_criterion_annotation_record_change, tokens=_RECORD_CHANGE_TOKENS,
+)
+PROMPTS["criterion_annotation.record_change.agreement"] = PromptSpec(
+    _render_criterion_annotation_record_change_agreement, tokens=_RECORD_CHANGE_TOKENS,
 )
 
 
@@ -866,7 +896,7 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/services/tte_service.py": (6, ("tte.analysis_finalizer", "tte.report_narrative")),
     "src/services/criterion_annotation.py": (
         3, ("criterion_annotation", "criterion_annotation.agreement",
-            "criterion_annotation.agreement.record_change"),
+            "criterion_annotation.record_change", "criterion_annotation.record_change.agreement"),
     ),
     "src/utils/llm.py": (6, "transport: builds the chat client get_llm returns and appends "
                             "/no_think to the caller's last message; carries no prompt of its own"),

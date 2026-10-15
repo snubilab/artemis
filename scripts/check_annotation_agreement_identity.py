@@ -1,12 +1,14 @@
-"""Are production's two annotation prompts byte-identical to the measured `cf` and `pf` arms?
+"""Are production's four annotation calls byte-identical to the prompts the over-fill A/B measured?
 
-Since the ``record_change`` block (2026-10-15) the first call is stage 2's `current` with that
-block (`cf`) and the agreement call stage 2's `placebo` with the same block (`pf`), measured in
-``overfill/ab_runs/cfpf_*/`` by ``overfill/ab_harness_cfpf.py``; the arms are registered by
-``overfill/prompts_record_change.py``, which ``--harness-module`` imports on the harness side.
-``--arms`` names the plan's two arms, first call then agreement call (``cf,pf``; stage 2's
-``current,placebo`` with ``--harness-module prompts`` checks the pre-block prompts against a
-pre-block tree). Before the block the script read:
+Since 2026-10-15 a row gets four calls: 1 and 2 are stage 2's `current` and `placebo`
+(``overfill/ab_runs/stage2_*/plan.json``), 3 and 4 the re-check's `cf` and `pf`
+(``overfill/ab_runs/cfpf_*/plan.json``, arms registered by ``overfill/prompts_record_change.py``).
+One run of this script checks one plan: ``--arms`` names two of its arms and ``--calls`` which
+production calls (0-based) send them -- ``--arms current,placebo --calls 0,1 --harness-module
+prompts`` against stage 2's plan, ``--arms cf,pf --calls 2,3`` (the defaults) against the
+re-check's. Production is recorded the same way in both: every row's call 1 and call 3 are
+answered with a fill (no_entity and record_change, each with the row's own line as its
+fragment), so every row makes all four calls. Before the four calls the script read:
 
 Are production's two annotation prompts byte-identical to stage 2's `current` and `placebo`?
 
@@ -66,13 +68,18 @@ REPO = Path(__file__).resolve().parents[1]
 ROLE_KEYS = {"inclusion": "inclusionCriteria", "exclusion": "exclusionCriteria"}
 #: The studies ``dry_driver.py`` repairs on arm A (its ``STUDIES["a"]``).
 REPAIR_STUDIES = (1, 2, 3, 8, 9, 10)
-#: Plan arm -> which production call sends it; set from ``--arms`` (first call, agreement call).
-ARM_CALL = {"cf": 0, "pf": 1}
+#: Plan arm -> which production call (0-based) sends it; set from ``--arms`` and ``--calls``.
+ARM_CALL = {"cf": 2, "pf": 3}
+#: Calls per row production makes when every fill is answered (see the docstring).
+CALLS_PER_ROW = 4
 
 
-def _arm_call(arms: str) -> dict[str, int]:
-    first, second = (a.strip() for a in arms.split(","))
-    return {first: 0, second: 1}
+def _arm_call(arms: str, calls: str) -> dict[str, int]:
+    names = [a.strip() for a in arms.split(",")]
+    numbers = [int(c) for c in calls.split(",")]
+    if len(names) != 2 or len(numbers) != 2:
+        raise SystemExit("--arms and --calls each take two comma-separated values")
+    return dict(zip(names, numbers))
 
 
 def _rows(paths: list[Path]) -> dict[tuple[str, str, str], dict[str, Any]]:
@@ -172,13 +179,14 @@ def harness_side(args: argparse.Namespace) -> dict[str, Any]:
 
 
 class _Recorder:
-    """The chat model, replaced: records each (system, user) pair. Every first call is answered
-    with a ``no_entity`` fill whose fragment is that row's own line (so the agreement call follows);
-    every second call with an empty object."""
+    """The chat model, replaced: records each (system, user) pair. Calls 1 and 3 (both sent with
+    ``first_system``) are answered with a ``no_entity`` and a ``record_change`` fill whose
+    fragment is the row's own line, so calls 2 and 4 follow; those get an empty object. With one
+    worker the calls arrive row by row, 1-2-3-4, so each row's line is used twice."""
 
     def __init__(self, first_system: str, lines: list[str]) -> None:
         self.first_system = first_system
-        self.lines = lines
+        self.lines = [line for line in lines for _ in (1, 3)]
         self.calls: list[tuple[str, str]] = []
         self._next = 0
 
@@ -192,7 +200,10 @@ class _Recorder:
         line = self.lines[self._next]
         self._next += 1
         return AIMessage(
-            content=json.dumps({"no_entity": "refers_elsewhere", "no_entity_span": line})
+            content=json.dumps({
+                "no_entity": "refers_elsewhere", "no_entity_span": line,
+                "record_change": "stable", "record_change_span": line,
+            })
         )
 
 
@@ -236,6 +247,10 @@ def production_side(args: argparse.Namespace) -> dict[str, Any]:
             "repaired": repaired,
             "promptVersion": production.ANNOTATION_PROMPT_VERSION,
             "agreementPromptVersion": production.AGREEMENT_PROMPT_VERSION,
+            "recordChangePromptVersions": [
+                production.RECORD_CHANGE_PROMPT_VERSION,
+                production.RECORD_CHANGE_AGREEMENT_PROMPT_VERSION,
+            ],
         }
     }
     for tag, slug in wanted:
@@ -254,24 +269,29 @@ def production_side(args: argparse.Namespace) -> dict[str, Any]:
         )
         with patch.object(production, "_build_llm", lambda _model: recorder):
             production.annotate_eligibility(eligibility, model="stub-model")
-        if len(recorder.calls) != 2 * len(jobs):
+        if len(recorder.calls) != CALLS_PER_ROW * len(jobs):
             raise SystemExit(
-                f"{tag}/{slug}: {len(recorder.calls)} calls for {len(jobs)} rows; "
-                "every row's first answer fills no_entity, so each needs two"
+                f"{tag}/{slug}: {len(recorder.calls)} calls for {len(jobs)} rows; every row's "
+                f"calls 1 and 3 are answered with a fill, so each needs {CALLS_PER_ROW}"
             )
+        systems = (
+            production.ANNOTATION_SYSTEM_PROMPT,
+            production.AGREEMENT_SYSTEM_PROMPT,
+            production.RECORD_CHANGE_SYSTEM_PROMPT,
+            production.RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT,
+        )
         for index, (role, row) in enumerate(jobs):
-            first, second = recorder.calls[2 * index], recorder.calls[2 * index + 1]
-            if not first[1].startswith(f"Protocol line:\n{row[production._LINE]}\n\n"):
-                raise SystemExit(f"{tag}/{slug} {role} {row.get('id')}: calls out of job order")
-            if (first[0], second[0]) != (
-                production.ANNOTATION_SYSTEM_PROMPT,
-                production.AGREEMENT_SYSTEM_PROMPT,
+            calls = recorder.calls[CALLS_PER_ROW * index:CALLS_PER_ROW * (index + 1)]
+            if not all(
+                c[1].startswith(f"Protocol line:\n{row[production._LINE]}\n\n") for c in calls
             ):
+                raise SystemExit(f"{tag}/{slug} {role} {row.get('id')}: calls out of job order")
+            if tuple(c[0] for c in calls) != systems or calls[0][1] == calls[2][1]:
                 raise SystemExit(
-                    f"{tag}/{slug} {role} {row.get('id')}: the two calls are not "
-                    "the annotation call followed by its agreement call"
+                    f"{tag}/{slug} {role} {row.get('id')}: the four calls are not the annotation "
+                    "call, its agreement call, the record_change call and its agreement call"
                 )
-            out[_key(tag, study["id"], role, row.get("id"))] = [list(first), list(second)]
+            out[_key(tag, study["id"], role, row.get("id"))] = [list(c) for c in calls]
     return out
 
 
@@ -332,7 +352,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--repair", action="append", default=[], help="store TAG the P3 driver repairs")
     ap.add_argument("--scratch", required=True, type=Path)
     ap.add_argument("--out", type=Path, help="write the counts and every differing key here")
-    ap.add_argument("--arms", default="cf,pf", help="the plan's arms: first call, agreement call")
+    ap.add_argument("--arms", default="cf,pf", help="two of the plan's arms")
+    ap.add_argument("--calls", default="2,3",
+                    help="the production calls (0-based) that send those arms, in the same order")
     ap.add_argument("--harness-module", default="prompts_record_change",
                     help="module in --harness-dir that registers those arms")
     ap.add_argument("--side", choices=("harness", "production"), help=argparse.SUPPRESS)
@@ -341,7 +363,7 @@ def main(argv: list[str] | None = None) -> int:
     raw = list(sys.argv[1:] if argv is None else argv)
     args = ap.parse_args(raw)
     ARM_CALL.clear()
-    ARM_CALL.update(_arm_call(args.arms))
+    ARM_CALL.update(_arm_call(args.arms, args.calls))
 
     if args.side is not None:
         result = harness_side(args) if args.side == "harness" else production_side(args)
@@ -378,12 +400,15 @@ def main(argv: list[str] | None = None) -> int:
     counts = _tally(keys, harness, production)
     print(json.dumps(counts))
     differing = {
-        arm: [k for k in keys if (production.get(k) or [None, None])[call] != harness[k][arm]]
+        arm: [
+            k for k in keys
+            if (production.get(k) or [None] * CALLS_PER_ROW)[call] != harness[k][arm]
+        ]
         for arm, call in ARM_CALL.items()
     }
     for arm, call in ARM_CALL.items():
         for key in differing[arm][:2]:
-            p, h = (production.get(key) or [["", ""], ["", ""]])[call], harness[key][arm]
+            p, h = (production.get(key) or [["", ""]] * CALLS_PER_ROW)[call], harness[key][arm]
             print(f"\nfirst difference ({arm}), {harness[key]['spec']} ({key}):")
             diff = difflib.unified_diff(
                 "\n".join(h).splitlines(),

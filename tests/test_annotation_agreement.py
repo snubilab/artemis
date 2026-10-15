@@ -17,11 +17,12 @@ Each case is a real row of the P3 dry run with the two real answers stage 2 reco
 (``tests/fixtures/annotation_agreement_rows.json``). The model is replaced by a stub that
 replays them: the first call gets the `current` answer, the second the `placebo` answer.
 
-Since the ``record_change`` block (2026-10-15) the two calls send stage 2's wordings with that
-block in both (the re-check's `cf` and `pf` arms, ``overfill/ab_runs/cfpf_*``); the identity
-tests pin those prompts, and that the block is their only difference from stage 2's. The
-replayed answers are stage 2's, given to the pre-block prompts: they exercise the rule, which
-the block does not change for these fields.
+Since 2026-10-15 every row also gets calls 3 and 4, for ``record_change`` only: call 3 sends the
+re-check's `cf` prompt (stage 2's `current` with the record_change block) and call 4 its `pf`
+(`placebo` with the block), made only when call 3 fills record_change. The stub answers each call
+by which of the four prompts it was sent, from the real answers in the fixture (calls 3 and 4:
+repeat 1 of ``overfill/ab_runs/cfpf_20261015_075611``). Calls 1 and 2 are still stage 2's prompts
+byte for byte, and the identity tests pin all four.
 """
 
 from __future__ import annotations
@@ -54,17 +55,39 @@ CASES = {(r["trial"], r["role"], r["id"]): r for r in FIXTURE["rows"]}
 _STALE = ("annotation", "_annotationRejected", "_windowDisagreement", "_annotationAgreement")
 
 
-class _Replay:
-    """The chat model, replaced: answers each call with the next recorded reply, in order."""
+#: The four calls of a row, by the arm of the over-fill A/B whose prompt each sends.
+CALLS = {
+    "current": ("ANNOTATION_SYSTEM_PROMPT", "ANNOTATION_PROMPT"),
+    "placebo": ("AGREEMENT_SYSTEM_PROMPT", "AGREEMENT_PROMPT"),
+    "cf": ("RECORD_CHANGE_SYSTEM_PROMPT", "RECORD_CHANGE_PROMPT"),
+    "pf": ("RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT", "RECORD_CHANGE_AGREEMENT_PROMPT"),
+}
 
-    def __init__(self, *replies: str | Exception) -> None:
-        self.replies = list(replies)
+
+class _Replay:
+    """The chat model, replaced: answers each call with the recorded answer of the arm whose
+    prompt it was sent (rendered for this row by the production renderer)."""
+
+    def __init__(self, case: dict[str, Any], answers: dict[str, str | Exception]) -> None:
+        self.answers = answers
+        self.prompts = {
+            arm: (
+                getattr(annotation, system),
+                annotation.render_prompt(
+                    case["row"], case["members"], case["role"], getattr(annotation, template)
+                ),
+            )
+            for arm, (system, template) in CALLS.items()
+        }
         self.calls: list[tuple[str, str]] = []
+        self.arms: list[str] = []
 
     def invoke(self, messages: list[Any]) -> AIMessage:
-        self.calls.append(tuple(str(m.content) for m in messages))
-        assert len(self.calls) <= len(self.replies), "more calls than recorded answers"
-        reply = self.replies[len(self.calls) - 1]
+        sent = tuple(str(m.content) for m in messages)
+        (arm,) = [a for a, prompt in self.prompts.items() if prompt == sent]
+        self.calls.append(sent)
+        self.arms.append(arm)
+        reply = self.answers[arm]
         if isinstance(reply, Exception):
             raise reply
         return AIMessage(content=reply)
@@ -87,11 +110,11 @@ def _fresh(case: dict[str, Any]) -> dict[str, Any]:
 
 
 def _annotate(
-    spec: tuple[str, str, str], *replies: str | Exception
+    spec: tuple[str, str, str], **overrides: str | Exception
 ) -> tuple[dict[str, Any], _Replay]:
     case = CASES[spec]
-    answers = case["answers"]
-    llm = _Replay(*(replies or (answers["current"]["content"], answers["placebo"]["content"])))
+    answers = {arm: answer["content"] for arm, answer in case["answers"].items()}
+    llm = _Replay(case, {**answers, **overrides})
     row = _fresh(case)
     annotation.annotate_row(row, case["members"], case["role"], model="stub", llm=llm)
     return row, llm
@@ -118,7 +141,7 @@ class TestExceptedEntities:
         criterion, not entities removed from it; the `placebo` answer excepts nothing."""
         row, llm = _annotate(("carmelina", "exclusion", "16"))
 
-        assert len(llm.calls) == 2
+        assert llm.arms[:2] == ["current", "placebo"]
         assert row[ANNOTATION_KEY]["excepted_entities"] == []
         assert row[ANNOTATION_KEY]["base_span"] is None
         assert stated_exceptions(row) == [] and stated_base(row) is None
@@ -279,7 +302,7 @@ class TestTheSecondCall:
         compares (its `placebo` answer happens to say conditional, which must never be asked)."""
         row, llm = _annotate(("declare", "exclusion", "2"))
 
-        assert len(llm.calls) == 1
+        assert "placebo" not in llm.arms and llm.arms[0] == "current"
         assert "_annotationAgreement" not in row
         expected, _rejected = annotation.validate_annotation(
             json.loads(CASES[("declare", "exclusion", "2")]["answers"]["current"]["content"]),
@@ -288,29 +311,41 @@ class TestTheSecondCall:
         assert {k: row[ANNOTATION_KEY][k] for k in expected} == expected
 
     @pytest.mark.parametrize("spec", sorted(CASES), ids=lambda s: ":".join(s))
-    def test_should_send_the_prompts_the_re_check_sent_as_cf_and_pf(self, spec):
-        """Byte identity, per row: the first call is what the re-check sent as `cf`, the second
-        what it sent as `pf` (sha256 of the harness's own rendering, from the fixture)."""
+    def test_should_send_the_four_prompts_the_a_b_measured(self, spec):
+        """Byte identity, per row and call: calls 1 and 2 are what stage 2 sent as `current` and
+        `placebo`, calls 3 and 4 what the re-check sent as `cf` and `pf` (sha256 of the
+        harness's own rendering, from the fixture). Calls come in that order."""
         _row, llm = _annotate(spec)
-        want = CASES[spec]["cfpfPromptSha256"]
+        want = {**CASES[spec]["stage2PromptSha256"], **CASES[spec]["cfpfPromptSha256"]}
         sent = [
             hashlib.sha256(json.dumps(list(call), ensure_ascii=False).encode("utf-8")).hexdigest()
             for call in llm.calls
         ]
-        assert sent[0] == want["cf"]
-        if len(sent) > 1:
-            assert sent[1] == want["pf"]
+        assert sent == [want[arm] for arm in llm.arms]
+        assert llm.arms == sorted(llm.arms, key=list(CALLS).index)
+        assert {"current", "cf"} <= set(llm.arms)
 
-    def test_should_hold_the_two_prompts_the_re_check_measured(self):
-        prompts = FIXTURE["cfpfPrompts"]
+    def test_should_hold_the_two_prompts_stage_two_measured(self):
+        prompts = FIXTURE["stage2Prompts"]
         assert (annotation.ANNOTATION_SYSTEM_PROMPT, annotation.ANNOTATION_PROMPT) == (
+            prompts["current"]["system"],
+            prompts["current"]["userTemplate"],
+        )
+        assert (annotation.AGREEMENT_SYSTEM_PROMPT, annotation.AGREEMENT_PROMPT) == (
+            prompts["placebo"]["system"],
+            prompts["placebo"]["userTemplate"],
+        )
+
+    def test_should_hold_the_two_record_change_prompts_the_re_check_measured(self):
+        prompts = FIXTURE["cfpfPrompts"]
+        assert (annotation.RECORD_CHANGE_SYSTEM_PROMPT, annotation.RECORD_CHANGE_PROMPT) == (
             prompts["cf"]["system"],
             prompts["cf"]["userTemplate"],
         )
-        assert (annotation.AGREEMENT_SYSTEM_PROMPT, annotation.AGREEMENT_PROMPT) == (
-            prompts["pf"]["system"],
-            prompts["pf"]["userTemplate"],
-        )
+        assert (
+            annotation.RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT,
+            annotation.RECORD_CHANGE_AGREEMENT_PROMPT,
+        ) == (prompts["pf"]["system"], prompts["pf"]["userTemplate"])
 
     @pytest.mark.parametrize(("arm", "stage2_arm"), [("cf", "current"), ("pf", "placebo")])
     def test_should_differ_from_stage_twos_prompts_by_the_record_change_block_alone(
@@ -330,20 +365,21 @@ class TestTheSecondCall:
         assert now["system"] == then["system"]
         assert (user[:start] + user[end:]).replace(keys, "", 1) == then["userTemplate"]
 
-    def test_should_cache_both_calls_under_their_own_keys_and_replay_them(self, tmp_path):
+    def test_should_cache_every_call_under_its_own_key_and_replay_them(self, tmp_path):
         spec = ("leader", "exclusion", "40")
         first, llm = _annotate(spec)
         again, replay = _annotate(spec)  # offered the same answers; the cache must answer instead
-        assert len(llm.calls) == 2 and len(replay.calls) == 0
+        assert llm.arms == ["current", "placebo", "cf"] and len(replay.calls) == 0
         assert again[ANNOTATION_KEY] == first[ANNOTATION_KEY]
         assert _agreement(again)["outcome"] == "cached"
         records = [
             json.loads(line) for line in (tmp_path / "annotations.jsonl").read_text().splitlines()
         ]
-        assert len({r["key"] for r in records}) == 2
+        assert len({r["key"] for r in records}) == 3
         assert {r["promptVersion"] for r in records} == {
             annotation.ANNOTATION_PROMPT_VERSION,
             annotation.AGREEMENT_PROMPT_VERSION,
+            annotation.RECORD_CHANGE_PROMPT_VERSION,
         }
         assert annotation.ANNOTATION_PROMPT_VERSION != annotation.AGREEMENT_PROMPT_VERSION
         assert _agreement(again)["cacheKey"] in {r["key"] for r in records}
@@ -351,13 +387,10 @@ class TestTheSecondCall:
     def test_should_drop_every_fill_and_record_the_error_when_the_second_call_fails(self, tmp_path):
         """No second answer, so nothing is in both: the fill falls back as a disagreement does,
         and the failure is on the record, never cached."""
-        case = CASES[("empa-reg", "exclusion", "19")]
         row, llm = _annotate(
-            ("empa-reg", "exclusion", "19"),
-            case["answers"]["current"]["content"],
-            RuntimeError("vLLM went away"),
+            ("empa-reg", "exclusion", "19"), placebo=RuntimeError("vLLM went away")
         )
-        assert len(llm.calls) == 2
+        assert llm.arms[:2] == ["current", "placebo"]
         assert row[ANNOTATION_KEY]["excepted_entities"] == []
         record = _agreement(row)
         assert record["outcome"] == "error" and "vLLM went away" in record["error"]
@@ -365,7 +398,10 @@ class TestTheSecondCall:
         records = [
             json.loads(line) for line in (tmp_path / "annotations.jsonl").read_text().splitlines()
         ]
-        assert [r["promptVersion"] for r in records] == [annotation.ANNOTATION_PROMPT_VERSION]
+        assert [r["promptVersion"] for r in records] == [
+            annotation.ANNOTATION_PROMPT_VERSION,
+            annotation.RECORD_CHANGE_PROMPT_VERSION,
+        ]
 
 
 # --------------------------------------------------------------------------- #
@@ -477,6 +513,10 @@ def test_should_carry_the_agreement_into_the_skip_record_and_the_files_record_li
     ]
     assert sorted(_spans(listed[1]["dropped"]["excepted_entities"])) == ["coronary", "peripheral"]
     assert "exclusion:16" in circe["_criterionConceptSetRefs"]
+    # calls 3 and 4: call 3 said `none` on both rows, so call 4 was made for neither --
+    # the list is present and empty, and each row carries call 3's record
+    assert circe[annotation.RECORD_CHANGE_RECORDS_KEY] == []
+    assert kept[annotation.RECORD_CHANGE_KEY]["second"] is None
 
     study = {"eligibility": {"inclusionCriteria": [kept], "exclusionCriteria": [dropped]}}
     assert skipped_criteria_violations([skip], criteria_index(study), circe) == []

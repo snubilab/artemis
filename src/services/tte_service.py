@@ -90,6 +90,7 @@ from src.services.criterion_annotation import (
     PROSPECTIVE_REASON,
     RECORD_CHANGE_EXPLANATION,
     RECORD_CHANGE_REASON,
+    RECORD_CHANGE_RECORDS_KEY,
     StatedRelation,
     THRESHOLD_NOT_REPRESENTABLE_REASON,
     UNREPRESENTABLE_THRESHOLDS_KEY,
@@ -98,6 +99,7 @@ from src.services.criterion_annotation import (
     applied_value_constraint,
     conditional_skips,
     prospective_skips,
+    record_change_records,
     record_change_skips,
     relation_group_type,
     stated_exceptions,
@@ -5090,8 +5092,8 @@ class TTEService:
                     "recordChange": decision.value,
                     "recordChangeSpan": decision.span,
                     "recordChangeDecidedBy": decision.decided_by,
-                    # The agreement call that confirmed the deciding row's record_change
-                    # (criterion_annotation.agree); None for an annotation stored without it.
+                    # Call 4, when it confirmed the deciding row's record_change
+                    # (criterion_annotation.agree_record_change); None otherwise.
                     "recordChangeAgreement": (
                         {"promptVersion": decision.agreement_version,
                          "cacheKey": decision.agreement_key}
@@ -5162,6 +5164,11 @@ class TTEService:
         # stays recorded as the criterion loss it is rather than under this permitted reason.
         record_change_inclusions = record_change_skips(inc_criteria)
         record_change_exclusions = record_change_skips(exc_criteria)
+        # Calls 3 and 4 of the annotation: per row call 4 was made for (or call 3 failed for),
+        # what they decided (`criterion_annotation.record_change_records`).
+        record_changes = record_change_records(inc_criteria, "inclusion") + record_change_records(
+            exc_criteria, "exclusion"
+        )
 
         # Group labels, recorded once mapping is done (see after the mapping pool).
         deferred_labels: list[tuple[dict[str, Any], str]] = []
@@ -5866,6 +5873,8 @@ class TTEService:
             # Same present-and-empty contract: what the annotation's agreement call kept and
             # dropped, per criterion it was made for (`criterion_annotation.agreement_records`).
             AGREEMENT_RECORDS_KEY: annotation_agreements,
+            # Same contract: what the record_change calls (3 and 4) confirmed and took away.
+            RECORD_CHANGE_RECORDS_KEY: record_changes,
             # ... and the units restored from a dropped trailing exponent, with the LOINC
             # property of the criterion's own concepts that verified each one.
             RESTORED_UNIT_CRITERIA_KEY: sorted(

@@ -1,22 +1,29 @@
-"""The go/no-go rows, end to end: their real answers in, a recorded skip out.
+"""The go/no-go rows, end to end: their real answers in, a record-change skip out.
 
 "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior
-to" (CARMELINA inclusion 7; CAROLINA inclusion 37/38/41 and their arm-B counterparts) asks
-that a dose stayed the same across a period. CIRCE cannot test that; at ``b027a7d`` the build
-emitted these rows as DrugExposure PRESENCE -- "some antidiabetic exposure exists" -- which is
-not what the protocol line says. With ``record_change`` the annotation states it in a schema
-field with a quoted span; the build records the row as a skip under
-``record-change-not-representable``, a group label takes its members, and the delivery gate
-re-judges the skip from the store row.
+to" (CARMELINA inclusion 7; CAROLINA inclusion 37/38/41, their arm-B and P2-NEW counterparts)
+asks that a dose stayed the same across a period. CIRCE cannot test that; at ``b027a7d`` the
+build emitted these rows as DrugExposure PRESENCE (Occurrence Type 2, Count 1) -- "some
+antidiabetic exposure exists" -- which is not what the protocol line says.
 
-Every case is a real row of the P3 dry run (arm A / arm B stores, verbatim) with the real
-gemma-4-E4B answers the cf / pf re-check recorded for it
+Four calls per row (coordinator, 2026-10-15): calls 1 and 2 are stage 2's `current` and
+`placebo` prompts and decide every field but record_change; call 3 (`cf`) is made on every row
+and read for record_change only; call 4 (`pf`) only when call 3 fills it, and the fill is kept
+only when call 4 fills one too. The build records a kept fill as
+``record-change-not-representable``, a group label takes its members, the delivery gate
+re-judges the skip from the store row, and a row with that fill that reached a rule anyway fails
+the gate.
+
+Every case is a real row of the P3 dry run (arm A / arm B / P2-NEW stores, verbatim) with the
+real gemma-4-E4B answers of every call where one exists
 (``tests/fixtures/record_change_go_nogo_rows.json``, written by
-``overfill/analysis_cfpf/make_record_change_fixture.py``; rows chosen before any answer
-existed). The model is a stub replaying them -- the first call gets the `cf` answer, the
-second the `pf` answer -- and each call is checked to send exactly the prompt that answer was
-given to. Controls (two disease names that describe a course, a duration, a drug) keep
-emitting.
+``overfill/analysis_cfpf/make_record_change_fixture.py``; rows chosen before any answer existed):
+calls 1 and 2 from stage 2 (call 1 from the stability run for arm-B rows -- the same prompt),
+calls 3 and 4 from the cf / pf re-check. Stage 2 did not run arm B, so no call-2 answer exists
+for an arm-B row; a row whose call 1 asks for call 2 without one is not "replayable", and the
+end-to-end build uses only replayable rows (the excluded ones are named in a test). The stub
+answers each call by which of the four prompts it was sent, and each call is checked to send
+exactly the prompt its answer was given to.
 """
 
 from __future__ import annotations
@@ -39,26 +46,56 @@ FIXTURE = json.loads(
     (Path(__file__).parent / "fixtures" / "record_change_go_nogo_rows.json").read_text()
 )
 CASES = {(r["trial"], r["role"], r["id"]): r for r in FIXTURE["rows"]}
-GO_NOGO = sorted(k for k, r in CASES.items() if r["group"] == "gonogo")
-MEMBERS = sorted(k for k, r in CASES.items() if r["group"] == "member")
+GO_NOGO = sorted(k for k, r in CASES.items() if r["group"] in ("gonogo", "counterpart"))
 CHANGE = sorted(k for k, r in CASES.items() if r["group"] == "change")
 CONTROLS = sorted(k for k, r in CASES.items() if r["group"] == "control")
-#: Keys a store row carries from the P3 dry run's own annotation, removed before re-annotating.
-_STALE = ("annotation", "_annotationRejected", "_windowDisagreement", "_annotationAgreement")
 REASON = getattr(annotation, "RECORD_CHANGE_REASON", "record-change-not-representable")
+#: Keys a store row carries from the P3 dry run's own annotation, removed before re-annotating.
+_STALE = (
+    "annotation", "_annotationRejected", "_windowDisagreement", "_annotationAgreement",
+    "_recordChangeAgreement",
+)
+#: The four calls of a row, by the arm of the over-fill A/B whose prompt each sends.
+CALLS = {
+    "current": ("ANNOTATION_SYSTEM_PROMPT", "ANNOTATION_PROMPT"),
+    "placebo": ("AGREEMENT_SYSTEM_PROMPT", "AGREEMENT_PROMPT"),
+    "cf": ("RECORD_CHANGE_SYSTEM_PROMPT", "RECORD_CHANGE_PROMPT"),
+    "pf": ("RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT", "RECORD_CHANGE_AGREEMENT_PROMPT"),
+}
+
+
+class _NoMeasuredAnswerError(RuntimeError):
+    """Raised for a call no measured answer exists for (call 2 of an arm-B row)."""
 
 
 class _Replay:
-    """The chat model, replaced: answers each call with the next recorded reply, in order."""
+    """The chat model, replaced: answers each call with the recorded answer of the arm whose
+    prompt it was sent, rendered for this row by the production renderer."""
 
-    def __init__(self, *replies: str) -> None:
-        self.replies = list(replies)
+    def __init__(self, case: dict[str, Any]) -> None:
+        self.answers = {arm: a["content"] for arm, a in case["answers"].items()}
+        self.prompts = {
+            arm: (
+                getattr(annotation, system, None),
+                annotation.render_prompt(
+                    case["row"], case["members"], case["role"],
+                    getattr(annotation, template, annotation.ANNOTATION_PROMPT),
+                ),
+            )
+            for arm, (system, template) in CALLS.items()
+        }
         self.calls: list[tuple[str, ...]] = []
+        self.arms: list[str] = []
 
     def invoke(self, messages: list[Any]) -> AIMessage:
-        self.calls.append(tuple(str(m.content) for m in messages))
-        assert len(self.calls) <= len(self.replies), "more calls than recorded answers"
-        return AIMessage(content=self.replies[len(self.calls) - 1])
+        sent = tuple(str(m.content) for m in messages)
+        arms = [a for a, prompt in self.prompts.items() if prompt == sent]
+        assert len(arms) == 1, f"the call matches {arms} of the four prompts"
+        self.calls.append(sent)
+        self.arms.append(arms[0])
+        if arms[0] not in self.answers:
+            raise _NoMeasuredAnswerError(f"no measured {arms[0]} answer for this row")
+        return AIMessage(content=self.answers[arms[0]])
 
 
 @pytest.fixture(autouse=True)
@@ -75,9 +112,15 @@ def _annotate(spec: tuple[str, str, str]) -> tuple[dict[str, Any], _Replay]:
     row = copy.deepcopy(case["row"])
     for key in _STALE:
         row.pop(key, None)
-    llm = _Replay(case["answers"]["cf"]["content"], case["answers"]["pf"]["content"])
+    llm = _Replay(case)
     annotation.annotate_row(row, case["members"], case["role"], model="stub", llm=llm)
     return row, llm
+
+
+def _replayable(spec: tuple[str, str, str]) -> bool:
+    """Every call production makes for this row has a measured answer."""
+    _row, llm = _annotate(spec)
+    return all(arm in CASES[spec]["answers"] for arm in llm.arms)
 
 
 def _sha(call: tuple[str, ...]) -> str:
@@ -85,28 +128,39 @@ def _sha(call: tuple[str, ...]) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# The annotation
+# The calls
 # --------------------------------------------------------------------------- #
 
 
 @pytest.mark.parametrize("spec", sorted(CASES), ids=lambda s: ":".join(s))
-def test_should_send_the_prompts_the_re_check_sent_as_cf_and_pf(spec):
-    """The replayed answers were given to exactly these prompts (sha256 from the fixture)."""
+def test_should_send_the_four_prompts_the_a_b_measured(spec):
+    """Calls 1-4 send exactly what stage 2 sent as current / placebo and the re-check as cf / pf
+    (sha256 of the harness's rendering, from the fixture), in that order."""
     _row, llm = _annotate(spec)
-    want = CASES[spec]["cfpfPromptSha256"]
-    assert _sha(llm.calls[0]) == want["cf"]
-    if len(llm.calls) > 1:
-        assert _sha(llm.calls[1]) == want["pf"]
+    want = CASES[spec]["promptSha256"]
+    assert [_sha(call) for call in llm.calls] == [want[arm] for arm in llm.arms]
+    assert llm.arms == sorted(llm.arms, key=list(CALLS).index)
+    assert {"current", "cf"} <= set(llm.arms)
+
+
+def test_should_name_the_rows_no_measured_call_two_answer_covers():
+    """Stage 2 did not run arm B. These arm-B rows' call 1 fills a field the agreement call
+    checks, and no measured call-2 answer exists, so the end-to-end build leaves them out."""
+    assert sorted(k for k in CASES if not _replayable(k)) == [
+        ("carmelina@b", "inclusion", str(i)) for i in (10, 11, 12, 14, 15)
+    ] + [("carolina@b", "inclusion", "28"), ("carolina@b", "inclusion", "29")]
 
 
 @pytest.mark.parametrize("spec", GO_NOGO, ids=lambda s: ":".join(s))
 def test_should_keep_record_change_stable_on_every_go_nogo_row(spec):
+    """Calls 3 and 4 alone decide it, so this holds on every go/no-go row and counterpart,
+    replayable or not (a missing call-2 answer touches only calls 1-2's fields)."""
     row, llm = _annotate(spec)
     stored = row[ANNOTATION_KEY]
     assert stored.get("record_change") == "stable", stored
     assert span_in_line(stored.get("record_change_span"), row["protocolLine"])
-    assert len(llm.calls) == 2
-    assert row["_annotationAgreement"]["kept"]["record_change"]["value"] == "stable"
+    assert llm.arms[-2:] == ["cf", "pf"]
+    assert row["_recordChangeAgreement"]["kept"]["record_change"]["value"] == "stable"
 
 
 # --------------------------------------------------------------------------- #
@@ -167,16 +221,15 @@ def service(monkeypatch):
     return svc
 
 
-def _built() -> dict[str, dict[str, list[dict[str, Any]]]]:
-    """Each study of the fixture as an eligibility block, every row annotated from its real
-    answers, in store id order.
+def _built(specs: list[tuple[str, str, str]]) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    """The given rows, annotated from their real answers, as one eligibility block per study.
 
     :returns: trial key (``carolina``, ``carolina@b``, ...) -> its eligibility block.
     """
     by_trial: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(
         lambda: {"inclusionCriteria": [], "exclusionCriteria": []}
     )
-    for spec in sorted(CASES, key=lambda s: (s[0], s[1], int(s[2]))):
+    for spec in sorted(specs, key=lambda s: (s[0], s[1], int(s[2]))):
         row, _llm = _annotate(spec)
         by_trial[spec[0]][f"{spec[1]}Criteria"].append(row)
     return by_trial
@@ -200,65 +253,69 @@ def _emitted(circe: dict[str, Any], role: str, criterion_id: str) -> list[dict[s
     return found
 
 
-def test_should_record_every_go_nogo_row_and_its_members_as_skips_not_emit_them(service):
-    """Each go/no-go row and member is recorded as a skip and emits nothing. The reason is
-    record-change, except where the agreed annotation also says ``conditional`` (the row's own
-    or its label's): the build checks that first, and either reason is a permitted skip."""
+def _build(service: Any, eligibility: dict[str, Any]) -> dict[str, Any]:
+    return service._build_seeded_target_circe(
+        {"targetCohortName": "linagliptin", **copy.deepcopy(eligibility)}
+    )
+
+
+def test_should_record_every_replayable_go_nogo_row_as_a_record_change_skip(service):
+    """Not conditional, not emitted: calls 1 and 2 (stage 2's prompts) keep no conditional on
+    these rows, and calls 3 and 4 keep `stable`. The gate re-judges every such skip clean."""
     from scripts.verify_circe_delivery import criteria_index, skipped_criteria_violations
 
-    trials = _built()
-    checked = 0
-    for trial, eligibility in trials.items():
-        circe = service._build_seeded_target_circe(
-            {"targetCohortName": "linagliptin", **copy.deepcopy(eligibility)}
-        )
+    replayable = [k for k in CASES if _replayable(k)]
+    checked = []
+    for trial, eligibility in _built(replayable).items():
+        circe = _build(service, eligibility)
         skips = {(r["role"], r["criterionId"]): r for r in circe["_skippedCriteria"]}
-        for spec in GO_NOGO + MEMBERS:
-            if spec[0] != trial:
+        for spec in GO_NOGO:
+            if spec[0] != trial or spec not in replayable:
                 continue
             role, rid = spec[1], spec[2]
-            conditional = annotation.conditional_skips(eligibility[f"{role}Criteria"])
-            want = annotation.CONDITIONAL_REASON if rid in conditional else REASON
             skip = skips.get((role, rid))
-            assert skip is not None and skip["reason"] == want, (
-                f"{':'.join(spec)} is not recorded as {want}: skip {skip}, "
+            assert skip is not None and skip["reason"] == REASON, (
+                f"{':'.join(spec)} is not recorded as {REASON}: skip {skip}, "
                 f"emitted {_emitted(circe, role, rid)}"
             )
-            assert f"{role}:{rid}" not in circe.get("_criterionConceptSetRefs", {})
-            checked += 1
-            if want != REASON:
-                continue
             assert skip["recordChange"] == "stable"
             decider = next(
                 r for r in eligibility[f"{role}Criteria"]
                 if str(r["id"]) == skip["recordChangeDecidedBy"]
             )
             assert span_in_line(skip["recordChangeSpan"], decider["protocolLine"])
-        study = {"eligibility": copy.deepcopy(eligibility)}
+            assert skip["recordChangeAgreement"]["promptVersion"] == (
+                annotation.RECORD_CHANGE_AGREEMENT_PROMPT_VERSION
+            )
+            assert _emitted(circe, role, rid) == []
+            checked.append(spec)
         allowed = [r for r in circe["_skippedCriteria"] if r["reason"] == REASON]
+        study = {"eligibility": copy.deepcopy(eligibility)}
         assert skipped_criteria_violations(allowed, criteria_index(study), circe) == []
-        if allowed:
-            assert circe["_generationCensus"]["skippedByReason"][REASON] == len(allowed)
-    assert checked == len(GO_NOGO) + len(MEMBERS) == 15
+        records = circe[annotation.RECORD_CHANGE_RECORDS_KEY]
+        listed = {(r["role"], r["criterionId"]) for r in records}
+        assert {(r["role"], r["criterionId"]) for r in allowed} <= listed
+    # 7 of the 9 go/no-go rows (carolina@b 28 / 29 have no measured call-2 answer) + the 3
+    # P2-NEW counterparts
+    assert len(checked) == 10, checked
 
 
 def test_should_record_the_change_in_dose_exclusion_as_a_record_change_skip(service):
-    """CAROLINA exclusion 19, "Change in dose(age) of thyroid hormones within 6 weeks": the line
-    states a change; the criterion is skipped through the exclusion loop."""
+    """CAROLINA exclusion 19, "Change in dose(age) of thyroid hormones within 6 weeks": calls 3
+    and 4 both say `changed`; built through the exclusion loop, it is a record-change skip."""
     (spec,) = CHANGE
-    eligibility = _built()[spec[0]]
-    circe = service._build_seeded_target_circe(
-        {"targetCohortName": "linagliptin", **copy.deepcopy(eligibility)}
-    )
+    assert _replayable(spec)
+    circe = _build(service, _built([spec])[spec[0]])
     skip = next(r for r in circe["_skippedCriteria"] if (r["role"], r["criterionId"]) == spec[1:])
-    assert skip["reason"] == REASON and skip["recordChange"] in ("changed", "stable")
+    assert skip["reason"] == REASON and skip["recordChange"] == "changed"
 
 
 @pytest.mark.parametrize("spec", CONTROLS, ids=lambda s: ":".join(s))
 def test_should_not_skip_a_control_for_record_change(spec, service):
-    row, _llm = _annotate(spec)
+    assert _replayable(spec)
+    row, llm = _annotate(spec)
     assert row[ANNOTATION_KEY].get("record_change") in (None, "none")
-    eligibility = {"inclusionCriteria": [], "exclusionCriteria": []}
-    eligibility[f"{spec[1]}Criteria"].append(row)
-    circe = service._build_seeded_target_circe({"targetCohortName": "linagliptin", **eligibility})
+    assert "pf" not in llm.arms
+    circe = _build(service, _built([spec])[spec[0]])
     assert not [r for r in circe["_skippedCriteria"] if r["reason"] == REASON]
+

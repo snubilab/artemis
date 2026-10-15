@@ -1,5 +1,5 @@
 {
- "about": "Real rows of the 2026-10-12 P3 dry run (arm A / arm B stores, copied verbatim) and the real gemma-4-E4B answers the cf / pf re-check recorded for them (repeat 1 of `cf` = current + the record_change block, `pf` = placebo + the same block), with, per row, the sha256 of the prompt each arm was sent (the harness's render; json.dumps([system, user]), utf-8). Rows chosen before any answer existed. Written by overfill/analysis_cfpf/make_record_change_fixture.py. Read by tests/test_record_change_go_nogo.py.",
+ "about": "Real rows of the 2026-10-12 P3 dry run (arm A / arm B / P2-NEW stores, copied verbatim; the P2-NEW lines legacy-suffix stripped as the harness did) and the real gemma-4-E4B answers of the four annotation calls where they exist (repeat 1): `current` / `placebo` from stage 2 (or `current` from the stability run, the same prompt), `cf` = current + the record_change block and `pf` = placebo + the block from the cf / pf re-check (answerSources names the run of each). No `placebo` answer exists for arm-B rows. promptSha256: per row and arm, the sha256 of the prompt that arm sent (the harness's render; json.dumps([system, user]), utf-8). Rows chosen before any answer existed. Written by overfill/analysis_cfpf/make_record_change_fixture.py. Read by tests/test_record_change_go_nogo.py.",
  "provenance": {
   "results": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/cfpf_20261015_075611/results.jsonl",
   "resultsSha256": "0507ec97ee8f0c27965a2e6c3b5aca2f32a5ebfd9e14c564fcbbbb0dfdcf62d2",
@@ -13,6 +13,11 @@
   },
   "measuredSha": "5028579f6fa5ea9fb112883cb22d1dfeef2e38cc",
   "model": "vllm/google/gemma-4-E4B-it",
+  "stage2Results": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/stage2_20261014_101708/results.jsonl",
+  "stage2ResultsSha256": "7452451c5d60c5065fb0eb9f8eab7b3d0db19ae8b256f7467b00aed2e73fbb9e",
+  "stage2PlanSha256": "019fc591db1f6786f06f05bf2cf5ef032cdfc472188d7ab1cdced1655b77e07f",
+  "stabilityResults": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/fields_stability_20261014_235757/results.jsonl",
+  "stabilityResultsSha256": "f48acf9db1c8cae4df4ef112e6931b97b6c0423de6b284cdfd706bd841846b45",
   "stores": {
    "a": {
     "path": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/arm_a/store/studies.json",
@@ -21,6 +26,10 @@
    "b": {
     "path": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/arm_b/store/studies.json",
     "sha256": "aa8fe75f709957c53ea605ea4bc1587b624846bce8391c94734481c8638236e2"
+   },
+   "p2new": {
+    "path": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p2_new/store/studies.json",
+    "sha256": "e71ce3bfe9c13be85c1f2292a2b2e536ba738a739f7b4090003501578cce01b7"
    }
   },
   "classificationStabilitySha256": "17d60e3cdf0560be9329aaa3a327e3d9d85ec324e92d2cad28496540b37b0dfb"
@@ -103,11 +112,27 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
     "cf": "d64cd36db7545e92e466166b32497b209290c99cfe192257154662691ef11efe",
-    "pf": "29dd74c54942d3082671428333febc1630fd6f0e8a63b73efa305d9e1040976c"
+    "pf": "29dd74c54942d3082671428333febc1630fd6f0e8a63b73efa305d9e1040976c",
+    "current": "a11cc04c45413544489672f7657d4d2e467113f84dae95e78ff7cbe9657c3e03",
+    "placebo": "fa8c821806e2e471a573568379a1a6d98caf0dbc2e08dd9dbfb1bcd10d4db269"
    }
   },
   {
@@ -271,11 +296,27 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": null, \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"short term use of insulin\"}], \"base_span\": null, \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
     "cf": "44c897a0474290a6fbdaecc029ce4de4533e6d7ca1466a14acfe55e3c00e9613",
-    "pf": "ad144b241a0abdce136ccc9a865f9f0188bb40dbf742216b2d9310e18ce0bbf3"
+    "pf": "ad144b241a0abdce136ccc9a865f9f0188bb40dbf742216b2d9310e18ce0bbf3",
+    "current": "21909ad2e6089fcba579ad8ce5742640f441930060f262c8aff641aa4a2417ff",
+    "placebo": "013301302b376c05d8a7dcf9a57f7d4d7ed29c0d657544415a9e38796456ebdf"
    }
   },
   {
@@ -363,11 +404,27 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"short term use of insulin\"}], \"base_span\": null, \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin.\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
     "cf": "aa115631fd0a8ce07e9a366f7a8b22f21483a83eb0fba3f4e24ba315f49af926",
-    "pf": "24e4292e6319566ddca0e995ae4545d239bbb308511abafd7d960233291d9fc6"
+    "pf": "24e4292e6319566ddca0e995ae4545d239bbb308511abafd7d960233291d9fc6",
+    "current": "206bfac0b72c22954892e175d9e60c41e38a2131c3a0285584b202178b154061",
+    "placebo": "563935f8a65c4272cd2c1c8dea56e8dc275f4bf07a414004609933802aa788ac"
    }
   },
   {
@@ -434,11 +491,27 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"stable anti-diabetic background\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 wks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"at least 8 wks before study start\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 wks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
     "cf": "334bcf438c744145ee6c9712307e54bbcb4a7705e2fe74d35e06e741577ed812",
-    "pf": "a3099b92cb287eb988dc4f7c0e985f2c802f5972dbe1e1461b42101e40da4fa3"
+    "pf": "a3099b92cb287eb988dc4f7c0e985f2c802f5972dbe1e1461b42101e40da4fa3",
+    "current": "17ddb23907bcca4f23f976b36cb386ac4c89172f38756501f0203b9318b7e7c3",
+    "placebo": "5f540a20f05ae3c481360bbd9691304fbf602ce4eb227ff74d17b5f9f32f842b"
    }
   },
   {
@@ -807,11 +880,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "82a03281e7c2ee633a2c7fd00f19c90d3bd815ce3f416310351b71a28c5d710d",
-    "pf": "335f213584e4f048fa305c441f4aad7a84a24d18c205d3f2efab009155315a73"
+    "pf": "335f213584e4f048fa305c441f4aad7a84a24d18c205d3f2efab009155315a73",
+    "current": "8215624bda8b78b1864102ecc288059211b3bf5d16d983b13f8986f067146eb8",
+    "placebo": "6ba2cfaf5b01d867046d52451f890ae7b2e6c0ff57bdad246dd95e3466c3d967"
    }
   },
   {
@@ -1020,11 +1104,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"Insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"Insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": \"and\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "b026553543767086f90d8fbaf8ca6c9ea4929d39d509e3b92d2baf23752e5c1d",
-    "pf": "321b9fb2ba78fa7afaaca3e1c8a2c106d592a4193ee21c1d43197bed5b63db8d"
+    "pf": "321b9fb2ba78fa7afaaca3e1c8a2c106d592a4193ee21c1d43197bed5b63db8d",
+    "current": "1fcaf2e1f846c53d80ca4b9cd8c726006cbf0635e2ac4cade1330396d1cab2c5",
+    "placebo": "11a5890c9e4341ec203578d17a7fd1a80bd40dfca27b87b4480eca31da333d84"
    }
   },
   {
@@ -1121,11 +1216,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin.\", \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication (unchanged daily dose)\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"insulin\", \"span\": \"short term use of insulin\"}], \"base_span\": null, \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "b434848fa34ab874317198c6b24f89573b571bce44125366956df483ed0339c1",
-    "pf": "99cbfabd29f535f4b3be92b7ffd28bfeaf4a1722aad46d5aed90759c0bb7e2e3"
+    "pf": "99cbfabd29f535f4b3be92b7ffd28bfeaf4a1722aad46d5aed90759c0bb7e2e3",
+    "current": "5cdfe2f05ff3b4aab2adf708879a05403deb7b1916fcfb749c42415585dab1b6",
+    "placebo": "8b3afd3ea41584e013c613266b9d04467565461493dd1bc3e8a3b883644e16e1"
    }
   },
   {
@@ -1260,11 +1366,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"stable anti-diabetic background\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 wks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 wks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "3b10fde2996a37938837744f2bee363cc00f81cc080dab0a20f4a090b152ff9a",
-    "pf": "bc03a13383c9e520ce27c5aa204064036940c1ea306bcf668d5ba7ad5a0713f1"
+    "pf": "bc03a13383c9e520ce27c5aa204064036940c1ea306bcf668d5ba7ad5a0713f1",
+    "current": "0c7e03a7dc71570f030e1199419f6af239e36cb91129295a80c85f1fbc5b900e",
+    "placebo": "725178b17ec745028b28cc888cd4edb72f86475eb515321dce1a05262d2a1dd1"
    }
   },
   {
@@ -1342,11 +1459,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"stable anti-diabetic background\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"at least 8 wks before study start\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "8e868fbbecec29025151fa7db9e9195f1b96deaed9927bb62ea6622c3c60c275",
-    "pf": "2a7047055e97bbd5d4ef99966eb59133f410ff6e157167313da339a6af409fe4"
+    "pf": "2a7047055e97bbd5d4ef99966eb59133f410ff6e157167313da339a6af409fe4",
+    "current": "123f65e3b36c14eed2a95f2d5c941a3107b42153c41c8c7a1f33bd4f8cf55ce1",
+    "placebo": "874c49015313de83d3dcb55e5f0d87baa035a62b46c939bc4b0c10f4e8db15dc"
    }
   },
   {
@@ -1413,11 +1541,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 weeks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "d00eadae41dc1f946c6c2ae600446076825e237a4eefadb2c942c414ad03cea0",
-    "pf": "f40a493be11f1f827f309f3bb5a40c3fef02e8ce17f1a907ceac9f8c3dfbebfb"
+    "pf": "f40a493be11f1f827f309f3bb5a40c3fef02e8ce17f1a907ceac9f8c3dfbebfb",
+    "current": "e1753097edb734377dde644ac0fee03d62e23de93110cd98631ccbe25cc95f39",
+    "placebo": "3872c8b710b3fe656278c6c8de5afcb7308ff976a35df60daf90efeb78166886"
    }
   },
   {
@@ -1484,11 +1623,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"null\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 weeks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "c6f7855bf3f36f77a1199754584e395cfc2bcbbebddfff029598c7cc868b0a2c",
-    "pf": "e578855becbcc85ba31f665cb88ab7443c2edc4bd706c166b65b6ce6b124288f"
+    "pf": "e578855becbcc85ba31f665cb88ab7443c2edc4bd706c166b65b6ce6b124288f",
+    "current": "774e08b09fe3ddd66fff9b1a07987715e3411c264f23f5e43867522bc304d26b",
+    "placebo": "e813cbafbeff1ac68abd97a8931b40d3f404e345b1267da9593a934b7231b6ad"
    }
   },
   {
@@ -1555,11 +1705,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose)\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 weeks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "fbbd78441c78a4728c86b236734dd3909b04433d080a754085261ad87729cfbc",
-    "pf": "77979902105441b1ea1c60915bb9907ad14734959f04921219503779cedcbb30"
+    "pf": "77979902105441b1ea1c60915bb9907ad14734959f04921219503779cedcbb30",
+    "current": "d887c0dd2c83258638a9e0cf60ddc2f4b81d8545f26d44aaac20593887dbb541",
+    "placebo": "0f165d3a088a1d085e426e417bcb24c5c090a394bd11a3a94b6c5dc9acd79fa5"
    }
   },
   {
@@ -1637,11 +1798,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "30063ef292754c73d17906116c4c28e034ddf49480bc54e7a9886d04a2f435ef",
-    "pf": "411c0218ccd9d6d6265cc2876c898bbe4afa2452564c2b2d9e97904c7bd66b6e"
+    "pf": "411c0218ccd9d6d6265cc2876c898bbe4afa2452564c2b2d9e97904c7bd66b6e",
+    "current": "a63015bb4e8095339624160f19cec4d76a56a73b2f1c520f14dfe13cb2032028",
+    "placebo": "3fe28a77d8f8d6f45eecf1a3c77c20aacb20c5674c946acc8781ee608448e68c"
    }
   },
   {
@@ -1708,11 +1880,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose)\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 weeks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "b0d3df004a025c319ebd4054aee5c85649f025ee8ed747018c436937b7805fe8",
-    "pf": "caad33e4743a994783f2661ae821d0d9cbd083508300a0fea833dcc127daa3ea"
+    "pf": "caad33e4743a994783f2661ae821d0d9cbd083508300a0fea833dcc127daa3ea",
+    "current": "1fea33ebcda49db271fbce2bc68e6faf91b8581b67749b8f84c5d7444f196fa8",
+    "placebo": "47b46f41814bde231d5368d8223d1e19e8f13fc40e832a5b981382855908b6ec"
    }
   },
   {
@@ -1779,11 +1962,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose)\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to\", \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 weeks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "d8f42eca0092974b3c38a5f659c28e96b1d2be7e48a2f83ca95c90e32ce7871c",
-    "pf": "dfd5e3bf3ef420d45bd40999ce49cb79985995f7743e7ab00057f97ce8343900"
+    "pf": "dfd5e3bf3ef420d45bd40999ce49cb79985995f7743e7ab00057f97ce8343900",
+    "current": "463c703d14610e47cf4cd2f9093c8c71e8f535ad772dccf2baa6dbcd2d1e7b60",
+    "placebo": "1c6c17c0c0d9ba32f14fea9d58c39f29469fe9ba7506e9b4612aa2134cc3c2cd"
    }
   },
   {
@@ -1919,11 +2113,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"within 6 weeks prior informed consent\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 6 weeks prior informed consent\", \"record_change\": \"changed\", \"record_change_span\": \"Change in dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"dose\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 6 weeks prior\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"dose\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "b9d8a648ed86804d577cf93b2c64ad996203b3acb2213db08defc803926e130f",
-    "pf": "c369470a2fb87557f1aa12d76e385a050fc10d9790b0e3d37e970ccd2a58353c"
+    "pf": "c369470a2fb87557f1aa12d76e385a050fc10d9790b0e3d37e970ccd2a58353c",
+    "current": "fb4a8eaf3fd6293e2788dfe04d0626bb19c4e91920200f771353e1ee9208cce6",
+    "placebo": "4c4723c7e60bc0203b2424a5c77edf07756dafb9758ae19d46b169d904018ea9"
    }
   },
   {
@@ -1990,11 +2195,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "10c680541dcf7a87a49cc127552e92792960efdba815fe211d1fcf7352723a5a",
-    "pf": "f8ac121f720d0450edebbd459652e25302749ec401581dd2c0fb05da8bd822b6"
+    "pf": "f8ac121f720d0450edebbd459652e25302749ec401581dd2c0fb05da8bd822b6",
+    "current": "cb7f62655e1a0ad284486a4be1550065f3b8cb9bea0eb71c917da54288233913",
+    "placebo": "1a90f8ce1e68d57c9a14dfaa1f66ad67958ca2de7ae71a80797ee53d3176dffb"
    }
   },
   {
@@ -2206,11 +2422,22 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥1 mm\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥1 mm\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "fields_stability_20261014_235757"
+   },
+   "promptSha256": {
     "cf": "3454be5305559c8702b5dd5cae732a858b383abf707b4733994b2ff0ed91dbd2",
-    "pf": "5e0323e176cf63e6fb8118bfffdc957c6a3c0437437ef7f366907d743a893ed4"
+    "pf": "5e0323e176cf63e6fb8118bfffdc957c6a3c0437437ef7f366907d743a893ed4",
+    "current": "66e44f595c909055f5bee981292617ae5efe030b6dad12258027dc136b864b0a",
+    "placebo": "69ca7e7f542b71b51a55bb415c81243138e8dab751fd52064593faa0e3b3b0d7"
    }
   },
   {
@@ -2293,11 +2520,27 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"GLP-1 receptor agonists\", \"span\": \"GLP-1 receptor agonists\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"null\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"≥ 7 consecutive days\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"GLP-1 receptor agonists\", \"span\": \"GLP-1 receptor agonists\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"null\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"if ≥ 7 consecutive days\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"GLP-1 receptor agonists\", \"span\": \"GLP-1 receptor agonists\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"null\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"if ≥ 7 consecutive days\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 7 consecutive days\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
     "cf": "476de712c75128da690e2e0b453164c0924c6176c9a6abb38d9275ff93adba85",
-    "pf": "f3047fd30370605bfba40b3d33f42200e74dcfcbaeaa635423827fe2c87b4326"
+    "pf": "f3047fd30370605bfba40b3d33f42200e74dcfcbaeaa635423827fe2c87b4326",
+    "current": "91dd3b965c613a44f1dc983b375ff6ceaf89be851fc3da31de3ea84c6c39fde0",
+    "placebo": "8f8ae1f38aca8b3cf5a452e7faace8fda663dbeece4395b5ef034303c1c292ad"
    }
   },
   {
@@ -2369,11 +2612,408 @@
     "pf": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"rosiglitazone\", \"span\": \"rosiglitazone\"}], \"base_span\": \"other antidiabetic drugs\", \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
-   "cfpfPromptSha256": {
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
     "cf": "1ffcc5e13d551609d4df26e0b62ee1b59e06ac055793698717f2af3e3ba15787",
-    "pf": "5c0e8349f9c1d3ed8e960da423d0600b72cc221e3ffc0b2f4a9c05bc459578bd"
+    "pf": "5c0e8349f9c1d3ed8e960da423d0600b72cc221e3ffc0b2f4a9c05bc459578bd",
+    "current": "28c6cd5b2a017c985386141a6d942a903a4bd50b26e147914c195e0f56c5b5af",
+    "placebo": "2d9b1335ed1569a76d2f27b7107a2b6fd3de0f01be75545d70a1c37415e3c8b1"
+   }
+  },
+  {
+   "trial": "carmelina@p2new",
+   "studyId": 9,
+   "role": "inclusion",
+   "id": "9",
+   "storeArm": "p2new",
+   "group": "counterpart",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 9,
+    "description": "Stable antidiabetic background medication",
+    "domain": "Observation",
+    "valueConstraint": null,
+    "sourceText": "Antidiabetic background medication",
+    "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   "members": [
+    {
+     "id": 10,
+     "description": "Metformin use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Metformin",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    },
+    {
+     "id": 11,
+     "description": "Sulfonylurea use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Sulfonylurea",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    },
+    {
+     "id": 12,
+     "description": "DPP-4 inhibitor use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "DPP-4 inhibitor",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    },
+    {
+     "id": 13,
+     "description": "SGLT2 inhibitor use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "SGLT2 inhibitor",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    },
+    {
+     "id": 14,
+     "description": "GLP-1 receptor agonist use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "GLP-1 receptor agonist",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    },
+    {
+     "id": 15,
+     "description": "Insulin use",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Insulin",
+     "protocolLine": "3. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "84856649-d904-49cd-aa84-74bf2f4ff3d3",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"stable\", \"record_change_span\": \"(unchanged daily dose)\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Stable antidiabetic background medication\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior to\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
+    "cf": "82a03281e7c2ee633a2c7fd00f19c90d3bd815ce3f416310351b71a28c5d710d",
+    "pf": "335f213584e4f048fa305c441f4aad7a84a24d18c205d3f2efab009155315a73",
+    "current": "8215624bda8b78b1864102ecc288059211b3bf5d16d983b13f8986f067146eb8",
+    "placebo": "6ba2cfaf5b01d867046d52451f890ae7b2e6c0ff57bdad246dd95e3466c3d967"
+   }
+  },
+  {
+   "trial": "carolina@p2new",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "28",
+   "storeArm": "p2new",
+   "group": "counterpart",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 28,
+    "description": "Stable anti-diabetic background medication",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "12. Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "1f66b5f1-f1fe-4294-8b8b-a9e64b95e89d",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   "members": [
+    {
+     "id": 29,
+     "description": "Anti-diabetic medication (general)",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Anti-diabetic medication",
+     "protocolLine": "12. Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "1f66b5f1-f1fe-4294-8b8b-a9e64b95e89d",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    },
+    {
+     "id": 30,
+     "description": "Insulin use exclusion",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Insulin",
+     "protocolLine": "12. Stable anti-diabetic background medication (unchanged daily dose) for at least 8 weeks prior V1a and without short term use of insulin. Background medication should be stable during screening/run-in phase to allow randomisation",
+     "protocolSpan": "without short term use of insulin",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "1f66b5f1-f1fe-4294-8b8b-a9e64b95e89d",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"Insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": null, \"relation\": \"all\", \"relation_span\": \"and\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"Insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"record_change\": \"stable\", \"record_change_span\": \"unchanged daily dose\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"Insulin\", \"span\": \"without short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": \"and\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"Insulin\", \"span\": \"short term use of insulin\"}], \"base_span\": \"Anti-diabetic background medication\", \"relation\": \"all\", \"relation_span\": \"and\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"for at least 8 weeks prior V1a\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    }
+   },
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
+    "cf": "b026553543767086f90d8fbaf8ca6c9ea4929d39d509e3b92d2baf23752e5c1d",
+    "pf": "321b9fb2ba78fa7afaaca3e1c8a2c106d592a4193ee21c1d43197bed5b63db8d",
+    "current": "1fcaf2e1f846c53d80ca4b9cd8c726006cbf0635e2ac4cade1330396d1cab2c5",
+    "placebo": "11a5890c9e4341ec203578d17a7fd1a80bd40dfca27b87b4480eca31da333d84"
+   }
+  },
+  {
+   "trial": "carolina@p2new",
+   "studyId": 10,
+   "role": "inclusion",
+   "id": "44",
+   "storeArm": "p2new",
+   "group": "counterpart",
+   "stabExpected": [
+    "stable"
+   ],
+   "row": {
+    "id": 44,
+    "description": "Stable anti-diabetic background for 8 weeks",
+    "domain": "Drug",
+    "valueConstraint": null,
+    "sourceText": "Anti-diabetic medication",
+    "protocolLine": "22. stable anti-diabetic background for at least 8 wks before study start",
+    "protocolSpan": "",
+    "window": {
+     "start": -56,
+     "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "PRESENCE",
+    "groupId": "b01c6600-72cb-4c6b-b4e3-a1847150267c",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "mappable": false
+   },
+   "members": [
+    {
+     "id": 45,
+     "description": "Presence of any anti-diabetic medication",
+     "domain": "Drug",
+     "valueConstraint": null,
+     "sourceText": "Anti-diabetic medication",
+     "protocolLine": "22. stable anti-diabetic background for at least 8 wks before study start",
+     "protocolSpan": "",
+     "window": {
+      "start": -56,
+      "end": 0
+     },
+     "conceptSetId": null,
+     "conceptSetName": "",
+     "logicType": "PRESENCE",
+     "groupId": "b01c6600-72cb-4c6b-b4e3-a1847150267c",
+     "groupType": "ANY",
+     "parentGroupId": null,
+     "isGroupLabel": false,
+     "mappable": true
+    }
+   ],
+   "answers": {
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"stable anti-diabetic background\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"record_change\": \"stable\", \"record_change_span\": \"stable\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 wks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "current": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"before study start\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 wks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "placebo": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"at least 8 wks before study start\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"at least 8 wks\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    }
+   },
+   "answerSources": {
+    "cf": "cfpf_20261015_075611",
+    "pf": "cfpf_20261015_075611",
+    "current": "stage2_20261014_101708",
+    "placebo": "stage2_20261014_101708"
+   },
+   "promptSha256": {
+    "cf": "3b10fde2996a37938837744f2bee363cc00f81cc080dab0a20f4a090b152ff9a",
+    "pf": "bc03a13383c9e520ce27c5aa204064036940c1ea306bcf668d5ba7ad5a0713f1",
+    "current": "0c7e03a7dc71570f030e1199419f6af239e36cb91129295a80c85f1fbc5b900e",
+    "placebo": "725178b17ec745028b28cc888cd4edb72f86475eb515321dce1a05262d2a1dd1"
    }
   }
  ]

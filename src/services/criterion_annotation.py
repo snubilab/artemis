@@ -38,10 +38,12 @@ criterion's entity to stay the same (``stable``) or to change (``changed``) acro
 states, or neither (``none``). It replaces the deleted ``dose_stability.py`` word rule. CIRCE can
 test that a record exists in a window, not that it stayed the same or changed across one, so a
 criterion with either value is not emitted; it is recorded as a skip under
-:data:`RECORD_CHANGE_REASON` (:func:`record_change_skips`). Measured as the over-fill A/B's
-``fields_stability`` arm (``overfill/ab_runs/fields_stability_20261014_235757/``, gemma-4-E4B):
-``stable`` with a verified span on all 9 go/no-go rows (27/27 answers), 0/96 fills on 32
-controls, ``changed`` on the 6 thyroid "change in dose" exclusions.
+:data:`RECORD_CHANGE_REASON` (:func:`record_change_skips`). It is asked in calls of its own
+(calls 3 and 4 below), never in the first two: put into them, the block shifted
+``record_requirement`` toward ``conditional`` in both wordings at once (over-fill re-check
+``cfpf_20261015_075611``: 4/113 correct exceptions and 4/138 rr controls broken). Measured on
+calls 3 and 4 there: ``stable`` on 9/9 go/no-go rows, 25/26 stability targets right, 0/32
+controls filled.
 
 The model decides the meaning and quotes the fragment of ``protocolLine`` that supports
 it. Code checks one thing only: that each quoted fragment is a substring of the line
@@ -52,21 +54,28 @@ is not in the line makes its field absent -- the row then takes the default beha
 and the rejection is recorded on the row under :data:`ANNOTATION_REJECTED_KEY` so it can
 be counted. Nothing here reads the line, the description or the entity as words.
 
-Agreement. Four fields are kept only when a second call, asked the same question in other
+Agreement. Three fields are kept only when a second call, asked the same question in other
 words (:data:`AGREEMENT_SYSTEM_PROMPT`, :data:`AGREEMENT_PROMPT`), gives them too: each
-excepted entity (and with it ``base_span``), ``record_requirement: conditional``, a
-``no_entity`` other than ``none``, and a ``record_change`` other than ``none``. Measured with
-gemma-4-E4B in stage 2 of the over-fill A/B
+excepted entity (and with it ``base_span``), ``record_requirement: conditional``, and a
+``no_entity`` other than ``none``. Measured with gemma-4-E4B in stage 2 of the over-fill A/B
 (``output/site_gap/2026-10-12_p3_dry/overfill/analysis_stage2/``): a wrong excepted entity
 changes under almost any rewording while a correct one recurs -- under the second wording 27
 of 27 correct spans reappear and 37 of 126 wrong ones do -- so keeping only what both answers
 give fixed 44.7 of 62 wrong-exception rows and broke 0 of 113 controls. The second call is
-made only when the first validated answer fills one of the four, because the rule only ever
+made only when the first validated answer fills one of the three, because the rule only ever
 reverts a fill (:func:`agree`). What the second answer confirmed and what it took away are
 recorded on the row under :data:`AGREEMENT_KEY`, carried onto the conditional skip record,
 and listed in the built expression under :data:`AGREEMENT_RECORDS_KEY`. Every comparison is
 of offsets in ``protocolLine`` (:func:`~src.utils.span_match.span_offsets`) or of enum
 values; nothing reads either answer's words.
+
+Calls 3 and 4 (record_change). Call 3 (:data:`RECORD_CHANGE_PROMPT`: the first prompt with the
+record_change block, the A/B's `cf` arm) is made for every row with a line, and only its
+``record_change`` / ``record_change_span`` are read. When it fills ``stable`` or ``changed``,
+call 4 (:data:`RECORD_CHANGE_AGREEMENT_PROMPT`: the agreement prompt with the block, `pf`) is
+made, and the fill is kept only when call 4 also fills one (:func:`agree_record_change`, the
+``no_entity`` rule shape). Recorded under :data:`RECORD_CHANGE_KEY` on every row, listed in the
+expression under :data:`RECORD_CHANGE_RECORDS_KEY`, each call cached under its own version.
 
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
@@ -100,13 +109,18 @@ from src.utils.span_match import span_in_line, span_offsets
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever either prompt below changes meaning, or what is stored from the answer
-#: does (the agreement step); part of the first call's cache key. v2 adds the ``record_change``
-#: block: the wording is stage 2's `current` with that block, the over-fill A/B's `cf` arm.
-ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-agreement-v2"
+#: does (the agreement step); part of the first call's cache key. The wording itself is the
+#: one ``rfc016-steps1-4-v1`` sent, which stage 2 of the over-fill A/B measured as `current`.
+#: The record_change calls (3 and 4) leave both prompts and the use of their answers as they
+#: were, so neither version moves and an answer cached for them stays valid.
+ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-agreement-v1"
 #: The agreement call's version (:data:`AGREEMENT_SYSTEM_PROMPT`, :data:`AGREEMENT_PROMPT`);
-#: part of its cache key, bumped whenever either of those changes. v2: stage 2's `placebo`
-#: with the same ``record_change`` block, the `pf` arm.
-AGREEMENT_PROMPT_VERSION = "rfc016-steps1-4-agreement-placebo-v2"
+#: part of its cache key, bumped whenever either of those changes.
+AGREEMENT_PROMPT_VERSION = "rfc016-steps1-4-agreement-placebo-v1"
+#: Call 3's version (:data:`RECORD_CHANGE_SYSTEM_PROMPT`, :data:`RECORD_CHANGE_PROMPT`: the
+#: over-fill A/B's `cf` arm) and call 4's (the `pf` arm); each part of its call's cache key.
+RECORD_CHANGE_PROMPT_VERSION = "rfc016-record-change-cf-v1"
+RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -117,6 +131,13 @@ AGREEMENT_KEY = "_annotationAgreement"
 #: Expression key: one record per criterion the second call was made for
 #: (:func:`agreement_records`), present and empty when there was none.
 AGREEMENT_RECORDS_KEY = "_annotationAgreementRecords"
+#: The row key of the record_change record (calls 3 and 4, :func:`annotate_row`): present on
+#: every row call 3 was made for, with its version, cache key, outcome and validated answer,
+#: and call 4's under ``second`` (None when call 3 filled nothing).
+RECORD_CHANGE_KEY = "_recordChangeAgreement"
+#: Expression key: one record per criterion call 4 was made for, or call 3 failed for
+#: (:func:`record_change_records`), present and empty when there was none.
+RECORD_CHANGE_RECORDS_KEY = "_recordChangeRecords"
 #: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
 UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
 #: The ``reason`` each of those records carries.
@@ -378,19 +399,6 @@ places what this criterion describes. One of:
 required when `timing` is `prospective`; otherwise it is that fragment when the line states \
 one, and null when the line does not.
 
-`record_change` states whether the protocol line requires the patient's records of this \
-criterion's entity to stay the same, or to change, across a period that the line states. One of:
-- `stable`: the line requires those records to stay the same across that period.
-- `changed`: the line requires those records to change across that period.
-- `none`: the line requires neither.
-A requirement that the entity be present, or have been present, for a length of time states a \
-duration, not records that stay the same or change. The name of a disease, a condition or a \
-finding is the entity itself, even where the name describes how it runs over time, and states \
-no requirement on the records.
-
-`record_change_span` is the fragment of the protocol line that states the requirement. It is \
-required when `record_change` is not `none` and null otherwise.
-
 `route` lists the routes of administration the protocol line restricts this criterion's drug \
 to. Each entry is one of the route values a clinical vocabulary attaches to drug dose forms: \
 {route_values}. A value covers the routes the vocabulary files under it: `topical` covers \
@@ -454,8 +462,6 @@ Output JSON:
 "cardinality": "<integer, or null>", \
 "timing": "<prior|at_index|prospective>", \
 "window_span": "<fragment of the protocol line, or null>", \
-"record_change": "<stable|changed|none>", \
-"record_change_span": "<fragment of the protocol line, or null>", \
 "route": ["<route value or any>"], \
 "route_span": "<fragment of the protocol line, or null>", \
 "specimen": "<blood|urine|other|any>", \
@@ -467,13 +473,12 @@ Output JSON:
 "reference_bound": "<uln|lln|none, or null>"}}"""
 
 # The agreement call's wording (see the module docstring): the two prompts above with the
-# system prompt's second paragraph and the definitions of three of the compared fields --
+# system prompt's second paragraph and the definitions of the three compared fields --
 # `conditional` and `conditional_span`, `excepted_entities` and `base_span`, and `no_entity` --
-# reworded with the same meaning and nothing added. It is the over-fill A/B's `pf` arm (stage
-# 2's `placebo` plus the `record_change` block, which both prompts carry byte for byte at the
-# same place), character for character (scripts/check_annotation_agreement_identity.py); every
-# other definition is identical to the first call's, so the second answer is asked the same
-# question in other words.
+# reworded with the same meaning and nothing added. It is the over-fill A/B's stage-2 `placebo`
+# arm, character for character (scripts/check_annotation_agreement_identity.py); every other
+# definition is identical to the first call's, so the second answer is asked the same question
+# in other words.
 AGREEMENT_SYSTEM_PROMPT = """You annotate one eligibility criterion of a clinical trial protocol.
 
 The criterion was already extracted from one line of the protocol, and no extracted field is \
@@ -546,19 +551,6 @@ places what this criterion describes. One of:
 required when `timing` is `prospective`; otherwise it is that fragment when the line states \
 one, and null when the line does not.
 
-`record_change` states whether the protocol line requires the patient's records of this \
-criterion's entity to stay the same, or to change, across a period that the line states. One of:
-- `stable`: the line requires those records to stay the same across that period.
-- `changed`: the line requires those records to change across that period.
-- `none`: the line requires neither.
-A requirement that the entity be present, or have been present, for a length of time states a \
-duration, not records that stay the same or change. The name of a disease, a condition or a \
-finding is the entity itself, even where the name describes how it runs over time, and states \
-no requirement on the records.
-
-`record_change_span` is the fragment of the protocol line that states the requirement. It is \
-required when `record_change` is not `none` and null otherwise.
-
 `route` lists the routes of administration the protocol line restricts this criterion's drug \
 to. Each entry is one of the route values a clinical vocabulary attaches to drug dose forms: \
 {route_values}. A value covers the routes the vocabulary files under it: `topical` covers \
@@ -622,8 +614,6 @@ Output JSON:
 "cardinality": "<integer, or null>", \
 "timing": "<prior|at_index|prospective>", \
 "window_span": "<fragment of the protocol line, or null>", \
-"record_change": "<stable|changed|none>", \
-"record_change_span": "<fragment of the protocol line, or null>", \
 "route": ["<route value or any>"], \
 "route_span": "<fragment of the protocol line, or null>", \
 "specimen": "<blood|urine|other|any>", \
@@ -634,6 +624,66 @@ Output JSON:
 "quantity_kind": "<lab_value|dose|duration|count|statistical|other, or null>", \
 "reference_bound": "<uln|lln|none, or null>"}}"""
 
+
+# Calls 3 and 4 (coordinator, 2026-10-15): the two prompts above, each with the record_change
+# block -- its definition after the `window_span` definition and its two output keys after the
+# `window_span` key, the place and the text the over-fill A/B measured (prompts_stability.py's
+# `fields_stability` block; the arms `cf` and `pf` of run cfpf_20261015_075611). Only
+# `record_change` / `record_change_span` are read from their answers. The block is NOT in calls
+# 1 and 2: there it shifted record_requirement toward `conditional` in both wordings at once
+# (4/113 correct exceptions and 4/138 rr controls broken), which agreement cannot filter.
+RECORD_CHANGE_PROMPT_BLOCK = """\
+`record_change` states whether the protocol line requires the patient's records of this \
+criterion's entity to stay the same, or to change, across a period that the line states. One of:
+- `stable`: the line requires those records to stay the same across that period.
+- `changed`: the line requires those records to change across that period.
+- `none`: the line requires neither.
+A requirement that the entity be present, or have been present, for a length of time states a \
+duration, not records that stay the same or change. The name of a disease, a condition or a \
+finding is the entity itself, even where the name describes how it runs over time, and states \
+no requirement on the records.
+
+`record_change_span` is the fragment of the protocol line that states the requirement. It is \
+required when `record_change` is not `none` and null otherwise.
+
+"""
+RECORD_CHANGE_PROMPT_KEYS = (
+    '"record_change": "<stable|changed|none>", '
+    '"record_change_span": "<fragment of the protocol line, or null>", '
+)
+#: Where the block goes: right after these two pieces of the base templates.
+_WINDOW_SPAN_DEFINITION = (
+    "`window_span` is the fragment of the protocol line that places the criterion in time. It is "
+    "required when `timing` is `prospective`; otherwise it is that fragment when the line states "
+    "one, and null when the line does not.\n\n"
+)
+_WINDOW_SPAN_KEY = '"window_span": "<fragment of the protocol line, or null>", '
+
+
+def _with_record_change(template: str) -> str:
+    """``template`` with the record_change block inserted where the over-fill A/B measured it.
+
+    Prompt assembly from this module's own template text, not a reading of protocol text: each
+    anchor must occur exactly once, or the import fails rather than send a prompt nobody measured.
+    """
+    for anchor, block in (
+        (_WINDOW_SPAN_DEFINITION, RECORD_CHANGE_PROMPT_BLOCK),
+        (_WINDOW_SPAN_KEY, RECORD_CHANGE_PROMPT_KEYS),
+    ):
+        if template.count(anchor) != 1:
+            raise RuntimeError(
+                f"record_change anchor occurs {template.count(anchor)} times, not once"
+            )
+        template = template.replace(anchor, anchor + block)
+    return template
+
+
+#: Call 3: stage 2's `current` with the block (`cf`), on every row with a protocol line.
+RECORD_CHANGE_SYSTEM_PROMPT = ANNOTATION_SYSTEM_PROMPT
+RECORD_CHANGE_PROMPT = _with_record_change(ANNOTATION_PROMPT)
+#: Call 4: stage 2's `placebo` with the block (`pf`), only when call 3 fills record_change.
+RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT = AGREEMENT_SYSTEM_PROMPT
+RECORD_CHANGE_AGREEMENT_PROMPT = _with_record_change(AGREEMENT_PROMPT)
 
 # --------------------------------------------------------------------------- #
 # Validation
@@ -763,8 +813,6 @@ def validate_annotation(
         FIELD_SPECIMEN_SPAN: None,
         FIELD_NO_ENTITY: None,
         FIELD_NO_ENTITY_SPAN: None,
-        FIELD_RECORD_CHANGE: None,
-        FIELD_RECORD_CHANGE_SPAN: None,
     }
     rejected: list[dict[str, Any]] = []
     if not isinstance(payload, Mapping):
@@ -854,6 +902,28 @@ def validate_annotation(
         values=_NO_ENTITY_VALUES,
         spanless=NoEntity.NONE.value,
     )
+    fields.update(_validate_threshold(payload, protocol_line, rejected))
+    return fields, rejected
+
+
+def validate_record_change(
+    payload: Any, protocol_line: str
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """The one field read from calls 3 and 4: ``record_change`` and its fragment.
+
+    Kept when the value is ``stable`` / ``changed`` / ``none`` and, unless ``none``, its
+    fragment is a substring of the line (:func:`span_in_line`); otherwise absent, with the
+    rejection recorded. Every other field of the answer is ignored.
+
+    :param payload: the parsed answer of call 3 or call 4.
+    :param protocol_line: the row's ``protocolLine``.
+    :returns: ``({record_change, record_change_span}, rejections)``.
+    """
+    fields: dict[str, Any] = {FIELD_RECORD_CHANGE: None, FIELD_RECORD_CHANGE_SPAN: None}
+    rejected: list[dict[str, Any]] = []
+    if not isinstance(payload, Mapping):
+        rejected.append(_rejection("*", payload, "the response is not a JSON object"))
+        return fields, rejected
     _validate_choice(
         payload,
         protocol_line,
@@ -864,7 +934,6 @@ def validate_annotation(
         values=_RECORD_CHANGE_VALUES,
         spanless=RecordChange.NONE.value,
     )
-    fields.update(_validate_threshold(payload, protocol_line, rejected))
     return fields, rejected
 
 
@@ -1239,18 +1308,16 @@ def _ask(
 
 def needs_agreement(fields: Mapping[str, Any]) -> bool:
     """Whether a validated answer fills a field :func:`agree` compares: an excepted entity,
-    ``record_requirement: conditional``, a ``no_entity`` other than ``none``, or a
-    ``record_change`` other than ``none``.
+    ``record_requirement: conditional``, or a ``no_entity`` other than ``none``.
 
     :param fields: the first answer, as :func:`validate_annotation` returns it.
     :returns: True when the agreement call is needed. The rule only ever reverts a fill, so a
-        row whose first answer fills none of the four would come out the same without it.
+        row whose first answer fills none of the three would come out the same without it.
     """
     return (
         bool(fields.get(FIELD_EXCEPTED_ENTITIES))
         or fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value
         or fields.get(FIELD_NO_ENTITY) not in (None, NoEntity.NONE.value)
-        or fields.get(FIELD_RECORD_CHANGE) in _RECORD_CHANGE_FILLS
     )
 
 
@@ -1288,11 +1355,6 @@ def agree(
       ``no_entity_span`` become None, which :func:`stated_no_entity` reads as ``none``.
       Measured on stage 2: requiring the same value instead broke one more control (DECLARE
       exclusion 48, refers_elsewhere against investigator_judgement) for no extra fix.
-    * ``record_change`` ``stable`` or ``changed`` is kept -- the first answer's value and
-      fragment -- when the second answer also gives one of the two, whichever; the same rule
-      shape as ``no_entity``. The build skips the criterion for either value
-      (:func:`record_change_skips`). Otherwise ``record_change`` and ``record_change_span``
-      become None, which builds as ``none``.
 
     No field is filled from the second answer: the rule only ever reverts a fill.
 
@@ -1346,16 +1408,37 @@ def agree(
             dropped[FIELD_NO_ENTITY] = decision
             fields[FIELD_NO_ENTITY] = None
             fields[FIELD_NO_ENTITY_SPAN] = None
+    return fields, kept, dropped
 
-    value = first.get(FIELD_RECORD_CHANGE)
+
+def agree_record_change(
+    first: Mapping[str, Any], second: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Call 3's ``record_change`` fill, kept only when call 4 also fills one.
+
+    The same rule shape as ``no_entity`` in :func:`agree`: ``stable`` or ``changed`` is kept --
+    call 3's value and fragment -- when call 4 also gives ``stable`` or ``changed``, whichever;
+    the build skips the criterion for either (:func:`record_change_skips`). Otherwise both become
+    None, which builds as ``none``. Nothing is filled from call 4.
+
+    :param first: call 3's :func:`validate_record_change` fields.
+    :param second: call 4's; empty when that call failed, so nothing is confirmed.
+    :returns: ``(fields, kept, dropped)``.
+    """
+    fields = {
+        FIELD_RECORD_CHANGE: first.get(FIELD_RECORD_CHANGE),
+        FIELD_RECORD_CHANGE_SPAN: first.get(FIELD_RECORD_CHANGE_SPAN),
+    }
+    kept: dict[str, Any] = {}
+    dropped: dict[str, Any] = {}
+    value = fields[FIELD_RECORD_CHANGE]
     if value in _RECORD_CHANGE_FILLS:
-        decision = {"value": value, "span": first.get(FIELD_RECORD_CHANGE_SPAN)}
+        decision = {"value": value, "span": fields[FIELD_RECORD_CHANGE_SPAN]}
         if second.get(FIELD_RECORD_CHANGE) in _RECORD_CHANGE_FILLS:
             kept[FIELD_RECORD_CHANGE] = decision
         else:
             dropped[FIELD_RECORD_CHANGE] = decision
-            fields[FIELD_RECORD_CHANGE] = None
-            fields[FIELD_RECORD_CHANGE_SPAN] = None
+            fields = {FIELD_RECORD_CHANGE: None, FIELD_RECORD_CHANGE_SPAN: None}
     return fields, kept, dropped
 
 
@@ -1397,8 +1480,6 @@ def _agreement(
             FIELD_BASE_SPAN: second.get(FIELD_BASE_SPAN),
             FIELD_NO_ENTITY: second.get(FIELD_NO_ENTITY),
             FIELD_NO_ENTITY_SPAN: second.get(FIELD_NO_ENTITY_SPAN),
-            FIELD_RECORD_CHANGE: second.get(FIELD_RECORD_CHANGE),
-            FIELD_RECORD_CHANGE_SPAN: second.get(FIELD_RECORD_CHANGE_SPAN),
         },
     }
     if error is not None:
@@ -1409,6 +1490,82 @@ def _agreement(
         )
     if second_rejected:
         record["secondRejected"] = second_rejected
+    return fields, record
+
+
+def _record_change(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    *,
+    model: str,
+    llm: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Calls 3 and 4 for one row: ``record_change`` and nothing else.
+
+    Call 3 sends :data:`RECORD_CHANGE_PROMPT` (the `cf` arm); its answer is read only for
+    ``record_change`` / ``record_change_span`` (:func:`validate_record_change`). When that fills
+    ``stable`` or ``changed``, call 4 sends :data:`RECORD_CHANGE_AGREEMENT_PROMPT` (`pf`) and
+    :func:`agree_record_change` keeps the fill only when call 4 fills one too. A failed call
+    confirms nothing: call 3 failing leaves record_change absent, call 4 failing drops the fill;
+    either error is on the record and never cached.
+
+    :returns: the agreed ``{record_change, record_change_span}`` and the record stored under
+        :data:`RECORD_CHANGE_KEY`.
+    """
+    line = str(row.get(_LINE))
+    absent = {FIELD_RECORD_CHANGE: None, FIELD_RECORD_CHANGE_SPAN: None}
+    outcome, key, payload, error = _ask(
+        llm, row, members, role, model=model, template=RECORD_CHANGE_PROMPT,
+        system=RECORD_CHANGE_SYSTEM_PROMPT, version=RECORD_CHANGE_PROMPT_VERSION,
+    )
+    record: dict[str, Any] = {
+        "promptVersion": RECORD_CHANGE_PROMPT_VERSION,
+        "model": model,
+        "cacheKey": key,
+        "outcome": outcome,
+        **absent,
+        "kept": {},
+        "dropped": {},
+        "second": None,
+    }
+    if error is not None:
+        record["error"] = error
+        logger.warning(
+            "[annotation] record_change call failed for row %s; record_change absent: %s",
+            row.get(_ID), error,
+        )
+        return dict(absent), record
+    first, rejected = validate_record_change(payload, line)
+    record.update(first)
+    if rejected:
+        record["rejected"] = rejected
+    if first[FIELD_RECORD_CHANGE] not in _RECORD_CHANGE_FILLS:
+        return first, record
+    outcome, key, payload, error = _ask(
+        llm, row, members, role, model=model, template=RECORD_CHANGE_AGREEMENT_PROMPT,
+        system=RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT,
+        version=RECORD_CHANGE_AGREEMENT_PROMPT_VERSION,
+    )
+    second, second_rejected = ({}, []) if error is not None else validate_record_change(
+        payload, line
+    )
+    fields, kept, dropped = agree_record_change(first, second)
+    record.update(kept=kept, dropped=dropped)
+    record["second"] = {
+        "promptVersion": RECORD_CHANGE_AGREEMENT_PROMPT_VERSION,
+        "cacheKey": key,
+        "outcome": outcome,
+        FIELD_RECORD_CHANGE: second.get(FIELD_RECORD_CHANGE),
+        FIELD_RECORD_CHANGE_SPAN: second.get(FIELD_RECORD_CHANGE_SPAN),
+        **({"error": error} if error is not None else {}),
+        **({"rejected": second_rejected} if second_rejected else {}),
+    }
+    if error is not None:
+        logger.warning(
+            "[annotation] record_change agreement call failed for row %s; its fill is dropped: %s",
+            row.get(_ID), error,
+        )
     return fields, record
 
 
@@ -1426,8 +1583,10 @@ def annotate_row(
     :func:`agree` compares (:func:`needs_agreement`), a second call with
     :data:`AGREEMENT_PROMPT` follows, its answer is validated the same way, and the stored
     annotation keeps only what both answers give; the record of that goes under
-    :data:`AGREEMENT_KEY`. A row whose first answer fills none of the four gets no second
-    call and no record.
+    :data:`AGREEMENT_KEY`. A row whose first answer fills none of the three gets no second
+    call and no record. Calls 1 and 2 decide every field except ``record_change``, which
+    calls 3 and 4 decide (:func:`_record_change`, recorded under :data:`RECORD_CHANGE_KEY`);
+    call 3 is made whether or not call 1 succeeded.
 
     :param row: the store criterion row; gains :data:`ANNOTATION_KEY` and, when a field
         was dropped, :data:`ANNOTATION_REJECTED_KEY` (the first answer's rejections).
@@ -1446,24 +1605,32 @@ def annotate_row(
         llm, row, members, role, model=model, template=ANNOTATION_PROMPT,
         system=ANNOTATION_SYSTEM_PROMPT, version=ANNOTATION_PROMPT_VERSION,
     )
+    fields: dict[str, Any] = {}
+    rejected: list[dict[str, Any]] = []
+    if error is None:
+        fields, rejected = validate_annotation(payload, line)
+        if needs_agreement(fields):
+            fields, record = _agreement(
+                row, members, role, fields, first_key=key, model=model, llm=llm
+            )
+            row[AGREEMENT_KEY] = record
+        else:
+            row.pop(AGREEMENT_KEY, None)
+    change, row[RECORD_CHANGE_KEY] = _record_change(row, members, role, model=model, llm=llm)
     if error is not None:
         row[ANNOTATION_KEY] = {
             "promptVersion": ANNOTATION_PROMPT_VERSION,
             "model": model,
             "error": error,
+            **change,
         }
         row.pop(ANNOTATION_REJECTED_KEY, None)
         row.pop(AGREEMENT_KEY, None)
+        row.pop(WINDOW_DISAGREEMENT_KEY, None)
         return "error"
-    fields, rejected = validate_annotation(payload, line)
-    if needs_agreement(fields):
-        fields, record = _agreement(
-            row, members, role, fields, first_key=key, model=model, llm=llm
-        )
-        row[AGREEMENT_KEY] = record
-    else:
-        row.pop(AGREEMENT_KEY, None)
-    row[ANNOTATION_KEY] = {"promptVersion": ANNOTATION_PROMPT_VERSION, "model": model, **fields}
+    row[ANNOTATION_KEY] = {
+        "promptVersion": ANNOTATION_PROMPT_VERSION, "model": model, **fields, **change
+    }
     if rejected:
         row[ANNOTATION_REJECTED_KEY] = rejected
     else:
@@ -1536,7 +1703,10 @@ def annotate_eligibility(
     :param model: model override; defaults to the pipeline's resolved model.
     :returns: outcome counts, plus ``rejected`` (rows that lost at least one field) and the
         agreement call's counts: ``agreementCalls`` (rows it was made for), ``agreementError``
-        (rows where it failed) and ``agreementDropped`` (rows that lost a fill to it).
+        (rows where it failed) and ``agreementDropped`` (rows that lost a fill to it); and the
+        record_change calls': ``recordChangeCalls`` / ``recordChangeError`` (call 3),
+        ``recordChangeAgreementCalls`` / ``recordChangeAgreementError`` (call 4) and
+        ``recordChangeDropped`` (rows whose fill call 4 did not confirm).
     """
     from src.utils.llm import resolve_model
 
@@ -1570,6 +1740,17 @@ def annotate_eligibility(
     counts["agreementCalls"] = len(agreements)
     counts["agreementError"] = sum(1 for record in agreements if record.get("outcome") == "error")
     counts["agreementDropped"] = sum(1 for record in agreements if record.get("dropped"))
+    changes = [
+        record
+        for row, _m, _role in jobs
+        if isinstance(record := row.get(RECORD_CHANGE_KEY), Mapping)
+    ]
+    seconds = [record["second"] for record in changes if isinstance(record.get("second"), Mapping)]
+    counts["recordChangeCalls"] = len(changes)
+    counts["recordChangeError"] = sum(1 for record in changes if record.get("outcome") == "error")
+    counts["recordChangeAgreementCalls"] = len(seconds)
+    counts["recordChangeAgreementError"] = sum(1 for s in seconds if s.get("outcome") == "error")
+    counts["recordChangeDropped"] = sum(1 for record in changes if record.get("dropped"))
     logger.info("[annotation] model=%s version=%s %s", resolved, ANNOTATION_PROMPT_VERSION, counts)
     return counts
 
@@ -1595,6 +1776,26 @@ def agreement_records(rows: Iterable[Any], role: str) -> list[dict[str, Any]]:
         {"criterionId": str(row.get(_ID, "")), "role": role, **record}
         for row in rows
         if isinstance(row, Mapping) and isinstance(record := row.get(AGREEMENT_KEY), Mapping)
+    ]
+
+
+def record_change_records(rows: Iterable[Any], role: str) -> list[dict[str, Any]]:
+    """What calls 3 and 4 decided, one record per row call 4 was made for or call 3 failed for.
+
+    Written into the built expression under :data:`RECORD_CHANGE_RECORDS_KEY` (present and
+    empty when there was none), so the file says which record_change fills call 4 confirmed or
+    took away, and which rows went without an answer because call 3 failed.
+
+    :param rows: one role's store rows.
+    :param role: ``inclusion`` or ``exclusion``.
+    :returns: ``[{criterionId, role, **the row's record_change record}]``, in store order.
+    """
+    return [
+        {"criterionId": str(row.get(_ID, "")), "role": role, **record}
+        for row in rows
+        if isinstance(row, Mapping)
+        and isinstance(record := row.get(RECORD_CHANGE_KEY), Mapping)
+        and (record.get("second") is not None or record.get("outcome") == "error")
     ]
 
 
@@ -1743,8 +1944,8 @@ class RecordChangeSkip:
     :param span: the ``record_change_span`` of the deciding row, a substring of its line.
     :param value: ``stable`` or ``changed``.
     :param decided_by: the id of the deciding row -- the row itself, or its group label.
-    :param agreement_version: the agreement call's prompt version, when it confirmed the
-        deciding row's ``record_change`` (:data:`AGREEMENT_KEY`); None otherwise.
+    :param agreement_version: call 4's prompt version, when it confirmed the deciding row's
+        ``record_change`` (:data:`RECORD_CHANGE_KEY`); None otherwise.
     :param agreement_key: that call's cache key; None otherwise.
     """
 
@@ -1755,12 +1956,22 @@ class RecordChangeSkip:
     agreement_key: str | None = None
 
 
+def _record_change_confirmed_by(row: Mapping[str, Any]) -> tuple[str | None, str | None]:
+    """Call 4 when it confirmed this row's record_change: ``(promptVersion, cacheKey)``, else
+    ``(None, None)``."""
+    record = row.get(RECORD_CHANGE_KEY)
+    if not isinstance(record, Mapping) or FIELD_RECORD_CHANGE not in (record.get("kept") or {}):
+        return None, None
+    second = record.get("second") if isinstance(record.get("second"), Mapping) else {}
+    return second.get("promptVersion"), second.get("cacheKey")
+
+
 def _own_record_change(row: Mapping[str, Any]) -> RecordChangeSkip | None:
     annotation = _annotation(row)
     value = annotation.get(FIELD_RECORD_CHANGE)
     span = annotation.get(FIELD_RECORD_CHANGE_SPAN)
     if value in _RECORD_CHANGE_FILLS and span_in_line(span, row.get(_LINE)):
-        version, key = _confirmed_by(row, FIELD_RECORD_CHANGE)
+        version, key = _record_change_confirmed_by(row)
         return RecordChangeSkip(
             span=span,
             value=value,

@@ -1,5 +1,5 @@
 {
- "about": "Real rows of the 2026-10-12 P3 dry run and the real gemma-4-E4B answers stage 2 of the over-fill A/B recorded for them (repeat 1 of the `current` and `placebo` arms), with the two arms' prompts from plan.json and, per row, the sha256 of the prompt stage 2 sent (the harness's own render()). Read by tests/test_annotation_agreement.py. Rows copied verbatim from each store. Since 2026-10-15 production sends the `cf` / `pf` prompts (stage 2's current / placebo with the record_change block, plan.json of overfill/ab_runs/cfpf_*): cfpfPrompts and, per row, cfpfPromptSha256 (same render, same hash). The replayed answers are still stage 2's, given to the pre-block prompts.",
+ "about": "Real rows of the 2026-10-12 P3 dry run and the real gemma-4-E4B answers stage 2 of the over-fill A/B recorded for them (repeat 1 of the `current` and `placebo` arms), with the two arms' prompts from plan.json and, per row, the sha256 of the prompt stage 2 sent (the harness's own render()). Read by tests/test_annotation_agreement.py. Rows copied verbatim from each store. Since 2026-10-15 each row gets two more calls, for record_change only: call 3 sends the re-check's `cf` prompt (current + the record_change block) and call 4 its `pf` (placebo + the block), plan.json of overfill/ab_runs/cfpf_20261015_075611: cfpfPrompts, per row cfpfPromptSha256 (same render, same hash) and answers.cf / answers.pf (repeat 1 of that run).",
  "provenance": {
   "results": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/stage2_20261014_101708/results.jsonl",
   "resultsSha256": "7452451c5d60c5065fb0eb9f8eab7b3d0db19ae8b256f7467b00aed2e73fbb9e",
@@ -20,7 +20,9 @@
   "classification": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/classification.json",
   "classificationSha256": "d220bda3a534ae1cbf50c8f2ed05febd475da2a0f7fa5d79ceabeba941c78b33",
   "cfpfPlan": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/cfpf_20261015_075611/plan.json",
-  "cfpfPlanSha256": "08004eb7b736266c484295443b4f14d2f10c88f772ca364f68f4cea283936581"
+  "cfpfPlanSha256": "08004eb7b736266c484295443b4f14d2f10c88f772ca364f68f4cea283936581",
+  "cfpfResults": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-12_p3_dry/overfill/ab_runs/cfpf_20261015_075611/results.jsonl",
+  "cfpfResultsSha256": "0507ec97ee8f0c27965a2e6c3b5aca2f32a5ebfd9e14c564fcbbbb0dfdcf62d2"
  },
  "stage2Prompts": {
   "current": {
@@ -119,6 +121,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"blood\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 3 x upper limit of normal (ULN)\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"uln\"}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Active liver disease or impaired hepatic function, defined by serum levels of either ALT (SGPT), AST (SGOT), or alkaline phosphatase (AP) ≥ 3 x upper limit of normal (ULN) as determined at Visit 1\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"either\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"blood\", \"specimen_span\": \"serum\", \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 3 x upper limit of normal (ULN)\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"uln\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"blood\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 3 x upper limit of normal (ULN)\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"uln\"}"
     }
    },
    "stage2PromptSha256": {
@@ -218,6 +228,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"carotid artery revascularization\", \"span\": \"carotid\"}], \"base_span\": \"coronary, carotid, or peripheral artery revascularization\", \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prospective\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"coronary artery revascularization\", \"span\": \"coronary\"}, {\"text\": \"peripheral artery revascularization\", \"span\": \"peripheral\"}], \"base_span\": \"coronary, carotid, or peripheral artery revascularization\", \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"prospective\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"coronary artery revascularization\", \"span\": \"coronary\"}, {\"text\": \"peripheral artery revascularization\", \"span\": \"peripheral\"}], \"base_span\": \"carotid\", \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"prospective\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
    "stage2PromptSha256": {
@@ -311,6 +329,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"SGLT-2 inhibitors\", \"span\": \"SGLT-2 inhibitors\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"null\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"if ≥ 7 consecutive days\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"≥ 7 consecutive days\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"GLP-1 receptor agonists\", \"span\": \"GLP-1 receptor agonists\"}, {\"text\": \"DPP-4 inhibitors\", \"span\": \"DPP-4 inhibitors\"}, {\"text\": \"SGLT-2 inhibitors\", \"span\": \"SGLT-2 inhibitors\"}], \"base_span\": \"treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors\", \"relation\": \"any\", \"relation_span\": \"or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"if ≥ 7 consecutive days\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"SGLT-2 inhibitors\", \"span\": \"SGLT-2 inhibitors\"}], \"base_span\": \"any antidiabetic background therapy\", \"relation\": \"all\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"if ≥ 7 consecutive days\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
    "stage2PromptSha256": {
@@ -411,6 +437,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"basal cell carcinoma\", \"span\": \"basal cell carcinoma\"}], \"base_span\": \"cancer\", \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within the last 5 years\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"basal cell carcinoma\", \"span\": \"basal cell carcinoma\"}], \"base_span\": \"cancer\", \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within the last 5 years\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"null\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"basal cell carcinoma\", \"span\": \"basal cell carcinoma\"}], \"base_span\": \"Medical history of cancer\", \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within the last 5 years\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
    "stage2PromptSha256": {
@@ -510,6 +544,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"insulin\", \"relation\": \"any\", \"relation_span\": \"other than\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"insulin other than\", \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"Use of insulin\", \"relation\": \"any\", \"relation_span\": \"other than\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
    "stage2PromptSha256": {
@@ -713,6 +755,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \", or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg)\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \", or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"required\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \", or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"systolic BP > 180 mm Hg, or diastolic BP > 100 mm Hg\", \"quantity_kind\": \"lab_value\", \"reference_bound\": \"none\"}"
     }
    },
    "stage2PromptSha256": {
@@ -804,6 +854,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"If not in atrial fibrillation/flutter at the time of enrollment\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"at_least\", \"relation_span\": \"documented on two separate occasions\", \"cardinality\": 2, \"timing\": \"prior\", \"window_span\": \"in the 12 months prior to enrollment\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"count\", \"reference_bound\": \"none\"}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"If not in atrial fibrillation/flutter at the time of enrollment\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"at_least\", \"relation_span\": \"documented on two separate occasions\", \"cardinality\": 2, \"timing\": \"prior\", \"window_span\": \"in the 12 months prior to enrollment\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"count\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"If not in atrial fibrillation/flutter at the time of enrollment\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"at_least\", \"relation_span\": \"documented on two separate occasions\", \"cardinality\": 2, \"timing\": \"prior\", \"window_span\": \"in the 12 months prior to enrollment\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"count\", \"reference_bound\": \"none\"}"
     }
    },
    "stage2PromptSha256": {
@@ -903,6 +961,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"Use of insulin\", \"relation\": \"any\", \"relation_span\": \"other than\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"insulin\", \"relation\": \"any\", \"relation_span\": \"other than\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"human NPH insulin\", \"span\": \"human NPH insulin\"}, {\"text\": \"long-acting insulin analogue\", \"span\": \"long-acting insulin analogue\"}, {\"text\": \"premixed insulin\", \"span\": \"premixed insulin\"}], \"base_span\": \"Use of insulin other than\", \"relation\": \"any\", \"relation_span\": null, \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 3 months prior to screening\", \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
    "stage2PromptSha256": {
@@ -983,6 +1049,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": \"in the opinion of the investigator\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": \"in the opinion of the investigator, would not allow safe participation in the study\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": \"in the opinion of the investigator\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
    "stage2PromptSha256": {
@@ -1068,6 +1142,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [], \"base_span\": null, \"relation\": null, \"relation_span\": null, \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": \"Involvement in the planning and/or conduct of the study or other dapagliflozin studies (applies to AZ, BMS, Hadassah and Thrombolysis in Myocardial Infarction [TIMI] or representative staff and/or staff at the study site)\", \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"dapagliflozin studies\", \"span\": \"other dapagliflozin studies\"}], \"base_span\": \"Involvement in the planning and/or conduct of the study\", \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"forbidden\", \"conditional_span\": null, \"excepted_entities\": [{\"text\": \"AZ\", \"span\": \"AZ\"}, {\"text\": \"BMS\", \"span\": \"BMS\"}, {\"text\": \"Hadassah\", \"span\": \"Hadassah\"}, {\"text\": \"Thrombolysis in Myocardial Infarction [TIMI]\", \"span\": \"Thrombolysis in Myocardial Infarction [TIMI]\"}], \"base_span\": \"Involvement in the planning and/or conduct of the study or other dapagliflozin studies\", \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"at_index\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"investigator_judgement\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": null, \"reference_bound\": null}"
     }
    },
    "stage2PromptSha256": {
@@ -1158,6 +1240,14 @@
     "placebo": {
      "repeat": 1,
      "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Current or recent (within 24 months) treatment with pioglitazone and/or use of pioglitazone for a total of 2 years or more during lifetime\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": \"within 24 months\", \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": \"2 years or more\", \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "cf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Current or recent (within 24 months) treatment with pioglitazone and/or use of pioglitazone for a total of 2 years or more during lifetime\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
+    },
+    "pf": {
+     "repeat": 1,
+     "content": "{\"record_requirement\": \"conditional\", \"conditional_span\": \"Current or recent (within 24 months) treatment with pioglitazone and/or use of pioglitazone for a total of 2 years or more during lifetime\", \"excepted_entities\": [], \"base_span\": null, \"relation\": \"any\", \"relation_span\": \"and/or\", \"cardinality\": null, \"timing\": \"prior\", \"window_span\": null, \"record_change\": \"none\", \"record_change_span\": null, \"route\": [\"any\"], \"route_span\": null, \"specimen\": \"any\", \"specimen_span\": null, \"no_entity\": \"none\", \"no_entity_span\": null, \"threshold_span\": null, \"quantity_kind\": \"duration\", \"reference_bound\": \"none\"}"
     }
    },
    "stage2PromptSha256": {
