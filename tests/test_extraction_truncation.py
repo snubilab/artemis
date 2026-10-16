@@ -132,6 +132,17 @@ def test_should_name_the_token_budget_when_the_completion_is_truncated(
     assert excinfo.value.completion_tokens == COMPLETION_TOKENS
 
 
+def test_should_name_the_requests_own_answer_cap_as_a_possible_ceiling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Measured in the P6 smoke: segmentation stopped at completion=4096, its own
+    max_tokens, with prompt + completion ~17k under a 65,536 max_model_len. A message
+    naming only max_model_len sent the reader to the wrong knob."""
+    with pytest.raises(LLMTruncationError) as excinfo:
+        _decomposer(monkeypatch).parse("apixaban vs warfarin")
+    assert "max_tokens" in str(excinfo.value)
+
+
 def test_should_still_raise_a_parse_error_when_a_finished_model_emits_bad_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

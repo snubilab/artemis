@@ -88,6 +88,8 @@ FIELD_ITEM_END = "items.end"
 FIELD_ANSWER = "*"
 
 REASON_NOT_FOUND = "not-a-substring-of-the-text"
+#: The document contains the fragment, but not where the answer's own order puts it.
+REASON_MISPLACED = "not-where-the-answer-places-it"
 REASON_OUTSIDE_SECTION = "outside-the-section"
 REASON_INVALID = "not-the-requested-object"
 REASON_CALL_FAILED = "call-failed"
@@ -298,6 +300,7 @@ class _Located:
 
     def __init__(self, text: str) -> None:
         self.form, self.index = fold(text)
+        self.length = len(text)
 
     def _at(self, offset: int) -> int:
         return bisect.bisect_left(self.index, offset)
@@ -314,6 +317,11 @@ class _Located:
             return None
         k = self.form.find(probe, self._at(lo), self._at(hi))
         return self._span(k, probe) if k >= 0 else None
+
+    def absent_reason(self, fragment: Any) -> str:
+        """Why a fragment was not found where it was looked for: misplaced when the
+        document holds it elsewhere, else not in the text."""
+        return REASON_NOT_FOUND if self.find(fragment, 0, self.length) is None else REASON_MISPLACED
 
     def find_last(self, fragment: Any, lo: int, hi: int) -> tuple[int, int] | None:
         """Last occurrence of ``fragment`` lying within ``[lo, hi)``."""
@@ -427,7 +435,7 @@ def _read_section(
             continue
         head = located.find(head_fragment, cursor, hi)
         if head is None:
-            reject(FIELD_ITEM_START, head_fragment, REASON_NOT_FOUND)
+            reject(FIELD_ITEM_START, head_fragment, located.absent_reason(head_fragment))
             continue
         heads.append((head, head_fragment, entry.get(FIELD_END)))
         cursor = head[1]
@@ -443,7 +451,7 @@ def _read_section(
             else:
                 tail = located.find(tail_fragment, head[0], hi)
             if tail is None:
-                reject(FIELD_ITEM_END, tail_fragment, REASON_NOT_FOUND)
+                reject(FIELD_ITEM_END, tail_fragment, located.absent_reason(tail_fragment))
             else:
                 tail_end = tail[1]
         marks.listed.setdefault(head[0], set()).add(chunk.index)
@@ -463,7 +471,7 @@ def _read_section(
         else:
             found = located.find(start_fragment, lo, hi)
         if found is None:
-            reject(FIELD_START, start_fragment, REASON_NOT_FOUND)
+            reject(FIELD_START, start_fragment, located.absent_reason(start_fragment))
         else:
             section_start = found[0]
             marks.starts.append((found[0], start_fragment, chunk.index, bool(heads)))
@@ -483,7 +491,7 @@ def _read_section(
             if found is not None:
                 break
         if found is None:
-            reject(FIELD_END, end_fragment, REASON_NOT_FOUND)
+            reject(FIELD_END, end_fragment, located.absent_reason(end_fragment))
         else:
             marks.ends.append((found[1], end_fragment, chunk.index))
 

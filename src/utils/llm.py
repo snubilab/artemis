@@ -237,11 +237,13 @@ def raise_if_truncated(response: Any, *, what: str) -> None:
     else:
         message = (
             f"{what} was cut off at the token ceiling (finish_reason='length'): the model "
-            f"stopped mid-answer because prompt + completion reached the server's "
-            f"max_model_len, not because the answer ended.{budget} The body is a prefix of "
-            f"a valid response, so no parse of it can succeed -- this is an exhausted "
-            f"output budget, not malformed generation.{evidence} Shorten the prompt, raise "
-            f"the server's max_model_len, or split the request."
+            f"stopped mid-answer because the completion reached the request's max_tokens "
+            f"or prompt + completion reached the server's max_model_len, not because the "
+            f"answer ended.{budget} The body is a prefix of a valid response, so no parse "
+            f"of it can succeed -- this is an exhausted output budget, not malformed "
+            f"generation.{evidence} Compare the completion count with the caller's "
+            f"max_tokens: if equal, raise that cap or shorten the answer; otherwise shorten "
+            f"the prompt, raise the server's max_model_len, or split the request."
         )
     logger.error("[llm] %s", message)
     raise LLMTruncationError(

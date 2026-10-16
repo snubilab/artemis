@@ -448,6 +448,23 @@ def test_should_record_a_section_end_that_is_not_in_the_text_and_bound_by_the_cr
     assert any(r.field == "end" and r.reason == REASON_NOT_FOUND for r in result.rejected)
 
 
+def test_should_tell_a_misplaced_fragment_from_one_the_text_does_not_contain():
+    """In the P6 smoke about half the `not-a-substring-of-the-text` rejections were
+    fragments the document does contain, quoted where the answer's own order does not
+    allow them (an end past the next criterion's start). The two need opposite fixes."""
+    source = "PLATO.nct"
+
+    def edit(chunk, payload):
+        items = payload["inclusion"]["items"]
+        items[0]["end"] = items[1]["end"] or "reliable contraception"
+        return payload
+
+    result = segment_eligibility(text_of(source), respond=TruthOracle(source, edit=edit))
+    assert [(r.field, r.reason) for r in result.rejected] == [
+        ("items.end", segmentation.REASON_MISPLACED)
+    ]
+
+
 def test_should_keep_criteria_a_part_lists_past_another_parts_early_section_end():
     """Measured live (P6 smoke seg_probe, EMPA-REG.appendix): part 1 listed 12 of the 17
     exclusions and quoted the 14th's end as the section's end; part 2, which starts the
