@@ -51,7 +51,7 @@ from src.utils.span_match import fold, is_space
 logger = logging.getLogger(__name__)
 
 #: Bumped whenever a prompt below changes meaning; part of the cache key.
-SEGMENTATION_PROMPT_VERSION = "rfc016-s5-v1"
+SEGMENTATION_PROMPT_VERSION = "rfc016-s5-v2"  # v2: answer constrained by ANSWER_SCHEMA
 
 #: Characters per part, and how many of them the next part repeats. A part of this size
 #: is roughly 12-14k tokens, well inside the 65,536-token serving context with room for
@@ -63,6 +63,12 @@ PART_OVERLAP = 8_000
 #: Upper bound on one answer, so a generation that stops producing content cannot run to
 #: the context ceiling. A part of the largest corpus section needs well under half of it.
 MAX_ANSWER_TOKENS = 4096
+
+#: Caps on `interruptions`, the one field whose length the document does not bound: live,
+#: it ran to whole copied pages and one entry per page number. A line past the cap is not
+#: a full line and is rejected, which only leaves it in the criterion text.
+INTERRUPTIONS_MAX = 16
+INTERRUPTION_LINE_CHARS = 160
 
 
 class SectionKind(str, Enum):
@@ -144,6 +150,49 @@ Output JSON:
 "exclusion": {{"start": "<fragment, or null>", "end": "<fragment, or null>", \
 "items": [{{"start": "<fragment>", "end": "<fragment, or null>"}}], \
 "interruptions": ["<full line>"]}}}}"""
+
+
+_NULL = {"type": "null"}
+_FRAGMENT = {"anyOf": [{"type": "string"}, _NULL]}
+_SECTION = {
+    "anyOf": [
+        _NULL,
+        {
+            "type": "object",
+            "additionalProperties": False,
+            "required": [FIELD_START, FIELD_END, FIELD_ITEMS, FIELD_INTERRUPTIONS],
+            "properties": {
+                FIELD_START: _FRAGMENT,
+                FIELD_END: _FRAGMENT,
+                # No length cap on a fragment: a capped `end` is a prefix and marks an
+                # earlier end than the model quoted.
+                FIELD_ITEMS: {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [FIELD_START, FIELD_END],
+                        "properties": {FIELD_START: {"type": "string"}, FIELD_END: _FRAGMENT},
+                    },
+                },
+                FIELD_INTERRUPTIONS: {
+                    "type": "array",
+                    "maxItems": INTERRUPTIONS_MAX,
+                    "items": {"type": "string", "maxLength": INTERRUPTION_LINE_CHARS},
+                },
+            },
+        },
+    ]
+}
+#: The answer's shape, enforced by the server's structured output. Under plain json_object
+#: the P6 smoke lost 8 of 36 parts at the answer budget: a malformed key followed by
+#: whitespace to the ceiling, invented fields, or `interruptions` copying whole pages.
+ANSWER_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [kind.value for kind in SectionKind],
+    "properties": {kind.value: _SECTION for kind in SectionKind},
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -683,7 +732,19 @@ def _build_llm(model: str) -> Any:
     test substitutes a stub without reaching a network)."""
     from src.utils.llm import get_llm
 
-    return get_llm(model_name=model, temperature=0.0, json_mode=True, max_tokens=MAX_ANSWER_TOKENS)
+    return get_llm(
+        model_name=model,
+        temperature=0.0,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "eligibility_segmentation",
+                "schema": ANSWER_SCHEMA,
+                "strict": True,
+            },
+        },
+        max_tokens=MAX_ANSWER_TOKENS,
+    )
 
 
 def _complete(llm: Any, prompt: str) -> Any:

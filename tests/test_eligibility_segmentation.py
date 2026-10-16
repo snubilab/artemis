@@ -584,6 +584,30 @@ def test_should_send_each_part_to_the_model_and_cache_the_answer(monkeypatch, tm
     assert second.criteria() == first.criteria()
 
 
+def test_should_constrain_the_answer_to_the_segmentation_schema(monkeypatch):
+    """Measured live (P6 smoke seg_probe): under json_object, 8 of 36 parts failed at the
+    4096-token budget -- a malformed key (`"exclusion**: {"`) then whitespace to the
+    ceiling, invented fields, or `interruptions` copying whole pages. Re-asked under this
+    schema, all 8 stopped (largest answer 2319 tokens)."""
+    import src.utils.llm as llm
+
+    seen = {}
+    monkeypatch.setattr(llm, "get_llm", lambda **kwargs: seen.update(kwargs) or object())
+    segmentation._build_llm("vllm/m")
+
+    schema = seen["response_format"]["json_schema"]["schema"]
+    assert seen["response_format"]["type"] == "json_schema"
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == {kind.value for kind in segmentation.SectionKind}
+    section = schema["properties"]["inclusion"]["anyOf"][1]
+    assert section["additionalProperties"] is False
+    assert section["properties"]["items"]["items"]["additionalProperties"] is False
+    assert "maxItems" in section["properties"]["interruptions"]
+    assert "maxLength" not in json.dumps(section["properties"]["items"]), (
+        "a capped fragment would be a prefix: an `end` cut short marks an earlier end"
+    )
+
+
 def test_should_not_call_the_model_for_empty_text(monkeypatch):
     monkeypatch.setattr(segmentation, "_build_llm", lambda model: pytest.fail("model reached"))
     result = segment_eligibility("   \n ")
