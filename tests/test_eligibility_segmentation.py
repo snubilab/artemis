@@ -821,3 +821,66 @@ def test_should_keep_unioning_main_papers_on_the_merge_path(monkeypatch):
     assert (len(trial_data.inclusion_criteria), len(trial_data.exclusion_criteria)) == (8, 24)
     assert "Increased risk of bradycardiac events" in trial_data.exclusion_criteria
     assert "an increased risk of bradycardia," in trial_data.exclusion_criteria
+
+
+class _FailingParts(_Dispatch):
+    """The oracle, except that the listed parts of one source fail as a live call can."""
+
+    def __init__(self, source_ids: list[str], failing: str, parts: set[int]) -> None:
+        super().__init__(source_ids)
+        self.failing_text = text_of(failing)
+        self.parts = parts
+
+    def __call__(self, chunk: Chunk) -> dict[str, Any]:
+        own = self.failing_text[chunk.offset : chunk.offset + len(chunk.text)] == chunk.text
+        if own and chunk.index in self.parts:
+            raise RuntimeError("finish_reason='length'")
+        return super().__call__(chunk)
+
+
+def _enriched_with(monkeypatch, trial: str, dispatch: _Dispatch) -> Any:
+    from src.agents.agent1 import parser as parser_module
+    from src.agents.agent1.parser import LogicDecomposer
+
+    monkeypatch.setattr(segmentation, "_responder", lambda model=None: dispatch)
+
+    def stop(trial_data):
+        raise _Enriched(trial_data)
+
+    monkeypatch.setattr(parser_module, "_normalize_trial_data_for_stable_hash", stop)
+    with pytest.raises(_Enriched) as reached:
+        LogicDecomposer.__new__(LogicDecomposer).parse_nct(TRIAL_SOURCES[trial][0], enrich_from_pubmed=False)
+    return reached.value.trial_data
+
+
+def test_should_keep_the_registry_section_when_a_failed_part_could_have_held_the_pdfs(monkeypatch):
+    """Measured live (P6 smoke seg_probe, a53af8c): CAROLINA's supplement parts 1, 3 and 4
+    failed. Part 1 holds the synopsis list the segmentation step takes as the section, so
+    the step took a later statement instead, and supplement_priority replaced the
+    registry's correct 27 criteria with 6 that match none. A failed part at or before the
+    section's end means the choice of section was not verified."""
+    sources = TRIAL_SOURCES["CAROLINA"][1]
+    dispatch = _FailingParts(sources, "CAROLINA.supplement", {0})
+    trial_data = _enriched_with(monkeypatch, "CAROLINA", dispatch)
+    assert trial_data.inclusion_criteria == expected_items("CAROLINA.nct", "inclusion")
+    assert trial_data.exclusion_criteria == expected_items("CAROLINA.nct", "exclusion")
+
+
+def test_should_still_take_the_pdfs_section_when_the_failed_part_lies_after_it(monkeypatch):
+    """Measured live (seg-fix probe, 816790d): ARISTOTLE's protocol part 6 failed -- the
+    warfarin label, after the criteria. The section was verified; nothing is in doubt."""
+    sources = TRIAL_SOURCES["ARISTOTLE"][1]
+    dispatch = _FailingParts(sources, "ARISTOTLE.protocol", {5})
+    trial_data = _enriched_with(monkeypatch, "ARISTOTLE", dispatch)
+    assert trial_data.inclusion_criteria == expected_items("ARISTOTLE.protocol", "inclusion")
+    assert trial_data.exclusion_criteria == expected_items("ARISTOTLE.protocol", "exclusion")
+
+
+def test_should_take_the_pdfs_section_when_the_registry_holds_none_even_if_in_doubt(monkeypatch):
+    """ARISTOTLE's registry states no exclusion criteria: an unverified section from the
+    protocol is still more than nothing, so it is kept."""
+    sources = TRIAL_SOURCES["ARISTOTLE"][1]
+    dispatch = _FailingParts(sources, "ARISTOTLE.protocol", {0})
+    trial_data = _enriched_with(monkeypatch, "ARISTOTLE", dispatch)
+    assert trial_data.inclusion_criteria == expected_items("ARISTOTLE.nct", "inclusion")
+    assert trial_data.exclusion_criteria == expected_items("ARISTOTLE.protocol", "exclusion")

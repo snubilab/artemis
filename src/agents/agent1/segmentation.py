@@ -244,10 +244,29 @@ class Segmentation:
     items: dict[str, list[str]]
     rejected: list[Rejection] = field(default_factory=list)
     parts: int = 0
+    #: per kind, the offset of the section's start and of its end (the end of the text
+    #: when no end was verified), for the kinds that yielded criteria
+    sections: dict[str, tuple[int, int]] = field(default_factory=dict)
+    #: the offsets of every part whose call failed or whose answer was unreadable
+    failed_parts: list[tuple[int, int]] = field(default_factory=list)
 
     def criteria(self) -> dict[str, list[str]]:
         """:returns: criterion texts per section kind, in document order."""
         return {kind.value: list(self.items.get(kind.value) or []) for kind in SectionKind}
+
+    def unsettled(self, kind: str) -> bool:
+        """Whether a part that failed could have held this section.
+
+        The section is the first statement of the list the parts reported. A failed part
+        starting before the section's end may have held an earlier statement, or the
+        rest of this one, so which stretch is the section was not verified.
+
+        :param kind: ``inclusion`` or ``exclusion``.
+        :returns: True when the kind yielded a section and a failed part starts before
+            its end.
+        """
+        section = self.sections.get(kind)
+        return section is not None and any(lo < section[1] for lo, _hi in self.failed_parts)
 
     @property
     def failures(self) -> list[Rejection]:
@@ -513,10 +532,13 @@ def _read_section(
 # --------------------------------------------------------------------------- #
 
 
-def _assemble_kind(text: str, kind: str, marks: _Marks, rejected: list[Rejection]) -> list[str]:
-    """The criteria of one section kind from every part's verified fragments."""
+def _assemble_kind(
+    text: str, kind: str, marks: _Marks, rejected: list[Rejection]
+) -> tuple[list[str], tuple[int, int] | None]:
+    """The criteria of one section kind from every part's verified fragments, and the
+    section's start and end offsets (None when the kind yielded nothing)."""
     if not marks.items and not marks.starts:
-        return []
+        return [], None
 
     # A start reported in a part where no criterion was verified is used only when no
     # part pairs a start with criteria: it may be a table-of-contents line.
@@ -601,7 +623,7 @@ def _assemble_kind(text: str, kind: str, marks: _Marks, rejected: list[Rejection
             criteria.append(criterion)
         else:
             rejected.append(Rejection(kind, FIELD_ITEM_START, text[offset:end], REASON_EMPTY, part))
-    return criteria
+    return criteria, ((section_start, limit) if criteria else None)
 
 
 def assemble(text: str, answers: Sequence[tuple[Chunk, Any, str | None]]) -> Segmentation:
@@ -615,7 +637,10 @@ def assemble(text: str, answers: Sequence[tuple[Chunk, Any, str | None]]) -> Seg
     located = _Located(text)
     rejected: list[Rejection] = []
     usable: list[tuple[Chunk, Mapping[str, Any]]] = []
+    failed_parts: list[tuple[int, int]] = []
     for chunk, payload, error in answers:
+        if error is not None or not isinstance(payload, Mapping):
+            failed_parts.append((chunk.offset, chunk.offset + len(chunk.text)))
         if error is not None:
             rejected.append(
                 Rejection(FIELD_ANSWER, FIELD_ANSWER, error, REASON_CALL_FAILED, chunk.index)
@@ -628,6 +653,7 @@ def assemble(text: str, answers: Sequence[tuple[Chunk, Any, str | None]]) -> Seg
             usable.append((chunk, payload))
 
     items: dict[str, list[str]] = {}
+    sections: dict[str, tuple[int, int]] = {}
     for kind in SectionKind:
         marks = _Marks()
         for chunk, payload in usable:
@@ -640,8 +666,16 @@ def assemble(text: str, answers: Sequence[tuple[Chunk, Any, str | None]]) -> Seg
                 )
                 continue
             _read_section(located, chunk, kind.value, section, marks, rejected)
-        items[kind.value] = _assemble_kind(text, kind.value, marks, rejected)
-    return Segmentation(items=items, rejected=rejected, parts=len(answers))
+        items[kind.value], span = _assemble_kind(text, kind.value, marks, rejected)
+        if span is not None:
+            sections[kind.value] = span
+    return Segmentation(
+        items=items,
+        rejected=rejected,
+        parts=len(answers),
+        sections=sections,
+        failed_parts=failed_parts,
+    )
 
 
 # --------------------------------------------------------------------------- #

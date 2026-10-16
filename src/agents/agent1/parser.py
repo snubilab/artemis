@@ -687,6 +687,20 @@ class LogicDecomposer:
                 return trial_data
 
             strategy = self._strategy_for_role(role)
+            if strategy == "supplement_priority":
+                # A section this PDF would put in place of the held one is used only
+                # when its choice was verified; otherwise the held section stands.
+                for kind in list(pdf_criteria):
+                    held = getattr(trial_data, f"{kind}_criteria")
+                    if pdf_criteria[kind] and held and segmented.unsettled(kind):
+                        self._report_pdf_outcome(
+                            pdf_name,
+                            f"{kind}: a failed part could have held this section, so the "
+                            f"{len(held)} held criteria are kept instead of the PDF's "
+                            f"{len(pdf_criteria[kind])}",
+                            degraded=True,
+                        )
+                        pdf_criteria[kind] = []
             enriched = enrich_trial_data(trial_data, pdf_criteria, strategy=strategy)
             self._report_pdf_outcome(
                 pdf_name,
