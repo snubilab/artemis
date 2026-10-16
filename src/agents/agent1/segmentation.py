@@ -343,6 +343,8 @@ class _Marks:
     items: dict[int, list[Any]] = field(default_factory=dict)
     interruptions: set[str] = field(default_factory=set)
     end_offered: bool = False
+    #: criterion start offset -> every part that listed it
+    listed: dict[int, set[int]] = field(default_factory=dict)
 
 
 def _read_section(
@@ -395,6 +397,7 @@ def _read_section(
                 reject(FIELD_ITEM_END, tail_fragment, REASON_NOT_FOUND)
             else:
                 tail_end = tail[1]
+        marks.listed.setdefault(head[0], set()).add(chunk.index)
         known = marks.items.get(head[0])
         if known is None:
             marks.items[head[0]] = [tail_end, head_fragment, chunk.index, tail_fragment is not None]
@@ -468,7 +471,23 @@ def _assemble_kind(text: str, kind: str, marks: _Marks, rejected: list[Rejection
         rejected.append(
             Rejection(kind, FIELD_START, None, REASON_UNMARKED, marks.items[section_start][2])
         )
-    later_ends = sorted(e for e in marks.ends if e[0] > section_start)
+    # A part that starts this section and lists a criterion before its own quoted end
+    # vouches that the section runs at least that far; an end another part quoted before
+    # it is that part's short view (it listed fewer criteria than the section holds).
+    own_end = {s[2]: len(text) for s in marks.starts if s[0] == section_start}
+    for offset, _fragment, part in marks.ends:
+        if part in own_end and section_start < offset < own_end[part]:
+            own_end[part] = offset
+    reach = max(
+        (
+            o
+            for o, parts in marks.listed.items()
+            for part in parts & own_end.keys()
+            if section_start <= o < own_end[part]
+        ),
+        default=section_start,
+    )
+    later_ends = sorted(e for e in marks.ends if e[0] > reach)
     section_end = later_ends[0][0] if later_ends else None
     if section_end is None and not marks.end_offered:
         rejected.append(Rejection(kind, FIELD_END, None, REASON_UNMARKED, -1))
@@ -491,9 +510,15 @@ def _assemble_kind(text: str, kind: str, marks: _Marks, rejected: list[Rejection
                 Rejection(kind, FIELD_ITEM_START, fragment, REASON_OUTSIDE_SECTION, part)
             )
 
+    # Where every criterion starts the same distance into its line, that stretch is the
+    # number or bullet marking it (the model quotes from after it), so it is cut from the
+    # criterion before it. Offsets only: what the stretch says is not read.
+    indents = [offset - (text.rfind("\n", 0, offset) + 1) for offset, *_ in used]
+    marker = indents[0] if indents and min(indents) == max(indents) else 0
+
     criteria: list[str] = []
     for position, (offset, tail_end, part, end_offered) in enumerate(used):
-        bound = used[position + 1][0] if position + 1 < len(used) else limit
+        bound = used[position + 1][0] - marker if position + 1 < len(used) else limit
         if tail_end is None:
             if not end_offered:
                 rejected.append(Rejection(kind, FIELD_ITEM_END, None, REASON_UNMARKED, part))

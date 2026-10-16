@@ -448,6 +448,44 @@ def test_should_record_a_section_end_that_is_not_in_the_text_and_bound_by_the_cr
     assert any(r.field == "end" and r.reason == REASON_NOT_FOUND for r in result.rejected)
 
 
+def test_should_keep_criteria_a_part_lists_past_another_parts_early_section_end():
+    """Measured live (P6 smoke seg_probe, EMPA-REG.appendix): part 1 listed 12 of the 17
+    exclusions and quoted the 14th's end as the section's end; part 2, which starts the
+    same section, listed all 17. The earliest end cut the last three exclusions. A section
+    end before a criterion that a part starting the same section listed does not hold."""
+    source = "EMPA-REG.appendix"
+    baseline = segment_eligibility(text_of(source), respond=TruthOracle(source)).criteria()
+
+    def edit(chunk, payload):
+        section = payload.get("exclusion")
+        if chunk.index == 0 and section and len(section["items"]) > 14:
+            early_end = section["items"][13]["end"]
+            section["items"] = section["items"][:12]
+            section["end"] = early_end
+        return payload
+
+    result = segment_eligibility(text_of(source), respond=TruthOracle(source, edit=edit))
+    assert result.criteria()["exclusion"] == baseline["exclusion"]
+
+
+def test_should_not_end_a_criterion_with_the_next_ones_marker_when_no_end_is_quoted():
+    """Measured live (P6 smoke seg_probe, PLATO.nct): every criterion's `end` came back null,
+    so each was cut at the next criterion's start and carried that criterion's bullet
+    ('... potential ACS *'). Where every criterion starts the same distance into its line,
+    that stretch is the marker and belongs to neither criterion."""
+    source = "PLATO.nct"
+    baseline = segment_eligibility(text_of(source), respond=TruthOracle(source)).criteria()
+
+    def edit(chunk, payload):
+        for kind in KINDS:
+            for item in (payload.get(kind) or {}).get("items", []):
+                item["end"] = None
+        return payload
+
+    result = segment_eligibility(text_of(source), respond=TruthOracle(source, edit=edit))
+    assert result.criteria() == baseline
+
+
 def test_should_record_a_failed_part_and_use_nothing_else_in_its_place():
     """A part whose call fails contributes nothing. There is no fallback to a word-list
     splitter: with every part failing, the source yields no criteria at all."""
