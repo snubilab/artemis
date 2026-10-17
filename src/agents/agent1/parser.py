@@ -53,6 +53,27 @@ def _ir_cache_enabled() -> bool:
     return env_flag_enabled("AGENT1_IR_CACHE_ENABLED")
 
 
+def _replayed_trial_data(nct_id: str) -> "TrialData | None":
+    """Agent 1's input read from ``AGENT1_INPUT_REPLAY`` instead of built, or None when unset.
+
+    For an experiment arm that holds Agent 1's input equal to an earlier run's (the criteria
+    lists that run's IR meta files record), so only what comes after the input differs. The
+    file maps an NCT id to a ``TrialData`` record. A set variable whose file has no record
+    for the trial raises: building the input instead would silently mix the two arms.
+
+    :param nct_id: the trial being parsed.
+    :returns: the recorded ``TrialData``, or None when the variable is unset.
+    """
+    path = os.environ.get("AGENT1_INPUT_REPLAY")
+    if not path:
+        return None
+    with open(path, encoding="utf-8") as handle:
+        records = json.load(handle)
+    if nct_id not in records:
+        raise KeyError(f"AGENT1_INPUT_REPLAY={path} has no record for {nct_id}")
+    return TrialData.model_validate(records[nct_id])
+
+
 def _normalize_trial_data_for_stable_hash(trial_data: "TrialData") -> "TrialData":
     """
     Return a copy of trial_data with criteria normalized, **in document order**.
@@ -208,24 +229,30 @@ class LogicDecomposer:
         
         # Step 1: Fetch or load trial data
         nct_raw_data = None
-        if json_path:
+        replayed = _replayed_trial_data(nct_id)
+        if replayed is not None:
+            trial_data = replayed
+            print(f"[Agent 1] ▶ {nct_id}: input replayed from AGENT1_INPUT_REPLAY; not built")
+        elif json_path:
             trial_data = load_trial_data_from_file(json_path)
         else:
             trial_data = fetch_or_load_trial_data(nct_id)
         
         # Step 1.5: Enrich from papers — track enrichment source for PaperStatus
-        enriched = False
-        paper_status = PaperStatus()
+        # (a replayed input is already the enriched one)
+        enriched = replayed is not None
+        paper_status = (PaperStatus(source="replay", manual_download_needed=False)
+                        if enriched else PaperStatus())
 
         # Priority 1: papers_dir (explicit or auto-discovered)
-        if not papers_dir:
+        if not papers_dir and not enriched:
             # Auto-discover from data/papers/{nct_id}/
             auto_dir = Path(__file__).resolve().parents[3] / "data" / "papers" / nct_id.upper()
             if auto_dir.exists():
                 papers_dir = str(auto_dir)
                 print(f"[Agent 1] 📂 Auto-discovered papers dir: {papers_dir}")
 
-        if papers_dir:
+        if papers_dir and not enriched:
             pdfs = self._discover_pdfs(papers_dir)
             if pdfs:
                 has_supplement = any(p['role'] == 'supplement' for p in pdfs)
