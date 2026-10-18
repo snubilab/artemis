@@ -28,6 +28,9 @@ def test_should_keep_a_bound_that_is_not_the_window():
     assert not duration_held_by_window(ValueConstraint(op="lt", value=30, unit_text="mL/min/1.73 m2"),
                                        TemporalWindow(start=-30, end=0))
     assert not duration_held_by_window(ValueConstraint(op="eq", value=2, unit_text="years"), None)
+    # "stable for at least 8 weeks": a minimum length, not the 56-day lookback
+    assert not duration_held_by_window(ValueConstraint(op="gte", value=8, unit_text="weeks"),
+                                       TemporalWindow(start=-56, end=0))
 
 
 RESPONSE = """{"decompose": true, "reasoning": "two surgeries", "relation": "all", "relation_span": "and", "sub_criteria": [

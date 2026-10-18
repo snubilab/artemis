@@ -144,7 +144,9 @@ def duration_held_by_window(vc: Optional[ValueConstraint], window: Optional[Temp
     """
     from src.services.value_constraint import normalize_unit
 
-    if vc is None or window is None or vc.value is None:
+    # A lower bound ("for at least 8 weeks") is a minimum length, which a lookback window does
+    # not state; only an upper or exact one ("within the past two years") is the window's.
+    if vc is None or window is None or vc.value is None or vc.op == "gt" or vc.op == "gte" or vc.op == "bt":
         return False
     days = _DAYS_PER_TIME_UNIT.get(vc.unit_concept_id or normalize_unit(vc.unit_text))
     if days is None:
