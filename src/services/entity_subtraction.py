@@ -56,12 +56,17 @@ class EntityException:
     :param own: the seed the row would get with no exception (its own entity text). When it
         differs from ``base`` -- the base span seeded the mapper -- the base set is kept only
         if it shares a concept with this seed's set.
+    :param unanchored: the protocol line names no set apart from what it excepts
+        (:func:`src.services.criterion_annotation.exception_anchored` is False) and the row has
+        entity text of its own. When the subtraction then covers the whole base, the "exception"
+        names the row's own entity: the row is mapped on ``own`` instead of refused.
     """
 
     text: str
     base: str = ""
     excepted: list[str] = field(default_factory=list)
     own: str = ""
+    unanchored: bool = False
 
 
 @dataclass(frozen=True)
@@ -185,12 +190,15 @@ class ExceptionResolution:
     :param fallback_reason: why nothing was applied; empty when something was.
     :param base: the base phrase's own mapping, before any subtraction; None when it did not
         map.
+    :param covers_base: the fallback is the guard's: every included member of the base is in
+        the excepted set.
     """
 
     mapping: dict | None = None
     subtraction: EntitySubtraction | None = None
     fallback_reason: str = ""
     base: dict | None = None
+    covers_base: bool = False
 
 
 def _included_concepts(mapping: dict) -> list[ExceptedConcept]:
@@ -254,7 +262,9 @@ def resolve_entity_exception(exception, map_phrase) -> ExceptionResolution:
 
     subtraction = apply_entity_subtraction(base_items, excepted)
     if subtraction.refused:
-        return ExceptionResolution(fallback_reason=subtraction.refused, base=mapped_base)
+        return ExceptionResolution(
+            fallback_reason=subtraction.refused, base=mapped_base, covers_base=True
+        )
 
     repaired = dict(base)
     repaired["expression"] = dict(base.get("expression") or {})

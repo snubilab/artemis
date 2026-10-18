@@ -98,6 +98,7 @@ from src.services.criterion_annotation import (
     annotate_eligibility,
     applied_value_constraint,
     conditional_skips,
+    exception_anchored,
     prospective_skips,
     record_change_records,
     record_change_skips,
@@ -6887,6 +6888,10 @@ class TTEService:
             base=seed,
             excepted=[entry["text"] for entry in excepted],
             own=criterion_own_seed(criterion) or seed,
+            unanchored=(
+                not exception_anchored(criterion)
+                and not criterion_entity_text_missing(criterion)
+            ),
         )
 
     def _build_seeded_eligibility_rule(
@@ -8161,6 +8166,41 @@ class TTEService:
                             update={"mappingFailures": _phrase_failures}
                         )
                     return _resolution.mapping
+                # The excepted set covers the whole base, and the line names no set apart from
+                # what it excepts (no verified base span, or an excepted span inside it): the
+                # "exception" names the row's own entity (P6 SEG-OFF: CARMELINA exclusion 32
+                # excepting 'Percutaneous Coronary Intervention' from a PCI row, PLATO
+                # exclusion 55 'Acute Coronary Syndrome' from an ACS row). The row is mapped on
+                # its own entity text with no exception, and mapping metadata says why.
+                if _resolution.covers_base and _exception.unanchored:
+                    _own_text = _own or seed
+                    _own_result = (
+                        _own_mapping
+                        if _own and _own != seed
+                        else self._recommend_seeded_concept_set(
+                            _own_text,
+                            expected_domain=expected_domain,
+                            workflow=workflow,
+                            resolving_entity_exception=True,
+                        )
+                    )
+                    _why = (
+                        f"exception {_exception.excepted} covers every member of "
+                        f"{_exception.base!r} and the line names no set apart from it; "
+                        f"mapped on {_own_text!r}"
+                    )
+                    logging.warning("[TTE] entity exception on '%s' dropped: %s", seed, _why)
+                    from src.api.models.tte import CriterionMappingMetadata
+
+                    _metadata = _own_result.get("mapping_metadata") or CriterionMappingMetadata(
+                        queryUsed=_own_text
+                    )
+                    return {
+                        **_own_result,
+                        "mapping_metadata": _metadata.model_copy(
+                            update={"exceptionDropped": _why}
+                        ),
+                    }
                 # The exception cannot be applied. Mapping the base whole instead ships the
                 # excepted entities inside the set the protocol took them out of (A2: LEADER
                 # exclusion 40 as all 29 insulins, CAROLINA exclusion 68 as every cancer), so

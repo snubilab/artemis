@@ -2147,6 +2147,33 @@ def stated_base(row: Mapping[str, Any]) -> str | None:
     return " ".join(base.split())
 
 
+def exception_anchored(row: Mapping[str, Any]) -> bool:
+    """Whether the row's protocol line names the set its exception is taken from apart from
+    what it excepts: a verified ``base_span`` whose stretch of the line holds none of the
+    verified excepted spans.
+
+    Positions only (:func:`~src.utils.span_match.span_offsets`), no word read. False when the
+    base span did not verify (PLATO exclusion 55: no base at all) or an excepted span lies inside
+    it (CARMELINA exclusion 32: 'PCI' inside 'Pre-planned coronary artery re-vascularisation
+    (PCI, CABG) ...'). Read only where a subtraction was refused for covering the whole base
+    (``TTEService._recommend_seeded_concept_set``): an unanchored exception that empties its base
+    names the row's own entity, an anchored one names a set the mapper drew too broadly.
+
+    :param row: the store criterion row.
+    :returns: True when anchored; False when unanchored or when no exception is stated.
+    """
+    excepted = stated_exceptions(row)
+    line = row.get(_LINE)
+    base = span_offsets(_annotation(row).get(FIELD_BASE_SPAN), line)
+    if not excepted or base is None:
+        return False
+    for entry in excepted:
+        place = span_offsets(entry[FIELD_SPAN], line)
+        if place is not None and base[0] <= place[0] and place[1] <= base[1]:
+            return False
+    return True
+
+
 def stated_exceptions_by_codeset(eligibility: Mapping[str, Any]) -> dict[int, list[str]]:
     """Concept set id -> the excepted entity names its criterion states.
 
