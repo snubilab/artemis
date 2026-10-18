@@ -20,6 +20,7 @@ from src.agents.agent1.prompts import (
     SYSTEM_PROMPT, DECOMPOSITION_PROMPT,
     NCT_SYSTEM_PROMPT, NCT_DECOMPOSITION_PROMPT,
     THRESHOLD_REVIEW_PROMPT,
+    ENTITY_REPAIR_SYSTEM_PROMPT, ENTITY_REPAIR_PROMPT,
 )
 from src.agents.agent1.nct_fetcher import (
     fetch_trial_data, fetch_or_load_trial_data, 
@@ -352,6 +353,10 @@ class LogicDecomposer:
             with open(meta_file, "w") as f:
                 json.dump(meta, f, ensure_ascii=False, indent=2)
         
+        # Step 3b: a leaf the model left without its MANDATORY entity_text is re-asked for it
+        # (the cache keeps the draw as the model returned it).
+        data = self._repair_missing_entity_text(data, nct_id)
+
         # Step 4: Build IR
         ir = self._build_artemis_request(data)
         
@@ -1022,6 +1027,67 @@ class LogicDecomposer:
             )
         raise_if_truncated(response, what=what)
         return self._extract_json(response.content)
+
+    def _repair_missing_entity_text(self, data: dict, nct_id: str) -> dict:
+        """``data`` with every leaf that came back without ``entity_text`` re-asked for it.
+
+        One call per trial, over the leaves (criteria without ``sub_criteria``) whose
+        ``entity_text`` is empty. An empty entity costs the row twice: the mapper seeds on
+        the human-written ``name``, and the planner skips the row, so a compound line is
+        never split (measured: ARISTOTLE, 27 of 31 leaves, reproduced by two fresh draws).
+        Only an identifier that was offered and a non-empty string are taken; an unreadable
+        answer leaves the draw as it was, logged.
+
+        :param data: the extraction JSON (``target`` / ``comparator`` rule lists).
+        :param nct_id: for the log line.
+        :returns: a copy of ``data`` with the filled leaves; ``data`` itself when none is empty.
+        """
+        from copy import deepcopy
+
+        repaired = deepcopy(data)
+        leaves: list[dict] = []
+
+        def walk(node):
+            if isinstance(node, dict):
+                if "entity_text" in node and not node.get("sub_criteria") and not (node.get("entity_text") or "").strip():
+                    leaves.append(node)
+                for value in node.values():
+                    walk(value)
+            elif isinstance(node, list):
+                for value in node:
+                    walk(value)
+
+        walk(repaired)
+        if not leaves:
+            return data
+        offered = {f"E{n}": leaf for n, leaf in enumerate(leaves, start=1)}
+        items = "\n".join(
+            f"- {ident} | domain: {leaf.get('domain')} | criterion: {leaf.get('name')} | "
+            f"protocol line: {' '.join(str(leaf.get('source_text') or '').split())}"
+            for ident, leaf in offered.items()
+        )
+        try:
+            answer = self._invoke_and_extract(
+                [SystemMessage(content=ENTITY_REPAIR_SYSTEM_PROMPT),
+                 HumanMessage(content=ENTITY_REPAIR_PROMPT.format(items=items))],
+                what=f"Agent 1 entity repair for {nct_id}",
+            )
+        except Exception as exc:
+            logger.warning("[Agent 1] %s: entity repair for %d leaves failed (%s: %s); left empty",
+                           nct_id, len(leaves), type(exc).__name__, exc)
+            return data
+        entries = answer.get("entities") if isinstance(answer, dict) else None
+        filled = 0
+        for entry in entries if isinstance(entries, list) else []:
+            if not isinstance(entry, dict):
+                continue
+            leaf = offered.get(str(entry.get("id") or "").strip())
+            text = " ".join(str(entry.get("entity_text") or "").split())
+            if leaf is not None and text:
+                leaf["entity_text"] = text
+                filled += 1
+        logger.info("[Agent 1] %s: entity repair filled %d of %d empty leaves", nct_id, filled, len(leaves))
+        return repaired if filled else data
 
     def _extract_json(self, content: str) -> dict:
         """Extract and parse JSON from LLM response content."""

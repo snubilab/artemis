@@ -599,3 +599,24 @@ a number. Do not invent a number that is not in the text.
 
 Output JSON: {{"misses": [{{"criterion_line": <int>, "criterion_text": "<verbatim>", "reason": "<why this looks like a dropped threshold>"}}]}}
 Return an empty "misses" list when nothing looks wrong. Output ONLY the JSON."""
+
+
+# Re-asked for the leaves an extraction returned without `entity_text` (parser.py,
+# LogicDecomposer._repair_missing_entity_text). Triggered by the empty field alone.
+ENTITY_REPAIR_SYSTEM_PROMPT = (
+    "You name the clinical entity of each eligibility criterion. Return one JSON object and nothing else."
+)
+
+ENTITY_REPAIR_PROMPT = """Each criterion below was extracted from a clinical trial protocol without its entity.
+
+{items}
+
+Fields to return:
+
+`entities` has one entry per criterion. `id` is the criterion's identifier as listed. \
+`entity_text` is the clinical term the criterion is about: the noun that is looked up in the \
+vocabulary, naming something that lives in the criterion's domain, taken from its protocol \
+line. It carries no negation, no threshold, no time window and no dose.
+
+Output JSON:
+{{"entities": [{{"id": "<identifier>", "entity_text": "<clinical term>"}}]}}"""
