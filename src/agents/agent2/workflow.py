@@ -11,7 +11,7 @@ Enhanced with patterns from artemis_agent:
 
 import os
 import threading
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Union
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import time
@@ -403,7 +403,8 @@ class Agent2Workflow:
             seed_concept_ids = list(concept_ids)
             try:
                 concept_ids, overbroad_ids, critic_skipped = self._kg_expand_and_critique(
-                    concept_ids, query_text, context, domain_hint
+                    concept_ids, query_text, context, domain_hint,
+                    retriever_only_seed_ids=result.retriever_only_seed_ids,
                 )
             except KGExpansionFailed as e:
                 # Refused, not degraded: the seeds stand alone, the reason is recorded
@@ -414,6 +415,9 @@ class Agent2Workflow:
                 # Same shape: the seeds stand alone and the critic's reason is recorded.
                 concept_ids, overbroad_ids, critic_skipped = list(seed_concept_ids), [], False
                 result.critic_failure = str(e)
+            # A retriever-only seed the critic rejected is no longer a seed.
+            rejected = set(result.retriever_only_seed_ids) - set(concept_ids)
+            seed_concept_ids = [s for s in seed_concept_ids if s not in rejected]
             # Apply ingredient rollup for Drug domain and for unknown domain
             # (domain_hint=None covers target cohort calls like "Ticagrelor" where
             # the caller does not specify a domain but the result is Drug concepts).
@@ -521,6 +525,7 @@ class Agent2Workflow:
         
         # A reranker that selects nothing has given an answer, not a blank: no seeds, and
         # the caller records the gap.
+        reranked_ids = {c.concept_id for c in top_concepts}
         top_concepts = _seeds_after_rerank(candidates, top_concepts)
 
         if not top_concepts:
@@ -550,6 +555,8 @@ class Agent2Workflow:
                 if cid not in seen:
                     seen.add(cid)
                     all_ids.append(cid)
+                    if concept.concept_id not in reranked_ids and result is not None:
+                        result.retriever_only_seed_ids.append(cid)
         
         # === ID LINEAGE: Final slow path output ===
         logger.info(f"[Agent 2][LINEAGE] slow_path final IDs: {all_ids}")
@@ -562,9 +569,14 @@ class Agent2Workflow:
         query_text: str,
         context: Optional[str] = None,
         domain_hint: Optional[str] = None,
+        retriever_only_seed_ids: Iterable[int] = (),
     ) -> tuple:
         """
         KG-RAG post-processing: expand seed concepts via Neo4j, then LLM multi-select.
+
+        ``retriever_only_seed_ids`` are seeds no reranker chose (the retriever's #1). The
+        critic is the only model that judges them, so one it does not select is dropped
+        before the refiner, which keeps every seed it is given.
         
         Applied to BOTH fast and slow path results.
         A failed expansion of any seed refuses the whole query's expansion: it logs one
@@ -754,10 +766,14 @@ class Agent2Workflow:
         )
         # ── ConceptSetRefiner (lab meeting 2026-03-09) ──
         # Filter unique_kg to only critic-selected concepts to avoid bypassing critic
+        critic_selected_set = set(final_ids)
+        rejected = [s for s in seed_ids if s in set(retriever_only_seed_ids) and s not in critic_selected_set]
+        if rejected:
+            logger.info(f"[Agent 2][LINEAGE] critic rejected retriever-only seeds {rejected} → dropped")
         if os.environ.get("ENABLE_REFINER", "1") == "1":
-            critic_selected_set = set(final_ids)
             critic_kg = [c for c in unique_kg if c.concept_id in critic_selected_set]
-            ref_result = _refine(seed_ids, critic_kg, query_text, domain_hint)
+            kept_seeds = [s for s in seed_ids if s not in rejected]
+            ref_result = _refine(kept_seeds, critic_kg, query_text, domain_hint)
             final_ids = ref_result.kept_ids
             return final_ids, ref_result.overbroad_ids, False
         return final_ids, [], False
