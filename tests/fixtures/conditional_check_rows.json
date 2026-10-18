@@ -1,0 +1,609 @@
+{
+ "source": {
+  "store": "output/site_gap/2026-10-17_p6_segoff/arm_segoff/store/studies.json",
+  "storeSha256": "1ced62ee9e765750b40bc22c5152e74510828aa80ee6dbf14a7bc8cfa7be56bd",
+  "cache": "output/site_gap/2026-10-17_p6_segoff/arm_segoff/caches/annotations.jsonl",
+  "cacheSha256": "b4d750ca1162b713c2f2669bcb39b7767c91f1368379234e952beffcb04a86a7"
+ },
+ "rows": [
+  {
+   "trial": "plato",
+   "role": "inclusion",
+   "id": 23,
+   "row": {
+    "id": 23,
+    "description": "Female Contraception and Pregnancy Test",
+    "domain": "Observation",
+    "valueConstraint": null,
+    "sourceText": "Pregnancy test",
+    "protocolLine": "Females of child-bearing potential must have a negative pregnancy test at enrollment and be willing to use 2 methods of reliable contraception",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "logicType": "ABSENCE",
+    "groupId": "7762fa35-e264-4cda-bc66-58446a6ba20c",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "plannerRelation": {
+     "relation": "all",
+     "relation_span": "and",
+     "cardinality": null
+    }
+   },
+   "answers": {
+    "current": {
+     "record_requirement": "conditional",
+     "conditional_span": "Females of child-bearing potential",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": "and",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "placebo": {
+     "record_requirement": "conditional",
+     "conditional_span": "Females of child-bearing potential",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": "and",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "cf": {
+     "record_requirement": "conditional",
+     "conditional_span": "Females of child-bearing potential",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": "and",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "record_change": "none",
+     "record_change_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "storedAnnotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "conditional",
+    "conditional_span": "Females of child-bearing potential",
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": "all",
+    "relation_span": "and",
+    "cardinality": null,
+    "timing": "at_index",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": null,
+    "quantity_kind": null,
+    "reference_bound": null,
+    "record_change": "none",
+    "record_change_span": null
+   }
+  },
+  {
+   "trial": "plato",
+   "role": "inclusion",
+   "id": 24,
+   "row": {
+    "id": 24,
+    "description": "Negative Pregnancy Test at Enrollment",
+    "domain": "Measurement",
+    "valueConstraint": {
+     "op": "eq",
+     "value": 0.0,
+     "valueHigh": null,
+     "unitText": "",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "Pregnancy test",
+    "protocolLine": "Females of child-bearing potential must have a negative pregnancy test at enrollment and be willing to use 2 methods of reliable contraception",
+    "protocolSpan": "negative pregnancy test",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "logicType": "ABSENCE",
+    "groupId": "7762fa35-e264-4cda-bc66-58446a6ba20c",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false
+   },
+   "answers": {
+    "cf": {
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "record_change": "none",
+     "record_change_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "storedAnnotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "required",
+    "conditional_span": null,
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "at_index",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": null,
+    "quantity_kind": null,
+    "reference_bound": null,
+    "record_change": "none",
+    "record_change_span": null
+   }
+  },
+  {
+   "trial": "plato",
+   "role": "inclusion",
+   "id": 25,
+   "row": {
+    "id": 25,
+    "description": "Willingness to use 2 methods of reliable contraception",
+    "domain": "Observation",
+    "valueConstraint": null,
+    "sourceText": "Use of 2 methods of reliable contraception",
+    "protocolLine": "Females of child-bearing potential must have a negative pregnancy test at enrollment and be willing to use 2 methods of reliable contraception",
+    "protocolSpan": "willing to use 2 methods of reliable contraception",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "logicType": "ABSENCE",
+    "groupId": "7762fa35-e264-4cda-bc66-58446a6ba20c",
+    "groupType": "ANY",
+    "parentGroupId": null,
+    "isGroupLabel": false
+   },
+   "answers": {
+    "cf": {
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "2 methods of reliable contraception",
+     "cardinality": 2,
+     "timing": "at_index",
+     "window_span": null,
+     "record_change": "none",
+     "record_change_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": "count",
+     "reference_bound": "none"
+    }
+   },
+   "storedAnnotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "required",
+    "conditional_span": null,
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": "at_least",
+    "relation_span": "2 methods of reliable contraception",
+    "cardinality": 2,
+    "timing": "at_index",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": null,
+    "quantity_kind": null,
+    "reference_bound": null,
+    "record_change": "none",
+    "record_change_span": null
+   }
+  },
+  {
+   "trial": "carolina",
+   "role": "exclusion",
+   "id": 41,
+   "row": {
+    "id": 41,
+    "description": "Metabolic acidosis",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Metabolic acidosis",
+    "protocolLine": "16. Acute or chronic metabolic acidosis (present condition in patient history)",
+    "protocolSpan": "",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "logicType": "ABSENCE",
+    "groupId": "6abc4209-3a97-4a99-bc56-f112d06bd639",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": true,
+    "plannerRelation": {
+     "relation": "any",
+     "relation_span": "or",
+     "cardinality": null
+    }
+   },
+   "answers": {
+    "current": {
+     "record_requirement": "conditional",
+     "conditional_span": "(present condition in patient history)",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "placebo": {
+     "record_requirement": "conditional",
+     "conditional_span": "(present condition in patient history)",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "cf": {
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "record_change": "none",
+     "record_change_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "storedAnnotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "conditional",
+    "conditional_span": "(present condition in patient history)",
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "prior",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": null,
+    "quantity_kind": null,
+    "reference_bound": null,
+    "record_change": "none",
+    "record_change_span": null
+   }
+  },
+  {
+   "trial": "carolina",
+   "role": "exclusion",
+   "id": 42,
+   "row": {
+    "id": 42,
+    "description": "Acute Metabolic Acidosis",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Metabolic acidosis, acute",
+    "protocolLine": "16. Acute or chronic metabolic acidosis (present condition in patient history)",
+    "protocolSpan": "",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "logicType": "ABSENCE",
+    "groupId": "6abc4209-3a97-4a99-bc56-f112d06bd639",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false
+   },
+   "answers": {
+    "current": {
+     "record_requirement": "conditional",
+     "conditional_span": "(present condition in patient history)",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "placebo": {
+     "record_requirement": "conditional",
+     "conditional_span": "(present condition in patient history)",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    },
+    "cf": {
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "record_change": "none",
+     "record_change_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "storedAnnotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "conditional",
+    "conditional_span": "(present condition in patient history)",
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "prior",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": null,
+    "quantity_kind": null,
+    "reference_bound": null,
+    "record_change": "none",
+    "record_change_span": null
+   }
+  },
+  {
+   "trial": "carolina",
+   "role": "exclusion",
+   "id": 43,
+   "row": {
+    "id": 43,
+    "description": "Chronic Metabolic Acidosis",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Metabolic acidosis, chronic",
+    "protocolLine": "16. Acute or chronic metabolic acidosis (present condition in patient history)",
+    "protocolSpan": "chronic metabolic acidosis",
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "logicType": "ABSENCE",
+    "groupId": "6abc4209-3a97-4a99-bc56-f112d06bd639",
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false
+   },
+   "answers": {
+    "cf": {
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "record_change": "none",
+     "record_change_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null
+    }
+   },
+   "storedAnnotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "forbidden",
+    "conditional_span": null,
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "prior",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": null,
+    "quantity_kind": null,
+    "reference_bound": null,
+    "record_change": "none",
+    "record_change_span": null
+   }
+  }
+ ]
+}

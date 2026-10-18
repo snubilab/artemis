@@ -77,6 +77,23 @@ made, and the fill is kept only when call 4 also fills one (:func:`agree_record_
 ``no_entity`` rule shape). Recorded under :data:`RECORD_CHANGE_KEY` on every row, listed in the
 expression under :data:`RECORD_CHANGE_RECORDS_KEY`, each call cached under its own version.
 
+Calls 5 and 6 (conditional check). Calls 1 and 2 ask one definition in two wordings, so a
+reading the definition itself admits survives agreement: P6 SEG-OFF (2026-10-17) skipped CAROLINA
+exclusion 16 'Acute or chronic metabolic acidosis (present condition in patient history)' and
+exclusion 8 'Current treatment with systemic corticosteroids at time of informed consent', both
+answers agreeing on a fragment that names no subgroup -- for an exclusion, "patients who have the
+record of the entity" are simply the patients it excludes. When the agreed answer is
+``conditional``, call 5 (:data:`CONDITIONAL_CHECK_PROMPT`) asks what its ``conditional_span`` does:
+names a kind of patient, says only that the patient has the criterion's own entity, or states only
+a time or the record holding it. Call 6 (:data:`CONDITIONAL_CHECK_AGREEMENT_PROMPT`, the same
+definitions reworded) is asked when call 5's answer reverts, and the ``conditional`` is reverted
+only when both do (:func:`check_conditional`, :func:`_reverting_roles`). Measured on 24 P6/A2 rows
+(6 targets, 18 must-keep conditionals incl. PLATO's WOCBP labels, ARISTOTLE inclusion 4 and the
+LEADER anti-diabetic labels): 6/6 reverted, 0/18 broken. A single wording was not stable --
+ARISTOTLE inclusion 4 'If not in atrial fibrillation/flutter at the time of enrollment' flipped
+with an unrelated change to the prompt -- which is why a revert needs both. Recorded on the row
+under :data:`CONDITIONAL_CHECK_KEY`; it never fills anything and touches no other field.
+
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
 rebuild reaches it.
@@ -121,6 +138,9 @@ AGREEMENT_PROMPT_VERSION = "rfc016-steps1-4-agreement-placebo-v1"
 #: over-fill A/B's `cf` arm) and call 4's (the `pf` arm); each part of its call's cache key.
 RECORD_CHANGE_PROMPT_VERSION = "rfc016-record-change-cf-v1"
 RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
+#: Calls 5 and 6 (:func:`check_conditional`); each part of its call's cache key.
+CONDITIONAL_CHECK_PROMPT_VERSION = "rfc016-conditional-check-v1"
+CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -138,6 +158,10 @@ RECORD_CHANGE_KEY = "_recordChangeAgreement"
 #: Expression key: one record per criterion call 4 was made for, or call 3 failed for
 #: (:func:`record_change_records`), present and empty when there was none.
 RECORD_CHANGE_RECORDS_KEY = "_recordChangeRecords"
+#: The row key of the conditional check record (calls 5 and 6): present exactly when the agreed
+#: answer was ``conditional``, with each call's version, cache key, outcome and answer, and
+#: whether the ``conditional`` was reverted.
+CONDITIONAL_CHECK_KEY = "_conditionalCheck"
 #: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
 UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
 #: The ``reason`` each of those records carries.
@@ -685,6 +709,64 @@ RECORD_CHANGE_PROMPT = _with_record_change(ANNOTATION_PROMPT)
 RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT = AGREEMENT_SYSTEM_PROMPT
 RECORD_CHANGE_AGREEMENT_PROMPT = _with_record_change(AGREEMENT_PROMPT)
 
+#: ``fragment_role`` values (calls 5 and 6). Which revert a ``conditional`` depends on the
+#: criterion's role (:func:`_reverting_roles`).
+FRAGMENT_HAS_OWN_ENTITY = "has_own_entity"
+FRAGMENT_TIME_OR_RECORD = "time_or_record"
+FRAGMENT_PATIENTS = "patients"
+FRAGMENT_OTHER = "other"
+_FRAGMENT_ROLES = frozenset(
+    {FRAGMENT_HAS_OWN_ENTITY, FRAGMENT_TIME_OR_RECORD, FRAGMENT_PATIENTS, FRAGMENT_OTHER}
+)
+
+_CHECK_HEAD = """Protocol line:
+{protocol_line}
+
+Extracted criterion:
+- Role: {role}
+- Entity text: {entity_text}
+- Description: {description}
+- Domain: {domain}
+- Logic type: {logic_type}
+- Group label: {group_label}
+- Members: {members}
+
+Fragment of the protocol line: {fragment}
+
+Field to return:
+
+"""
+_CHECK_TAIL = """
+Output JSON:
+{{"fragment_role": "<patients|has_own_entity|time_or_record|other>"}}"""
+
+#: Call 5: what the agreed ``conditional_span`` does in the line. Field definition only.
+CONDITIONAL_CHECK_PROMPT = _CHECK_HEAD + """\
+`fragment_role` states what the fragment above does in the protocol line. One of:
+- `has_own_entity`: the fragment says only that the patient has, or has had, this criterion's \
+own entity -- the entity this criterion names -- now or in the patient's history.
+- `time_or_record`: the fragment states only a time, a visit, a period, or the record that holds \
+this criterion's own entity. It says nothing about the patient's state, characteristic or \
+treatment.
+- `patients`: the fragment names a kind of patient, picked out by some characteristic, state, \
+treatment or record other than having this criterion's own entity, at a stated time or in general.
+- `other`: anything else.
+""" + _CHECK_TAIL
+
+#: Call 6: the same definitions in other words, asked only when call 5's answer reverts.
+CONDITIONAL_CHECK_AGREEMENT_PROMPT = _CHECK_HEAD + """\
+`fragment_role` says what the fragment quoted above does within the protocol line. One of:
+- `has_own_entity`: all the fragment says is that the patient has this criterion's own entity -- \
+the entity named by this criterion -- or has had it, at present or in the patient's history.
+- `time_or_record`: all the fragment states is a time, a visit, a period, or the record holding \
+the own entity of this criterion. Nothing is said by it about the patient's state, characteristic \
+or treatment.
+- `patients`: a kind of patient is named by the fragment, picked out by some characteristic, \
+state, treatment or record other than having the own entity of this criterion, at a stated time or \
+in general.
+- `other`: anything else.
+""" + _CHECK_TAIL
+
 # --------------------------------------------------------------------------- #
 # Validation
 # --------------------------------------------------------------------------- #
@@ -1112,6 +1194,7 @@ def render_prompt(
     members: Sequence[Mapping[str, Any]],
     role: str,
     template: str = ANNOTATION_PROMPT,
+    fragment: str = "",
 ) -> str:
     """The user message for one rule: its protocol line and its already-extracted fields.
 
@@ -1120,6 +1203,8 @@ def render_prompt(
     :param role: ``inclusion`` or ``exclusion``.
     :param template: :data:`ANNOTATION_PROMPT`, or :data:`AGREEMENT_PROMPT` for the
         agreement call; both take the same fields.
+    :param fragment: the quoted fragment the conditional check asks about (calls 5 and 6);
+        unused by every other template.
     :returns: the rendered prompt.
     """
     return template.format(
@@ -1134,6 +1219,7 @@ def render_prompt(
         group_label="yes" if row.get(_IS_LABEL) else "no",
         members=_members_text(members),
         route_values=_quoted(route.value for route in AdministrationRoute),
+        fragment=fragment,
     )
 
 
@@ -1285,6 +1371,7 @@ def _ask(
     template: str,
     system: str,
     version: str,
+    fragment: str = "",
 ) -> tuple[str, str, Any, str | None]:
     """One call with one wording, or its cached answer. Never raises for a model failure.
 
@@ -1293,7 +1380,7 @@ def _ask(
         error); the failure as ``Type: message`` (None unless outcome is ``error``). A failed
         call is never cached.
     """
-    prompt = render_prompt(row, members, role, template)
+    prompt = render_prompt(row, members, role, template, fragment)
     key = cache_key(prompt, model, version=version, system=system)
     cached = _cache_get(key)
     if cached is not None:
@@ -1569,6 +1656,73 @@ def _record_change(
     return fields, record
 
 
+def _reverting_roles(role: str) -> frozenset[str]:
+    """The ``fragment_role`` values that revert a ``conditional`` on a criterion of ``role``.
+
+    :data:`FRAGMENT_TIME_OR_RECORD` on either role: the fragment names no patients at all.
+    :data:`FRAGMENT_HAS_OWN_ENTITY` on an exclusion only: the patients who have an exclusion's own
+    entity are the patients it excludes, which is ``forbidden``, not a subgroup. On an inclusion
+    they can be a subgroup the line asks something further of (P6 SEG-OFF LEADER inclusion 12,
+    'treated with one or more oral anti-diabetic drugs', kept).
+    """
+    if role == EXCLUSION:
+        return frozenset({FRAGMENT_TIME_OR_RECORD, FRAGMENT_HAS_OWN_ENTITY})
+    return frozenset({FRAGMENT_TIME_OR_RECORD})
+
+
+def _fragment_role(payload: Any) -> str | None:
+    value = payload.get("fragment_role") if isinstance(payload, Mapping) else None
+    return value if value in _FRAGMENT_ROLES else None
+
+
+def check_conditional(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    fields: Mapping[str, Any],
+    *,
+    model: str,
+    llm: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Calls 5 and 6 on an agreed ``conditional``: revert it when both read its fragment as
+    naming no subgroup of patients for this criterion (:func:`_reverting_roles`).
+
+    Only reverts, never fills: a failed or unreadable answer keeps the ``conditional``. Call 6 is
+    made only when call 5's answer reverts; the two need not give the same reverting value.
+
+    :param fields: the agreed answer; its ``record_requirement`` is ``conditional``.
+    :returns: ``(fields, record)``: the answer with ``record_requirement`` and
+        ``conditional_span`` set to None when reverted, and the record stored under
+        :data:`CONDITIONAL_CHECK_KEY`.
+    """
+    fragment = str(fields.get(FIELD_CONDITIONAL_SPAN) or "")
+    record: dict[str, Any] = {"fragment": fragment, "calls": [], "reverted": False}
+    reverting = _reverting_roles(role)
+    for template, system, version in (
+        (CONDITIONAL_CHECK_PROMPT, ANNOTATION_SYSTEM_PROMPT, CONDITIONAL_CHECK_PROMPT_VERSION),
+        (CONDITIONAL_CHECK_AGREEMENT_PROMPT, AGREEMENT_SYSTEM_PROMPT,
+         CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION),
+    ):
+        outcome, key, payload, error = _ask(
+            llm, row, members, role, model=model, template=template, system=system,
+            version=version, fragment=fragment,
+        )
+        answer = _fragment_role(payload)
+        call = {"promptVersion": version, "cacheKey": key, "outcome": outcome,
+                "fragment_role": answer}
+        if error is not None:
+            call["error"] = error
+            logger.warning(
+                "[annotation] conditional check failed for row %s (%s); conditional kept",
+                row.get(_ID), error,
+            )
+        record["calls"].append(call)
+        if answer not in reverting:
+            return dict(fields), record
+    record["reverted"] = True
+    return {**fields, FIELD_RECORD_REQUIREMENT: None, FIELD_CONDITIONAL_SPAN: None}, record
+
+
 def annotate_row(
     row: dict[str, Any],
     members: Sequence[Mapping[str, Any]],
@@ -1616,6 +1770,12 @@ def annotate_row(
             row[AGREEMENT_KEY] = record
         else:
             row.pop(AGREEMENT_KEY, None)
+        if fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value:
+            fields, row[CONDITIONAL_CHECK_KEY] = check_conditional(
+                row, members, role, fields, model=model, llm=llm
+            )
+        else:
+            row.pop(CONDITIONAL_CHECK_KEY, None)
     change, row[RECORD_CHANGE_KEY] = _record_change(row, members, role, model=model, llm=llm)
     if error is not None:
         row[ANNOTATION_KEY] = {
@@ -1626,6 +1786,7 @@ def annotate_row(
         }
         row.pop(ANNOTATION_REJECTED_KEY, None)
         row.pop(AGREEMENT_KEY, None)
+        row.pop(CONDITIONAL_CHECK_KEY, None)
         row.pop(WINDOW_DISAGREEMENT_KEY, None)
         return "error"
     row[ANNOTATION_KEY] = {
@@ -1740,6 +1901,13 @@ def annotate_eligibility(
     counts["agreementCalls"] = len(agreements)
     counts["agreementError"] = sum(1 for record in agreements if record.get("outcome") == "error")
     counts["agreementDropped"] = sum(1 for record in agreements if record.get("dropped"))
+    checks = [
+        record
+        for row, _m, _role in jobs
+        if isinstance(record := row.get(CONDITIONAL_CHECK_KEY), Mapping)
+    ]
+    counts["conditionalChecked"] = len(checks)
+    counts["conditionalReverted"] = sum(1 for record in checks if record.get("reverted"))
     changes = [
         record
         for row, _m, _role in jobs
