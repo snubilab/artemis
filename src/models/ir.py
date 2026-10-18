@@ -465,6 +465,11 @@ class MappingResult(BaseModel):
                     "that was (a non-seed proper ancestor of a seed is dropped before "
                     "roll-up)."
     )
+    retriever_only_seed_ids: List[int] = Field(
+        default_factory=list,
+        description="Seeds the reranker did not select: the retriever's #1, added beside the "
+                    "reranker's picks. Kept only when the critic keeps it or no critic judged it."
+    )
     concept_sets: List[ConceptSet] = Field(default_factory=list)
     gap_report: GapReport = Field(default_factory=GapReport)
     
