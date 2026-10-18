@@ -73,8 +73,21 @@ def _climb(cid, ancestor):
     return _concept(cid, f"ancestor_climb (via c{ancestor}, IC=14.4)", via=ancestor)
 
 
+# 'Has due to' (cause) of a concept, toy ids. 50 is "complication due to 1" (1 sits above the
+# subsuming seed 10), the parent of seed 51; 52 is due to 1 as well, 53 is due to the seed 10;
+# 60 is "sequela of 10", due to the seed itself.
+DUE_TO = {50: {1}, 51: {10}, 52: {1}, 53: {10}, 60: {10}}
+ANCESTORS.update({51: {50}, 52: {50}, 53: {50}, 61: {60}, 62: {60}})
+
+
+def _due_to_targets(concept_ids):
+    """Stand-in for concept_relationship 'Has due to'."""
+    return {c: DUE_TO[c] for c in concept_ids if c in DUE_TO}
+
+
 @pytest.fixture(autouse=True)
 def toy_vocabulary(monkeypatch):
+    monkeypatch.setattr(kge, "_due_to_targets", _due_to_targets, raising=False)
     monkeypatch.setattr(kge, "_seed_closure_members", _closure_members)
     monkeypatch.setattr(kge, "_subsuming_seeds", _subsuming_seeds, raising=False)
     monkeypatch.setattr(kge, "_proper_ancestor_members", _proper_ancestor_members, raising=False)
@@ -152,6 +165,31 @@ def test_should_keep_siblings_of_a_non_subsuming_seed_when_another_seed_is_subsu
 
     assert 31 in final_ids
     assert 13 not in final_ids
+
+
+def test_should_drop_siblings_reached_through_a_parent_due_to_a_concept_above_a_subsuming_seed(
+    monkeypatch,
+):
+    # T1D in the live vocabulary: seed 435216 'Disorder due to T1DM' (51) has only the parent
+    # 442793 'Complication due to diabetes mellitus' (50), which is due to 'Diabetes mellitus'
+    # (1), above the subsuming seed 201254 (10). Its other children are complications of any
+    # diabetes: 'Diabetic foot ulcer' (52). One due to the seed itself (53) stays.
+    per_seed = {11: [], 10: [], 51: [_sib(52, 50), _sib(53, 50)]}
+
+    final_ids = _expand_through_workflow(monkeypatch, per_seed, [11, 10, 51])
+
+    assert 52 not in final_ids
+    assert 53 in final_ids
+
+
+def test_should_keep_siblings_reached_through_a_parent_due_to_a_seed(monkeypatch):
+    # Stroke shape: 'Sequela of cerebrovascular accident' (60) is due to the subsuming seed
+    # itself, so its children (late effects of stroke) are what the seeds named.
+    per_seed = {11: [], 10: [], 61: [_sib(62, 60)]}
+
+    final_ids = _expand_through_workflow(monkeypatch, per_seed, [11, 10, 61])
+
+    assert 62 in final_ids
 
 
 def _neo4j_result(records):

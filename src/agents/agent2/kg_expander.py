@@ -127,7 +127,11 @@ def admit_within_seed_closure(
     sits above everything the seeds named: for "Type 1 diabetes mellitus" the seed
     201254 is the parent of the others and its parent "Diabetes mellitus" pulls in
     every other diabetes type; for "Type 2 diabetes mellitus" the non-subsuming seed
-    44793113 reaches the same "Diabetes mellitus" siblings. Calls with no subsuming
+    44793113 reaches the same "Diabetes mellitus" siblings. A parent/ancestor that is
+    'Has due to' a concept above a subsuming seed (and outside every seed's closure) is
+    treated the same way, except for a candidate that is itself due to a seed-closure
+    concept: "Complication due to diabetes mellitus" lies beside, not above, 201254, yet its
+    other children are complications of any diabetes. Calls with no subsuming
     seed, parents unrelated to a subsuming seed, and ancestor/maps_to candidates are
     untouched — there, siblings are how the right concept is reached (serum ALT
     through a LOINC parent no seed covers).
@@ -147,10 +151,30 @@ def admit_within_seed_closure(
     if not subsuming:
         return concepts
     above = _proper_ancestor_members(via_ids, subsuming)
-    if not above:
+    # A via concept defined by a cause above the seeds sits there too: 'Complication due to
+    # diabetes mellitus' is due to 'Diabetes mellitus', the parent of the subsuming seed
+    # 'Type 1 diabetes mellitus', so its children are complications of any diabetes. A child
+    # due to a seed-closure concept itself ('... due to type 2 diabetes mellitus') is kept.
+    due = _due_to_targets(via_ids - above)
+    causes = set().union(*due.values()) if due else set()
+    high = _proper_ancestor_members(causes, subsuming) if causes else set()
+    high -= _seed_closure_members(high, seeds)
+    above_by_cause = {v for v, t in due.items() if t & high}
+    if not above and not above_by_cause:
         return concepts
-    outside = above - _seed_closure_members(above, seeds)
-    kept = [c for c in concepts if c.via_concept_id not in outside]
+    outside = (above | above_by_cause) - _seed_closure_members(above | above_by_cause, seeds)
+    named = set()
+    via_cause = {c.concept_id for c in concepts if c.via_concept_id in outside & above_by_cause}
+    if via_cause:
+        own = _due_to_targets(via_cause)
+        own_causes = set().union(*own.values()) if own else set()
+        in_closure = _seed_closure_members(own_causes, seeds) if own_causes else set()
+        named = {c for c, t in own.items() if t & in_closure}
+    kept = [
+        c for c in concepts
+        if c.via_concept_id not in outside
+        or (c.via_concept_id in above_by_cause and c.concept_id in named)
+    ]
     dropped = len(concepts) - len(kept)
     if dropped:
         sources = sorted({s for s, c in generated if c.via_concept_id in outside})
@@ -206,6 +230,38 @@ def _proper_ancestor_members(
                 (candidates, targets),
             )
             return {int(row[0]) for row in cur.fetchall()}
+    finally:
+        conn.close()
+
+
+def _due_to_targets(concept_ids: Iterable[int]) -> Dict[int, Set[int]]:
+    """Map each concept to the concepts it is 'Has due to' (valid relationship and target).
+
+    PostgreSQL concept_relationship; concepts without one are absent. Raises on failure.
+    """
+    ids = sorted({int(c) for c in concept_ids})
+    if not ids:
+        return {}
+    schema = os.getenv("CDM_SCHEMA", "synthea23m")
+    conn = _omop_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT r.concept_id_1, r.concept_id_2
+                FROM {schema}.concept_relationship r
+                JOIN {schema}.concept t
+                  ON t.concept_id = r.concept_id_2 AND t.invalid_reason IS NULL
+                WHERE r.concept_id_1 = ANY(%s)
+                  AND r.relationship_id = 'Has due to'
+                  AND r.invalid_reason IS NULL
+                """,
+                (ids,),
+            )
+            out: Dict[int, Set[int]] = {}
+            for a, b in cur.fetchall():
+                out.setdefault(int(a), set()).add(int(b))
+            return out
     finally:
         conn.close()
 
