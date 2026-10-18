@@ -385,7 +385,7 @@ def _conditional_check_calls() -> list[str]:
     ``time_or_record``, so calls 5 and 6 are both made for every row."""
     return _annotation_calls(
         f'{{"record_requirement": "conditional", "conditional_span": "{STUB} line", '
-        f'"fragment_role": "time_or_record"}}'
+        f'"fragment_role": "time_or_record", "entity_outside_trial": "yes"}}'
     )
 
 
@@ -606,7 +606,8 @@ PROMPTS["criterion_annotation.record_change.agreement"] = PromptSpec(
 )
 # Calls 5 and 6 (conditional check): one field and its three values.
 _CONDITIONAL_CHECK_TOKENS = frozenset(
-    {"fragment_role", "patients", "has_own_entity", "time_or_record", "other"}
+    {"fragment_role", "patients", "has_own_entity", "time_or_record", "other",
+     "entity_outside_trial", "yes", "no"}
 )
 PROMPTS["criterion_annotation.conditional_check"] = PromptSpec(
     _render_criterion_annotation_conditional_check, tokens=_CONDITIONAL_CHECK_TOKENS,

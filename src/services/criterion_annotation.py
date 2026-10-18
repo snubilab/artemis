@@ -733,12 +733,18 @@ Extracted criterion:
 
 Fragment of the protocol line: {fragment}
 
-Field to return:
+Fields to return:
 
 """
 _CHECK_TAIL = """
 Output JSON:
-{{"fragment_role": "<patients|has_own_entity|time_or_record|other>"}}"""
+{{"fragment_role": "<patients|has_own_entity|time_or_record|other>", \
+"entity_outside_trial": "<yes|no>"}}"""
+
+#: ``entity_outside_trial`` values. Only ``yes`` from both calls lets a revert stand.
+OUTSIDE_YES = "yes"
+OUTSIDE_NO = "no"
+_OUTSIDE_VALUES = frozenset({OUTSIDE_YES, OUTSIDE_NO})
 
 #: Call 5: what the agreed ``conditional_span`` does in the line. Field definition only.
 CONDITIONAL_CHECK_PROMPT = _CHECK_HEAD + """\
@@ -751,6 +757,13 @@ treatment.
 - `patients`: the fragment names a kind of patient, picked out by some characteristic, state, \
 treatment or record other than having this criterion's own entity, at a stated time or in general.
 - `other`: anything else.
+
+`entity_outside_trial` states whether a clinical record kept outside this trial could hold this \
+criterion's own entity. One of:
+- `yes`: such a record could hold it.
+- `no`: no such record could hold it, because the entity arises only from the patient's taking \
+part in this trial: from the trial's own procedures, periods or study treatment, or from the \
+patient's conduct toward the trial.
 """ + _CHECK_TAIL
 
 #: Call 6: the same definitions in other words, asked only when call 5's answer reverts.
@@ -765,6 +778,13 @@ or treatment.
 state, treatment or record other than having the own entity of this criterion, at a stated time or \
 in general.
 - `other`: anything else.
+
+`entity_outside_trial` says whether the own entity of this criterion could be held in a clinical \
+record kept outside this trial. One of:
+- `yes`: a record of that kind could hold it.
+- `no`: no record of that kind could hold it, since the entity comes about only through the \
+patient's taking part in this trial: through the trial's own procedures, periods or study \
+treatment, or through the patient's conduct toward the trial.
 """ + _CHECK_TAIL
 
 # --------------------------------------------------------------------------- #
@@ -1675,6 +1695,11 @@ def _fragment_role(payload: Any) -> str | None:
     return value if value in _FRAGMENT_ROLES else None
 
 
+def _entity_outside_trial(payload: Any) -> str | None:
+    value = payload.get("entity_outside_trial") if isinstance(payload, Mapping) else None
+    return value if value in _OUTSIDE_VALUES else None
+
+
 def check_conditional(
     row: Mapping[str, Any],
     members: Sequence[Mapping[str, Any]],
@@ -1708,8 +1733,9 @@ def check_conditional(
             version=version, fragment=fragment,
         )
         answer = _fragment_role(payload)
+        outside = _entity_outside_trial(payload)
         call = {"promptVersion": version, "cacheKey": key, "outcome": outcome,
-                "fragment_role": answer}
+                "fragment_role": answer, "entity_outside_trial": outside}
         if error is not None:
             call["error"] = error
             logger.warning(
@@ -1717,7 +1743,10 @@ def check_conditional(
                 row.get(_ID), error,
             )
         record["calls"].append(call)
-        if answer not in reverting:
+        # A criterion whose own entity arises only from taking part in the trial keeps its
+        # skip even when its fragment names no subgroup: freed, it would require a record no
+        # patient has (P6 SEG-OFF CAROLINA inclusion 13, run-in compliance).
+        if answer not in reverting or outside != OUTSIDE_YES:
             return dict(fields), record
     record["reverted"] = True
     return {**fields, FIELD_RECORD_REQUIREMENT: None, FIELD_CONDITIONAL_SPAN: None}, record

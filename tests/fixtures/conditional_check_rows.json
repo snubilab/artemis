@@ -604,6 +604,132 @@
     "record_change": "none",
     "record_change_span": null
    }
+  },
+  {
+   "trial": "carolina",
+   "role": "inclusion",
+   "id": 35,
+   "row": {
+    "id": 35,
+    "description": "Treatment compliance in placebo run-in",
+    "domain": "Observation",
+    "valueConstraint": {
+     "op": "gte",
+     "value": 80.0,
+     "valueHigh": null,
+     "unitText": "",
+     "referenceBound": "absolute",
+     "unitConceptId": null
+    },
+    "sourceText": "Treatment compliance",
+    "protocolLine": "13. Treatment compliance in the placebo run-in should be between 80% and 120% to be eligible for randomisation",
+    "protocolSpan": "",
+    "window": {
+     "start": -180,
+     "end": 0
+    },
+    "logicType": "PRESENCE",
+    "groupId": null,
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false
+   },
+   "answers": {
+    "current": {
+     "record_requirement": "conditional",
+     "conditional_span": "in the placebo run-in",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "between 80% and 120%",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none"
+    },
+    "placebo": {
+     "record_requirement": "conditional",
+     "conditional_span": "in the placebo run-in",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "between 80% and 120%",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none"
+    },
+    "cf": {
+     "record_requirement": "conditional",
+     "conditional_span": "in the placebo run-in",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "record_change": "none",
+     "record_change_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "between 80% and 120%",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none"
+    }
+   },
+   "storedAnnotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "conditional",
+    "conditional_span": "in the placebo run-in",
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "prior",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": "between 80% and 120%",
+    "quantity_kind": "lab_value",
+    "reference_bound": "none",
+    "record_change": "none",
+    "record_change_span": null
+   }
   }
  ]
 }

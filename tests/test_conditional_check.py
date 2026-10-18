@@ -39,9 +39,11 @@ class _Replay:
     """Answers each call with the recorded answer of the call it is; the check calls with the
     answers the test gives."""
 
-    def __init__(self, answers: dict[str, Any], check: tuple[str, str]) -> None:
+    def __init__(self, answers: dict[str, Any], check: tuple[str, str],
+                 outside: tuple[str, str] = ("yes", "yes")) -> None:
         self.answers = answers
         self.check = check
+        self.outside = outside
         self.kinds: list[str] = []
 
     def _kind(self, system: str, prompt: str) -> str:
@@ -58,7 +60,8 @@ class _Replay:
         kind = self._kind(str(messages[0].content), str(messages[1].content))
         self.kinds.append(kind)
         if kind in ("check1", "check2"):
-            reply = {"fragment_role": self.check[0 if kind == "check1" else 1]}
+            i = 0 if kind == "check1" else 1
+            reply = {"fragment_role": self.check[i], "entity_outside_trial": self.outside[i]}
         else:
             reply = self.answers[kind]
         return AIMessage(content=json.dumps(reply))
@@ -83,11 +86,11 @@ def _group(trial: str, role: str, ids: list[int]) -> list[dict[str, Any]]:
 
 
 def _reannotate(rows: list[dict[str, Any]], cid: int, trial: str, role: str,
-                check: tuple[str, str]) -> _Replay:
+                check: tuple[str, str], outside: tuple[str, str] = ("yes", "yes")) -> _Replay:
     row = next(r for r in rows if r["id"] == cid)
     row.pop("annotation")
     members = annotation._members_of(row, rows)
-    llm = _Replay(CASES[(trial, role, cid)]["answers"], check)
+    llm = _Replay(CASES[(trial, role, cid)]["answers"], check, outside)
     annotation.annotate_row(row, members, role, model="stub", llm=llm)
     return llm
 
@@ -135,3 +138,22 @@ def test_should_not_ask_the_check_for_a_row_that_is_not_conditional():
     row.pop("annotation")
     annotation.annotate_row(row, [], "inclusion", model="stub", llm=llm)
     assert not {"check1", "check2"} & set(llm.kinds)
+
+
+def test_should_keep_the_skip_when_the_entity_arises_only_from_taking_part_in_the_trial():
+    """CAROLINA inclusion 13 'Treatment compliance in the placebo run-in should be between 80% and
+    120%': both checks read 'in the placebo run-in' as a period, but compliance in the trial's own
+    run-in is held by no record outside the trial. Freed, it emitted an Observation PRESENCE no
+    patient record can satisfy; it keeps its skip."""
+    rows = _group("carolina", "inclusion", [35])
+    _reannotate(rows, 35, "carolina", "inclusion", ("time_or_record", "time_or_record"),
+                outside=("no", "no"))
+    assert set(conditional_skips(rows)) == {"35"}
+
+
+def test_should_keep_the_skip_when_either_check_says_the_entity_is_not_recorded_outside():
+    rows = _group("carolina", "exclusion", [41, 42, 43])
+    for cid in (41, 42):
+        _reannotate(rows, cid, "carolina", "exclusion", ("has_own_entity", "time_or_record"),
+                    outside=("yes", "no"))
+    assert set(conditional_skips(rows)) == {"41", "42", "43"}
