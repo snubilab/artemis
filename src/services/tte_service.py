@@ -6946,6 +6946,7 @@ class TTEService:
                 pre_fetched_candidates=pre_fetched_candidates,
                 workflow=workflow,
                 entity_exception=seed_exception,
+                source_line=criterion.get(CRITERION_PROTOCOL_LINE_KEY),
             )
             # Named rather than inlined into `_seeded_criteria_key` because the window
             # default below is keyed by the same resolved domain: the CIRCE table and the
@@ -8058,6 +8059,7 @@ class TTEService:
         alias_candidates: list[str] | None = None,
         resolving_entity_exception: bool = False,
         entity_exception: Any = None,
+        source_line: str | None = None,
     ) -> dict[str, Any]:
         seed = " ".join(seed_text.split()).strip()
         if not seed:
@@ -8253,14 +8255,32 @@ class TTEService:
             if _alias is not None:
                 return _alias
 
+        # The seed as the criterion's protocol line spells it out (agent2/entity_full_name):
+        # a bare 'TIA' or 'eGFR' retrieves no Transient cerebral ischemia / no GFR test at
+        # all. `query` is what Agent 2, the cache and the fallback are asked; the set keeps
+        # the seed's name. A prefetch made for the seed answers another string, so the
+        # query gets its own, as large as the batch prefetch every other seed gets.
+        query = seed
+        if source_line:
+            from src.agents.agent2.entity_full_name import full_entity_name
+
+            query = full_entity_name(seed, source_line)
+            if query != seed:
+                from src.agents.agent2.retriever import ConceptRetriever
+
+                logging.info("[TTE] seed %r mapped as %r (its protocol line's full name)", seed, query)
+                pre_fetched_candidates = (
+                    ConceptRetriever().search(query, n_results=60, domain_hint=expected_domain) or None
+                )
+
         # --- Cache lookup ---
-        # On the seed exactly as the mapper reads it: the key keeps case, so a seed that
+        # On the query exactly as the mapper reads it: the key keeps case, so a query that
         # differs from a cached one only in case is mapped on its own (criterion_cache).
         _cache_enabled = _criterion_cache_enabled()
         if _cache_enabled:
             try:
                 cache = get_criterion_cache()
-                cached = cache.get(seed, expected_domain)
+                cached = cache.get(query, expected_domain)
                 if cached is not None:
                     from src.api.models.tte import CriterionMappingMetadata
 
@@ -8302,7 +8322,7 @@ class TTEService:
 
             _workflow = workflow or Agent2Workflow()
             mapping_result = _workflow.process_with_details(
-                seed,
+                query,
                 domain_hint=expected_domain,
                 pre_fetched_candidates=pre_fetched_candidates,
             )
@@ -8356,10 +8376,10 @@ class TTEService:
                             allCandidates=all_candidate_items,
                             rerankConfidence=mean_included_score(all_candidate_items),
                             rerankMethod="agent2",
-                            queryUsed=seed,
+                            queryUsed=query,
                             selectedConceptIds=selected_ids,
                             mappingFailures=[
-                                {**failure, "query": seed}
+                                {**failure, "query": query}
                                 for failure in mapping_result.mapping_failures()
                             ],
                         )
@@ -8372,7 +8392,7 @@ class TTEService:
                         if _cache_enabled and not mapping_result.mapping_failures():
                             try:
                                 get_criterion_cache().put(
-                                    seed,
+                                    query,
                                     expected_domain,
                                     CriterionCacheEntry(
                                         concept_ids=mapping_result.concept_ids,
@@ -8401,7 +8421,7 @@ class TTEService:
             agent2_empty = True
             agent2_route = str(getattr(mapping_result, "route_path", "") or "")
             agent2_failures = [
-                {**failure, "query": seed}
+                {**failure, "query": query}
                 for failure in mapping_result.mapping_failures()
             ]
             agent2_no_match = mapping_result.reranker_no_match
@@ -8442,7 +8462,7 @@ class TTEService:
         # with its code intact, and a failure stays a failure.
         try:
             fallback = self._recommend_seeded_concept_set_rag_fallback(
-                seed, expected_domain=expected_domain
+                query, expected_domain=expected_domain
             )
         except Exception as fallback_exc:
             if agent2_exc is not None:
@@ -8461,7 +8481,7 @@ class TTEService:
             from src.api.models.tte import CriterionMappingMetadata
 
             metadata = fallback.get("mapping_metadata") or CriterionMappingMetadata(
-                queryUsed=seed
+                queryUsed=query
             )
             fallback["mapping_metadata"] = metadata.model_copy(
                 update={"mappingFailures": [*agent2_failures, *metadata.mappingFailures]}

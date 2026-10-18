@@ -13,6 +13,7 @@ from src.models.ir import (
     CohortDefinition,
     Criteria,
     ExceptedEntity,
+    TemporalWindow,
     ValueConstraint,
 )
 from src.agents.planner.prompts import PLANNER_SYSTEM_PROMPT, DECOMPOSITION_PROMPT
@@ -119,6 +120,39 @@ def stated_member_value_constraint(sc_data: object, source_text: str) -> Optiona
         )
     except (ValueError, TypeError):
         return None
+
+
+#: Days per UCUM time unit, keyed by the unit's OMOP concept id (hour, week, month, year) --
+#: the ids `value_constraint.normalize_unit` resolves to; no unit word is read here.
+#: shortcut: day and minute are absent because normalize_unit resolves neither; such a bound
+#: stays a value filter (and stays refused, visibly) until the unit table resolves them.
+_DAYS_PER_TIME_UNIT = {8505: 1 / 24, 8511: 7, 9580: 30, 9448: 365}
+
+
+def duration_held_by_window(vc: Optional[ValueConstraint], window: Optional[TemporalWindow]) -> bool:
+    """Whether ``vc`` is a duration that ``window`` already states, so it is no value filter.
+
+    A planner member inherits its parent's window, which Agent 1 set from the line's time
+    phrase; the planner then often restates that phrase as the member's own
+    ``value_constraint`` ("within the past two years" -> eq 2 years), which no occurrence
+    table can read (unreadable-value-filter). It is dropped only when its unit is a time unit
+    (by UCUM concept id) AND the window spans the same time, within 5% (a month is 30 days
+    in the window, 30.4 in the calendar).
+
+    :param vc: the member's stated constraint.
+    :param window: the window the member inherits.
+    """
+    from src.services.value_constraint import normalize_unit
+
+    # A lower bound ("for at least 8 weeks") is a minimum length, which a lookback window does
+    # not state; only an upper or exact one ("within the past two years") is the window's.
+    if vc is None or window is None or vc.value is None or vc.op == "gt" or vc.op == "gte" or vc.op == "bt":
+        return False
+    days = _DAYS_PER_TIME_UNIT.get(vc.unit_concept_id or normalize_unit(vc.unit_text))
+    if days is None:
+        return False
+    span = float(vc.value) * days
+    return abs(abs(window.start - window.end) - span) <= 0.05 * span + 1
 
 
 def _member_is_stated_exception(excepted: List[ExceptedEntity], members: list) -> bool:
@@ -368,6 +402,8 @@ class CriteriaPlanner:
                     value_constraint = stated_member_value_constraint(
                         sc_data, criterion.source_text or ""
                     )
+                    if duration_held_by_window(value_constraint, criterion.window):
+                        value_constraint = None  # the inherited window already states it
 
                     sc = Criteria(
                         name=sc_data.get("name", "Unnamed"),

@@ -430,6 +430,34 @@ def _render_specimen_critic() -> str:
     return _joined(recorder.calls)
 
 
+def _render_agent1_entity_repair() -> str:
+    """Through ``_repair_missing_entity_text`` with the model replaced."""
+    from src.agents.agent1 import parser as parser_mod
+
+    recorder = _Recorder(reply='{"entities": []}')
+    decomposer = parser_mod.LogicDecomposer.__new__(parser_mod.LogicDecomposer)
+    decomposer.llm = recorder.runnable()
+    decomposer.model_name = "stub-model"
+    decomposer._repair_missing_entity_text(
+        {"target": {"inclusion_rules": [{"name": STUB, "domain": STUB, "entity_text": None,
+                                          "source_text": f"{STUB} line"}]}},
+        "NCT00000000",
+    )
+    return _joined(recorder.calls)
+
+
+def _render_entity_full_name() -> str:
+    """Through ``full_entity_name`` with the model replaced; the cache is off."""
+    from src.agents.agent2 import entity_full_name
+
+    recorder = _Recorder(reply='{"abbreviations": []}')
+    with patch.dict(os.environ, {"ARTEMIS_ENTITY_NAME_CACHE": "0"}):
+        entity_full_name.full_entity_name(
+            STUB, f"{STUB} line", model="stub-model", llm=recorder.runnable()
+        )
+    return _joined(recorder.calls)
+
+
 # ---------------------------------------------------------------------------
 # Declarations: what each prompt may quote
 # ---------------------------------------------------------------------------
@@ -567,6 +595,12 @@ PROMPTS: dict[str, PromptSpec] = {
     ),
     "agent2.specimen_critic": PromptSpec(
         _render_specimen_critic, tokens=frozenset({"accepted", "any"}),
+    ),
+    "agent1.entity_repair": PromptSpec(
+        _render_agent1_entity_repair, tokens=frozenset({"entities", "id", "entity_text"}),
+    ),
+    "agent2.entity_full_name": PromptSpec(
+        _render_entity_full_name, tokens=frozenset({"abbreviations", "span", "full_term"}),
     ),
     "criterion_annotation": PromptSpec(
         _render_criterion_annotation,
@@ -925,13 +959,14 @@ def test_should_describe_every_output_field_where_the_library_schema_was_dropped
 #: A file whose calls carry no prompt of their own says why instead.
 CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/agent1/parser.py": (
-        7, ("agent1.parse", "agent1.parse_nct", "agent1.threshold_review"),
+        9, ("agent1.parse", "agent1.parse_nct", "agent1.threshold_review", "agent1.entity_repair"),
     ),
     "src/agents/agent1/segmentation.py": (3, ("agent1.eligibility_segmentation",)),
     "src/agents/planner/decomposer.py": (3, ("planner",)),
     "src/agents/agent2/reranker.py": (3, ("agent2.reranker_single_select", "agent2.reranker_topn")),
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),
     "src/agents/agent2/specimen_critic.py": (3, ("agent2.specimen_critic",)),
+    "src/agents/agent2/entity_full_name.py": (3, ("agent2.entity_full_name",)),
     "src/agents/conceptset/nlu_router.py": (2, ("conceptset.nlu_router",)),
     "src/agents/conceptset/clinical_reranker.py": (2, ("conceptset.clinical_reranker",)),
     "src/agents/comparator/recommender.py": (2, ("comparator.literature",)),
