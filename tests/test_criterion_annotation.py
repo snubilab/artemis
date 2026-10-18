@@ -389,11 +389,13 @@ class TestProcessEligibilityAnnotatesBeforeMapping:
             )
         assert status == "completed"
         # The annotation call, the agreement call its `conditional` asks for (the stub
-        # answers both the same way, so the conditional is kept), and the record_change call
-        # (call 3), whose answer fills no record_change, so no call 4.
-        assert len(llm.calls) == 3
+        # answers both the same way, so the conditional is kept), the conditional check
+        # (call 5; the stub gives no fragment_role, so the conditional stays and no call 6),
+        # and the record_change call (call 3), whose answer fills no record_change, so no call 4.
+        assert len(llm.calls) == 4
         assert llm.calls[1].startswith(annotation_mod.AGREEMENT_SYSTEM_PROMPT)
-        assert annotation_mod.RECORD_CHANGE_PROMPT_BLOCK.split("\n")[0] in llm.calls[2]
+        assert "Fragment of the protocol line:" in llm.calls[2]
+        assert annotation_mod.RECORD_CHANGE_PROMPT_BLOCK.split("\n")[0] in llm.calls[3]
         assert seen["rows"][0][ANNOTATION_KEY]["record_change"] is None
         assert seen["rows"][0][ANNOTATION_KEY]["record_requirement"] == "conditional"
         stored = payload["proposedChanges"]["eligibility"]["inclusionCriteria"][0]

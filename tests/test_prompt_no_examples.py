@@ -380,6 +380,37 @@ def _render_criterion_annotation_record_change_agreement() -> str:
     return _joined(fourth)
 
 
+def _conditional_check_calls() -> list[str]:
+    """Every call made when calls 1 and 2 agree on ``conditional`` and call 5 answers
+    ``time_or_record``, so calls 5 and 6 are both made for every row."""
+    return _annotation_calls(
+        f'{{"record_requirement": "conditional", "conditional_span": "{STUB} line", '
+        f'"fragment_role": "time_or_record", "entity_outside_trial": "yes"}}'
+    )
+
+
+def _render_criterion_annotation_conditional_check() -> str:
+    """Call 5 (``CONDITIONAL_CHECK_PROMPT``), linted on its own."""
+    from src.services import criterion_annotation
+
+    calls = [c for c in _conditional_check_calls()
+             if c.startswith(criterion_annotation.ANNOTATION_SYSTEM_PROMPT)
+             and "Fragment of the protocol line:" in c]
+    assert len(calls) == 2, "call 5 was not made for every conditional row"
+    return _joined(calls)
+
+
+def _render_criterion_annotation_conditional_check_agreement() -> str:
+    """Call 6 (``CONDITIONAL_CHECK_AGREEMENT_PROMPT``), linted on its own."""
+    from src.services import criterion_annotation
+
+    calls = [c for c in _conditional_check_calls()
+             if c.startswith(criterion_annotation.AGREEMENT_SYSTEM_PROMPT)
+             and "Fragment of the protocol line:" in c]
+    assert len(calls) == 2, "call 6 was not made after call 5 answered time_or_record"
+    return _joined(calls)
+
+
 def _render_specimen_critic() -> str:
     """Through ``judge_specimen_options`` with the model replaced; the cache is off."""
     from src.agents.agent2 import specimen_critic
@@ -572,6 +603,17 @@ PROMPTS["criterion_annotation.record_change"] = PromptSpec(
 )
 PROMPTS["criterion_annotation.record_change.agreement"] = PromptSpec(
     _render_criterion_annotation_record_change_agreement, tokens=_RECORD_CHANGE_TOKENS,
+)
+# Calls 5 and 6 (conditional check): one field and its three values.
+_CONDITIONAL_CHECK_TOKENS = frozenset(
+    {"fragment_role", "patients", "has_own_entity", "time_or_record", "other",
+     "entity_outside_trial", "yes", "no"}
+)
+PROMPTS["criterion_annotation.conditional_check"] = PromptSpec(
+    _render_criterion_annotation_conditional_check, tokens=_CONDITIONAL_CHECK_TOKENS,
+)
+PROMPTS["criterion_annotation.conditional_check.agreement"] = PromptSpec(
+    _render_criterion_annotation_conditional_check_agreement, tokens=_CONDITIONAL_CHECK_TOKENS,
 )
 
 
@@ -896,7 +938,9 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/services/tte_service.py": (6, ("tte.analysis_finalizer", "tte.report_narrative")),
     "src/services/criterion_annotation.py": (
         3, ("criterion_annotation", "criterion_annotation.agreement",
-            "criterion_annotation.record_change", "criterion_annotation.record_change.agreement"),
+            "criterion_annotation.record_change", "criterion_annotation.record_change.agreement",
+            "criterion_annotation.conditional_check",
+            "criterion_annotation.conditional_check.agreement"),
     ),
     "src/utils/llm.py": (6, "transport: builds the chat client get_llm returns and appends "
                             "/no_think to the caller's last message; carries no prompt of its own"),

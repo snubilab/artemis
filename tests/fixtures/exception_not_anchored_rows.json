@@ -1,0 +1,589 @@
+{
+ "sources": {
+  "segoff": {
+   "path": "output/site_gap/2026-10-17_p6_segoff/arm_segoff/store/studies.json",
+   "sha256": "1ced62ee9e765750b40bc22c5152e74510828aa80ee6dbf14a7bc8cfa7be56bd"
+  },
+  "main": {
+   "path": "output/site_gap/2026-10-13_p6/arm_main/store/studies.json",
+   "sha256": "55e76277d9cb15f0b4250dc6365ac2e86067118d55456b545fea8b3edef94326"
+  }
+ },
+ "rows": [
+  {
+   "arm": "segoff",
+   "trial": "carmelina",
+   "role": "exclusion",
+   "criterionId": 32,
+   "row": {
+    "id": 32,
+    "description": "Percutaneous Coronary Intervention (PCI)",
+    "sourceText": "Percutaneous Coronary Intervention",
+    "protocolLine": "7. Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or",
+    "domain": "Procedure",
+    "logicType": "ABSENCE",
+    "groupId": "17cf7fba-b474-41e7-8e4d-001d54520060",
+    "isGroupLabel": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "Percutaneous Coronary Intervention",
+       "span": "PCI"
+      }
+     ],
+     "base_span": "Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or",
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "889a429d3a4dffe33d231bacf8c67a4af90ba0b2494edb4558b6fc8ae9c26d98",
+     "firstCacheKey": "04926db02671fef63dc63c78bc9d6d943164f28b4078c1e95632ca4bff0da06c",
+     "outcome": "called",
+     "kept": {
+      "excepted_entities": [
+       {
+        "text": "Percutaneous Coronary Intervention",
+        "span": "PCI",
+        "offsets": [
+         51,
+         54
+        ]
+       }
+      ],
+      "base_span": "Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or"
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "Percutaneous Coronary Intervention",
+        "span": "PCI",
+        "offsets": [
+         51,
+         54
+        ]
+       }
+      ],
+      "base_span": "any previous PCI",
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    },
+    "_annotationRejected": [
+     {
+      "field": "relation",
+      "value": {
+       "relation": "any",
+       "relation_span": null,
+       "cardinality": null
+      },
+      "reason": "relation_span is not a substring of protocolLine"
+     }
+    ],
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "valueConstraint": null
+   }
+  },
+  {
+   "arm": "segoff",
+   "trial": "plato",
+   "role": "exclusion",
+   "criterionId": 55,
+   "row": {
+    "id": 55,
+    "description": "Current Acute Coronary Syndrome",
+    "sourceText": "Acute Coronary Syndrome",
+    "protocolLine": "13. Persons who have already been treated with an invasive (angioplasty) procedure for the current episode of ACS",
+    "domain": "Condition",
+    "logicType": "ABSENCE",
+    "groupId": "69938155-3912-4801-94e7-3774ce88e810",
+    "isGroupLabel": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "Acute Coronary Syndrome",
+       "span": "for the current episode of ACS"
+      }
+     ],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "bcc7d6436002bc9654589a8b202afaf7ff5d101f16ab0d9972956c72932d71cf",
+     "firstCacheKey": "4ae3d2f616172081b9a95fa28c165099c01022a6e81a4fecacb7ba5a648c833d",
+     "outcome": "called",
+     "kept": {
+      "excepted_entities": [
+       {
+        "text": "Acute Coronary Syndrome",
+        "span": "for the current episode of ACS",
+        "offsets": [
+         83,
+         113
+        ]
+       }
+      ],
+      "base_span": null
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "Acute Coronary Syndrome",
+        "span": "for the current episode of ACS",
+        "offsets": [
+         83,
+         113
+        ]
+       }
+      ],
+      "base_span": "Persons who have already been treated with an invasive (angioplasty) procedure",
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    },
+    "_annotationRejected": [
+     {
+      "field": "base_span",
+      "value": null,
+      "reason": "not a substring of protocolLine"
+     }
+    ],
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "valueConstraint": null
+   }
+  },
+  {
+   "arm": "segoff",
+   "trial": "leader",
+   "role": "exclusion",
+   "criterionId": 40,
+   "row": {
+    "id": 40,
+    "description": "Insulin use other than specified types",
+    "sourceText": "insulin",
+    "protocolLine": "14. Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "domain": "Drug",
+    "logicType": "ABSENCE",
+    "groupId": "fa74280f-a128-45b3-938e-d9dce4637f58",
+    "isGroupLabel": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "human NPH insulin",
+       "span": "human NPH insulin"
+      },
+      {
+       "text": "long-acting insulin analogue",
+       "span": "long-acting insulin analogue"
+      },
+      {
+       "text": "premixed insulin",
+       "span": "premixed insulin"
+      }
+     ],
+     "base_span": "insulin",
+     "relation": "any",
+     "relation_span": "other than",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "within 3 months prior to screening",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": null,
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "724bae6e23cce9dd6b155806e8624fca6973a43a789e9fc49ccfb7266b3eec42",
+     "firstCacheKey": "38ceb16db9e471725f0c5b48e80e4b575ff3ca4b6b545b4a3b1640665eca7572",
+     "outcome": "called",
+     "kept": {
+      "excepted_entities": [
+       {
+        "text": "human NPH insulin",
+        "span": "human NPH insulin",
+        "offsets": [
+         30,
+         47
+        ]
+       },
+       {
+        "text": "long-acting insulin analogue",
+        "span": "long-acting insulin analogue",
+        "offsets": [
+         51,
+         79
+        ]
+       },
+       {
+        "text": "premixed insulin",
+        "span": "premixed insulin",
+        "offsets": [
+         83,
+         99
+        ]
+       }
+      ],
+      "base_span": "insulin"
+     },
+     "dropped": {
+      "no_entity": {
+       "value": "investigator_judgement",
+       "span": "at Investigator’s discretion"
+      }
+     },
+     "second": {
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "human NPH insulin",
+        "span": "human NPH insulin",
+        "offsets": [
+         30,
+         47
+        ]
+       },
+       {
+        "text": "long-acting insulin analogue",
+        "span": "long-acting insulin analogue",
+        "offsets": [
+         51,
+         79
+        ]
+       },
+       {
+        "text": "premixed insulin",
+        "span": "premixed insulin",
+        "offsets": [
+         83,
+         99
+        ]
+       }
+      ],
+      "base_span": "insulin",
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    },
+    "window": {
+     "start": -90,
+     "end": 0
+    },
+    "valueConstraint": null
+   }
+  },
+  {
+   "arm": "segoff",
+   "trial": "aristotle",
+   "role": "exclusion",
+   "criterionId": 6,
+   "row": {
+    "id": 6,
+    "description": "Other chronic anticoagulation conditions",
+    "sourceText": "",
+    "protocolLine": "6. Conditions other than atrial fibrillation that require chronic anticoagulation (e.g",
+    "domain": "Condition",
+    "logicType": "ABSENCE",
+    "groupId": null,
+    "isGroupLabel": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "atrial fibrillation",
+       "span": "atrial fibrillation"
+      }
+     ],
+     "base_span": "Conditions other than atrial fibrillation that require chronic anticoagulation (e.g",
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "f9ef4009abe952ad7100142b2bf71c37c989c750811bb9a93c961266708fd44c",
+     "firstCacheKey": "8335f25168fc13b9c9e5b7e568ae3278b04834bea1e5a8fe399fcf4491883860",
+     "outcome": "called",
+     "kept": {
+      "excepted_entities": [
+       {
+        "text": "atrial fibrillation",
+        "span": "atrial fibrillation",
+        "offsets": [
+         25,
+         44
+        ]
+       }
+      ],
+      "base_span": "Conditions other than atrial fibrillation that require chronic anticoagulation (e.g"
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "atrial fibrillation",
+        "span": "atrial fibrillation",
+        "offsets": [
+         25,
+         44
+        ]
+       }
+      ],
+      "base_span": "Conditions other than atrial fibrillation that require chronic anticoagulation (e.g",
+      "no_entity": "none",
+      "no_entity_span": null
+     },
+     "secondRejected": [
+      {
+       "field": "relation",
+       "value": {
+        "relation": "any",
+        "relation_span": null,
+        "cardinality": null
+       },
+       "reason": "relation_span is not a substring of protocolLine"
+      }
+     ]
+    },
+    "_annotationRejected": [
+     {
+      "field": "relation",
+      "value": {
+       "relation": "any",
+       "relation_span": null,
+       "cardinality": null
+      },
+      "reason": "relation_span is not a substring of protocolLine"
+     }
+    ],
+    "window": {
+     "start": -9999,
+     "end": 0
+    },
+    "valueConstraint": null
+   }
+  },
+  {
+   "arm": "main",
+   "trial": "leader",
+   "role": "exclusion",
+   "criterionId": 4,
+   "row": {
+    "id": 4,
+    "description": "Use of non-approved insulin",
+    "sourceText": "",
+    "protocolLine": "4. Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin within 3 months prior to screening. Short-term use of other insulin during this period in connection with intercurrent illness is allowed, at Investigator’s discretion",
+    "domain": "Drug",
+    "logicType": "ABSENCE",
+    "groupId": null,
+    "isGroupLabel": false,
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "human NPH insulin",
+       "span": "human NPH insulin"
+      },
+      {
+       "text": "long-acting insulin analogue",
+       "span": "long-acting insulin analogue"
+      },
+      {
+       "text": "premixed insulin",
+       "span": "premixed insulin"
+      }
+     ],
+     "base_span": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin",
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "within 3 months prior to screening",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "90a348cee6a91ee5a25a7d1219aaa4516c2198c3248b422e251d23d895d06e94",
+     "firstCacheKey": "af5b91ab593751fd0553fa6769fba426da09b3a1fd82e86940dc337b05acc11b",
+     "outcome": "called",
+     "kept": {
+      "excepted_entities": [
+       {
+        "text": "human NPH insulin",
+        "span": "human NPH insulin",
+        "offsets": [
+         29,
+         46
+        ]
+       },
+       {
+        "text": "long-acting insulin analogue",
+        "span": "long-acting insulin analogue",
+        "offsets": [
+         50,
+         78
+        ]
+       },
+       {
+        "text": "premixed insulin",
+        "span": "premixed insulin",
+        "offsets": [
+         82,
+         98
+        ]
+       }
+      ],
+      "base_span": "Use of insulin other than human NPH insulin or long-acting insulin analogue or premixed insulin"
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "human NPH insulin",
+        "span": "human NPH insulin",
+        "offsets": [
+         29,
+         46
+        ]
+       },
+       {
+        "text": "long-acting insulin analogue",
+        "span": "long-acting insulin analogue",
+        "offsets": [
+         50,
+         78
+        ]
+       },
+       {
+        "text": "premixed insulin",
+        "span": "premixed insulin",
+        "offsets": [
+         82,
+         98
+        ]
+       }
+      ],
+      "base_span": "Use of insulin other than",
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    },
+    "window": {
+     "start": -90,
+     "end": 0
+    },
+    "valueConstraint": null
+   }
+  }
+ ]
+}
