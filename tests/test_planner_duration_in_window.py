@@ -20,6 +20,21 @@ def test_should_recognise_a_duration_the_window_already_holds():
                                    TemporalWindow(start=-60, end=0))
 
 
+def test_should_recognise_a_duration_in_days_the_window_already_holds():
+    """P7 SEG-OFF, both arms: ARISTOTLE 'Recent ischemic stroke (within 7 days)' (eq 7 days,
+    window -7) and 'investigational drug or device within the past 30 days' (eq 30 days,
+    window -30) were refused as unreadable-value-filter -- the UCUM concept path resolves no
+    day."""
+    assert duration_held_by_window(ValueConstraint(op="eq", value=7, unit_text="days"),
+                                   TemporalWindow(start=-7, end=0))
+    assert duration_held_by_window(ValueConstraint(op="eq", value=30, unit_text="days"),
+                                   TemporalWindow(start=-30, end=0))
+    assert not duration_held_by_window(ValueConstraint(op="eq", value=7, unit_text="days"),
+                                       TemporalWindow(start=-30, end=0))
+    assert not duration_held_by_window(ValueConstraint(op="gte", value=7, unit_text="days"),
+                                       TemporalWindow(start=-7, end=0))
+
+
 def test_should_keep_a_bound_that_is_not_the_window():
     # "symptoms >= 10 minutes" under a 24-day window: a duration, but not the window's
     assert not duration_held_by_window(ValueConstraint(op="gte", value=10, unit_text="min"),

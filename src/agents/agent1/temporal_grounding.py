@@ -49,6 +49,11 @@ def _number(token: str) -> float | None:
     return value if value > 0 else None
 
 
+def unit_days(unit_token: str) -> float | None:
+    """Days per time unit token (``days`` -> 1, ``weeks`` -> 7), or None when it is no time unit."""
+    return _UNIT_DAYS.get(unit_token.strip(_EDGE).lower())
+
+
 def stated_durations(span: str | None) -> list[tuple[int, int]]:
     """Each ``<number> <unit>`` pair in a quoted fragment, as a ``(days, days_upper)`` band.
 
@@ -64,7 +69,7 @@ def stated_durations(span: str | None) -> list[tuple[int, int]]:
     found: list[tuple[int, int]] = []
     for value_token, unit_token in zip(tokens, tokens[1:]):
         n = _number(value_token)
-        per_unit = _UNIT_DAYS.get(unit_token.strip(_EDGE).lower())
+        per_unit = unit_days(unit_token)
         if n is None or per_unit is None:
             continue
         found.append((_days(n, per_unit), _days(n, _UNIT_DAYS_UPPER[per_unit])))
