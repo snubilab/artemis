@@ -24,13 +24,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.agents.agent2.drug_class_expander import AtcHit, class_route_is_decided
+from src.services.overbroad_absence_repair import ConceptRecord
 from src.services.route_subtraction import (
     AdministrationRoute,
     DrugForm,
     routes_for_concept_ids,
 )
 from src.services.tte_service import TTEService
-from src.services.overbroad_absence_repair import ConceptRecord
 
 
 def _hits(*ranked: tuple[str, float]) -> list[AtcHit]:
@@ -113,7 +113,8 @@ def _map(route_ids: list[int]) -> dict[str, Any]:
 
 
 def _excluded(result: dict[str, Any]) -> set[int]:
-    return {i["concept"]["CONCEPT_ID"] for i in result["expression"]["items"] if i.get("isExcluded")}
+    items = result["expression"]["items"]
+    return {i["concept"]["CONCEPT_ID"] for i in items if i.get("isExcluded")}
 
 
 class TestTheMapperKeepsTheClassRoute:
@@ -157,7 +158,8 @@ def test_should_read_only_systemic_routes_under_h02a_from_the_vocabulary():
         cur = conn.cursor()
         cur.execute(f"SELECT concept_id FROM {settings.CDM_SCHEMA}.concept "
                     "WHERE vocabulary_id='ATC' AND concept_code='H02A'")
-        routes = routes_for_concept_ids(class_route_ids(cur, settings.CDM_SCHEMA, cur.fetchone()[0]))
+        class_id = cur.fetchone()[0]
+        routes = routes_for_concept_ids(class_route_ids(cur, settings.CDM_SCHEMA, class_id))
     finally:
         conn.close()
     assert set(routes) == {AdministrationRoute.ORAL, AdministrationRoute.INJECTABLE,
