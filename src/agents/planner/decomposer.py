@@ -123,9 +123,9 @@ def stated_member_value_constraint(sc_data: object, source_text: str) -> Optiona
 
 
 #: Days per UCUM time unit, keyed by the unit's OMOP concept id (hour, week, month, year) --
-#: the ids `value_constraint.normalize_unit` resolves to; no unit word is read here.
-#: shortcut: day and minute are absent because normalize_unit resolves neither; such a bound
-#: stays a value filter (and stays refused, visibly) until the unit table resolves them.
+#: the ids `value_constraint.normalize_unit` resolves to; no unit word is read here. A unit
+#: that path does not resolve (day) is read by Agent 1's time-unit parser
+#: (`temporal_grounding.unit_days`, ledger A4); minute is in neither and stays a value filter.
 _DAYS_PER_TIME_UNIT = {8505: 1 / 24, 8511: 7, 9580: 30, 9448: 365}
 
 
@@ -139,6 +139,12 @@ def duration_held_by_window(vc: Optional[ValueConstraint], window: Optional[Temp
     (by UCUM concept id) AND the window spans the same time, within 5% (a month is 30 days
     in the window, 30.4 in the calendar).
 
+    Known false emit (registered K1/K2): the refusal this removes was also stopping members
+    whose entity is a study product -- CAROLINA 'IMP given 2 months before ...' and ARISTOTLE
+    'investigational ... device within the past 30 days', which now map to one junk concept.
+    No planner or annotation field separates them (their agreed no_entity is 'none'); the fix
+    is asking no_entity / entity_outside_trial of forbidden rows, not a narrower drop here.
+
     :param vc: the member's stated constraint.
     :param window: the window the member inherits.
     """
@@ -148,7 +154,11 @@ def duration_held_by_window(vc: Optional[ValueConstraint], window: Optional[Temp
     # not state; only an upper or exact one ("within the past two years") is the window's.
     if vc is None or window is None or vc.value is None or vc.op == "gt" or vc.op == "gte" or vc.op == "bt":
         return False
+    from src.agents.agent1.temporal_grounding import unit_days
+
     days = _DAYS_PER_TIME_UNIT.get(vc.unit_concept_id or normalize_unit(vc.unit_text))
+    if days is None and vc.unit_concept_id is None and vc.unit_text:
+        days = unit_days(vc.unit_text)
     if days is None:
         return False
     span = float(vc.value) * days
