@@ -139,6 +139,12 @@ def duration_held_by_window(vc: Optional[ValueConstraint], window: Optional[Temp
     (by UCUM concept id) AND the window spans the same time, within 5% (a month is 30 days
     in the window, 30.4 in the calendar).
 
+    Known false emit (registered K1/K2): the refusal this removes was also stopping members
+    whose entity is a study product -- CAROLINA 'IMP given 2 months before ...' and ARISTOTLE
+    'investigational ... device within the past 30 days', which now map to one junk concept.
+    No planner or annotation field separates them (their agreed no_entity is 'none'); the fix
+    is asking no_entity / entity_outside_trial of forbidden rows, not a narrower drop here.
+
     :param vc: the member's stated constraint.
     :param window: the window the member inherits.
     """
