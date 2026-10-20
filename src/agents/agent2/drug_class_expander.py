@@ -169,6 +169,78 @@ def select_atc_class(
         best = longer[0]
 
 
+def class_route_is_decided(
+    hits: List[AtcHit], chosen: AtcHit, band: float = _ATC_MARGIN_BAND
+) -> bool:
+    """Whether the chosen class is evidence for a route: no class outside its ATC subtree sits
+    within ``band`` of it.
+
+    The reference distance is the closest hit in the chosen class's subtree (H02 at 0.134 when
+    H02A was chosen at 0.168). Measured on P7: 'corticosteroids' tied C05AA, S02B and S03B at 0.000,
+    so the pick between rectal, otic and eye classes was arbitrary; the nearest unrelated class
+    was 0.068 away for 'systemic corticosteroids' and 0.084 for 'Systemic corticosteroid'.
+    ``band`` is the selector's own "near" margin, not a new knob.
+
+    :param hits: the ranked hits the class was chosen from.
+    :param chosen: the class chosen (after any climb).
+    :returns: True when no unrelated hit is within ``band`` of the chosen class.
+    """
+    # The subtree is rooted at the shallowest hit related to the choice (H02 for H02A), so
+    # H02B "combinations" counts as the same class family, not as a rival.
+    root = min((h for h in hits if _related(h, chosen)), key=lambda h: len(h.code),
+               default=chosen)
+    family = [h for h in hits if _related(h, root) or h.code.startswith(root.code)]
+    reference = min((h.distance for h in family), default=chosen.distance)
+    return not any(h.distance <= reference + band for h in hits if h not in family)
+
+
+def class_route_ids(cur, schema: str, class_id: int) -> List[int]:
+    """The ``Has route of admin`` routes of the Clinical Drug Forms ATC files under a class.
+
+    H02 "CORTICOSTEROIDS FOR SYSTEMIC USE" yields Oral, Injectable, Buccal and Implant; the
+    ingredients it rolls up to also carry creams, eye drops and inhalers, which ATC files under
+    D07, S01 and R03 instead.
+
+    :param cur: an open cursor.
+    :param schema: the vocabulary schema.
+    :param class_id: the ATC concept_id.
+    """
+    cur.execute(
+        f"""
+        SELECT DISTINCT rr.concept_id_2
+        FROM {schema}.concept_ancestor ca
+        JOIN {schema}.concept f
+          ON f.concept_id = ca.descendant_concept_id
+         AND f.concept_class_id = 'Clinical Drug Form' AND f.invalid_reason IS NULL
+        JOIN {schema}.concept_relationship df
+          ON df.concept_id_1 = f.concept_id AND df.relationship_id = 'RxNorm has dose form'
+         AND df.invalid_reason IS NULL
+        JOIN {schema}.concept_relationship rr
+          ON rr.concept_id_1 = df.concept_id_2 AND rr.relationship_id = 'Has route of admin'
+         AND rr.invalid_reason IS NULL
+        WHERE ca.ancestor_concept_id = %s
+        """,
+        (class_id,),
+    )
+    return sorted(int(row[0]) for row in cur.fetchall())
+
+
+class AtcExpansion(tuple):
+    """``(class name, ingredient ids)`` -- the pair callers unpack -- plus ``route_ids``.
+
+    ``route_ids`` are the routes the class itself holds (`class_route_ids`), empty when the
+    class choice is not evidence for a route (`class_route_is_decided`).
+    """
+
+    route_ids: List[int]
+
+    def __new__(cls, name: Optional[str], ingredient_ids: List[int],
+                route_ids: Optional[List[int]] = None):
+        obj = super().__new__(cls, (name, ingredient_ids))
+        obj.route_ids = list(route_ids or [])
+        return obj
+
+
 def drop_combination_partners(
     ingredients: List[int], alone_in_class: Set[int], alone_anywhere: Set[int]
 ) -> List[int]:
@@ -290,7 +362,7 @@ def expand_drug_class_via_vocab(
         # Note this default binds at import; setting the env var later has no effect.
         os.environ.get("AGENT2_ATC_DISTANCE_THRESHOLD", "0.75")
     ),
-) -> Tuple[Optional[str], List[int]]:
+) -> AtcExpansion:
     """
     Drug class expansion: ChromaDB ATC collection → class selection → concept_ancestor.
 
@@ -301,7 +373,8 @@ def expand_drug_class_via_vocab(
         distance_threshold: Max ChromaDB distance for a valid match (lower = stricter)
 
     Returns:
-        Tuple of (class name or None, list of RxNorm Ingredient concept_ids)
+        AtcExpansion: (class name or None, RxNorm Ingredient concept_ids), with
+        ``route_ids`` the chosen class's own routes when the choice decides them.
     """
     if not schema:
         from src.settings import Settings
@@ -359,7 +432,11 @@ def expand_drug_class_via_vocab(
         ingredient_ids = _ingredients(class_id)
         if len(ingredient_ids) >= _MIN_CLASS_SIZE:
             logger.info(f"[DrugClass] ATC '{code}' → {len(ingredient_ids)} RxNorm Ingredients")
-            return name, ingredient_ids
+            final = AtcHit(class_id, code, name, chosen.distance)
+            routes = (class_route_ids(cur, schema, class_id)
+                      if class_route_is_decided(hits, final) else [])
+            logger.info(f"[DrugClass] ATC '{code}' routes {routes or 'undecided'}")
+            return AtcExpansion(name, ingredient_ids, routes)
         parent = atc_parent(cur, schema, class_id)
         if parent is None or parent[3] == "ATC 1st" or parent[0] in climbed:
             logger.info(f"[DrugClass] ATC '{code}' rejected: {len(ingredient_ids)} "

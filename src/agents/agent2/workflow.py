@@ -329,15 +329,19 @@ class Agent2Workflow:
                 # The query is expanded whole. Splitting it on " or " (inventory A14, removed
                 # in RFC-016 step 2) read the text to decide what the alternatives were;
                 # alternatives are split upstream, by Agent 1 and the planner.
-                atc_name, atc_ingredient_ids = expand_drug_class_via_vocab(
+                expansion = expand_drug_class_via_vocab(
                     query_text, db_conn, schema=settings.CDM_SCHEMA
                 )
+                atc_name, atc_ingredient_ids = expansion
                 if atc_name and atc_ingredient_ids:
                     logger.info(f"[Agent 2] ATC drug class '{atc_name}': {len(atc_ingredient_ids)} ingredients")
                     result.concept_ids = logician.roll_up_to_rxnorm_ingredients(atc_ingredient_ids)
                     result.gap_report.mapped_count = 1
                     result.route_path = "atc"
                     result.atc_expanded = True
+                    # The class's own routes survive the rollup to route-blind ingredients;
+                    # the mapper applies them (tte_service._recommend_seeded_concept_set).
+                    result.atc_route_ids = list(getattr(expansion, "route_ids", None) or [])
                     result.processing_time_ms = (time.time() - start_time) * 1000
                     logger.info(
                         f"[Agent 2] ATC drug class result: {len(result.concept_ids)} concepts, "
