@@ -1752,36 +1752,6 @@ def check_conditional(
     return {**fields, FIELD_RECORD_REQUIREMENT: None, FIELD_CONDITIONAL_SPAN: None}, record
 
 
-def _header_only_fragment(
-    row: Mapping[str, Any],
-    members: Sequence[Mapping[str, Any]],
-    role: str,
-    fields: Mapping[str, Any],
-) -> bool:
-    """Whether an inclusion group label's ``conditional_span`` lies only in its header line.
-
-    The label's members stand on lines of their own and none of those lines states the fragment,
-    so the fragment qualifies none of the rows its skip would remove: each member was annotated
-    on its own line and the skip reaches it only through the label (:func:`_with_group_members`).
-    On an inclusion, a header fragment joined to a list ('Age ≥60 y and ≥1 of the following') is
-    then a requirement of the group, not a subgroup (P7 SEG-OFF LEADER inclusions 14 and 16,
-    both arms). On an exclusion, excluding the patients the header names who also meet a member
-    is what the conditional reading builds too, so an exclusion keeps the skip (P6 MAIN CARMELINA
-    exclusion 30, pre-menopausal women).
-
-    shortcut: an inclusion header naming a subgroup over a list of its own lines ('Women of
-    child-bearing potential must:' then one line per requirement) reads the same way and would
-    lose its skip; none exists in the six evaluated trials (P6/P7/A2 stores). Upgrade to a
-    schema field the header annotation fills if one appears.
-    """
-    return (
-        role == INCLUSION
-        and bool(row.get(_IS_LABEL))
-        and bool(members)
-        and not any(span_in_line(fields.get(FIELD_CONDITIONAL_SPAN), m.get(_LINE)) for m in members)
-    )
-
-
 def annotate_row(
     row: dict[str, Any],
     members: Sequence[Mapping[str, Any]],
@@ -1830,16 +1800,9 @@ def annotate_row(
         else:
             row.pop(AGREEMENT_KEY, None)
         if fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value:
-            if _header_only_fragment(row, members, role, fields):
-                row[CONDITIONAL_CHECK_KEY] = {
-                    "fragment": fields.get(FIELD_CONDITIONAL_SPAN), "calls": [],
-                    "reverted": True, "headerOnly": True,
-                }
-                fields = {**fields, FIELD_RECORD_REQUIREMENT: None, FIELD_CONDITIONAL_SPAN: None}
-            else:
-                fields, row[CONDITIONAL_CHECK_KEY] = check_conditional(
-                    row, members, role, fields, model=model, llm=llm
-                )
+            fields, row[CONDITIONAL_CHECK_KEY] = check_conditional(
+                row, members, role, fields, model=model, llm=llm
+            )
         else:
             row.pop(CONDITIONAL_CHECK_KEY, None)
     change, row[RECORD_CHANGE_KEY] = _record_change(row, members, role, model=model, llm=llm)
