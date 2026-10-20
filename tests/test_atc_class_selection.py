@@ -191,7 +191,7 @@ INGREDIENTS = {21600695: [1], 21600680: [1, 2, 3, 4], 21600679: [1, 2, 3, 4],
 
 @pytest.fixture
 def expander(monkeypatch):
-    """Stub the collection, the class ingredients and the parent lookup."""
+    """Stub the collection, the class ingredients, the parent lookup and the class routes."""
     asked = []
 
     def _install(hits, ingredients=INGREDIENTS):
@@ -212,6 +212,7 @@ def expander(monkeypatch):
                             lambda: type("C", (), {"get_collection": _get})())
         monkeypatch.setattr(dce, "class_ingredients", lambda _c, _s, cid: list(ingredients[cid]))
         monkeypatch.setattr(dce, "atc_parent", lambda _c, _s, cid: PARENTS.get(cid))
+        monkeypatch.setattr(dce, "class_route_ids", lambda _c, _s, cid: [])
         return type("Conn", (), {"cursor": lambda _s: None})()
     _install.asked = asked
     return _install

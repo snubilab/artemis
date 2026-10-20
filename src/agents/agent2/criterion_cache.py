@@ -53,7 +53,9 @@ logger = logging.getLogger(__name__)
 #: on. Before, the key lower-cased the seed, so an entry could hold the mapping of another
 #: case variant; an all-lower-case seed hashes the same text either way and would have
 #: been served one.
-ENTRY_SHAPE = "route-free-exact-seed-v1"
+#: ``atc-class-route-v1``: an ATC-path mapping carries its class's own route exclusions
+#: (``MappingResult.atc_route_ids``); entries written before hold the route-blind rollup.
+ENTRY_SHAPE = "atc-class-route-v1"
 
 
 def _critic_signature() -> str:

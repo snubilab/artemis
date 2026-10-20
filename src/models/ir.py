@@ -486,6 +486,11 @@ class MappingResult(BaseModel):
         default=False,
         description="Whether ATC drug class expansion was used (early return)"
     )
+    atc_route_ids: List[int] = Field(
+        default_factory=list,
+        description="Route concepts the chosen ATC class itself holds (its Clinical Drug Forms' "
+                    "'Has route of admin'); empty when the class choice decides no route."
+    )
     critic_skipped: bool = Field(
         default=False,
         description="Whether LLM critic was skipped (anchor count ≤ 10)"

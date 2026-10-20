@@ -142,3 +142,18 @@ def compute_route_subtraction(
         elif not (form.route_ids & keep_ids):
             excluded.append(form)
     return RouteSubtraction(keep_routes=keep, excluded=excluded, undecidable=undecidable)
+
+
+def routes_for_concept_ids(route_ids: Iterable[int]) -> tuple[AdministrationRoute, ...] | None:
+    """The route values for ``Has route of admin`` route concepts, or None.
+
+    None when there are none, or when any is not one of the thirteen: a route this enum cannot
+    name would have its forms subtracted as if nothing covered them.
+
+    :param route_ids: OMOP route concept ids.
+    """
+    by_id = {concept_id: route for route, concept_id in _ROUTE_CONCEPT_IDS.items()}
+    ids = set(route_ids)
+    if not ids or not ids <= by_id.keys():
+        return None
+    return tuple(by_id[i] for i in sorted(ids))

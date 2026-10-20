@@ -8338,10 +8338,9 @@ class TTEService:
                     )
                     expression = recommendation.expression.to_atlas_json()
                     # One list, bound into the expression, so the in-place edit below
-                    # reaches the returned and cached expression. No route subtraction
-                    # here: a route is stated by the criterion's protocol line, so it is
-                    # applied by `_build_seeded_eligibility_rule`, which holds the row, and
-                    # this cached mapping of the seed stays route-free.
+                    # reaches the returned and cached expression. A route the protocol line
+                    # states is applied by `_build_seeded_eligibility_rule`, which holds the
+                    # row; the seed is never read for one.
                     items = expression["items"] = list(expression.get("items") or [])
 
                     if items:
@@ -8349,6 +8348,18 @@ class TTEService:
                             concept = item.get("concept", {})
                             if concept.get("CONCEPT_ID") in overbroad_set:
                                 item["includeDescendants"] = False
+                        # The route the chosen ATC class itself holds -- H02 "for systemic
+                        # use" files only oral, injectable, buccal and implant forms -- is a
+                        # fact about this mapping, so it is applied (and cached) here. The
+                        # rollup to Ingredients had dropped it: P7 CAROLINA exclusion 19
+                        # carried every cream and eye drop of 20 corticosteroids.
+                        class_routes = getattr(mapping_result, "atc_route_ids", None)
+                        if isinstance(class_routes, list) and class_routes:
+                            from src.services.route_subtraction import routes_for_concept_ids
+
+                            keep = routes_for_concept_ids(class_routes)
+                            if keep:
+                                self._apply_route_subtraction(items, keep, "Drug", seed)
 
                         # Capture mapping metadata for HITL transparency
                         selected_ids = [

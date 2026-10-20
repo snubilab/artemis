@@ -370,6 +370,57 @@ def _member_violations(
     return tuple(reasons)
 
 
+def _parts_of_other_members(
+    lab: Sequence[LabTest], component_ancestors: Mapping[int, frozenset[int]]
+) -> dict[int, str]:
+    """Members whose LOINC Component ``Is a`` descendant of another member's component.
+
+    Such a member measures a part of that member's quantity -- 'Aspartate aminotransferase.
+    macromolecular/total' under 'Aspartate aminotransferase', the bone, heat-stable and other
+    fractions under 'Alkaline phosphatase' -- so a bound written on the quantity does not read
+    it. Unrelated components (Troponin I and Troponin T in one "I or T" criterion) are each
+    their own quantity and are kept. The hierarchy is the vocabulary's; no name is read.
+
+    :returns: member concept id -> the reason.
+    """
+    held = {t.component_id: t.component for t in lab if t.component_id is not None}
+    found: dict[int, str] = {}
+    for test in lab:
+        above = (component_ancestors.get(test.component_id) or frozenset()) & held.keys()
+        above.discard(test.component_id)
+        if above:
+            whole = held[min(above)]
+            found[test.concept_id] = (
+                f"component {test.component!r} is a part of {whole!r}, which the set also holds"
+            )
+    return found
+
+
+def _with_unbounded_members(
+    violations: tuple[tuple[int, tuple[str, ...]], ...],
+    lab: Sequence[LabTest],
+    parts: Mapping[int, str],
+) -> tuple[tuple[int, tuple[str, ...]], ...]:
+    """``violations`` plus the members a numeric bound cannot be compared against.
+
+    A non-quantitative scale (an Ord '[Presence]' result has no number), as `_candidates`
+    already requires of an addition, and a member measuring a part of another member's quantity
+    (:func:`_parts_of_other_members`). P7 EMPA-REG's "AST > 3x ULN" carried both. The time axis
+    stays additions-only: a 24-hour UACR the mapper chose is still a ratio a bound reads
+    (``test_loinc_specimen::TestTimeAspect``).
+    """
+    by_id = {cid: list(reasons) for cid, reasons in violations}
+    for test in lab:
+        reasons = []
+        if test.scale != QUANTITATIVE_SCALE:
+            reasons.append(f"scale {test.scale!r} cannot carry the criterion's number")
+        if test.concept_id in parts:
+            reasons.append(parts[test.concept_id])
+        if reasons:
+            by_id.setdefault(test.concept_id, []).extend(reasons)
+    return tuple((t.concept_id, tuple(by_id[t.concept_id])) for t in lab if t.concept_id in by_id)
+
+
 #: The Circe keys that carry a numeric bound -- the ones ``build_measurement_value_filter`` emits.
 NUMERIC_BOUND_ATTRIBUTES = frozenset({"ValueAsNumber", "RangeHighRatio", "RangeLowRatio"})
 
@@ -411,6 +462,7 @@ def specimen_verdict(
     numeric_bound: bool,
     analyte_lab_tests: Callable[[str], Sequence[LabTest]],
     judge: SpecimenJudge,
+    component_ancestors: Mapping[int, frozenset[int]] | None = None,
 ) -> SpecimenVerdict:
     """The lab tests a criterion holds in a specimen or property it did not state, and whether
     the builder would repair them. Takes exactly :func:`plan_specimen_refinement`'s arguments.
@@ -424,6 +476,7 @@ def specimen_verdict(
         numeric_bound=numeric_bound,
         analyte_lab_tests=analyte_lab_tests,
         judge=judge,
+        component_ancestors=component_ancestors,
     )
     violations = tuple((lab_tests[cid], reasons) for cid, reasons in plan.violations)
     return SpecimenVerdict(
@@ -485,6 +538,7 @@ def plan_specimen_refinement(
     numeric_bound: bool,
     analyte_lab_tests: Callable[[str], Sequence[LabTest]],
     judge: SpecimenJudge,
+    component_ancestors: Mapping[int, frozenset[int]] | None = None,
 ) -> SpecimenPlan:
     """Decide which LOINC lab tests to drop from a criterion's concept set and which to add.
 
@@ -501,8 +555,11 @@ def plan_specimen_refinement(
     3. The analyte is the one held by a strict majority of the members in an accepted option --
        those whose property matches the unit when any do. No majority: decline, set unchanged.
        No member accepted: decline.
-    4. Drop a member whose option was not accepted, or whose property contradicts the unit; add a
-       candidate of the analyte whose option was accepted. When the judge gives no answer the
+    4. Drop a member whose option was not accepted, or whose property contradicts the unit, or --
+       with a numeric bound -- whose scale cannot carry the number or whose component is a part
+       of another member's (:func:`_with_unbounded_members`; such a part does not vote in 3);
+       add a candidate of the analyte whose option was
+       accepted. When the judge gives no answer the
        specimen is not decided: every member votes, only the unit's property removes, and
        nothing is added.
     5. Decline rather than leave the set without a single lab test. When the unit's property is
@@ -517,7 +574,10 @@ def plan_specimen_refinement(
     if not lab:
         return SpecimenPlan(declined="no LOINC lab-test member")
 
-    in_unit = [t for t in lab if unit_prop is None or t.property == unit_prop] or lab
+    # With a bound, a member measuring a part of another member's quantity neither votes nor stays.
+    parts = _parts_of_other_members(lab, component_ancestors or {}) if numeric_bound else {}
+    measured = [t for t in lab if t.concept_id not in parts] or lab
+    in_unit = [t for t in measured if unit_prop is None or t.property == unit_prop] or measured
     candidates: dict[str, list[LabTest]] = {}
     if numeric_bound:
         for analyte in dict.fromkeys(t.analyte for t in in_unit):
@@ -544,7 +604,7 @@ def plan_specimen_refinement(
         accepted=tuple(o for o in options if judged and o.key in accepted),
     )
 
-    in_specimen = [t for t in lab if not judged or option_of(t).key in accepted]
+    in_specimen = [t for t in measured if not judged or option_of(t).key in accepted]
     if not in_specimen:
         return SpecimenPlan(
             declined="no LOINC lab-test member in a specimen the criterion states", **common
@@ -557,6 +617,9 @@ def plan_specimen_refinement(
             declined=f"no analyte majority among {len(voters)} lab tests: {dict(votes)}", **common
         )
 
+    if numeric_bound:
+        violations = _with_unbounded_members(violations, lab, parts)
+        common["violations"] = violations
     added = tuple(t for t in candidates.get(analyte, []) if judged and option_of(t).key in accepted)
     if len(violations) == len(lab) and not added:
         if unit_prop and all(t.property != unit_prop for t in lab):
@@ -628,13 +691,22 @@ def refine_measurement_concept_set(
         for i in items
         if claims_lab_test(i) and not i.get("isExcluded")
     ]
+    lab_tests = vocabulary.lab_tests(claimed)
+    numeric_bound = carries_numeric_bound(value_filter)
+    # Read only for a bound, and only from a vocabulary that offers it (test fakes need not).
+    read_ancestors = getattr(vocabulary, "component_ancestors", None)
     plan = plan_specimen_refinement(
         member_ids=member_ids,
-        lab_tests=vocabulary.lab_tests(claimed),
+        lab_tests=lab_tests,
         unit_prop=value_filter_unit_property(value_filter),
-        numeric_bound=carries_numeric_bound(value_filter),
+        numeric_bound=numeric_bound,
         analyte_lab_tests=vocabulary.analyte_lab_tests,
         judge=judge,
+        component_ancestors=(
+            read_ancestors({t.component_id for t in lab_tests.values() if t.component_id})
+            if numeric_bound and callable(read_ancestors)
+            else None
+        ),
     )
     if not plan.changed:
         return dict(expression), plan
@@ -728,6 +800,25 @@ SELECT c.concept_id, x.concept_id
 """
 
 
+#: Every LOINC Component a component ``Is a`` (transitively). LOINC Components are not in
+#: ``concept_ancestor``, so the edge is walked; depth is bounded for a malformed cycle.
+_COMPONENT_ANCESTOR_SQL = """
+WITH RECURSIVE up(start_id, anc_id, depth) AS (
+  SELECT c.concept_id, c.concept_id, 0 FROM {schema}.concept c WHERE c.concept_id = ANY(%s)
+  UNION
+  SELECT up.start_id, r.concept_id_2, up.depth + 1
+    FROM up
+    JOIN {schema}.concept_relationship r
+      ON r.concept_id_1 = up.anc_id AND r.relationship_id = 'Is a' AND r.invalid_reason IS NULL
+    JOIN {schema}.concept p
+      ON p.concept_id = r.concept_id_2 AND p.vocabulary_id = 'LOINC'
+     AND p.concept_class_id = 'LOINC Component'
+   WHERE up.depth < 12
+)
+SELECT start_id, anc_id FROM up WHERE depth > 0
+"""
+
+
 def _like_prefix(text: str) -> str:
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "^%"
 
@@ -800,6 +891,18 @@ class PostgresLabTestVocabulary:
             for concept_id, component_id in cur.fetchall():
                 found.setdefault(concept_id, set()).add(component_id)
             return found
+
+    def component_ancestors(self, component_ids: Iterable[int]) -> dict[int, frozenset[int]]:
+        """LOINC Component ``Is a`` ancestors per component (``_parts_of_other_members``)."""
+        ids = sorted({int(c) for c in component_ids})
+        if not ids:
+            return {}
+        found: dict[int, set[int]] = {}
+        with self._conn.cursor() as cur:
+            cur.execute(_COMPONENT_ANCESTOR_SQL.format(schema=self._schema), (ids,))
+            for start, ancestor in cur.fetchall():
+                found.setdefault(int(start), set()).add(int(ancestor))
+        return {cid: frozenset(anc) for cid, anc in found.items()}
 
     def analyte_lab_tests(self, analyte: str) -> list[LabTest]:
         with self._conn.cursor() as cur:
