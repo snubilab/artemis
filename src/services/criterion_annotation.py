@@ -94,6 +94,14 @@ ARISTOTLE inclusion 4 'If not in atrial fibrillation/flutter at the time of enro
 with an unrelated change to the prompt -- which is why a revert needs both. Recorded on the row
 under :data:`CONDITIONAL_CHECK_KEY`; it never fills anything and touches no other field.
 
+Calls 7 and 8 (trial-only check, fix-k12). An agreed ``forbidden`` row with ``no_entity: none``
+that is not a label with members is asked ``trial_only`` (:data:`TRIAL_ONLY_PROMPT`): does its own
+entity exist only because the patient takes part in a clinical trial, any trial. Call 8
+(:data:`TRIAL_ONLY_AGREEMENT_PROMPT`) confirms a ``yes``; both ``yes`` refuses the row before mapping
+as ``unmappable-placeholder`` (:func:`stated_trial_only`), recorded under
+:data:`TRIAL_ONLY_CHECK_KEY`. Calls 5/6 were not reused: their ``entity_outside_trial`` is about this
+trial, and another trial's product (P8 CAROLINA K1, ARISTOTLE K2) answered ``yes`` to it.
+
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
 rebuild reaches it.
@@ -141,6 +149,9 @@ RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
 #: Calls 5 and 6 (:func:`check_conditional`); each part of its call's cache key.
 CONDITIONAL_CHECK_PROMPT_VERSION = "rfc016-conditional-check-v1"
 CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v1"
+#: Calls 7 and 8 (:func:`check_forbidden`); each part of its call's cache key.
+TRIAL_ONLY_PROMPT_VERSION = "fixk12-trial-only-v1"
+TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "fixk12-trial-only-placebo-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -162,9 +173,9 @@ RECORD_CHANGE_RECORDS_KEY = "_recordChangeRecords"
 #: answer was ``conditional``, with each call's version, cache key, outcome and answer, and
 #: whether the ``conditional`` was reverted.
 CONDITIONAL_CHECK_KEY = "_conditionalCheck"
-#: The row key of the trial-only check (calls 5 and 6 asked of a ``forbidden`` row,
+#: The row key of the trial-only check (calls 7 and 8, asked of a ``forbidden`` row,
 #: :func:`check_forbidden`): the fragment shown, each call's answer, and ``trialOnly`` -- True
-#: only when both wordings answer that no record kept outside the trial could hold the entity.
+#: only when both wordings answer that the entity exists only because of a clinical trial.
 TRIAL_ONLY_CHECK_KEY = "_trialOnlyCheck"
 #: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
 UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
@@ -202,6 +213,7 @@ FIELD_ROUTE_SPAN = "route_span"
 FIELD_SPECIMEN = "specimen"
 FIELD_SPECIMEN_SPAN = "specimen_span"
 FIELD_NO_ENTITY = "no_entity"
+FIELD_TRIAL_ONLY = "trial_only"
 FIELD_NO_ENTITY_SPAN = "no_entity_span"
 FIELD_RECORD_CHANGE = "record_change"
 FIELD_RECORD_CHANGE_SPAN = "record_change_span"
@@ -790,6 +802,43 @@ record kept outside this trial. One of:
 patient's taking part in this trial: through the trial's own procedures, periods or study \
 treatment, or through the patient's conduct toward the trial.
 """ + _CHECK_TAIL
+
+_TRIAL_ONLY_TAIL = """
+Output JSON:
+{{"trial_only": "<yes|no>"}}"""
+
+#: ``trial_only`` values. Only ``yes`` from both calls refuses a row.
+TRIAL_ONLY_YES = "yes"
+TRIAL_ONLY_NO = "no"
+_TRIAL_ONLY_VALUES = frozenset({TRIAL_ONLY_YES, TRIAL_ONLY_NO})
+
+#: Call 7: whether a ``forbidden`` criterion's own entity exists only because of a clinical trial.
+#: Field definition only. Asked of forbidden rows alone; calls 5/6 are not reused because their
+#: ``entity_outside_trial`` is about this trial, and products of another trial answered ``yes``.
+TRIAL_ONLY_PROMPT = _CHECK_HEAD + """\
+`trial_only` states whether this criterion's own entity -- the entity this criterion names -- \
+exists only because the patient takes part in a clinical trial, this trial or any other. One of:
+- `yes`: the entity exists only through the patient's taking part in a clinical trial: a trial's \
+own procedures, periods or visits, a product or device given or used only under a trial, the \
+patient's enrolment in a trial, or the patient's conduct toward a trial.
+- `no`: the entity can exist in a patient who takes part in no clinical trial. A condition, a \
+reaction, a treatment or a measurement that a patient outside any trial can have is `no`, \
+whatever product or trial the line names beside it.
+""" + _TRIAL_ONLY_TAIL
+
+#: Call 8: the same definition in other words, asked only when call 7 answers ``yes``.
+TRIAL_ONLY_AGREEMENT_PROMPT = _CHECK_HEAD + """\
+`trial_only` says whether the own entity of this criterion -- the entity named by this \
+criterion -- comes into being only because the patient is taking part in a clinical trial, \
+whether this one or another. One of:
+- `yes`: the entity comes about only through the patient's taking part in a clinical trial: \
+through a trial's own procedures, periods or visits, through a product or device that is given \
+or used only under a trial, through the patient's enrolment in a trial, or through the patient's \
+conduct toward a trial.
+- `no`: a patient taking part in no clinical trial can have the entity. Whatever product or trial \
+the line names beside it, a condition, a reaction, a treatment or a measurement that a patient \
+outside every trial can have is `no`.
+""" + _TRIAL_ONLY_TAIL
 
 # --------------------------------------------------------------------------- #
 # Validation
@@ -1764,15 +1813,15 @@ def check_forbidden(
     model: str,
     llm: Any,
 ) -> dict[str, Any]:
-    """Calls 5 and 6 on an agreed ``forbidden`` row: could a record outside the trial hold it?
+    """Calls 7 and 8 on an agreed ``forbidden`` row: does its entity exist only through a trial?
 
-    The same two wordings :func:`check_conditional` asks, over the row's own verified span
-    (``protocolSpan``; the whole line when the span does not verify). Only
-    ``entity_outside_trial`` is read. Call 6 is made only when call 5 answers ``no``, and the
-    row is marked trial-only only when both do; a failed or unreadable answer marks nothing.
-    K1/K2 of P7/P8 SEG-OFF: CAROLINA's 'IMP given 2 months before ... (IMP) start' and
-    ARISTOTLE's 'investigational ... device' were agreed ``forbidden`` with ``no_entity: none``
-    and shipped on junk concepts, because the question was asked only of ``conditional`` rows.
+    :data:`TRIAL_ONLY_PROMPT` and :data:`TRIAL_ONLY_AGREEMENT_PROMPT`, over the row's own
+    verified span (``protocolSpan``; the whole line when the span does not verify). Call 8 is
+    made only when call 7 answers ``yes``, and the row is marked trial-only only when both do; a
+    failed or unreadable answer marks nothing. K1/K2 of P7/P8 SEG-OFF: CAROLINA's 'IMP given 2
+    months before ... (IMP) start' and ARISTOTLE's 'investigational ... device' were agreed
+    ``forbidden`` with ``no_entity: none`` and shipped on junk concepts. Calls 5/6 asked of them
+    answered ``yes`` (another trial's product is not "this trial"), hence a pair of its own.
 
     :returns: the record stored under :data:`TRIAL_ONLY_CHECK_KEY`.
     """
@@ -1781,28 +1830,28 @@ def check_forbidden(
     fragment = span if span and span_in_line(span, line) else str(line or "")
     record: dict[str, Any] = {"fragment": fragment, "calls": [], "trialOnly": False}
     for template, system, version in (
-        (CONDITIONAL_CHECK_PROMPT, ANNOTATION_SYSTEM_PROMPT, CONDITIONAL_CHECK_PROMPT_VERSION),
-        (CONDITIONAL_CHECK_AGREEMENT_PROMPT, AGREEMENT_SYSTEM_PROMPT,
-         CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION),
+        (TRIAL_ONLY_PROMPT, ANNOTATION_SYSTEM_PROMPT, TRIAL_ONLY_PROMPT_VERSION),
+        (TRIAL_ONLY_AGREEMENT_PROMPT, AGREEMENT_SYSTEM_PROMPT, TRIAL_ONLY_AGREEMENT_PROMPT_VERSION),
     ):
         outcome, key, payload, error = _ask(
             llm, row, members, role, model=model, template=template, system=system,
             version=version, fragment=fragment,
         )
-        outside = _entity_outside_trial(payload)
+        raw = payload.get(FIELD_TRIAL_ONLY) if isinstance(payload, Mapping) else None
+        answer = raw if raw in _TRIAL_ONLY_VALUES else None
         call = {"promptVersion": version, "cacheKey": key, "outcome": outcome,
-                "entity_outside_trial": outside}
+                FIELD_TRIAL_ONLY: answer}
         if error is not None:
             call["error"] = error
         record["calls"].append(call)
-        if outside != OUTSIDE_NO:
+        if answer != TRIAL_ONLY_YES:
             return record
     record["trialOnly"] = True
     return record
 
 
 def stated_trial_only(row: Mapping[str, Any]) -> str | None:
-    """The fragment of a row both wordings said no record outside the trial could hold.
+    """The fragment of a row both wordings said exists only because of a clinical trial.
 
     Re-checked against the row's line, as :func:`stated_no_entity` is, so an edited row cannot
     carry an unchecked verdict into the build or the delivery gate.

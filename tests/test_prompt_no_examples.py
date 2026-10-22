@@ -411,6 +411,38 @@ def _render_criterion_annotation_conditional_check_agreement() -> str:
     return _joined(calls)
 
 
+def _trial_only_calls() -> list[str]:
+    """Every call made when call 1 answers ``forbidden`` with no_entity none and the trial-only
+    question answers ``yes``, so both of its wordings are made for the member row (a label with
+    members is not asked)."""
+    from src.services import criterion_annotation
+
+    calls = _annotation_calls(
+        '{"record_requirement": "forbidden", "no_entity": "none", "trial_only": "yes"}'
+    )
+    return [c for c in calls if criterion_annotation.FIELD_TRIAL_ONLY in c]
+
+
+def _render_criterion_annotation_trial_only() -> str:
+    """``TRIAL_ONLY_PROMPT``, linted on its own."""
+    from src.services import criterion_annotation
+
+    calls = [c for c in _trial_only_calls()
+             if c.startswith(criterion_annotation.ANNOTATION_SYSTEM_PROMPT)]
+    assert len(calls) == 1, "the trial-only question was not asked of the forbidden member"
+    return _joined(calls)
+
+
+def _render_criterion_annotation_trial_only_agreement() -> str:
+    """``TRIAL_ONLY_AGREEMENT_PROMPT``, linted on its own."""
+    from src.services import criterion_annotation
+
+    calls = [c for c in _trial_only_calls()
+             if c.startswith(criterion_annotation.AGREEMENT_SYSTEM_PROMPT)]
+    assert len(calls) == 1, "the second wording was not asked after a yes"
+    return _joined(calls)
+
+
 def _render_specimen_critic() -> str:
     """Through ``judge_specimen_options`` with the model replaced; the cache is off."""
     from src.agents.agent2 import specimen_critic
@@ -650,6 +682,14 @@ PROMPTS["criterion_annotation.conditional_check.agreement"] = PromptSpec(
     _render_criterion_annotation_conditional_check_agreement, tokens=_CONDITIONAL_CHECK_TOKENS,
 )
 
+# The trial-only pair (forbidden rows, fix-k12): one field and its two values, plus the head's.
+_TRIAL_ONLY_TOKENS = frozenset({"trial_only", "yes", "no"})
+PROMPTS["criterion_annotation.trial_only"] = PromptSpec(
+    _render_criterion_annotation_trial_only, tokens=_TRIAL_ONLY_TOKENS,
+)
+PROMPTS["criterion_annotation.trial_only.agreement"] = PromptSpec(
+    _render_criterion_annotation_trial_only_agreement, tokens=_TRIAL_ONLY_TOKENS,
+)
 
 # ---------------------------------------------------------------------------
 # The lint
