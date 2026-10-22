@@ -2218,9 +2218,10 @@ def annotated_window(row: Mapping[str, Any]) -> tuple[Any, dict[str, Any] | None
     """The window the build emits for a row: the extracted one, unless the annotation states
     the side or the size it should have.
 
-    * ``beyond`` agreed by both wordings (:func:`stated_window_bound`): the window ends that many
-      days before index, and starts at the extracted start when that is earlier still, else at
-      all prior history.
+    * ``beyond`` agreed by both wordings (:func:`stated_window_bound`): a window ending at or after
+      index becomes all prior history up to that many days before index. Its extracted start is
+      not kept: in a window ending at index it is the stated duration put on the wrong side
+      (CAROLINA CABG, -1461..0). A window already ending before index states the side itself.
     * otherwise, a verified ``window_span`` stating one duration that neither bound matches
       (:func:`window_disagreement`): the window's one bound that is neither 0 nor all prior
       history takes that duration, its side kept. Two such bounds, or two durations, change
@@ -2235,11 +2236,10 @@ def annotated_window(row: Mapping[str, Any]) -> tuple[Any, dict[str, Any] | None
     fields = _annotation(row)
     beyond = stated_window_bound(row)
     if beyond is not None:
-        start = window.get("start") if isinstance(window, Mapping) else None
-        new = {
-            "start": start if isinstance(start, int) and start < -beyond else ALL_HISTORY,
-            "end": -beyond,
-        }
+        end = window.get("end") if isinstance(window, Mapping) else None
+        if isinstance(end, int) and end < 0:
+            return window, None
+        new = {"start": ALL_HISTORY, "end": -beyond}
         source, span = "window_bound", fields.get(FIELD_WINDOW_BOUND_SPAN)
     else:
         disagreement = window_disagreement(fields, window)

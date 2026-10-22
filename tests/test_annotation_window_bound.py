@@ -35,6 +35,7 @@ FIXTURE = json.loads(
 )
 STROKE = FIXTURE["carolina_inclusion_15"]
 PCI = FIXTURE["carolina_inclusion_13"]
+CABG = FIXTURE["carolina_inclusion_14"]
 ARISTOTLE_38 = FIXTURE["aristotle_exclusion_38"]
 CARMELINA_28 = FIXTURE["carmelina_exclusion_28"]
 CARMELINA_28_ALL_HISTORY = FIXTURE["carmelina_exclusion_28_placebo"]
@@ -148,6 +149,21 @@ class TestTheWindow:
         window, record = annotation.annotated_window(row)
         assert window == {"start": -9999, "end": -90}
         assert record["source"] == "window_bound"
+
+    def test_should_start_cabg_at_all_history_when_the_extracted_start_was_the_misplaced_duration(
+        self,
+    ):
+        """Live, P8 MAIN: CABG "> 4 years prior" extracted as -1461..0; 4 years is 1460 by the
+        unit path, so keeping the "earlier" extracted start emitted a one-day window."""
+        span = "4 years prior to informed consent"
+        answer = {"window_bound": "beyond", "window_bound_span": span}
+        row, _llm = _annotate(CABG, {9: answer, 10: answer})
+        assert _window(row) == {"start": -9999, "end": -1460}
+
+    def test_should_keep_an_extracted_window_that_already_ends_before_index(self):
+        row, _llm = _annotate(STROKE, {9: BEYOND, 10: BEYOND})
+        row["window"] = {"start": -365, "end": -90}
+        assert annotation.annotated_window(row) == ({"start": -365, "end": -90}, None)
 
     def test_should_keep_the_extracted_window_when_beyond_was_not_agreed(self):
         row, _llm = _annotate(STROKE, {9: BEYOND, 10: {"window_bound": "none"}})
