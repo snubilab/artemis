@@ -162,6 +162,10 @@ RECORD_CHANGE_RECORDS_KEY = "_recordChangeRecords"
 #: answer was ``conditional``, with each call's version, cache key, outcome and answer, and
 #: whether the ``conditional`` was reverted.
 CONDITIONAL_CHECK_KEY = "_conditionalCheck"
+#: The row key of the trial-only check (calls 5 and 6 asked of a ``forbidden`` row,
+#: :func:`check_forbidden`): the fragment shown, each call's answer, and ``trialOnly`` -- True
+#: only when both wordings answer that no record kept outside the trial could hold the entity.
+TRIAL_ONLY_CHECK_KEY = "_trialOnlyCheck"
 #: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
 UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
 #: The ``reason`` each of those records carries.
@@ -1752,6 +1756,66 @@ def check_conditional(
     return {**fields, FIELD_RECORD_REQUIREMENT: None, FIELD_CONDITIONAL_SPAN: None}, record
 
 
+def check_forbidden(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    *,
+    model: str,
+    llm: Any,
+) -> dict[str, Any]:
+    """Calls 5 and 6 on an agreed ``forbidden`` row: could a record outside the trial hold it?
+
+    The same two wordings :func:`check_conditional` asks, over the row's own verified span
+    (``protocolSpan``; the whole line when the span does not verify). Only
+    ``entity_outside_trial`` is read. Call 6 is made only when call 5 answers ``no``, and the
+    row is marked trial-only only when both do; a failed or unreadable answer marks nothing.
+    K1/K2 of P7/P8 SEG-OFF: CAROLINA's 'IMP given 2 months before ... (IMP) start' and
+    ARISTOTLE's 'investigational ... device' were agreed ``forbidden`` with ``no_entity: none``
+    and shipped on junk concepts, because the question was asked only of ``conditional`` rows.
+
+    :returns: the record stored under :data:`TRIAL_ONLY_CHECK_KEY`.
+    """
+    line = row.get(_LINE)
+    span = row.get("protocolSpan")
+    fragment = span if span and span_in_line(span, line) else str(line or "")
+    record: dict[str, Any] = {"fragment": fragment, "calls": [], "trialOnly": False}
+    for template, system, version in (
+        (CONDITIONAL_CHECK_PROMPT, ANNOTATION_SYSTEM_PROMPT, CONDITIONAL_CHECK_PROMPT_VERSION),
+        (CONDITIONAL_CHECK_AGREEMENT_PROMPT, AGREEMENT_SYSTEM_PROMPT,
+         CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION),
+    ):
+        outcome, key, payload, error = _ask(
+            llm, row, members, role, model=model, template=template, system=system,
+            version=version, fragment=fragment,
+        )
+        outside = _entity_outside_trial(payload)
+        call = {"promptVersion": version, "cacheKey": key, "outcome": outcome,
+                "entity_outside_trial": outside}
+        if error is not None:
+            call["error"] = error
+        record["calls"].append(call)
+        if outside != OUTSIDE_NO:
+            return record
+    record["trialOnly"] = True
+    return record
+
+
+def stated_trial_only(row: Mapping[str, Any]) -> str | None:
+    """The fragment of a row both wordings said no record outside the trial could hold.
+
+    Re-checked against the row's line, as :func:`stated_no_entity` is, so an edited row cannot
+    carry an unchecked verdict into the build or the delivery gate.
+
+    :returns: the fragment, or None.
+    """
+    record = row.get(TRIAL_ONLY_CHECK_KEY)
+    if not isinstance(record, Mapping) or record.get("trialOnly") is not True:
+        return None
+    fragment = record.get("fragment")
+    return fragment if span_in_line(fragment, row.get(_LINE)) else None
+
+
 def annotate_row(
     row: dict[str, Any],
     members: Sequence[Mapping[str, Any]],
@@ -1805,6 +1869,15 @@ def annotate_row(
             )
         else:
             row.pop(CONDITIONAL_CHECK_KEY, None)
+        # A label with members is never mapped, so it is not asked.
+        if (
+            fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.FORBIDDEN.value
+            and fields.get(FIELD_NO_ENTITY) in (None, NoEntity.NONE.value)
+            and not members
+        ):
+            row[TRIAL_ONLY_CHECK_KEY] = check_forbidden(row, members, role, model=model, llm=llm)
+        else:
+            row.pop(TRIAL_ONLY_CHECK_KEY, None)
     change, row[RECORD_CHANGE_KEY] = _record_change(row, members, role, model=model, llm=llm)
     if error is not None:
         row[ANNOTATION_KEY] = {
@@ -1816,6 +1889,7 @@ def annotate_row(
         row.pop(ANNOTATION_REJECTED_KEY, None)
         row.pop(AGREEMENT_KEY, None)
         row.pop(CONDITIONAL_CHECK_KEY, None)
+        row.pop(TRIAL_ONLY_CHECK_KEY, None)
         row.pop(WINDOW_DISAGREEMENT_KEY, None)
         return "error"
     row[ANNOTATION_KEY] = {
