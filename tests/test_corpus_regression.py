@@ -15,6 +15,7 @@ import subprocess
 
 import pytest
 
+from src.agents.agent1.page_layout import without_page_furniture
 from src.agents.agent1.section_rules import (
     Missing,
     extract_eligibility_from_text,
@@ -143,7 +144,10 @@ BASELINE = {
     # (+3 inclusion, +8 exclusion, one of them the preamble paragraph before 4.2.3), CARMELINA's inclusion at
     # "randomization" (+34: criteria 3-8 and their members), EMPA-REG's exclusion at "study procedures" (+4),
     # PLATO's at "study results" (+7, one of them design-paper prose after the table).
-    "CAROLINA": (36, 29, 1),
+    # Page furniture removed by position and repetition first (2026-10-22, page_layout from seg-page f1b2987):
+    # CAROLINA's copyright footer and its "This document may not ..." line no longer stand as criteria (-2
+    # inclusion, -1 exclusion); ARISTOTLE's and LEADER's counts are unchanged, only page numbers leave the text.
+    "CAROLINA": (34, 28, 1),
     "ARISTOTLE": (16, 29, 1),
     "CARMELINA": (37, 16, 1),
     "EMPA-REG": (0, 19, 1),
@@ -188,7 +192,7 @@ def _extract(study):
         ["pdftotext", f"data/papers/{nct}/{pdf}", "-"],
         capture_output=True, text=True, check=True,
     ).stdout
-    text = rejoin_stranded_superscripts(strip_pdf_furniture(text))  # as _enrich_from_pdf does first
+    text = rejoin_stranded_superscripts(strip_pdf_furniture(without_page_furniture(text)))  # as _enrich_from_pdf does first
     section = _extract_section(text)
     # as _enrich_from_pdf calls it: a found section ends only at heading lines
     if section is None:

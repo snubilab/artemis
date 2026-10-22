@@ -31,6 +31,7 @@ from src.agents.agent1.pubmed_linker import (
     search_pubmed_for_nct
 )
 from src.agents.agent1.pubmed_fetcher import fetch_pubmed_abstract
+from src.agents.agent1.page_layout import without_page_furniture
 from src.agents.agent1.section_rules import (
     Missing,
     Truncated,
@@ -708,9 +709,10 @@ class LogicDecomposer:
                 )
                 return trial_data
 
-            # Page furniture out, then superscripts pdftotext hoisted onto their own line put back,
-            # before the section is carved out (section_rules S9, S6).
-            full_text = rejoin_stranded_superscripts(strip_pdf_furniture(full_text))
+            # Running headers, footers and page numbers out by position and repetition (page_layout,
+            # which needs the form feeds), then the journal stamps, then superscripts pdftotext hoisted
+            # onto their own line put back, before the section is carved out (section_rules S9, S6).
+            full_text = rejoin_stranded_superscripts(strip_pdf_furniture(without_page_furniture(full_text)))
 
             # Extract ONLY the eligibility criteria section, not the entire PDF, by its heading
             # (section_rules S1). Missing is the extractor failing; parsing the whole paper is
