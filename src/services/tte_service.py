@@ -8273,9 +8273,13 @@ class TTEService:
         # query gets its own, as large as the batch prefetch every other seed gets.
         query = seed
         if source_line:
-            from src.agents.agent2.entity_full_name import full_entity_name
+            from src.agents.agent2.entity_full_name import full_entity_name, specific_entity_name
 
             query = full_entity_name(seed, source_line)
+            # A seed broader than its line ('Diabetes Mellitus' on "type 2 diabetes
+            # mellitus") is asked as the line's narrower span, copied verbatim from it.
+            if query == seed:
+                query = specific_entity_name(seed, source_line)
             if query != seed:
                 from src.agents.agent2.retriever import ConceptRetriever
 

@@ -490,6 +490,18 @@ def _render_entity_full_name() -> str:
     return _joined(recorder.calls)
 
 
+def _render_entity_specific_name() -> str:
+    """Through ``specific_entity_name`` with the model replaced; the cache is off."""
+    from src.agents.agent2 import entity_full_name
+
+    recorder = _Recorder(reply='{"specific_span": ""}')
+    with patch.dict(os.environ, {"ARTEMIS_ENTITY_NAME_CACHE": "0"}):
+        entity_full_name.specific_entity_name(
+            STUB, f"{STUB} line", model="stub-model", llm=recorder.runnable()
+        )
+    return _joined(recorder.calls)
+
+
 # ---------------------------------------------------------------------------
 # Declarations: what each prompt may quote
 # ---------------------------------------------------------------------------
@@ -633,6 +645,9 @@ PROMPTS: dict[str, PromptSpec] = {
     ),
     "agent2.entity_full_name": PromptSpec(
         _render_entity_full_name, tokens=frozenset({"abbreviations", "span", "full_term"}),
+    ),
+    "agent2.entity_specific_name": PromptSpec(
+        _render_entity_specific_name, tokens=frozenset({"specific_span"}),
     ),
     "criterion_annotation": PromptSpec(
         _render_criterion_annotation,
@@ -1006,7 +1021,7 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/agent2/reranker.py": (3, ("agent2.reranker_single_select", "agent2.reranker_topn")),
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),
     "src/agents/agent2/specimen_critic.py": (3, ("agent2.specimen_critic",)),
-    "src/agents/agent2/entity_full_name.py": (3, ("agent2.entity_full_name",)),
+    "src/agents/agent2/entity_full_name.py": (3, ("agent2.entity_full_name", "agent2.entity_specific_name")),
     "src/agents/conceptset/nlu_router.py": (2, ("conceptset.nlu_router",)),
     "src/agents/conceptset/clinical_reranker.py": (2, ("conceptset.clinical_reranker",)),
     "src/agents/comparator/recommender.py": (2, ("comparator.literature",)),
