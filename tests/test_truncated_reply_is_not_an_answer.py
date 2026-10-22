@@ -135,10 +135,11 @@ def test_should_record_an_error_and_cache_nothing_when_the_annotation_reply_is_c
 
     assert first == again == "error"
     assert "JSONDecodeError" in row[annotation.ANNOTATION_KEY]["error"], row
-    # Each row makes call 1 and call 3 (record_change, made on every row); both replies are
-    # cut, so neither is cached and the second row asks the model again for both.
+    # Each row makes call 1, call 3 (record_change) and call 9 (window_bound), all made on every
+    # row; every reply is cut, so none is cached and the second row asks the model again for all.
     assert row[annotation.RECORD_CHANGE_KEY]["outcome"] == "error", row
-    assert model.calls == 4, "a cut reply was replayed from the annotation cache"
+    assert row[annotation.WINDOW_BOUND_KEY]["outcome"] == "error", row
+    assert model.calls == 6, "a cut reply was replayed from the annotation cache"
 
 
 def test_should_annotate_and_cache_the_whole_reply(annotation):
