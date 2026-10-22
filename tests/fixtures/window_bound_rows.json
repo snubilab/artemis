@@ -310,5 +310,61 @@
    "record_change": "none",
    "record_change_span": null
   }
+ },
+ "carmelina_inclusion_8": {
+  "id": 8,
+  "description": "Exclusion of GLP-1 RA, DPP-4i, SGLT-2i if recent (repetition)",
+  "domain": "Drug",
+  "sourceText": "Glucagon-like Peptide 1 (GLP-1) receptor agonists",
+  "protocolLine": "4. Male or female patients who are drug-naïve or pre-treated with any antidiabetic background medication, excluding treatment with Glucagon-like Peptide 1 (GLP-1) receptor agonists, Dipeptidyl-peptidase 4 (DPP-4) inhibitors or Sodium Glucose Linked Transporter 2 (SGLT-2) inhibitors if ≥ consecutive 7 days.",
+  "protocolSpan": "",
+  "window": {
+   "start": -7,
+   "end": 0
+  },
+  "logicType": "ABSENCE",
+  "valueConstraint": null,
+  "groupId": null,
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "forbidden",
+   "conditional_span": null,
+   "excepted_entities": [
+    {
+     "text": "Glucagon-like Peptide 1 (GLP-1) receptor agonists",
+     "span": "Glucagon-like Peptide 1 (GLP-1) receptor agonists"
+    },
+    {
+     "text": "Dipeptidyl-peptidase 4 (DPP-4) inhibitors",
+     "span": "Dipeptidyl-peptidase 4 (DPP-4) inhibitors"
+    },
+    {
+     "text": "Sodium Glucose Linked Transporter 2 (SGLT-2) inhibitors",
+     "span": "Sodium Glucose Linked Transporter 2 (SGLT-2) inhibitors"
+    }
+   ],
+   "base_span": "treatment with Glucagon-like Peptide 1 (GLP-1) receptor agonists, Dipeptidyl-peptidase 4 (DPP-4) inhibitors or Sodium Glucose Linked Transporter 2 (SGLT-2) inhibitors",
+   "relation": "any",
+   "relation_span": "or",
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "if ≥ consecutive 7 days",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": null,
+   "quantity_kind": null,
+   "reference_bound": null,
+   "record_change": "none",
+   "record_change_span": null
+  }
  }
 }

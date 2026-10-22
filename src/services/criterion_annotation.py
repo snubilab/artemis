@@ -226,6 +226,8 @@ FIELD_NO_ENTITY_SPAN = "no_entity_span"
 FIELD_RECORD_CHANGE = "record_change"
 FIELD_RECORD_CHANGE_SPAN = "record_change_span"
 FIELD_WINDOW_BOUND = "window_bound"
+#: The store row ``domain`` whose ``beyond`` :func:`annotated_window` does not apply.
+DRUG_DOMAIN = "Drug"
 FIELD_WINDOW_BOUND_SPAN = "window_bound_span"
 #: The one ``route`` entry that states no restriction; it stands alone in the list.
 ROUTE_ANY = "any"
@@ -2222,6 +2224,10 @@ def annotated_window(row: Mapping[str, Any]) -> tuple[Any, dict[str, Any] | None
       index becomes all prior history up to that many days before index. Its extracted start is
       not kept: in a window ending at index it is the stated duration put on the wrong side
       (CAROLINA CABG, -1461..0). A window already ending before index states the side itself.
+      Not on a row whose ``domain`` is Drug: live on P8 (2026-10-22) all eight agreed ``beyond``
+      that were wrong read a duration of treatment ("for at least 8 weeks", "if >= 7 consecutive
+      days") as time since an event -- six of them Drug rows -- and all eight right ones were
+      Condition / Procedure events. A Drug row keeps its extracted window.
     * otherwise, a verified ``window_span`` stating one duration that neither bound matches
       (:func:`window_disagreement`): the window's one bound that is neither 0 nor all prior
       history takes that duration, its side kept. Two such bounds, or two durations, change
@@ -2234,7 +2240,7 @@ def annotated_window(row: Mapping[str, Any]) -> tuple[Any, dict[str, Any] | None
 
     window = row.get("window")
     fields = _annotation(row)
-    beyond = stated_window_bound(row)
+    beyond = stated_window_bound(row) if row.get("domain") != DRUG_DOMAIN else None
     if beyond is not None:
         end = window.get("end") if isinstance(window, Mapping) else None
         if isinstance(end, int) and end < 0:

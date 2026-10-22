@@ -36,6 +36,7 @@ FIXTURE = json.loads(
 STROKE = FIXTURE["carolina_inclusion_15"]
 PCI = FIXTURE["carolina_inclusion_13"]
 CABG = FIXTURE["carolina_inclusion_14"]
+CARMELINA_8 = FIXTURE["carmelina_inclusion_8"]
 ARISTOTLE_38 = FIXTURE["aristotle_exclusion_38"]
 CARMELINA_28 = FIXTURE["carmelina_exclusion_28"]
 CARMELINA_28_ALL_HISTORY = FIXTURE["carmelina_exclusion_28_placebo"]
@@ -164,6 +165,16 @@ class TestTheWindow:
         row, _llm = _annotate(STROKE, {9: BEYOND, 10: BEYOND})
         row["window"] = {"start": -365, "end": -90}
         assert annotation.annotated_window(row) == ({"start": -365, "end": -90}, None)
+
+    def test_should_keep_a_drug_rows_window_when_both_wordings_say_beyond(self):
+        """Live, P8 MAIN: CARMELINA inclusion 8 "... if >= consecutive 7 days" agreed beyond on a
+        duration of treatment. All eight wrong beyond rows were treatment durations, six of them
+        on Drug rows; all eight right ones were Condition / Procedure events."""
+        span = "≥ consecutive 7 days"
+        answer = {"window_bound": "beyond", "window_bound_span": span}
+        row, _llm = _annotate(CARMELINA_8, {9: answer, 10: answer})
+        assert row[ANNOTATION_KEY]["window_bound"] == "beyond"
+        assert annotation.annotated_window(row) == ({"start": -7, "end": 0}, None)
 
     def test_should_keep_the_extracted_window_when_beyond_was_not_agreed(self):
         row, _llm = _annotate(STROKE, {9: BEYOND, 10: {"window_bound": "none"}})
