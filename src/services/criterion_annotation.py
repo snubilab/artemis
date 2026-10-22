@@ -2240,13 +2240,39 @@ class ProspectiveSkip:
     decided_by: str
 
 
-def _own_prospective(row: Mapping[str, Any]) -> ProspectiveSkip | None:
+def _is_prospective(row: Mapping[str, Any]) -> bool:
     annotation = _annotation(row)
-    span = annotation.get(FIELD_WINDOW_SPAN)
-    if annotation.get(FIELD_TIMING) == Timing.PROSPECTIVE.value and span_in_line(
-        span, row.get(_LINE)
-    ):
-        return ProspectiveSkip(span=span, decided_by=str(row.get(_ID, "")))
+    return annotation.get(FIELD_TIMING) == Timing.PROSPECTIVE.value and span_in_line(
+        annotation.get(FIELD_WINDOW_SPAN), row.get(_LINE)
+    )
+
+
+def prospective_past_window(row: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The part before index of a prospective row's window that runs from before index to after it.
+
+    One row can carry a line's two timings: CAROLINA exclusion 12 ("pre-planned ... within
+    next 6 months ... or any previous PCI and/or CABG <= 6 weeks prior", P8 MAIN) came out of
+    Agent 1 as one row per entity with window -42..180, and the annotation, which names one
+    timing per row, said prospective. The window's own numbers show a part before index;
+    that part is observable and is emitted, the part after index is not. A prospective row
+    whose window ends at or before index has no such evidence and is still skipped whole.
+
+    :param row: a store criterion.
+    :returns: ``{"start": <start>, "end": 0}``, or None when the row is not prospective or its
+        window does not straddle index.
+    """
+    window = row.get("window")
+    if not isinstance(window, Mapping) or not _is_prospective(row):
+        return None
+    start, end = window.get("start"), window.get("end")
+    if isinstance(start, (int, float)) and isinstance(end, (int, float)) and start < 0 < end:
+        return {"start": start, "end": 0}
+    return None
+
+
+def _own_prospective(row: Mapping[str, Any]) -> ProspectiveSkip | None:
+    if _is_prospective(row) and prospective_past_window(row) is None:
+        return ProspectiveSkip(span=_annotation(row)[FIELD_WINDOW_SPAN], decided_by=str(row.get(_ID, "")))
     return None
 
 

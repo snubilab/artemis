@@ -99,6 +99,7 @@ from src.services.criterion_annotation import (
     applied_value_constraint,
     conditional_skips,
     exception_anchored,
+    prospective_past_window,
     prospective_skips,
     record_change_records,
     record_change_skips,
@@ -7119,6 +7120,13 @@ class TTEService:
         # INVERTS the rule ("ALT > 3x ULN" becomes "any ALT at all"). Nothing is hidden
         # by the choice: every application is recorded below.
         window = criterion.get("window")
+        # A prospective row whose window also reaches before index emits that past part only
+        # (criterion_annotation.prospective_past_window); the rest is not observable at index.
+        past_window = prospective_past_window(criterion)
+        if past_window is not None:
+            logging.warning("[TTE] '%s': window %s straddles index under a prospective annotation; "
+                            "emitted as %s", label, window, past_window)
+            window = past_window
         defaulted_window: dict[str, Any] | None = None
         if not window:
             window, default_source = default_criterion_window(resolved_domain)
