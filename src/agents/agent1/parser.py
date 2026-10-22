@@ -150,6 +150,28 @@ def _normalize_trial_data_for_stable_hash(trial_data: "TrialData") -> "TrialData
     })
 
 
+def _numbered_lines(criteria: list) -> list[str]:
+    """``k. criterion`` per criterion, then ``k.j item`` per item listed under it, ``k.j.m`` one level further.
+
+    A criterion's further lines are the items section_rules S10 found listed under it, one tab per level below the
+    criterion, so item j of criterion k is ``k.j``: the number carries the membership, and no line holds more than
+    one item. A criterion with no further lines renders as ``k. criterion``, as before.
+
+    :param criteria: criterion strings in order.
+    :returns: one numbered line per criterion line.
+    """
+    lines = []
+    for index, criterion in enumerate(criteria, 1):
+        first, *items = criterion.split("\n")
+        lines.append(f"{index}. {first}")
+        path = [index]
+        for item in items:
+            depth = max(1, len(item) - len(item.lstrip("\t")))
+            path = path[:depth] + [path[depth] + 1 if len(path) > depth else 1]
+            lines.append(f"{'.'.join(map(str, path))} {item.lstrip(chr(9))}")
+    return lines
+
+
 class _RowRefused(Exception):
     """A row the model emitted that cannot become a criterion, for a reason pydantic
     does not raise itself (``LogicDecomposer._build_or_refuse`` records it)."""
@@ -473,11 +495,14 @@ class LogicDecomposer:
         there into ``protocolLine``, the text every quoted span is checked against. The
         parser is deleted (RFC-016 step 3); the line is the only thing the model reads.
 
+        A criterion's further lines are the items listed under it (section_rules S10); item j of
+        criterion k is numbered ``k.j`` (:func:`_numbered_lines`), so the number carries the
+        membership and every line stays as short as one item.
+
         :param criteria: criterion strings in prompt order.
         :returns: the formatted block, or the placeholder when empty.
         """
-        lines = [f"  {index + 1}. {criterion}" for index, criterion in enumerate(criteria)]
-        return "\n".join(lines) or "  None specified"
+        return "\n".join(f"  {line}" for line in _numbered_lines(criteria)) or "  None specified"
 
     @classmethod
     def _flatten_rules_for_review(cls, rules: list, out: list | None = None) -> list[str]:
@@ -520,9 +545,7 @@ class LogicDecomposer:
         if not all_criteria:
             return []
 
-        criteria_block = "\n".join(
-            f"{i + 1}. {c}" for i, c in enumerate(all_criteria)
-        )
+        criteria_block = "\n".join(_numbered_lines(all_criteria))
         rules_block = "\n".join(
             self._flatten_rules_for_review(ir.target.inclusion_rules)
             + self._flatten_rules_for_review(ir.target.exclusion_rules)

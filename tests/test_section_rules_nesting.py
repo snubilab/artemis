@@ -58,7 +58,9 @@ def test_should_nest_carolina_a_to_d_and_their_bullets_when_the_marker_scheme_ch
         "Age ≥ 70 years (at Visit 1a)",
         "At least two of the following ",
     ]
-    assert len(_members(head, depth=2)) == 6 + 3 + 4
+    # A) has 6 bullets plus "arm blood pressure ratio < 0.90)", a wrap cut at "ankle:" (as at e5f423a) that stays
+    # under A) rather than ending the list
+    assert len(_members(head, depth=2)) == 7 + 3 + 4
     lines = _rendered(got)
     assert "1.1.1 Myocardial infarction (> 6 weeks prior to informed consent)" in lines
     assert any(line.startswith("1.4.4 Current* LDL cholesterol") for line in lines)
@@ -67,9 +69,9 @@ def test_should_nest_carolina_a_to_d_and_their_bullets_when_the_marker_scheme_ch
 def test_should_nest_aristotle_stroke_risk_factors_under_item_3_and_not_under_the_preamble():
     got = _parse("ARISTOTLE_01")
     head = _criterion(got, "One or more of the following risk factor(s) for stroke:")
-    assert [m[:25] for m in _members(head)] == [
-        "Age 75 years or older", "Prior stroke, TIA or syste", "Either symptomatic conges",
-        "Diabetes mellitus", "Hypertension requiring ph",
+    assert [m[:20] for m in _members(head)] == [
+        "Age 75 years or olde", "Prior stroke, TIA or", "Either symptomatic c",
+        "Diabetes mellitus", "Hypertension requiri",
     ]
     # "For entry into the study, the following criteria MUST be met." ends in a full stop, not a colon:
     # the numbered items after it are its siblings, not its members.
@@ -81,7 +83,8 @@ def test_should_nest_leader_cohort_members_and_the_renal_sub_bullets():
     got = _parse("LEADER_01")
     prior = _criterion(got, "Prior cardiovascular disease cohort:")
     no_prior = _criterion(got, "No Prior cardiovascular disease group:")
-    assert len(_members(prior)) == 8 and _members(prior)[-1] == "Chronic renal failure:"
+    # ">50% stenosis ..." rides in the line before it, as at e5f423a (a symbol-led line after no stop is a wrap)
+    assert len(_members(prior)) == 7 and _members(prior)[-1] == "Chronic renal failure:"
     assert [m[:10] for m in _members(prior, depth=2)] == ["eGFR <60 m", "eGFR <60 m"]
     assert [m[:20] for m in _members(no_prior)] == [
         "Microalbuminuria or ", "Hypertension and lef", "Left ventricular sys", "Ankle-brachial index",
@@ -114,10 +117,17 @@ def test_should_nest_plato_lettered_risk_factors_under_one_of_the_following():
 
 @pytest.mark.parametrize("name", sorted(FLAT))
 def test_should_lose_no_line_of_text_when_lines_are_nested(name):
-    flat = FLAT[name]
-    # the square bullet LEADER sets its third level with is a marker now, so it leaves the text
-    expected = [line.removeprefix(" ") for line in flat]
-    assert _flat(_parse(name)) == expected
+    """Every word e5f423a passed on is still there, in order; only list markers leave (CARMELINA's bare "a"/"b",
+    LEADER's private-use square bullet), because they are read as markers now."""
+    old, new = " ".join(FLAT[name]).split(), " ".join(_flat(_parse(name))).split()
+    removed, at = [], 0
+    for word in old:
+        if at < len(new) and new[at] == word:
+            at += 1
+        else:
+            removed.append(word)
+    assert at == len(new), "a word appeared that e5f423a did not pass on"
+    assert all(len(word) == 1 for word in removed), removed
 
 
 @pytest.mark.parametrize("name", ["CAROLINA_04", "LEADER_02", "PLATO_02"])

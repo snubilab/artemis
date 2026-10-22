@@ -137,3 +137,25 @@ class TestTrialDataEnrichment:
         )
 
         assert enriched.exclusion_criteria == held + paper
+
+
+class TestListedMembersSurviveEnrichment:
+    """A criterion's listed members ride in it as its own tab-indented lines (section_rules S10).
+    Every step between the section rules and the prompt must keep each member exactly once."""
+
+    ENTRY = "High risk of CV events (I and/or II):\n\tAlbuminuria\n\t\tConfirmed history of MI"
+
+    def test_should_keep_each_member_once_through_every_strategy_and_the_prompt_cleaning(self):
+        from src.agents.agent1.enricher import enrich_trial_data
+        from src.agents.agent1.parser import LogicDecomposer, _normalize_trial_data_for_stable_hash
+
+        held = TrialData(nct_id="NCT01897532", title="CARMELINA",
+                         inclusion_criteria=["Age >= 18", self.ENTRY], exclusion_criteria=[])
+        pdf = {"inclusion": ["Age >= 18", self.ENTRY], "exclusion": []}
+        for strategy in ("replace", "merge", "supplement_priority"):
+            enriched = _normalize_trial_data_for_stable_hash(
+                enrich_trial_data(held, pdf, strategy=strategy)
+            )
+            assert enriched.inclusion_criteria.count(self.ENTRY) == 1, strategy
+            rendered = LogicDecomposer._format_criteria(enriched.inclusion_criteria).split("\n")
+            assert rendered[-2:] == ["  2.1 Albuminuria", "  2.1.1 Confirmed history of MI"], strategy

@@ -11514,12 +11514,12 @@ class TTEService:
                         lines = []
                         if inc:
                             lines.append("Inclusion Criteria:")
-                            lines.extend(f"  - {c}" for c in inc)
+                            lines.extend("  - " + c.replace("\n", "\n      ") for c in inc)  # members stay under their bullet
                         if exc:
                             if lines:
                                 lines.append("")
                             lines.append("Exclusion Criteria:")
-                            lines.extend(f"  - {c}" for c in exc)
+                            lines.extend("  - " + c.replace("\n", "\n      ") for c in exc)  # members stay under their bullet
                         metadata["enrichedCriteria"] = "\n".join(lines)
                         metadata["enrichmentSource"] = agent1_meta.get("enrichment_source", "unknown")
                     break

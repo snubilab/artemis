@@ -627,46 +627,158 @@ def extract_eligibility_from_text(text: str, headings_only: bool = False) -> dic
     return result
 
 
+# S10 -- which listed item sits under which, read from the list's format (user decision 2026-10-22: format rules
+# that locate and split the section are allowed; the OR / AND reading stays with Agent 1, which reads the header).
+#
+# A list marker is not thrown away when its item is split off: it is kept as a sentinel at the start of the item's
+# line, ``\x01<marker>\x02``, so the level pass below can read the marker's SCHEME. The words of a line are never
+# read. Three format signals, and only these, place an item:
+#
+# - a marker scheme already open at some level returns the item to that level (a sibling: "B)" after "A)");
+# - a scheme not open yet, on the line after one that ends in a colon, opens a level under that line ("A)" after
+#   "... any one (or more) of A), B), C) or D):", "o" after " ... >=1 of the following criteria:");
+# - anything else stays at the level of the item before it.
+#
+# An unmarked line opening with a capital counts as the scheme "" and so returns to the level its unmarked siblings
+# sit at; an unmarked line shaped like a wrap (opening lowercase or with a symbol, cut off only because the line before
+# ended in punctuation -- CAROLINA's "... ankle:" / "arm blood pressure ratio < 0.90).") stays where it is. Measured on the
+# six trials' production rendering (plain pdftotext, no -layout): there is no indentation to read, and no list
+# restarts its numbering, so neither is used.
+_MARKER_SENTINEL = "\x01{}\x02"
+_MARKER_SENTINEL_RE = re.compile(r"^\x01([^\x02]*)\x02")
+# The ordinal markers' schemes: "1)" / "1." / "(a)" / "a)" / "A." / "i." / "II." ... A one-letter i, v or x is read
+# as a roman numeral unless a letter list of the same case is already open (then it is that list's next letter).
+_ORDINAL_MARKER_RE = re.compile(r"(\(?)(?:(\d{1,2})|([ivx]{1,4})|([IVX]{1,4})|([a-z])|([A-Z]))([.)]?)")
+# A symbol font's bullet glyph (Unicode private use area, not its space U+F020) opening a line: LEADER's third level.
+_PUA_BULLET_RE = re.compile("(?m)^[ \t]*([--])[ \t]+")
+# A bare lowercase letter opening a line, before a capital or alone on its line: CARMELINA's "a Confirmed history of
+# MI", "c" / "High-risk single-vessel ...". Taken as a marker only as a sequence: "a" on the line after a colon, then
+# each next letter in turn, so an article "a" at the start of a wrapped line is never one.
+_BARE_LETTER_RE = re.compile(r"(?m)^[ \t]*([a-z])\s+(?=[A-Z])")
+
+
+def _marker_scheme(marker: str | None, open_schemes: set[str]) -> str:
+    """The scheme a list marker belongs to: "" for no marker, the glyph for a bullet, else the ordinal's shape.
+
+    :param marker: the marker as it stood in the text, or None.
+    :param open_schemes: the schemes already open at any level, to read a one-letter i / v / x.
+    :returns: a scheme key; two markers of one list share it.
+    """
+    if not marker:
+        return ""
+    m = _ORDINAL_MARKER_RE.fullmatch(marker)
+    if not m:
+        return marker
+    opening, digit, roman_lower, roman_upper, lower, upper, closing = m.groups()
+    if digit:
+        kind = "1"
+    elif roman_lower:
+        kind = "a" if len(roman_lower) == 1 and f"{opening}a{closing}" in open_schemes else "i"
+    elif roman_upper:
+        kind = "A" if len(roman_upper) == 1 and f"{opening}A{closing}" in open_schemes else "I"
+    else:
+        kind = "a" if lower else "A"
+    return f"{opening}{kind}{closing}"
+
+
+def _nest(items: list[tuple[str, str | None, bool]]) -> list[str]:
+    """Fold each item under the item it is listed under, by format (see S10 above).
+
+    :param items: (text, marker, wrap-shaped) per item in document order; marker None when the line had none.
+    :returns: one string per top-level item: its own line, then each item under it on a line of its own, prefixed
+        by one tab per level below the top.
+    """
+    levels: list[set[str]] = []  # the schemes open at each level, top first
+    criteria: list[str] = []
+    previous = ""
+    for text, marker, wrap_shaped in items:
+        scheme = _marker_scheme(marker, set().union(*levels))
+        at = next((d for d in range(len(levels) - 1, -1, -1) if scheme in levels[d]), None)
+        if not levels:
+            levels.append({scheme})
+        elif not marker and wrap_shaped:
+            pass
+        elif at is not None:
+            del levels[at + 1:]
+        elif scheme and previous.endswith(":"):
+            levels.append({scheme})
+        else:
+            levels[-1].add(scheme)
+        depth = len(levels) - 1
+        if depth and criteria:
+            criteria[-1] += "\n" + "\t" * depth + text
+        else:
+            criteria.append(text)
+        previous = text
+    return criteria
+
+
 def _regex_parse_criteria(text: str) -> list[str]:
     """
     Split a list's text into items on bullets, list numbering and line structure.
 
-    Each item keeps its own line. The plain-text mode of 2498fcb, which split a line without list
+    Each item keeps its own line, and an item listed under another is folded into it (S10): the returned string is
+    the item's line, then one line per item under it, each prefixed by one tab per level. A list with one level
+    returns exactly what it did before S10.
+
+    The plain-text mode of 2498fcb, which split a line without list
     structure at commas, semicolons and ", and"/", or" into separate criteria, is not restored: it
     decides that a conjunction separates criteria, which is grouping meaning. On the six evaluated
     trials it never fired (every captured span has list structure), so the candidate's input is
     unchanged by its removal.
     """
     # Bullet characters (Unicode + ASCII)
-    bullet_chars = r"[\u25cb\u2022\u2023\u2043\u25e6\uf0b7\u00b7\u2219•○]"
+    bullet_chars = r"[○•‣⁃◦·∙•○]"
 
-    # Step 1: Normalize bullet/numbered list items into newline-delimited items
+    def marked(m: re.Match) -> str:
+        return "\n" + _MARKER_SENTINEL.format(m.group(1))
+
+    # Step 1: Normalize bullet/numbered list items into newline-delimited items, each led by its marker (S10)
     normalized = text
 
     # Replace bullet characters with newline delimiter
     normalized = re.sub(
-        rf"\s*{bullet_chars}\s*", "\n", normalized
+        rf"\s*({bullet_chars})\s*", marked, normalized
     )
+    normalized = _PUA_BULLET_RE.sub(marked, normalized)
     # Replace ASCII bullet-like markers at line start: -, *
-    normalized = re.sub(r"(?m)^\s*[-*]\s+", "\n", normalized)
+    normalized = re.sub(r"(?m)^\s*([-*])\s+", marked, normalized)
     # Replace pdftotext hollow-circle bullet artifact: 'o ' at line start
-    normalized = re.sub(r"(?m)^\s*o\s+(?=\S)", "\n", normalized)
+    normalized = re.sub(r"(?m)^\s*(o)\s+(?=\S)", marked, normalized)
     # Replace numbered lists: 1., 2., 1), 2), a., b., a), b), i., ii., iii.
     normalized = re.sub(
-        r"(?m)^\s*\(?(?:\d{1,2}[.)]|[a-z][.)]|(?:i{1,3}|iv|vi{0,3})[.)])\s+",
-        "\n",
+        r"(?m)^\s*(\(?(?:\d{1,2}[.)]|[a-z][.)]|(?:i{1,3}|iv|vi{0,3})[.)]))\s+",
+        marked,
         normalized,
         flags=re.IGNORECASE,
     )
+    last_bare = ""
+
+    def bare(m: re.Match) -> str:
+        nonlocal last_bare
+        letter = m.group(1)
+        after_colon = m.string[:m.start()].rstrip().endswith(":")
+        if (letter == "a" and after_colon) or (last_bare and ord(letter) == ord(last_bare) + 1):
+            last_bare = letter
+            return marked(m)
+        return m.group(0)
+
+    normalized = _BARE_LETTER_RE.sub(bare, normalized)
     # Split on newlines that start a new item (newline followed by capital letter)
     normalized = re.sub(r"\n\s*(?=[A-Z])", "\n", normalized)
 
     # Step 2: Rejoin line-wrapped continuations. A criterion that wraps resumes
     # either with a lowercase word or with a symbol; only a capital letter
-    # reliably opens a new one.
-    rejoined_lines: list[str] = []
+    # reliably opens a new one. A continuation joins its line and drops any marker it carried; a marker with no
+    # text of its own on its line goes to the next line's item.
+    rejoined_lines: list[list] = []  # [text, marker, wrap-shaped]
+    pending = None
     for line in normalized.split("\n"):
         stripped = line.strip()
+        sentinel = _MARKER_SENTINEL_RE.match(stripped)
+        if sentinel:
+            pending = sentinel.group(1)
+            stripped = stripped[sentinel.end():].strip()
         if not stripped:
             continue
 
@@ -682,14 +794,15 @@ def _regex_parse_criteria(text: str) -> list[str]:
         # abbreviation that opens a criterion of its own — eGFR, mL, mmHg.
         first_word = stripped.split()[0]
         resumes_lowercase = first_char.islower() and not any(c.isupper() for c in first_word[1:])
-        previous_ended = bool(rejoined_lines) and rejoined_lines[-1].rstrip()[-1:] in ".;:"
+        previous_ended = bool(rejoined_lines) and rejoined_lines[-1][0].rstrip()[-1:] in ".;:"
 
         if rejoined_lines and not previous_ended and (resumes_with_symbol or resumes_lowercase):
-            rejoined_lines[-1] = rejoined_lines[-1].rstrip() + " " + stripped
+            rejoined_lines[-1][0] = rejoined_lines[-1][0].rstrip() + " " + stripped
         else:
-            rejoined_lines.append(stripped)
+            rejoined_lines.append([stripped, pending, resumes_with_symbol or resumes_lowercase])
+        pending = None
 
-    raw_items = [line.strip() for line in rejoined_lines if line.strip()]
+    raw_items = [(line.strip(), marker, wrap) for line, marker, wrap in rejoined_lines if line.strip()]
 
     # Step 4: Clean up
     # PDF header artifact patterns to filter out
@@ -704,8 +817,8 @@ def _regex_parse_criteria(text: str) -> list[str]:
     _header_re = re.compile("|".join(_header_patterns), re.IGNORECASE)
 
     seen: set = set()
-    cleaned: list[str] = []
-    for item in raw_items:
+    cleaned: list[tuple[str, str | None, bool]] = []
+    for item, marker, wrap_shaped in raw_items:
         item = item.strip().rstrip(".")
         # Strip pdftotext 'o ' bullet artifacts
         item = re.sub(r"^o\s+", "", item)
@@ -718,9 +831,9 @@ def _regex_parse_criteria(text: str) -> list[str]:
         key = item.lower()
         if key not in seen:
             seen.add(key)
-            cleaned.append(item)
+            cleaned.append((item, marker, wrap_shaped))
 
-    return cleaned
+    return _nest(cleaned)
 
 
 # ---------------------------------------------------------------------------------------------------------------
