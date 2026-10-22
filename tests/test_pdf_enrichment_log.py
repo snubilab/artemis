@@ -126,7 +126,7 @@ def _enrich(monkeypatch, *, stdout="", returncode=0, stderr="", raises=None,
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(
         parser_module, "extract_eligibility_from_text",
-        lambda _text: criteria if criteria is not None else CRITERIA_FOUND,
+        lambda _text, **_kwargs: criteria if criteria is not None else CRITERIA_FOUND,
     )
     monkeypatch.setattr(parser_module, "enrich_trial_data", _fake_enrich_trial_data)
 
