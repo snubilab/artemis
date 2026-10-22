@@ -1,5 +1,5 @@
 {
- "about": "Every difference between Agent 1's input rendered offline by the section rules (S1-S9, without A6, the LLM split pass and the similarity merges) and the candidate's actual input, per trial and list, with its cause. Read by tests/test_section_rules_candidate_input.py; a list not named here must equal the candidate's item for item.",
+ "about": "Every difference between Agent 1's input rendered offline by the section rules (S1-S9, without A6, the LLM split pass and the similarity merges; a found section's lists ending only at heading lines) and the candidate's actual input, per trial and list, with its cause. Read by tests/test_section_rules_candidate_input.py; a list not named here must equal the candidate's item for item.",
  "lists": [
   {
    "trial": "ARISTOTLE",
@@ -7,18 +7,24 @@
    "causes": [
     "A6 not restored: the candidate's '[OR-GROUP] <header> with any of: a | b ...' string is the header and its members as separate items, in document order",
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
-    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order"
+    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order",
+    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the WOCBP criterion is no longer cut at 'treatment period', and the pregnancy-test and consent criteria after it are read"
    ],
    "added": [
     "Age 75 years or older",
+    "All subjects must provide signed written informed consent",
     "Diabetes mellitus",
     "Either symptomatic congestive heart failure within 3 months or left ventricular dysfunction with an LV ejection fraction (LVEF) ≤ 40% by echocardiography, radionuclide study or contrast angiography 37",
     "Hypertension requiring pharmacological treatment",
     "One or more of the following risk factor(s) for stroke:",
-    "Prior stroke, TIA or systemic embolus"
+    "Prior stroke, TIA or systemic embolus",
+    "WOCBP include any female who has experienced menarche and who has not undergone successful surgical sterilization (hysterectomy, bilateral tubal ligation, or bilateral oophorectomy) or is not postmenopausal (defined as amenorrhea ≥ 12 consecutive months; or women on hormone replacement therapy [HRT] with documented serum follicle stimulating hormone [FSH] level > 35 mIU/mL). Even women who are using oral contraceptives, other hormonal contraceptives (vaginal products, skin patches, or implanted or injectable products), or mechanical products such as an intrauterine device or barrier methods (diaphragm, condoms, spermicides) to prevent pregnancy, or are practicing abstinence or where their partner is sterile (eg, vasectomy) should be considered to be of childbearing potential",
+    "WOCBP must have a negative serum or urine pregnancy test (minimum sensitivity 25 IU/L or equivalent units of HCG) within 48 hours prior to the start of investigational product",
+    "Women of childbearing potential (WOCBP) must be using an adequate method of contraception to avoid pregnancy throughout the treatment period of the study or for 2 weeks after the last dose of study medication, whichever is longer, in such a manner that the risk of pregnancy is minimized"
    ],
    "removed": [
     "* Males and females ≥ 18 yrs with atrial fibrillation (AF) and one or more of the following risk factors for stroke:",
+    "Women of childbearing potential (WOCBP) must be using an adequate method of contraception to avoid pregnancy throughout the",
     "[OR-GROUP] 3) One or more of the following risk factor(s) for stroke with any of: Age 75 years or older | Prior stroke, TIA or systemic embolus | Either symptomatic congestive heart failure within 3 months or left ventricular dysfunction with an LV ejection fraction (LVEF) ≤ 40% by echocardiography, radionuclide study or contrast angiography | Diabetes mellitus | Hypertension requiring pharmacological treatment"
    ]
   },
@@ -27,15 +33,26 @@
    "list": "exclusion_criteria",
    "causes": [
     "S6 rejoin_stranded_superscripts (2026-09-12) postdates the candidate's 2026-09-10 IR: the hoisted '3' of 'mm3' is back on its unit, not glued to the criterion above",
-    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order"
+    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order",
+    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'randomization' inside 'Prior randomization into an apixaban clinical study'; it runs to the section number 4.2.3, which adds the remaining WOCBP/pregnancy/prisoner criteria and the paragraph before 4.2.3 ('Eligibility criteria for this study have been carefully considered ...', not a criterion)"
    ],
    "added": [
     "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified)",
-    "Platelet count ≤ 100,000/ mm3"
+    "Eligibility criteria for this study have been carefully considered to ensure the safety of the study subjects and to ensure that the results of the study can be used. It is imperative that subjects fully meet all eligibility criteria",
+    "Platelet count ≤ 100,000/ mm3",
+    "Prior randomization into an apixaban clinical study",
+    "Prisoners or subjects who are involuntarily incarcerated",
+    "Subjects who are compulsorily detained for treatment of either a psychiatric or physical (e.g., infectious disease) illness",
+    "WOCBP include any female who has experienced menarche and who has not undergone successful surgical sterilization (hysterectomy, bilateral tubal ligation, or bilateral oophorectomy) or is not postmenopausal [defined as amenorrhea ≥ 12 consecutive months; or women on hormone replacement therapy (HRT) with documented serum follicle stimulating hormone (FSH) level > 35 mIU/mL]. Even women who are using oral contraceptives, other hormonal contraceptives (vaginal products, skin patches, or implanted or injectable products), or mechanical products such as an intrauterine device or barrier methods (diaphragm, condoms, spermicides) to prevent pregnancy, or are practicing abstinence or where their partner is sterile (e.g., vasectomy) should be considered to be of child bearing potential 39",
+    "WOCBP using a prohibited contraceptive method",
+    "Women of child bearing potential (WOCBP) unwilling or unable to use an acceptable method to avoid pregnancy:",
+    "Women who are pregnant or breastfeeding",
+    "Women with a positive pregnancy test on enrollment or prior to administration of investigational product"
    ],
    "removed": [
     "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
-    "Platelet count ≤ 100,000/ mm"
+    "Platelet count ≤ 100,000/ mm",
+    "Prior"
    ]
   },
   {
@@ -43,15 +60,52 @@
    "list": "inclusion_criteria",
    "causes": [
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
-    "the PDF's inclusion list ends at the word 'randomization' (S2 section-end word, as in 2498fcb) inside criterion 3, so criteria 4-8 come only from the registry, which the candidate had through the gap-fill"
+    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'prior to randomization' inside criterion 3; criteria 3-8 and their members come from the PDF, and the container heading 'eAppendix 4' before the exclusion list is read as an item (not a criterion)"
    ],
-   "added": [],
+   "added": [
+    "A positive non invasive stress-test, confirmed by either:",
+    "AND at least one of the following:",
+    "Age ≥ 18 years at visit 1 (screening). For Japan only: Age ≥ 20 years at Visit 1",
+    "Albuminuria (UACR ≥ 30 mg/g creatinine or ≥ 30 µg/min [microgram albumin per minute] or ≥ 30 mg/24 h [milligram albumin per 24 hours] in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization)* AND previous macrovascular disease, defined as either one or more:",
+    "Body Mass Index (BMI) ≤ 45 kg/m2 at visit 1 (screening)",
+    "Definition of major coronary arteries: LAD (Left Anterior Descending). CX (Circumflex) or RCA (right coronary artery)",
+    "Evidence of impaired renal function with predefined UACR, with or without CV comorbidities, defined as follows (and/or criteria):",
+    "HbA1c of ≥ 6.5% and ≤ 10.0% at visit 1 (screening)",
+    "High risk of CV events (I and/or II):",
+    "High-risk single-vessel coronary artery disease, defined as the presence of ≥ 50% narrowing of the luminal diameter of one major coronary artery by coronary angiography,",
+    "Impaired renal function (as defined by MDRD formula) with an eGFR ≥ 45-75",
+    "Impaired renal function (as defined by MDRD formula) with an eGFR:15- <45",
+    "Left main stem coronary artery with ≥ 50% narrowing of the luminal diameter by coronary angiography, MRI angiography or CT angiography;",
+    "MRI angiography or CT angiography in patients not revascularized:",
+    "Patient discharged from hospital with a documented diagnosis of unstable angina pectoris between 2 and 12 months prior to visit 1 (screening)",
+    "Presence of peripheral artery disease documented by either:",
+    "Prior percutaneous or surgical revascularization of ≥ 2 major coronary arteries at least 2 months prior to Visit 1 (screening);",
+    "Signed and dated written informed consent by date of visit 1 (screening) in accordance with GCP and local legislation prior to any study related procedure",
+    "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have been changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization",
+    "The combination of prior percutaneous or surgical revascularization of 1 major coronary artery at least 2 months prior to visit 1 (screening), and ≥ 50% narrowing of the luminal diameter by coronary angiography, MRI angiography or CT angiography of at least 1 additional major coronary artery",
+    "a Confirmed history of MI (> 2 months prior to Visit 1) b Advanced coronary artery disease, defined by any one of the following:",
+    "a positive ECG exercise tolerance test in patients without left bundle branch block, Wolff-Parkinson-White syndrome, left ventricular hypertrophy with repolarization abnormality, or paced ventricular rhythm, atrial fibrillation in case of abnormal ST-T segments;",
+    "a positive cardiac stress perfusion MRI showing a stress induced perfusion defect;",
+    "a positive nuclear myocardial perfusion imaging stress test showing stressinduced reversible perfusion abnormality;",
+    "a positive stress echocardiogram showing induced regional systolic wall motion abnormalities;",
+    "angiographic evidence of peripheral artery stenosis ≥ 50% narrowing of the luminal diameter in at least one limb (definition of peripheral artery: common iliac artery, internal iliac artery, external iliac artery, femoral artery, popliteal artery)",
+    "d History of ischemic or haemorrhagic stroke (>3 months prior to visit 1) e Presence of carotid artery disease (symptomatic or not) documented by either:",
+    "eAppendix 4",
+    "imaging techniques with at least one lesion estimated to be ≥50% narrowing of the luminal diameter;",
+    "mL/min/1.73 m2 at visit 1 (screening) with an UACR > 200 mg/g creatinine or > 200 µg/min (microgram albumin per minute) or > 200 mg/24 h [milligram albumin per 24 hours] demonstrated in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization",
+    "mL/min/1.73 m2 at visit 1 (screening) with any UACR",
+    "previous limb angioplasty, stenting or bypass surgery;",
+    "previous limb or foot amputation due to macrocirculatory insufficiency;",
+    "prior percutaneous or surgical carotid revascularization",
+    "≥ 50% narrowing of the luminal diameter in 2 or more major coronary arteries by coronary angiography, MRI angiography or CT angiography;"
+   ],
    "removed": [
     "Age => 18 years at Visit 1(screening). For Japan only: Age => 20 years at Visit 1",
     "HbA1c of => 6.5% and <= 10.0% at Visit 1 (screening)",
     "High risk of cardiovascular (CV) events defined by: 1) albuminuria (micro or macro) and previous macrovascular disease and/or 2) impaired renal function with predefined Urine Albumin Creatinine Ratio (UACR)",
     "Male or female patients who are drug-naïve or pre-treated with any antidiabetic background medication, excluding treatment with Glucagon-like Peptide 1 (GLP-1) receptor agonists, Dipeptidyl-peptidase 4 (DPP-4) inhibitors or Sodium Glucose Linked Transporter 2 (SGLT-2) inhibitors if => consecutive 7 days.",
     "Signed and dated written informed consent by date of Visit 1(screening) in accordance with Good Clinical Practice (GCP) and local legislation prior to any study related procedure",
+    "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to",
     "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization."
    ]
   },
@@ -127,11 +181,18 @@
    "list": "exclusion_criteria",
    "causes": [
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
-    "the PDF's exclusion list ends at 'study procedures' (S2 section-end word) inside criterion 13, so the last four come only from the registry, which the candidate had through the gap-fill"
+    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'study procedures' inside criterion 13; criterion 13 is whole and the last four criteria come from the PDF"
    ],
-   "added": [],
+   "added": [
+    "Acute coronary syndrome, stroke, or transient ischemic attack within 2 months prior to informed consent",
+    "Alcohol or drug abuse within 3 months of informed consent that would interfere with trial participation or any ongoing condition leading to decreased compliance with study procedures or study drug intake",
+    "Any clinical condition that would jeopardize patient safety while participating in this clinical trial (in Canada, this included current genito-urinal infection or genito-urinal infection within 2 weeks prior to informed consent)",
+    "In South Africa: blood pressure >160/100 mmHg at screening",
+    "Intake of an investigational drug in another trial within 30 days prior to intake of study medication in this trial or participating in another trial involving an investigational drug and/or follow-up"
+   ],
    "removed": [
     "Acute coronary syndrome, stroke or TIA within 2 months prior to informed consent",
+    "Alcohol or drug abuse within 3 months of informed consent that would interfere with trial participation or any ongoing condition leading to decreased compliance with",
     "Any other clinical condition that would jeopardize patients safety while participating in this clinical trial",
     "Impaired renal function, defined as Glomerular Filtration Rate <30 ml/min (severe renal impairment, Modification of Diet in Renal Disease formula) during screening or run in.",
     "Indication of liver disease, defined by serum levels of either alanine aminotransferase (ALT), aspartate aminotransferase ALT or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at screening and/or run in.",
@@ -176,10 +237,22 @@
    "trial": "PLATO",
    "list": "exclusion_criteria",
    "causes": [
-    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order"
+    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order",
+    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the design paper's table is no longer cut at 'study results' inside its first 'Any other condition' row; the General rows (participation, pregnancy, noncompliance, involvement, previous enrolment) are read, with the table's 'General' subheading and one sentence of the paper's prose after it ('intervals from randomization ...', not a criterion)"
    ],
-   "added": [],
-   "removed": []
+   "added": [
+    "Any condition that increases the risk for noncompliance or being lost to follow-up",
+    "Any other condition that may put the patient at risk or influence study results in the investigators' opinion (eg, cardiogenic shock, severe hemodynamic instability, active cancer)",
+    "General",
+    "Involvement in the planning or conduct of the study",
+    "Participant in another investigational drug or device study within 30 d",
+    "Pregnancy or lactation",
+    "Previous enrollment or randomization in this study ⁎ According to the investigator",
+    "intervals from randomization to 30 days and from 31 to 360 days. Enrollment of 18,000 subjects will generate approximately 1,780 primary end point events, enabling reasonable power to detect both the primary and the initial secondary objectives. Study visits should occur at 1, 3, 6, 9, and 12 months after the index event, with a safety"
+   ],
+   "removed": [
+    "Any other condition that may put the patient at risk or influence study"
+   ]
   }
  ]
 }

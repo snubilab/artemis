@@ -739,7 +739,7 @@ class LogicDecomposer:
                     f"eligibility section extracted: {len(section_result.text)} chars "
                     f"(from {len(full_text)} total)",
                 )
-                pdf_criteria = extract_eligibility_from_text(section_result.text)
+                pdf_criteria = extract_eligibility_from_text(section_result.text, headings_only=True)
 
             if not pdf_criteria["inclusion"] and not pdf_criteria["exclusion"]:
                 self._report_pdf_failure(

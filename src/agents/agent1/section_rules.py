@@ -550,19 +550,36 @@ _OTHER_SECTION = (
     r"randomization|treatment\s+period|"
     r"follow-up\s+(?:period|schedule|visit|procedures?|assessment)|visit\s+schedule"
 )
-def _section_end(kind: str) -> str:
-    """The lookahead that ends one list's capture: a section name anywhere, as in 2498fcb.
+# The same section names as a heading line: opening a line (after an optional numbering prefix) and owning it --
+# at most a short title after the name, no sentence stop, then the line ends -- or a section number standing alone
+# on its line ("4.2.3"), which pdftotext emits above the heading it numbers. A section name inside a sentence is not
+# a heading: "prior to\nrandomization. If insulin ..." (CARMELINA's inclusion 3) and "compliance with study\n
+# procedures or study drug intake" (EMPA-REG's exclusion 13) ended those lists there in 2498fcb, and the criteria
+# after them reached the candidate only through the registry gap-fill, which is not restored.
+_OTHER_SECTION_HEADING = (
+    r"\n[ \t]*" + _HEADING_PREFIX + r"(?:" + _OTHER_SECTION + r")[^\n.]{0,60}[:.]?[ \t]*(?:\n|$)"
+    r"|\n[ \t]*\d{1,2}(?:\.\d{1,2}){1,3}[ \t]*(?:\n|$)"
+)
+
+
+def _section_end(kind: str, headings_only: bool) -> str:
+    """The lookahead that ends one list's capture.
 
     :param kind: the list being captured, "inclusion" or "exclusion".
+    :param headings_only: True when the text is a section :func:`extract_eligibility_section` already cut out of a
+        PDF by its headings, so another section begins only at a heading line; False for free text (an abstract, a
+        PMC body, a whole paper), where a section name anywhere ends the list, as in 2498fcb.
     :returns: a regex lookahead.
     """
-    return r"(?=" + _OTHER_LIST[kind] + r"|" + _OTHER_SECTION + r"|$)"
+    other_section = _OTHER_SECTION_HEADING if headings_only else _OTHER_SECTION
+    return r"(?=" + _OTHER_LIST[kind] + r"|" + other_section + r"|$)"
 
 
-def extract_eligibility_from_text(text: str) -> dict[str, list[str]]:
+def extract_eligibility_from_text(text: str, headings_only: bool = False) -> dict[str, list[str]]:
     """The inclusion and exclusion lists in a text, item by item.
 
-    :param text: a PDF's eligibility section, or free text that may hold one (an abstract, a PMC body).
+    :param text: a PDF's eligibility section (``headings_only=True``), or free text that may hold one.
+    :param headings_only: see :func:`_section_end`.
     :returns: ``{"inclusion": [...], "exclusion": [...]}`` in document order.
     """
     result = {"inclusion": [], "exclusion": []}
@@ -591,7 +608,7 @@ def extract_eligibility_from_text(text: str) -> dict[str, list[str]]:
 
     # Protocol synopses (e.g. the Boehringer Ingelheim form used by the
     # CAROLINA supplement) reverse the noun phrase: "Criteria for inclusion:".
-    inc_end = _section_end("inclusion")
+    inc_end = _section_end("inclusion", headings_only)
     inc_patterns = [
         r"(?:key\s+)?inclusion\s+criteria\s*(?:include)?[:\s]*(.*?)" + inc_end,
         r"criteria\s+for\s+inclusion\s*[:\s]*(.*?)" + inc_end,
@@ -599,7 +616,7 @@ def extract_eligibility_from_text(text: str) -> dict[str, list[str]]:
     ]
     result["inclusion"] = _drop_running_headers(_best_section_match(text, inc_patterns), text)
 
-    exc_end = _section_end("exclusion")
+    exc_end = _section_end("exclusion", headings_only)
     exc_patterns = [
         r"(?:key\s+)?exclusion\s+criteria\s*(?:include)?[:\s]*(.*?)" + exc_end,
         r"criteria\s+for\s+exclusion\s*[:\s]*(.*?)" + exc_end,

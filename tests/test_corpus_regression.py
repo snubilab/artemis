@@ -15,7 +15,13 @@ import subprocess
 
 import pytest
 
-from src.agents.agent1.section_rules import Missing, extract_eligibility_from_text, extract_eligibility_section
+from src.agents.agent1.section_rules import (
+    Missing,
+    extract_eligibility_from_text,
+    extract_eligibility_section,
+    rejoin_stranded_superscripts,
+    strip_pdf_furniture,
+)
 
 
 # study -> (NCT id, protocol PDF filename under data/papers/<NCT>/)
@@ -132,11 +138,16 @@ DOCUMENTS = {
 BASELINE = {
     # A6 (the [OR-GROUP] collapse) is not restored with the section rules (2026-10-22): a list header and its
     # members are separate items, so CAROLINA's tree adds 19 and ARISTOTLE's five risk factors add 5.
+    # A found section's lists end only at a heading line (2026-10-22, section_rules._OTHER_SECTION_HEADING), not
+    # at a section name inside a sentence: ARISTOTLE's lists no longer stop at "treatment period"/"randomization"
+    # (+3 inclusion, +8 exclusion, one of them the preamble paragraph before 4.2.3), CARMELINA's inclusion at
+    # "randomization" (+34: criteria 3-8 and their members), EMPA-REG's exclusion at "study procedures" (+4),
+    # PLATO's at "study results" (+7, one of them design-paper prose after the table).
     "CAROLINA": (36, 29, 1),
-    "ARISTOTLE": (13, 21, 1),
-    "CARMELINA": (3, 16, 1),
-    "EMPA-REG": (0, 15, 1),
-    "PLATO": (24, 12, 1),
+    "ARISTOTLE": (16, 29, 1),
+    "CARMELINA": (37, 16, 1),
+    "EMPA-REG": (0, 19, 1),
+    "PLATO": (24, 19, 1),
     "LEADER": (17, 14, 0),
 }
 
@@ -177,8 +188,12 @@ def _extract(study):
         ["pdftotext", f"data/papers/{nct}/{pdf}", "-"],
         capture_output=True, text=True, check=True,
     ).stdout
+    text = rejoin_stranded_superscripts(strip_pdf_furniture(text))  # as _enrich_from_pdf does first
     section = _extract_section(text)
-    return extract_eligibility_from_text(section or text)
+    # as _enrich_from_pdf calls it: a found section ends only at heading lines
+    if section is None:
+        return extract_eligibility_from_text(text)
+    return extract_eligibility_from_text(section, headings_only=True)
 
 
 @pytest.mark.parametrize("study", sorted(DOCUMENTS))
