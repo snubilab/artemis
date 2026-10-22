@@ -290,6 +290,9 @@ def test_should_query_agent2_with_the_specific_form_when_the_seed_is_no_abbrevia
     args, kwargs = workflow.process_with_details.call_args
     assert args[0] == "type 2 diabetes mellitus"
     assert [c.concept_id for c in kwargs["pre_fetched_candidates"]] == [201826]
-    assert result["name"] == "Diabetes Mellitus"
+    # The set holds the narrower entity, so it is named by the line's span (EMPA-REG codeset 2
+    # shipped as 'Diabetes Mellitus' holding only T2DM, and the scorer paired gold T2DM to codeset 9).
+    assert result["name"] == "type 2 diabetes mellitus"
+    assert builder.build_expression.call_args.kwargs["criterion_name"] == "type 2 diabetes mellitus"
     assert result["mapping_metadata"].queryUsed == "type 2 diabetes mellitus"
 
