@@ -1892,8 +1892,11 @@ def _members_of(
 
 
 def _workers() -> int:
+    # 12, measured 2026-10-22 on LEADER + CAROLINA (233 rows, ~552 calls) with calls 3-4
+    # overlapped: 4 -> 6363-8431 s, 8 -> 2909 s, 12 -> 2230 s, 16 -> 2083 s (per-call latency
+    # 45 -> 79 -> 98 s). Answers stayed within the run-to-run floor at every count.
     raw = os.environ.get(_WORKERS_ENV, "").strip()
-    return max(1, int(raw)) if raw else 4
+    return max(1, int(raw)) if raw else 12
 
 
 def _overlap() -> bool:
