@@ -147,12 +147,15 @@ BASELINE = {
     # Page furniture removed by position and repetition first (2026-10-22, page_layout from seg-page f1b2987):
     # CAROLINA's copyright footer and its "This document may not ..." line no longer stand as criteria (-2
     # inclusion, -1 exclusion); ARISTOTLE's and LEADER's counts are unchanged, only page numbers leave the text.
+    # Counted in lines since section_rules S10 (2026-10-22) nests a member under its item: a nested member is still
+    # one line. Two lines that were glued are now split by markers S10 reads: CARMELINA's bare letters a/b and d/e
+    # (+2 inclusion), LEADER's U+F0A7 eGFR sub-bullets (+1 inclusion). No text left any list.
     "CAROLINA": (34, 28, 1),
     "ARISTOTLE": (16, 29, 1),
-    "CARMELINA": (37, 16, 1),
+    "CARMELINA": (39, 16, 1),
     "EMPA-REG": (0, 19, 1),
     "PLATO": (24, 19, 1),
-    "LEADER": (17, 14, 0),
+    "LEADER": (18, 14, 0),
 }
 
 _ULN = re.compile(r"ULN|upper limit of normal", re.IGNORECASE)
@@ -173,6 +176,11 @@ def _no_llm(monkeypatch):
         "src.utils.llm.get_llm",
         lambda *args, **kwargs: pytest.fail("a model was asked for; the section rules call none"),
     )
+
+
+def _lines(items):
+    """Every line the list holds: an item, then the items section_rules S10 nested under it (tab-indented)."""
+    return [line.lstrip("\t") for item in items for line in item.split("\n")]
 
 
 def _extract_section(text):
@@ -206,7 +214,8 @@ def test_should_reproduce_frozen_counts_when_parsing_the_protocol_pdf(study):
     items = (criteria["inclusion"] or []) + (criteria["exclusion"] or [])
     uln = sum(1 for item in items if _ULN.search(item))
 
-    assert (len(criteria["inclusion"]), len(criteria["exclusion"]), uln) == BASELINE[study]
+    # counted in lines: a nested member (section_rules S10) is still one line of the list
+    assert (len(_lines(criteria["inclusion"])), len(_lines(criteria["exclusion"])), uln) == BASELINE[study]
 
 
 def test_should_keep_the_aristotle_stroke_risk_factors_right_after_their_header():
@@ -216,7 +225,7 @@ def test_should_keep_the_aristotle_stroke_risk_factors_right_after_their_header(
     about meaning and is not restored. What the format rules must keep is the position that carries the
     relationship: the header, then its five members, adjacent and in document order, for Agent 1 to read.
     """
-    inclusion = _extract("ARISTOTLE")["inclusion"]
+    inclusion = _lines(_extract("ARISTOTLE")["inclusion"])
     header = next(i for i, item in enumerate(inclusion) if item.startswith("One or more of the following risk"))
     members = inclusion[header + 1:header + 6]
 

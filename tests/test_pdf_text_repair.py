@@ -168,7 +168,9 @@ def _section(pdf, kind):
     """
     text = _production_text(pdf)
     section = extract_eligibility_section(text)
-    return extract_eligibility_from_text(getattr(section, "text", text))[kind]
+    items = extract_eligibility_from_text(getattr(section, "text", text))[kind]
+    # one entry per line: a member nested under its item (section_rules S10) keeps its own position
+    return [line.lstrip("\t") for item in items for line in item.split("\n")]
 
 
 def _index_of(items, needle):

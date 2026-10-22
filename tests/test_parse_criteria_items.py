@@ -244,14 +244,19 @@ class TestParenthesizedEnumeratedItems:
         "(g) Chronic renal dysfunction\n"
     )
 
+    @staticmethod
+    def _lines(items):
+        """An item and the items nested under it (section_rules S10), one entry per line."""
+        return [line.lstrip("\t") for item in items for line in item.split("\n")]
+
     def test_leading_paren_letter_items_are_not_glued_together(self):
-        result = _regex_parse_criteria(self.PLATO_RISK_FACTORS)
+        result = self._lines(_regex_parse_criteria(self.PLATO_RISK_FACTORS))
         age_item = next((i for i in result if "60" in i and "age" in i.lower()), None)
         assert age_item is not None, f"no age item found in {result}"
         assert "Previous MI" not in age_item, f"(b)'s text leaked into (a)'s item: {age_item!r}"
 
     def test_each_leading_paren_letter_item_is_its_own_entry(self):
-        result = _regex_parse_criteria(self.PLATO_RISK_FACTORS)
+        result = self._lines(_regex_parse_criteria(self.PLATO_RISK_FACTORS))
         assert any(i.startswith("Previous MI or CABG") for i in result), result
         assert any("Diabetes mellitus" in i for i in result), result
 

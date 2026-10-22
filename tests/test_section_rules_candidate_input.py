@@ -72,7 +72,9 @@ def test_should_equal_the_candidates_input_when_built_by_the_section_rules(monke
     rendered = render(monkeypatch, entry["nct_id"])
     problems = []
     for kind in KINDS:
-        new, cand = rendered[kind], entry[kind]
+        # compared line by line: an item nested under another (section_rules S10) is still one line of the list
+        new = [line.lstrip("\t") for item in rendered[kind] for line in item.split("\n")]
+        cand = entry[kind]
         diff = DIFFERENCES.get((trial, kind))
         if diff is None:
             if new != cand:

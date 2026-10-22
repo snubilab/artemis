@@ -64,7 +64,8 @@
    "list": "inclusion_criteria",
    "causes": [
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
-    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'prior to randomization' inside criterion 3; criteria 3-8 and their members come from the PDF, and the container heading 'eAppendix 4' before the exclusion list is read as an item (not a criterion)"
+    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'prior to randomization' inside criterion 3; criteria 3-8 and their members come from the PDF, and the container heading 'eAppendix 4' before the exclusion list is read as an item (not a criterion)",
+    "section_rules S10: a bare lowercase letter in sequence (a, b, c ...) is read as a list marker, so 'a <item> b <item>' that e5f423a glued into one line is two lines, the letters gone as markers"
    ],
    "added": [
     "A positive non invasive stress-test, confirmed by either:",
@@ -87,13 +88,15 @@
     "Signed and dated written informed consent by date of visit 1 (screening) in accordance with GCP and local legislation prior to any study related procedure",
     "Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have been changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization",
     "The combination of prior percutaneous or surgical revascularization of 1 major coronary artery at least 2 months prior to visit 1 (screening), and ≥ 50% narrowing of the luminal diameter by coronary angiography, MRI angiography or CT angiography of at least 1 additional major coronary artery",
-    "a Confirmed history of MI (> 2 months prior to Visit 1) b Advanced coronary artery disease, defined by any one of the following:",
+    "Confirmed history of MI (> 2 months prior to Visit 1)",
+    "Advanced coronary artery disease, defined by any one of the following:",
     "a positive ECG exercise tolerance test in patients without left bundle branch block, Wolff-Parkinson-White syndrome, left ventricular hypertrophy with repolarization abnormality, or paced ventricular rhythm, atrial fibrillation in case of abnormal ST-T segments;",
     "a positive cardiac stress perfusion MRI showing a stress induced perfusion defect;",
     "a positive nuclear myocardial perfusion imaging stress test showing stressinduced reversible perfusion abnormality;",
     "a positive stress echocardiogram showing induced regional systolic wall motion abnormalities;",
     "angiographic evidence of peripheral artery stenosis ≥ 50% narrowing of the luminal diameter in at least one limb (definition of peripheral artery: common iliac artery, internal iliac artery, external iliac artery, femoral artery, popliteal artery)",
-    "d History of ischemic or haemorrhagic stroke (>3 months prior to visit 1) e Presence of carotid artery disease (symptomatic or not) documented by either:",
+    "History of ischemic or haemorrhagic stroke (>3 months prior to visit 1)",
+    "Presence of carotid artery disease (symptomatic or not) documented by either:",
     "eAppendix 4",
     "imaging techniques with at least one lesion estimated to be ≥50% narrowing of the luminal diameter;",
     "mL/min/1.73 m2 at visit 1 (screening) with an UACR > 200 mg/g creatinine or > 200 µg/min (microgram albumin per minute) or > 200 mg/24 h [milligram albumin per 24 hours] demonstrated in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization",
@@ -220,13 +223,18 @@
    "list": "inclusion_criteria",
    "causes": [
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
-    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order"
+    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order",
+    "section_rules S10: LEADER's private-use square bullet (U+F0A7) is read as a list marker, so the two eGFR sub-bullets the candidate (and e5f423a) glued into one item are two lines, the glyph gone as a marker"
    ],
-   "added": [],
+   "added": [
+    "eGFR <60 mL/min/1.73m2 (Modification of Diet in Renal Disease formula)",
+    "eGFR <60 mL/min (Cockcroft-Gault formula)"
+   ],
    "removed": [
     "Age min. 50 years at screening and concomitant cardiovascular, cerebrovascular or peripheral vascular disease or chronic renal failure or chronic heart failure OR age min. 60 years at screening and other specified risk factors of cardiovascular disease",
     "Anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs (OADs) or treated with human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination with OAD(s)",
-    "HbA1c: 7.0% or above"
+    "HbA1c: 7.0% or above",
+    " eGFR <60 mL/min/1.73m2 (Modification of Diet in Renal Disease formula)  eGFR <60 mL/min (Cockcroft-Gault formula)"
    ]
   },
   {

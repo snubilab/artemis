@@ -29,7 +29,9 @@ def _criteria(pdf: Path, nct: str, role: str) -> list[str]:
     enriched = LogicDecomposer.__new__(LogicDecomposer)._enrich_from_pdf(
         TrialData(nct_id=nct), str(pdf), role=role
     )
-    return list(enriched.inclusion_criteria) + list(enriched.exclusion_criteria)
+    # one entry per line: a member nested under its item (section_rules S10) is checked as its own line
+    return [line.lstrip("\t") for c in list(enriched.inclusion_criteria) + list(enriched.exclusion_criteria)
+            for line in c.split("\n")]
 
 
 def test_should_keep_carolinas_copyright_footer_out_of_every_criterion():
