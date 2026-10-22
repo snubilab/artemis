@@ -17,8 +17,12 @@ the entity than the seed does. Measured on P8 MAIN: EMPA-REG inclusion 1 reads "
 type 2 diabetes mellitus" and Agent 1 seeded 'Diabetes Mellitus', which mapped to 201820
 Diabetes mellitus (both gold T2DM rows P 0.45) and left the comparator without its registered
 anchor 201826 (DiseaseAnchorError). The model returns the narrower span; code accepts it only
-when it is copied verbatim from the line and holds the seed, so nothing outside the line can
-become a query. No word list decides what is narrower.
+when it is copied verbatim from the line and ends with the seed (the narrowing words come before
+it, so a threshold, a parenthesis or a trailing clause never rides along), and a second call
+with its own wording says the span names a narrower kind of the seed. No word list decides what
+is narrower. Measured on the six P8 MAIN drafts: the first call alone renamed 118 of 297 seeds,
+most of them with a threshold, a timing word or a second entity added; see
+``output/site_gap/2026-10-22_spec_entity/``.
 
 Cache: one JSONL file keyed on the prompt version, both prompts and the resolved model.
 ``ARTEMIS_ENTITY_NAME_CACHE_PATH`` isolates it; ``ARTEMIS_ENTITY_NAME_CACHE=0`` disables
@@ -92,6 +96,34 @@ of the entity, `specific_span` is an empty string.
 Output JSON:
 {{"specific_span": "<the phrase copied from the protocol line, or an empty string>"}}"""
 
+#: The second call on a specific-form answer; part of that call's cache key.
+ENTITY_KIND_PROMPT_VERSION = "entity-narrower-kind-v1"
+
+ENTITY_KIND_SYSTEM_PROMPT = (
+    "You judge whether a phrase names a narrower kind of a clinical entity. Return one JSON object and "
+    "nothing else."
+)
+
+ENTITY_KIND_PROMPT = """Protocol line:
+{line}
+
+Entity: {entity}
+
+Phrase from the line: {span}
+
+Field to return:
+
+`narrower_kind` is `yes` when the phrase names a subtype of the entity: a narrower kind of the same thing, \
+the way a clinical terminology lists a more specific disease, drug, procedure or test beneath a general one, \
+so that every patient the phrase describes has the entity and some patients with the entity do not. \
+It is `no` when the phrase adds anything else to the entity: a time, a duration, a number or a threshold, \
+a test result, whether the entity is current, previous, planned or recent, how it is diagnosed, measured or \
+treated, how many or which of several are meant, another entity joined to it, or an exception. It is also `no` \
+when the phrase names the entity itself in other words, spelled out or abbreviated.
+
+Output JSON:
+{{"narrower_kind": "<yes|no>"}}"""
+
 _CACHE_PATH_ENV = "ARTEMIS_ENTITY_NAME_CACHE_PATH"
 _CACHE_ENABLED_ENV = "ARTEMIS_ENTITY_NAME_CACHE"
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parents[3] / ".cache" / "entity_full_name" / "names.jsonl"
@@ -161,6 +193,12 @@ def _specific_pairs(payload: dict[str, Any]) -> list[tuple[str, str]] | None:
     """One ("", span) pair, the span "" when none; None when ``specific_span`` is no string."""
     span = payload.get("specific_span")
     return [("", " ".join(span.split()))] if isinstance(span, str) else None
+
+
+def _kind_pairs(payload: dict[str, Any]) -> list[tuple[str, str]] | None:
+    """One ("", answer) pair; None when ``narrower_kind`` is no string. Only "yes" renames."""
+    answer = payload.get("narrower_kind")
+    return [("", answer)] if isinstance(answer, str) else None
 
 
 def _cached_pairs(entity: str, version: str, system: str, prompt: str, parse: Any,
@@ -237,8 +275,8 @@ def specific_entity_name(entity: str, protocol_line: str | None, *, model: str |
         line holds the seed (otherwise no answer could pass the check below).
     :param model: model override; defaults to the critic's model.
     :param llm: a chat model handle; built from ``model`` when None.
-    :returns: the model's span when it is copied verbatim from the line, holds the seed and is
-        more than the seed; otherwise ``entity``.
+    :returns: the model's span when it is copied verbatim from the line, ends with the seed, is
+        more than the seed, and the second call calls it a narrower kind; otherwise ``entity``.
     """
     entity = " ".join((entity or "").split())
     line = " ".join((protocol_line or "").split())
@@ -247,8 +285,11 @@ def specific_entity_name(entity: str, protocol_line: str | None, *, model: str |
     pairs = _cached_pairs(entity, ENTITY_SPECIFIC_PROMPT_VERSION, ENTITY_SPECIFIC_SYSTEM_PROMPT,
                           ENTITY_SPECIFIC_PROMPT.format(line=line, entity=entity), _specific_pairs, model, llm)
     span = pairs[0][1] if pairs else ""
-    # The structural check, not a judgement of meaning: the span is the line's own text, it
-    # holds the seed, and it says more than the seed. Anything else maps the seed as written.
-    if span and span in line and entity.casefold() in span.casefold() and span.casefold() != entity.casefold():
-        return span
-    return entity
+    # Structural, not a judgement of meaning: the span is the line's own text, it is the seed with
+    # words in front of it, and it says more than the seed. Anything else maps the seed as written.
+    folded = span.casefold()
+    if not (span and span in line and folded.endswith(entity.casefold()) and folded != entity.casefold()):
+        return entity
+    verdict = _cached_pairs(entity, ENTITY_KIND_PROMPT_VERSION, ENTITY_KIND_SYSTEM_PROMPT,
+                            ENTITY_KIND_PROMPT.format(line=line, entity=entity, span=span), _kind_pairs, model, llm)
+    return span if verdict and verdict[0][1] == "yes" else entity

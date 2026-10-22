@@ -28,13 +28,16 @@ TIA_LINE = "16. Stroke or TIA ≤ 3 months prior to visit 1 (screening)"
 
 
 class _Stub:
-    def __init__(self, answer: str):
-        self.answer = answer
+    """Answers each call with the next of ``answers``; the last one repeats."""
+
+    def __init__(self, *answers: str):
+        self.answers = list(answers)
         self.prompts: list[str] = []
 
     def invoke(self, messages):
         self.prompts.append(messages[-1].content)
-        return SimpleNamespace(content=self.answer, response_metadata={})
+        answer = self.answers[min(len(self.prompts), len(self.answers)) - 1]
+        return SimpleNamespace(content=answer, response_metadata={})
 
 
 @pytest.fixture(autouse=True)
@@ -176,23 +179,51 @@ def test_should_pass_the_rows_protocol_line_to_the_mapper():
 EMPA_LINE = "1. Diagnosis of type 2 diabetes mellitus prior to informed consent"
 
 
+SPAN_T2DM = json.dumps({"specific_span": "type 2 diabetes mellitus"})
+KIND_YES = json.dumps({"narrower_kind": "yes"})
+KIND_NO = json.dumps({"narrower_kind": "no"})
+
+
 def test_should_map_the_narrower_span_when_the_line_names_a_more_specific_form_of_the_seed():
-    stub = _Stub(json.dumps({"specific_span": "type 2 diabetes mellitus"}))
+    stub = _Stub(SPAN_T2DM, KIND_YES)
     assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
         "type 2 diabetes mellitus"
     )
     assert EMPA_LINE in stub.prompts[0] and "Diabetes Mellitus" in stub.prompts[0]
+    assert "type 2 diabetes mellitus" in stub.prompts[1]
+
+
+def test_should_keep_the_seed_when_the_second_call_says_the_span_is_no_narrower_kind():
+    """CARMELINA exclusion 43 (P8 MAIN): 'Drug abuse' on "... any previous or current alcohol or
+    drug abuse ..." came back as 'alcohol or drug abuse' -- another entity joined, not a kind."""
+    line = ("26. Any previous or current alcohol or drug abuse that would interfere with trial "
+            "participation in the opinion of the investigator")
+    stub = _Stub(json.dumps({"specific_span": "alcohol or drug abuse"}), KIND_NO)
+    assert efn.specific_entity_name("Drug abuse", line, llm=stub, model="m") == "Drug abuse"
+    assert len(stub.prompts) == 2
+
+
+def test_should_keep_the_seed_without_a_second_call_when_words_follow_the_seed_in_the_span():
+    """EMPA-REG exclusion 12 (P8 MAIN): the v1 answer carried the threshold after the seed."""
+    line = ("5. Impaired renal function, defined as Estimated glomerular filtration rate <30 ml/min/1.73 m2 "
+            "(according to the Modification of Diet in Renal Disease equation) during screening")
+    span = ("Estimated glomerular filtration rate <30 ml/min/1.73 m2 (according to the Modification of Diet "
+            "in Renal Disease equation)")
+    stub = _Stub(json.dumps({"specific_span": span}), KIND_YES)
+    seed = "Estimated glomerular filtration rate"
+    assert efn.specific_entity_name(seed, line, llm=stub, model="m") == seed
+    assert len(stub.prompts) == 1
 
 
 def test_should_keep_the_seed_when_the_span_is_not_copied_from_the_line():
-    stub = _Stub(json.dumps({"specific_span": "type II diabetes mellitus"}))
+    stub = _Stub(json.dumps({"specific_span": "type II diabetes mellitus"}), KIND_YES)
     assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
         "Diabetes Mellitus"
     )
 
 
 def test_should_keep_the_seed_when_the_span_does_not_hold_the_seed():
-    stub = _Stub(json.dumps({"specific_span": "prior to informed consent"}))
+    stub = _Stub(json.dumps({"specific_span": "prior to informed consent"}), KIND_YES)
     assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
         "Diabetes Mellitus"
     )
@@ -201,7 +232,7 @@ def test_should_keep_the_seed_when_the_span_does_not_hold_the_seed():
 def test_should_keep_the_seed_when_the_span_is_the_seed_or_empty():
     for answer in ("", "diabetes mellitus"):
         efn.reset_for_tests()
-        stub = _Stub(json.dumps({"specific_span": answer}))
+        stub = _Stub(json.dumps({"specific_span": answer}), KIND_YES)
         assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
             "Diabetes Mellitus"
         )
@@ -215,13 +246,13 @@ def test_should_not_ask_when_the_line_does_not_hold_the_seed():
 
 
 def test_should_answer_the_specific_form_from_the_cache_without_asking_again():
-    stub = _Stub(json.dumps({"specific_span": "type 2 diabetes mellitus"}))
+    stub = _Stub(SPAN_T2DM, KIND_YES)
     efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m")
     efn.reset_for_tests()  # read back from the file, not the in-process dict
     assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
         "type 2 diabetes mellitus"
     )
-    assert len(stub.prompts) == 1
+    assert len(stub.prompts) == 2
 
 
 def test_should_query_agent2_with_the_specific_form_when_the_seed_is_no_abbreviation():
@@ -261,3 +292,4 @@ def test_should_query_agent2_with_the_specific_form_when_the_seed_is_no_abbrevia
     assert [c.concept_id for c in kwargs["pre_fetched_candidates"]] == [201826]
     assert result["name"] == "Diabetes Mellitus"
     assert result["mapping_metadata"].queryUsed == "type 2 diabetes mellitus"
+

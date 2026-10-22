@@ -491,14 +491,16 @@ def _render_entity_full_name() -> str:
 
 
 def _render_entity_specific_name() -> str:
-    """Through ``specific_entity_name`` with the model replaced; the cache is off."""
+    """Through ``specific_entity_name`` with the model replaced; the cache is off. The reply is
+    a span the structural check passes, so the second call (narrower kind) is rendered too."""
     from src.agents.agent2 import entity_full_name
 
-    recorder = _Recorder(reply='{"specific_span": ""}')
+    recorder = _Recorder(reply=f'{{"specific_span": "line {STUB}", "narrower_kind": "no"}}')
     with patch.dict(os.environ, {"ARTEMIS_ENTITY_NAME_CACHE": "0"}):
         entity_full_name.specific_entity_name(
-            STUB, f"{STUB} line", model="stub-model", llm=recorder.runnable()
+            STUB, f"line {STUB} line", model="stub-model", llm=recorder.runnable()
         )
+    assert len(recorder.calls) == 2, "the narrower-kind call was not asked"
     return _joined(recorder.calls)
 
 
@@ -647,7 +649,7 @@ PROMPTS: dict[str, PromptSpec] = {
         _render_entity_full_name, tokens=frozenset({"abbreviations", "span", "full_term"}),
     ),
     "agent2.entity_specific_name": PromptSpec(
-        _render_entity_specific_name, tokens=frozenset({"specific_span"}),
+        _render_entity_specific_name, tokens=frozenset({"specific_span", "narrower_kind", "yes", "no"}),
     ),
     "criterion_annotation": PromptSpec(
         _render_criterion_annotation,
