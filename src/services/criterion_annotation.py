@@ -150,8 +150,8 @@ RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
 CONDITIONAL_CHECK_PROMPT_VERSION = "rfc016-conditional-check-v1"
 CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v1"
 #: Calls 7 and 8 (:func:`check_forbidden`); each part of its call's cache key.
-TRIAL_ONLY_PROMPT_VERSION = "fixk12-trial-only-v1"
-TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "fixk12-trial-only-placebo-v1"
+TRIAL_ONLY_PROMPT_VERSION = "fixk12-trial-only-v2"
+TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "fixk12-trial-only-placebo-v2"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -803,6 +803,13 @@ patient's taking part in this trial: through the trial's own procedures, periods
 treatment, or through the patient's conduct toward the trial.
 """ + _CHECK_TAIL
 
+#: The calls-5/6 head without its fragment line. Shown the row's span ('investigational products'
+#: on LEADER's 'Hypersensitivity to investigational products'), the model judged the product named
+#: there instead of the criterion's entity; the line, entity text and description carry the entity.
+_FRAGMENT_LINE = "Fragment of the protocol line: {fragment}\n\n"
+assert _FRAGMENT_LINE in _CHECK_HEAD
+_TRIAL_ONLY_HEAD = _CHECK_HEAD.replace(_FRAGMENT_LINE, "")
+
 _TRIAL_ONLY_TAIL = """
 Output JSON:
 {{"trial_only": "<yes|no>"}}"""
@@ -815,7 +822,7 @@ _TRIAL_ONLY_VALUES = frozenset({TRIAL_ONLY_YES, TRIAL_ONLY_NO})
 #: Call 7: whether a ``forbidden`` criterion's own entity exists only because of a clinical trial.
 #: Field definition only. Asked of forbidden rows alone; calls 5/6 are not reused because their
 #: ``entity_outside_trial`` is about this trial, and products of another trial answered ``yes``.
-TRIAL_ONLY_PROMPT = _CHECK_HEAD + """\
+TRIAL_ONLY_PROMPT = _TRIAL_ONLY_HEAD + """\
 `trial_only` states whether this criterion's own entity -- the entity this criterion names -- \
 exists only because the patient takes part in a clinical trial, this trial or any other. One of:
 - `yes`: the entity exists only through the patient's taking part in a clinical trial: a trial's \
@@ -827,7 +834,7 @@ whatever product or trial the line names beside it.
 """ + _TRIAL_ONLY_TAIL
 
 #: Call 8: the same definition in other words, asked only when call 7 answers ``yes``.
-TRIAL_ONLY_AGREEMENT_PROMPT = _CHECK_HEAD + """\
+TRIAL_ONLY_AGREEMENT_PROMPT = _TRIAL_ONLY_HEAD + """\
 `trial_only` says whether the own entity of this criterion -- the entity named by this \
 criterion -- comes into being only because the patient is taking part in a clinical trial, \
 whether this one or another. One of:
@@ -1815,8 +1822,9 @@ def check_forbidden(
 ) -> dict[str, Any]:
     """Calls 7 and 8 on an agreed ``forbidden`` row: does its entity exist only through a trial?
 
-    :data:`TRIAL_ONLY_PROMPT` and :data:`TRIAL_ONLY_AGREEMENT_PROMPT`, over the row's own
-    verified span (``protocolSpan``; the whole line when the span does not verify). Call 8 is
+    :data:`TRIAL_ONLY_PROMPT` and :data:`TRIAL_ONLY_AGREEMENT_PROMPT`, shown the line, the entity
+    text and the description but no fragment. The row's own verified span (``protocolSpan``; the
+    whole line when the span does not verify) is recorded as the refusal's evidence. Call 8 is
     made only when call 7 answers ``yes``, and the row is marked trial-only only when both do; a
     failed or unreadable answer marks nothing. K1/K2 of P7/P8 SEG-OFF: CAROLINA's 'IMP given 2
     months before ... (IMP) start' and ARISTOTLE's 'investigational ... device' were agreed

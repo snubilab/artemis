@@ -131,3 +131,10 @@ def test_should_ask_the_trial_only_pair_with_no_example():
     """Field definitions only; the example guard lints the rendered prompts too."""
     for prompt in (annotation.TRIAL_ONLY_PROMPT, annotation.TRIAL_ONLY_AGREEMENT_PROMPT):
         assert "trial_only" in prompt and "entity_outside_trial" not in prompt
+
+
+def test_should_not_show_the_span_to_the_trial_only_pair():
+    """LEADER 'Hypersensitivity to investigational products' carries the span 'investigational
+    products'; shown it, the model judged the product, not the reaction (fix-k12 v2 replay)."""
+    for prompt in (annotation.TRIAL_ONLY_PROMPT, annotation.TRIAL_ONLY_AGREEMENT_PROMPT):
+        assert "{fragment}" not in prompt and "Fragment of the protocol line" not in prompt
