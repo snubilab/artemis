@@ -58,7 +58,7 @@ _UNSERVABLE_STATUS = frozenset({401, 403, 404})
 # exact before/after the cache is supposed to make cheap. This was added while trying a
 # grouped output schema (2026-08-11); that schema was measured and reverted, but the
 # hole it exposed is real and the guard stays.
-_CRITIC_PROMPT_VERSION = "2026-10-12-no-library-format-instructions"
+_CRITIC_PROMPT_VERSION = "2026-10-22-compact-contract"
 
 # The reply budget, in completion tokens. A reply judges each candidate in its own entry,
 # and google/gemma-4-E4B-it often lists every candidate. Measured 2026-10-14 in the critic
@@ -295,15 +295,15 @@ def _ask(chain: Any, payload: Dict[str, str], **call: Any) -> tuple:
 
 # ── Output Schema ──────────────────────────────────────────
 class CriticSelection(BaseModel):
-    """Schema for a single concept evaluation.
+    """Schema for a single concept evaluation: exactly the fields the selection reads.
 
-    When self-reflection is enabled (AGENT2_CRITIC_SELF_REFLECT=true),
+    No per-candidate free text: a reply runs to thousands of tokens and its reasoning was
+    read by log lines alone (2026-10-22). When self-reflection is enabled (AGENT2_CRITIC_SELF_REFLECT=true),
     the additional fields (confidence, potential_issue, assessment,
     recommended_action) are populated by the reflection pass.
     """
     concept_id: int = Field(description="The OMOP Concept ID")
     relevant: bool = Field(description="True if this concept is relevant to the clinical query")
-    reasoning: str = Field(description="Brief reasoning for inclusion/exclusion")
     confidence: float = Field(default=1.0, description="Confidence 0.0-1.0 in the relevance judgment")
     potential_issue: str = Field(
         default="none",
@@ -325,7 +325,7 @@ class CriticResult(BaseModel):
         description="List of evaluated concepts with relevance judgments"
     )
     overall_reasoning: str = Field(
-        description="Overall reasoning about the clinical query and concept selection"
+        description="One short sentence naming the clinical entity the query refers to"
     )
 
 
@@ -358,12 +358,12 @@ _OUTPUT_CONTRACT = """Return ONLY a JSON object with these keys:
 - selected_concepts: an array with one object per candidate you evaluated. Each object has:
   - concept_id: integer, the candidate's OMOP Concept ID.
   - relevant: boolean, true if the concept is relevant to the clinical query.
-  - reasoning: string, brief reasoning for inclusion or exclusion.
   - confidence: number from 0.0 to 1.0, confidence in the relevance judgment.
   - potential_issue: one of abbreviation_confusion, domain_mismatch, too_specific, vocab_mismatch, none.
   - assessment: one of correct, partially_supported, contradicted.
   - recommended_action: one of keep, drop, rerank.
-- overall_reasoning: string, overall reasoning about the clinical query and concept selection."""
+- overall_reasoning: string, one sentence of at most 20 words naming the clinical entity the query refers to.
+Write the JSON on a single line, without indentation and without any text outside it."""
 
 
 # ── Critic Class ───────────────────────────────────────────
@@ -460,8 +460,7 @@ class ConceptCritic:
                 logger.info(
                     f"[Critic] Self-reflect DROP {concept_id}: "
                     f"issue={sel.get('potential_issue', 'none')}, "
-                    f"confidence={confidence:.2f}, "
-                    f"reason={sel.get('reasoning', '')}"
+                    f"confidence={confidence:.2f}"
                 )
         return result
 
@@ -633,10 +632,7 @@ class ConceptCritic:
             relevant_selections = [s for s in raw_selections if s.get("relevant", False)]
             for sel in raw_selections:
                 if not sel.get("relevant", False):
-                    logger.debug(
-                        f"[Critic] Rejected {sel.get('concept_id')}: "
-                        f"{sel.get('reasoning', '')}"
-                    )
+                    logger.debug(f"[Critic] Rejected {sel.get('concept_id')}")
 
             # Apply self-reflection filter (preserves KG-validated concepts)
             if self._self_reflect:
@@ -653,7 +649,7 @@ class ConceptCritic:
                 if cid and cid in all_concept_ids:
                     selected.append(cid)
                     logger.debug(
-                        f"[Critic] Selected {cid}: {sel.get('reasoning', '')} "
+                        f"[Critic] Selected {cid} "
                         f"(assessment={sel.get('assessment', 'correct')})"
                     )
                 elif cid:
