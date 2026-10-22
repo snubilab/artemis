@@ -1,0 +1,35 @@
+High risk of CV events defined as any one (or more) of A), B), C) or D):
+A) Previous Vascular Disease:
+- Myocardial infarction (> 6 weeks prior to informed consent)
+- Documented coronary artery disease (≥ 50% luminal diameter narrowing
+of left main coronary artery or ≥50% in at least two major coronary
+arteries in angiogram)
+- Percutaneous Coronary Intervention (PCI) > 6 weeks prior informed
+consent
+- Coronary Artery By-pass Grafting (CABG) > 4 years prior to informed
+consent or with recurrent angina pectoris following surgery
+- Ischemic or hemorrhagic stroke (> 3 months prior to informed consent)
+- Peripheral occlusive arterial disease (previous limb bypass surgery,
+stenting or percutaneous transluminal angioplasty; previous limb or foot
+amputation due to circulatory insufficiency, angiographic or ultrasound
+detected significant vessel stenosis (≥ 50%) of major limb arteries
+(common iliac-, internal iliac-, external iliac-, femoral- and/or popliteal
+artery), history of intermittent claudication with uni- or bilateral ankle:
+arm blood pressure ratio < 0.90).
+B) Evidence of vascular related end-organ damage:
+- Moderately impaired renal function (as defined by modified diet of
+renal disease (MDRD) formula) with estimated glomerular filtration
+rate [eGFR]) 30-59 mL/min/1.73 m2
+- Random spot urinary albumin creatinine ratio ≥ 30 μg/mg (≥ 3.4
+mg/mmol) in two of three unrelated specimens in previous 12
+months prior Visit 1a
+- Proliferative retinopathy defined as retinal neovascularisation or
+previous retinal laser coagulation therapy.
+C) Age ≥ 70 years (at Visit 1a)
+D) At least two of the following CV risk factors:
+- Type 2 diabetes mellitus duration > 10 years at Visit 1a.
+- Current* systolic blood pressure (SBP) > 140 mmHg (or on at least
+one blood pressure lowering treatment at Visit 1a)
+- Current daily cigarette smoking
+- Current* LDL cholesterol ≥ 135 mg/dL (3.5 mmol/l) (or specific current
+treatment for this lipid abnormality at Visit 1a)

@@ -1,0 +1,17 @@
+Documented diagnosis of T2DM and concurrently insufficient glycaemic control and
+a high risk of CV events prior to informed consent:
+∀ Insufficient glycaemic control (at Visit 1a) defined as:
+a) HbA1c 6.5 - 8.5% (48 - 69 mmol/mol) while patient is treatment naïve (if
+intolerant or contra-indicated to first line anti-diabetic treatment) or treated
+with:
+- metformin monotherapy, or
+- alpha-glucosidase inhibitor monotherapy (e.g. acarbose, voglibose), or
+- metformin + alpha-glucosidase inhibitor, or
+b) HbA1c 6.5 - 7.5% (48 - 58 mmol/mol) while patient is treated with
+- sulphonylurea (SU) monotherapy, or
+- glinide monotherapy (e.g. repaglinide, nateglinide), or
+- metformin + SU (combination maximal up to 5 years), or
+- metformin + glinide (combination maximal up to 5 years), or
+- alpha-glucosidase inhibitor + SU (combination maximal up to 5 years),
+or
+- alpha-glucosidase inhibitor + glinide (combination maximal up to 5 years)

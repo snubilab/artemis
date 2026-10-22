@@ -1,0 +1,80 @@
+Type 1 diabetes mellitus
+Any history and/or current treatment with other antidiabetic drugs (e.g.
+rosiglitazone, pioglitazone, GLP-1 analogue/agonists, DPP-IV inhibitors or
+any insulin) prior to informed consent. Note 1: This also includes clinical
+trials where these antidiabetic drugs have been provided to the patient. Note
+2: Previous short term use of insulin (up to two consecutive weeks) is
+allowed (e.g. during hospitalisation) if taken at least 8 weeks prior informed
+consent
+Treatment with anti-obesity drugs within 3 months prior to informed consent
+Uncontrolled hyperglycaemia with a glucose level >240 mg/dl (>13.3
+mmol/L) after an overnight fast during placebo run-in and confirmed by a
+second measurement (not on the same day)
+Any previous (or planned within next 12 months) bariatric surgery (open or
+laparascopic) or intervention (gastric sleeve)
+Current treatment with systemic corticosteroids at time of informed consent
+or pre-planned initiation of such therapy. Note: inhaled use of steroids (e.g.
+for asthma/COPD) is no exclusion criterion, as this does not cause systemic
+steroid action
+Change in dose of thyroid hormones within 6 weeks prior informed consent
+Active liver disease or impaired hepatic function, defined by serum levels of
+either ALT (SGPT), AST (SGOT), or alkaline phosphatase above 3 x upper
+limit of normal (ULN) as determined at visit 1a
+Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6
+months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior
+informed consent
+Known hypersensitivity or allergy to the investigational product or its
+excipients, or glimepiride (or the SU class)
+Inappropriateness of glimepiride treatment for renal safety issues or other
+issues (e.g. allergy) according to local prescribing information
+Congestive heart failure of NYHA class III or IV
+Acute or chronic metabolic acidosis (present condition in patient history)
+Hereditary galactose intolerance
+Alcohol or drug abuse within the 3 months prior to informed consent that
+would interfere with trial participation
+Participation in another trial with an investigational drug given within 2
+months prior to informed consent
+
+
+
+
+
+
+
+
+
+
+
+Test product:
+dose:
+
+
+Pre-menopausal women (last menstruation # 1 year prior to informed
+consent) who are nursing or pregnant, or are of child-bearing potential and
+are not practicing an acceptable method of birth control (acceptable methods
+of birth control include tubal ligation, transdermal patch, intra uterine
+devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives,
+sexual abstinence (if allowed by local authorities), double barrier method and
+vasectomised partner) or do not plan to continue using acceptable method of
+birth control throughout the study and do not agree to submit to periodic
+pregnancy testing during participation in the trial.
+Patients considered unreliable by the investigator concerning the
+requirements for follow-up during the study and/or compliance with study
+drug administration, has a life expectancy less than 5 years for non-CV
+causes, or has cancer other than non-melanoma skin cancer within last 3
+years, or has any other condition than mentioned which in the opinion of the
+investigator, would not allow safe participation in the study
+Acute coronary syndrome ≤ 6 weeks prior to informed consent
+Stroke or TIA ≤ 3 months prior to informed consent
+
+5 mg once daily
+
+mode of admin. : Tablets per os
+Comparator product:
+dose:
+
+Glimepiride
+1-4 mg once daily
+
+mode of admin. : Tablets (overencapsulated) per os
+Duration of treatment: 2 up to 4 weeks placebo run-in phase followed by up to an estimated 400 432 weeks

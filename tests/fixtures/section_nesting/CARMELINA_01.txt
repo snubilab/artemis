@@ -1,0 +1,100 @@
+1) Documented diagnosis of type 2 diabetes before visit 1 (screening).
+2) Male or female patients who are drug-naïve or pre-treated with any antidiabetic
+background therapy, excluding treatment with GLP-1 receptor agonists, DPP-4 inhibitors
+or SGLT-2 inhibitors if ≥ 7 consecutive days.
+3) Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks
+prior to randomization. If insulin is part of the background therapy, the average daily
+insulin dose should not have been changed by more than 10% within the 8 weeks prior
+to randomization compared with the daily insulin dose at randomization.
+4) HbA1c of ≥ 6.5% and ≤ 10.0% at visit 1 (screening).
+5) Age ≥ 18 years at visit 1 (screening). For Japan only: Age ≥ 20 years at Visit 1.
+6) Body Mass Index (BMI) ≤ 45 kg/m2 at visit 1 (screening).
+7) Signed and dated written informed consent by date of visit 1 (screening) in
+accordance with GCP and local legislation prior to any study related procedure.
+8) High risk of CV events (I and/or II):
+
+I.
+
+Albuminuria (UACR ≥ 30 mg/g creatinine or ≥ 30 µg/min [microgram albumin per minute]
+or ≥ 30 mg/24 h [milligram albumin per 24 hours] in two out of three unrelated spot urine or
+timed samples in the last 24 months prior to randomization)* AND previous macrovascular
+disease, defined as either one or more:
+a Confirmed history of MI (> 2 months prior to Visit 1)
+b Advanced coronary artery disease, defined by any one of the following:
+≥ 50% narrowing of the luminal diameter in 2 or more major coronary arteries by
+coronary angiography, MRI angiography or CT angiography;
+Definition of major coronary arteries: LAD (Left Anterior Descending). CX
+(Circumflex) or RCA (right coronary artery)
+Left main stem coronary artery with ≥ 50% narrowing of the luminal diameter by
+coronary angiography, MRI angiography or CT angiography;
+Prior percutaneous or surgical revascularization of ≥ 2 major coronary arteries at
+least 2 months prior to Visit 1 (screening);
+The combination of prior percutaneous or surgical revascularization of 1 major
+coronary artery at least 2 months prior to visit 1 (screening), and ≥ 50% narrowing
+of the luminal diameter by coronary angiography, MRI angiography or CT
+angiography of at least 1 additional major coronary artery.
+
+
+
+c
+
+High-risk single-vessel coronary artery disease, defined as the presence of ≥ 50%
+narrowing of the luminal diameter of one major coronary artery by coronary angiography,
+MRI angiography or CT angiography in patients not revascularized:
+AND at least one of the following:
+A positive non invasive stress-test, confirmed by either:
+
+a positive ECG exercise tolerance test in patients without left bundle
+branch block, Wolff-Parkinson-White syndrome, left ventricular
+hypertrophy with repolarization abnormality, or paced ventricular rhythm,
+atrial fibrillation in case of abnormal ST-T segments;
+
+
+a positive stress echocardiogram showing induced regional systolic wall
+motion abnormalities;
+
+
+a positive nuclear myocardial perfusion imaging stress test showing stressinduced reversible perfusion abnormality;
+
+
+a positive cardiac stress perfusion MRI showing a stress induced perfusion
+defect;
+
+Patient discharged from hospital with a documented diagnosis of unstable angina
+pectoris between 2 and 12 months prior to visit 1 (screening).
+d History of ischemic or haemorrhagic stroke (>3 months prior to visit 1)
+e Presence of carotid artery disease (symptomatic or not) documented by either:
+
+imaging techniques with at least one lesion estimated to be ≥50%
+narrowing of the luminal diameter;
+
+o prior percutaneous or surgical carotid revascularization.
+f
+
+II.
+
+Presence of peripheral artery disease documented by either:
+
+previous limb angioplasty, stenting or bypass surgery;
+
+
+previous limb or foot amputation due to macrocirculatory insufficiency;
+
+
+angiographic evidence of peripheral artery stenosis ≥ 50% narrowing of the
+luminal diameter in at least one limb (definition of peripheral artery: common
+iliac artery, internal iliac artery, external iliac artery, femoral artery, popliteal
+artery).
+
+Evidence of impaired renal function with predefined UACR, with or without CV comorbidities, defined as follows (and/or criteria):
+Impaired renal function (as defined by MDRD formula) with an eGFR:15- <45
+mL/min/1.73 m2 at visit 1 (screening) with any UACR.
+Impaired renal function (as defined by MDRD formula) with an eGFR ≥ 45-75
+mL/min/1.73 m2 at visit 1 (screening) with an UACR > 200 mg/g creatinine or
+> 200 µg/min (microgram albumin per minute) or > 200 mg/24 h [milligram
+albumin per 24 hours] demonstrated in two out of three unrelated spot urine or
+timed samples in the last 24 months prior to randomization.
+
+
+
+eAppendix 4.

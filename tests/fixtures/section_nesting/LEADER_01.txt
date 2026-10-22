@@ -1,0 +1,23 @@
+ Type 2 diabetes
+ Anti-diabetic drug naïve or treated with one or more oral anti-diabetic drugs or treated with
+human NPH insulin or long-acting insulin analogue or premixed insulin, alone or in combination
+with OAD(s)
+ Glycated hemoglobin ≥7.0%
+ Prior cardiovascular disease cohort: age ≥50 and ≥1 of the following criteria:
+o Prior MI
+o Prior stroke or TIA
+o Prior coronary, carotid or peripheral arterial revascularization
+o >50% stenosis of coronary, carotid, or lower extremity arteries
+o History of symptomatic CHD documented by positive exercise stress test or any cardiac
+imaging or unstable angina with ECG changes
+o Asymptomatic cardiac ischemia documented by positive nuclear imaging test, exercise
+test or dobutamine stress echo
+o Chronic heart failure NYHA class II-III
+o Chronic renal failure:
+ eGFR <60 mL/min/1.73m2 (Modification of Diet in Renal Disease formula)
+ eGFR <60 mL/min (Cockcroft-Gault formula)
+ No Prior cardiovascular disease group: Age ≥60 y and ≥1 of the following criteria:
+o Microalbuminuria or proteinuria
+o Hypertension and left ventricular hypertrophy by ECG or imaging
+o Left ventricular systolic or diastolic dysfunction by imaging
+o Ankle-brachial index <0.9
