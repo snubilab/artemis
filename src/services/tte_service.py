@@ -640,9 +640,9 @@ def _refuse_line_naming_no_entity(criterion: Mapping[str, Any], label: str) -> N
 
     statement = stated_no_entity(criterion)
     if statement is None:
-        # A forbidden row whose own entity both wordings say exists only because of a clinical
-        # trial (calls 7/8, `check_forbidden`): a product or event known only by its role in a
-        # study, the same irreducible loss.
+        # A forbidden or required row whose own entity both wordings say exists only because of a
+        # clinical trial (calls 7/8, `check_forbidden`): a product or event known only by its role
+        # in a study, the same irreducible loss.
         fragment = stated_trial_only(criterion)
         if fragment is None:
             return

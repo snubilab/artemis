@@ -94,13 +94,14 @@ ARISTOTLE inclusion 4 'If not in atrial fibrillation/flutter at the time of enro
 with an unrelated change to the prompt -- which is why a revert needs both. Recorded on the row
 under :data:`CONDITIONAL_CHECK_KEY`; it never fills anything and touches no other field.
 
-Calls 7 and 8 (trial-only check, fix-k12). An agreed ``forbidden`` row with ``no_entity: none``
-that is not a label with members is asked ``trial_only`` (:data:`TRIAL_ONLY_PROMPT`): does its own
-entity exist only because the patient takes part in a clinical trial, any trial. Call 8
-(:data:`TRIAL_ONLY_AGREEMENT_PROMPT`) confirms a ``yes``; both ``yes`` refuses the row before mapping
-as ``unmappable-placeholder`` (:func:`stated_trial_only`), recorded under
-:data:`TRIAL_ONLY_CHECK_KEY`. Calls 5/6 were not reused: their ``entity_outside_trial`` is about this
-trial, and another trial's product (P8 CAROLINA K1, ARISTOTLE K2) answered ``yes`` to it.
+Calls 7 and 8 (trial-only check, fix-k12). An agreed ``forbidden`` or ``required`` row with
+``no_entity: none`` that is not a label with members is asked ``trial_only``
+(:data:`TRIAL_ONLY_PROMPT`): does its own entity exist only because the patient takes part in a
+clinical trial, any trial. Call 8 (:data:`TRIAL_ONLY_AGREEMENT_PROMPT`) confirms a ``yes``; both
+``yes`` refuses the row before mapping as ``unmappable-placeholder`` (:func:`stated_trial_only`),
+recorded under :data:`TRIAL_ONLY_CHECK_KEY`. Calls 5/6 were not reused: their
+``entity_outside_trial`` is about this trial, and another trial's product (P8 CAROLINA K1,
+ARISTOTLE K2) answered ``yes`` to it.
 
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
@@ -821,7 +822,7 @@ TRIAL_ONLY_NO = "no"
 _TRIAL_ONLY_VALUES = frozenset({TRIAL_ONLY_YES, TRIAL_ONLY_NO})
 
 #: Call 7: whether a ``forbidden`` criterion's own entity exists only because of a clinical trial.
-#: Field definition only. Asked of forbidden rows alone; calls 5/6 are not reused because their
+#: Field definition only. Asked of forbidden and required rows; calls 5/6 are not reused as their
 #: ``entity_outside_trial`` is about this trial, and products of another trial answered ``yes``.
 TRIAL_ONLY_PROMPT = _TRIAL_ONLY_HEAD + """\
 `trial_only` states whether this criterion's own entity -- the entity this criterion names -- \
@@ -1821,7 +1822,8 @@ def check_forbidden(
     model: str,
     llm: Any,
 ) -> dict[str, Any]:
-    """Calls 7 and 8 on an agreed ``forbidden`` row: does its entity exist only through a trial?
+    """Calls 7 and 8 on an agreed ``forbidden`` or ``required`` row: does its entity exist only
+    through a trial? (Required rows since gate-fix: P8 MAIN's consent rows shipped as required.)
 
     :data:`TRIAL_ONLY_PROMPT` and :data:`TRIAL_ONLY_AGREEMENT_PROMPT`, shown the line, the entity
     text and the description but no fragment. The row's own verified span (``protocolSpan``; the
@@ -1927,9 +1929,12 @@ def annotate_row(
             )
         else:
             row.pop(CONDITIONAL_CHECK_KEY, None)
-        # A label with members is never mapped, so it is not asked.
+        # A label with members is never mapped, so it is not asked. Required rows too (P8 MAIN:
+        # every delivered CARMELINA/CAROLINA/EMPA-REG file required a consent-procedure record
+        # mapped from an agreed `required` row); a conditional row is skipped by its own reason.
         if (
-            fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.FORBIDDEN.value
+            fields.get(FIELD_RECORD_REQUIREMENT)
+            in (RecordRequirement.FORBIDDEN.value, RecordRequirement.REQUIRED.value)
             and fields.get(FIELD_NO_ENTITY) in (None, NoEntity.NONE.value)
             and not members
         ):

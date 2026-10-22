@@ -332,6 +332,8 @@ def _render_criterion_annotation() -> str:
         '{"record_requirement": "required", "conditional_span": null, '
         '"excepted_entities": [], "base_span": null}'
     )
+    # A required member is also asked call 7 (trial_only), linted by its own render below.
+    calls = [c for c in calls if criterion_annotation.FIELD_TRIAL_ONLY not in c]
     first = [c for c in calls if c.startswith(criterion_annotation.ANNOTATION_SYSTEM_PROMPT)
              and not _record_change_call(c)]
     assert len(first) == len(calls) // 2 == 2, "calls 1 and 3 were not made for every row"

@@ -454,6 +454,7 @@ from src.utils.circe_lint import (  # noqa: E402
     prospective_occurrence_criteria,
     record_change_occurrence_criteria,
     rule_names,
+    trial_only_occurrence_criteria,
     specimen_mismatched_measurement_criteria,
     unfiltered_measurement_absence_criteria,
     unitless_value_bound_criteria,
@@ -3495,6 +3496,15 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"record_change criterion emitted ({len(record_change_emitted)}): "
                 f"{'; '.join(record_change_emitted)}"
+            )
+
+        # (ae) a criterion both trial_only wordings called trial-only, emitted anyway: it requires
+        # a record only taking part in a trial produces (consent, run-in). Structural only.
+        trial_only_emitted = trial_only_occurrence_criteria(expression, study)
+        if trial_only_emitted:
+            reasons.append(
+                f"trial-only criterion emitted ({len(trial_only_emitted)}): "
+                f"{'; '.join(trial_only_emitted)}"
             )
 
         # (ab) a criterion mapped while a KG/refiner lookup or the critic failed: its concept
