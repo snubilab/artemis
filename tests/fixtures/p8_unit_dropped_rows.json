@@ -1,0 +1,462 @@
+{
+ "carmelina_inclusion_15": {
+  "id": 15,
+  "description": "HbA1c within range at screening",
+  "domain": "Measurement",
+  "valueConstraint": {
+   "op": "bt",
+   "value": 6.5,
+   "valueHigh": 10.0,
+   "unitText": "",
+   "referenceBound": "absolute",
+   "unitConceptId": null
+  },
+  "sourceText": "HbA1c",
+  "protocolLine": "6. HbA1c of ≥ 6.5% and ≤ 10.0% at Visit 1 (screening)",
+  "protocolSpan": "",
+  "window": {
+   "start": -180,
+   "end": 0
+  },
+  "conceptSetId": 9,
+  "conceptSetName": "HbA1c",
+  "logicType": "PRESENCE",
+  "groupId": null,
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true,
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "46e46f38e49430f6f2f3d91dddcaf00f7dd0551dad3c74cf6cb018a8f84ba869",
+   "outcome": "called",
+   "record_change": "none",
+   "record_change_span": null,
+   "kept": {},
+   "dropped": {},
+   "second": null
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "at_index",
+   "window_span": "at Visit 1 (screening)",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": null,
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "≥ 6.5% and ≤ 10.0%",
+   "quantity_kind": "lab_value",
+   "reference_bound": "none",
+   "record_change": "none",
+   "record_change_span": null
+  },
+  "_annotationRejected": [
+   {
+    "field": "specimen",
+    "value": {
+     "specimen": "blood",
+     "specimen_span": null
+    },
+    "reason": "specimen_span is not a substring of protocolLine"
+   }
+  ]
+ },
+ "carolina_inclusion_25": {
+  "id": 25,
+  "description": "BMI <= 45 kg/m2 at Visit 1b",
+  "domain": "Measurement",
+  "valueConstraint": {
+   "op": "lte",
+   "value": 45.0,
+   "valueHigh": null,
+   "unitText": "",
+   "referenceBound": "absolute",
+   "unitConceptId": null
+  },
+  "sourceText": "Body Mass Index",
+  "protocolLine": "9. Body Mass Index (BMI) ≤ 45 kg/m2 at Visit 1b",
+  "protocolSpan": "",
+  "window": {
+   "start": -180,
+   "end": 0
+  },
+  "conceptSetId": 19,
+  "conceptSetName": "Body Mass Index",
+  "logicType": "PRESENCE",
+  "groupId": null,
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true,
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "80bd3c1d8988866d132dc50c6e5cee327a0d47044b1d7d2dbbb60025c3f769b0",
+   "outcome": "called",
+   "record_change": "none",
+   "record_change_span": null,
+   "kept": {},
+   "dropped": {},
+   "second": null
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "at_index",
+   "window_span": null,
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "≤ 45 kg/m2",
+   "quantity_kind": "lab_value",
+   "reference_bound": "none",
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "carolina_inclusion_44_45": [
+  {
+   "id": 44,
+   "description": "BMI <= 45kg/m² (reiteration)",
+   "domain": "Measurement",
+   "valueConstraint": {
+    "op": "lte",
+    "value": 45.0,
+    "valueHigh": null,
+    "unitText": "",
+    "referenceBound": "absolute",
+    "unitConceptId": null
+   },
+   "sourceText": "Body Mass Index",
+   "protocolLine": "20. BMI =< 45kg/m²",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "fcf9d21b-6eb6-400f-a479-ec1aa7e33ced",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": true,
+   "mappable": false,
+   "_recordChangeAgreement": {
+    "promptVersion": "rfc016-record-change-cf-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "cacheKey": "939e05c3ef4e8c2f390f99f3799187efcaaf9b4640d75dcb4f7c1e69804296ab",
+    "outcome": "called",
+    "record_change": "none",
+    "record_change_span": null,
+    "kept": {},
+    "dropped": {},
+    "second": null
+   },
+   "annotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "required",
+    "conditional_span": null,
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "at_index",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": "=< 45kg/m²",
+    "quantity_kind": "lab_value",
+    "reference_bound": "none",
+    "record_change": "none",
+    "record_change_span": null
+   }
+  },
+  {
+   "id": 45,
+   "description": "Body Mass Index",
+   "domain": "Measurement",
+   "valueConstraint": null,
+   "sourceText": "Body Mass Index",
+   "protocolLine": "20. BMI =< 45kg/m²",
+   "protocolSpan": "",
+   "window": {
+    "start": -180,
+    "end": 0
+   },
+   "conceptSetId": null,
+   "conceptSetName": "",
+   "logicType": "PRESENCE",
+   "groupId": "fcf9d21b-6eb6-400f-a479-ec1aa7e33ced",
+   "groupType": "ANY",
+   "parentGroupId": null,
+   "isGroupLabel": false,
+   "mappable": true,
+   "_recordChangeAgreement": {
+    "promptVersion": "rfc016-record-change-cf-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "cacheKey": "8619a45aa3dc601bef720270f90f30834d68a6223d48ba2c3f61a56deb2bac8a",
+    "outcome": "called",
+    "record_change": "none",
+    "record_change_span": null,
+    "kept": {},
+    "dropped": {},
+    "second": null
+   },
+   "annotation": {
+    "promptVersion": "rfc016-steps1-4-agreement-v1",
+    "model": "vllm/google/gemma-4-E4B-it",
+    "record_requirement": "required",
+    "conditional_span": null,
+    "excepted_entities": [],
+    "base_span": null,
+    "relation": null,
+    "relation_span": null,
+    "cardinality": null,
+    "timing": "at_index",
+    "window_span": null,
+    "route": [
+     "any"
+    ],
+    "route_span": null,
+    "specimen": "any",
+    "specimen_span": null,
+    "no_entity": "none",
+    "no_entity_span": null,
+    "threshold_span": "=< 45kg/m²",
+    "quantity_kind": "lab_value",
+    "reference_bound": "none",
+    "record_change": "none",
+    "record_change_span": null
+   }
+  }
+ ],
+ "carolina_inclusion_22": {
+  "id": 22,
+  "description": "Systolic blood pressure > 140 mmHg or on BP lowering treatment",
+  "domain": "Observation",
+  "valueConstraint": {
+   "op": "gt",
+   "value": 140.0,
+   "valueHigh": null,
+   "unitText": "",
+   "referenceBound": "absolute",
+   "unitConceptId": null
+  },
+  "sourceText": "Systolic blood pressure",
+  "protocolLine": "7. [OR-GROUP] High risk of CV events defined as any one (or more) of A), B), C) or D) with any of: Myocardial infarction (> 6 weeks prior to informed consent) | Documented coronary artery disease (≥ 50% luminal diameter narrowing of left main coronary artery or ≥50% in at least two major coronary arteries in angiogram) | Percutaneous Coronary Intervention (PCI) > 6 weeks prior informed consent | Coronary Artery By-pass Grafting (CABG) > 4 years prior to informed consent or with recurrent angina pectoris following surgery | Ischemic or hemorrhagic stroke (> 3 months prior to informed consent) | Peripheral occlusive arterial disease (previous limb bypass surgery, stenting or percutaneous transluminal angioplasty; previous limb or foot amputation due to circulatory insufficiency, angiographic or ultrasound detected significant vessel stenosis (≥ 50%) of major limb arteries (common iliac-, internal iliac-, external iliac-, femoral- and/or popliteal artery), history of intermittent claudication with uni- or bilateral ankle: arm blood pressure ratio < 0.90). | Moderately impaired renal function (as defined by modified diet of renal disease (MDRD) formula) with estimated glomerular filtration rate [eGFR]) 30-59 mL/min/1.73 m2 | Random spot urinary albumin creatinine ratio ≥ 30 μg/mg (≥ 3.4 mg/mmol) in two of three unrelated specimens in previous 12 months prior Visit 1a | Proliferative retinopathy defined as retinal neovascularisation or previous retinal laser coagulation therapy. | Age ≥ 70 years (at Visit 1a) | Type 2 diabetes mellitus duration > 10 years at Visit 1a. | Current* systolic blood pressure (SBP) > 140 mmHg (or on at least one blood pressure lowering treatment at Visit 1a) | Current daily cigarette smoking | Current* LDL cholesterol ≥ 135 mg/dL (3.5 mmol/l) (or specific current treatment for this lipid abnormality at Visit 1a)",
+  "protocolSpan": "",
+  "window": {
+   "start": -180,
+   "end": 0
+  },
+  "conceptSetId": 16,
+  "conceptSetName": "Systolic blood pressure",
+  "logicType": "PRESENCE",
+  "groupId": "233118b9-26ef-45d2-ba7c-26f902fb4e76",
+  "groupType": "ANY",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true,
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "21313d3c096652245f537b7004f927ed57e2f5069c87da81a4825cc0142580b6",
+   "outcome": "called",
+   "record_change": "none",
+   "record_change_span": null,
+   "kept": {},
+   "dropped": {},
+   "second": null
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "at_index",
+   "window_span": null,
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "> 140 mmHg",
+   "quantity_kind": "lab_value",
+   "reference_bound": "none",
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "carmelina_inclusion_16": {
+  "id": 16,
+  "description": "Age requirement at screening",
+  "domain": "Demographics",
+  "valueConstraint": {
+   "op": "gte",
+   "value": 18.0,
+   "valueHigh": null,
+   "unitText": "",
+   "referenceBound": "absolute",
+   "unitConceptId": null
+  },
+  "sourceText": "Age",
+  "protocolLine": "7. Age ≥ 18 years at Visit 1(screening). For Japan only: Age ≥ 20 years at Visit 1",
+  "protocolSpan": "",
+  "window": {
+   "start": -180,
+   "end": 0
+  },
+  "conceptSetId": null,
+  "conceptSetName": "",
+  "logicType": "PRESENCE",
+  "groupId": null,
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": false,
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "7aa7e7d6ca02141628d87288671f3990f166b7092cbc80f7bcd0cd76fdfba82e",
+   "outcome": "called",
+   "record_change": "none",
+   "record_change_span": null,
+   "kept": {},
+   "dropped": {},
+   "second": null
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "at_index",
+   "window_span": "at Visit 1(screening)",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "≥ 18 years",
+   "quantity_kind": "other",
+   "reference_bound": "none",
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "empareg_inclusion_12": {
+  "id": 12,
+  "description": "Body Mass index limit",
+  "domain": "Measurement",
+  "valueConstraint": {
+   "op": "lte",
+   "value": 45.0,
+   "valueHigh": null,
+   "unitText": "",
+   "referenceBound": "absolute",
+   "unitConceptId": null
+  },
+  "sourceText": "Body Mass index",
+  "protocolLine": "5. Body Mass index <= 45 at Visit 1",
+  "protocolSpan": "",
+  "window": {
+   "start": -180,
+   "end": 0
+  },
+  "conceptSetId": 4,
+  "conceptSetName": "Body Mass index",
+  "logicType": "PRESENCE",
+  "groupId": null,
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true,
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "8f85c9fa61c3c0106f08474e8315a19d8b0abea36c9d484d800dd5ea0a518c60",
+   "outcome": "called",
+   "record_change": "none",
+   "record_change_span": null,
+   "kept": {},
+   "dropped": {},
+   "second": null
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "at_index",
+   "window_span": null,
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "<= 45",
+   "quantity_kind": "lab_value",
+   "reference_bound": "none",
+   "record_change": "none",
+   "record_change_span": null
+  }
+ }
+}

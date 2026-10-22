@@ -119,6 +119,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import threading
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -2721,8 +2722,49 @@ def applied_value_constraint(row: Mapping[str, Any]) -> Any:
     if use in (ThresholdUse.NOT_REPRESENTABLE, ThresholdUse.SKIP_CRITERION):
         return None
     if use is ThresholdUse.MEASURED and isinstance(constraint, Mapping):
-        return {**constraint, "referenceBound": stated.bound}
+        applied = {**constraint, "referenceBound": stated.bound}
+        if not (constraint.get("unitText") or "").strip() and stated.bound == "absolute":
+            from src.api.models.tte import DEMOGRAPHIC_DOMAINS  # built as an Age: no unit
+
+            unit = _unit_after_bound(stated.span, constraint)
+            if unit is not None and row.get("domain") not in DEMOGRAPHIC_DOMAINS:
+                applied["unitText"] = unit
+        return applied
     return constraint
+
+
+#: A number as a protocol writes it: digits, thousands commas, one decimal point.
+_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def _unit_after_bound(span: str, constraint: Mapping[str, Any]) -> str | None:
+    """The unit the verified threshold span states right after the bound's own number.
+
+    Extraction sometimes writes ``unitText: ''`` while the line says "<= 45 kg/m2" (P8 MAIN
+    CAROLINA inclusion 25). Format only: the token directly after the number equal to the
+    bound (the upper one of a range), kept only when :func:`normalize_unit` resolves it.
+
+    :param span: the annotation's ``threshold_span``, already checked against the line.
+    :param constraint: the row's ``valueConstraint``.
+    :returns: the unit spelling as the span writes it, or None.
+    """
+    from src.services.value_constraint import normalize_unit
+
+    high = constraint.get("valueHigh")
+    target = high if constraint.get("op") == "bt" and high is not None else constraint.get("value")
+    if not isinstance(target, (int, float)):
+        return None
+    for match in _NUMBER.finditer(span or ""):
+        try:
+            if float(match.group().replace(",", "")) != float(target):
+                continue
+        except ValueError:
+            continue
+        rest = span[match.end():].split()
+        token = rest[0].rstrip(").,;:") if rest else ""
+        if token and normalize_unit(token) is not None:
+            return token
+    return None
 
 
 def unrepresentable_threshold_records(
