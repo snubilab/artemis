@@ -1413,9 +1413,9 @@ def _build_llm(model: str) -> Any:
 
     Separate so a test substitutes a stub without reaching a network.
     """
-    from src.utils.llm import get_llm
+    from src.utils.llm import ANNOTATION_MAX_TOKENS, get_llm
 
-    return get_llm(model_name=model, temperature=0.0, json_mode=True)
+    return get_llm(model_name=model, temperature=0.0, json_mode=True, max_tokens=ANNOTATION_MAX_TOKENS)
 
 
 def _parse(content: Any) -> Any:

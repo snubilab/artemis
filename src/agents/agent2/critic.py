@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from src.utils.exceptions import LLMConfigurationError
 from src.utils.llm import (
+    CRITIC_MAX_TOKENS,
     StrictJsonOutputParser,
     _is_vllm_model,
     finish_reason,
@@ -70,7 +71,9 @@ _CRITIC_PROMPT_VERSION = "2026-10-12-no-library-format-instructions"
 # those criteria kept its seeds alone. Prompts reach ~4k tokens; prompt + 8192 stays far
 # inside the served 65536 context. The cap stays finite on purpose: a model that never stops
 # (hari-q3-8b once ran a whole benchmark into the context ceiling) fails fast and visibly.
-_CRITIC_MAX_TOKENS = 8192
+# Raised to 22,528 on 2026-10-23 by the one rule in src/utils/llm.py (4x the largest of 12,502
+# replies, 5,543); the constant lives there with the other caps.
+_CRITIC_MAX_TOKENS = CRITIC_MAX_TOKENS
 
 
 def _concept_rows(concept_ids: List[int]) -> Dict[int, tuple]:
@@ -381,7 +384,7 @@ class ConceptCritic:
     """
 
     def __init__(self):
-        # The budget and why it is 8192: see _CRITIC_MAX_TOKENS.
+        # The budget and why: see _CRITIC_MAX_TOKENS.
         self._default_llm = get_llm(temperature=0.0, json_mode=True, max_tokens=_CRITIC_MAX_TOKENS)
         self._cache = CriticCache()
         self._self_reflect = os.environ.get(

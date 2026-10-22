@@ -135,7 +135,7 @@ def full_entity_name(entity: str, protocol_line: str | None, *, model: str | Non
     if not entity or not line:
         return entity
     from src.agents.agent2.critic import select_critic_model
-    from src.utils.llm import get_llm, resolve_model
+    from src.utils.llm import ENTITY_FULL_NAME_MAX_TOKENS, get_llm, resolve_model
 
     resolved = resolve_model(model or select_critic_model(None))
     prompt = ENTITY_NAME_PROMPT.format(line=line, entity=entity)
@@ -147,7 +147,7 @@ def full_entity_name(entity: str, protocol_line: str | None, *, model: str | Non
         pairs = _load().get(key) if enabled else None
     if pairs is None:
         try:
-            pairs = _ask(llm if llm is not None else get_llm(model_name=resolved, temperature=0.0, json_mode=True),
+            pairs = _ask(llm if llm is not None else get_llm(model_name=resolved, temperature=0.0, json_mode=True, max_tokens=ENTITY_FULL_NAME_MAX_TOKENS),
                          prompt)
         except Exception as exc:  # a failed call maps the seed as written, as before this step existed
             logger.warning("[entity-name] no full name for %r (%s: %s); mapped as written",

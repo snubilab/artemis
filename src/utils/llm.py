@@ -27,6 +27,34 @@ logger = logging.getLogger(__name__)
 # answer ended. OpenAI-compatible servers (vLLM included) spell it this way.
 TRUNCATED_FINISH_REASON = "length"
 
+# Reply budgets (max_tokens), one per call type. Without one a degenerate reply runs to the
+# served max_model_len (65,536): on 2026-10-23 one ARISTOTLE annotation request was in flight
+# for 3+ hours at ~4 tok/s. A reply that reaches its cap ends finish_reason "length", which
+# raise_if_truncated refuses, so it is neither an answer nor cached.
+#
+# Rule: max(2048, 4 x the largest observed legitimate reply), rounded up to a multiple of 1024.
+# Observed with the google/gemma-4-E4B-it tokenizer over every cache under output/ (re-tokenized
+# JSON at indent=2, an upper bound; tokenizer vs server counts agree to 1.000-1.013 on 12,502
+# critic replies), measured 2026-10-23:
+#   annotation (all calls)  2,741 unique answers, max 696          -> 3,072
+#   specimen critic            63 answers, max 446                  -> 2,048
+#   entity full name          377 answers, max ~125                 -> 2,048
+#   segmentation               84 answers, max 3,818 (former 4096)  -> 15,360
+#   critic                 12,502 server counts, max 5,543, 0 cut   -> 22,528
+#   reranker               not logged; schema-bounded (ids, or one id + a brief reason)
+#                          -> 2,048, the floor
+ANNOTATION_MAX_TOKENS = 3072
+SPECIMEN_CRITIC_MAX_TOKENS = 2048
+ENTITY_FULL_NAME_MAX_TOKENS = 2048
+SEGMENTATION_MAX_TOKENS = 15360
+CRITIC_MAX_TOKENS = 22528
+RERANKER_MAX_TOKENS = 2048
+# Agent 1 extraction is the exception: 4x does not fit the context. 87 logged calls; the largest
+# that finished is CAROLINA at 29,508 (a 99 KB IR of 125 named nodes, cached and used); the three
+# longer ones (52,671 / 57,015 / 58,284) each stopped at exactly prompt + completion = 65,536.
+# 1.5x the largest finished reply, rounded up to 1024; the largest prompt seen (13,450) still fits.
+EXTRACTION_MAX_TOKENS = 45056
+
 
 def _response_metadata(response: Any) -> Mapping[str, Any]:
     """``response.response_metadata`` when it is really a mapping, else empty.

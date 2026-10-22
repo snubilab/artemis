@@ -17,6 +17,7 @@ import httpx
 import pytest
 
 from src.settings import settings
+from src.utils.llm import CRITIC_MAX_TOKENS
 from tests.test_critic_failure_is_recorded import ANCHORS, SEED, _kg, _process, _selection
 
 MODEL = "google/gemma-4-E4B-it"
@@ -72,7 +73,7 @@ CUT = _selection([SEED] + ANCHORS)[:-60]
 
 
 @pytest.mark.parametrize("tier", ["follow", f"vllm/{MODEL}"])
-def test_should_ask_the_server_for_8192_reply_tokens_when_the_critic_calls_the_model(
+def test_should_ask_the_server_for_the_critic_cap_when_the_critic_calls_the_model(
     monkeypatch, local_vllm, tier
 ):
     monkeypatch.setenv("AGENT2_CRITIC_MODEL_TIER", tier)
@@ -81,7 +82,7 @@ def test_should_ask_the_server_for_8192_reply_tokens_when_the_critic_calls_the_m
 
     critic.evaluate_with_outcome("q", [SEED], _kg(ANCHORS), domain_hint="Condition")
 
-    assert [body["max_tokens"] for body in sent] == [8192]
+    assert [body["max_tokens"] for body in sent] == [CRITIC_MAX_TOKENS]
 
 
 # ── a reply cut at the budget ──────────────────────────────
@@ -90,7 +91,7 @@ def test_should_ask_the_server_for_8192_reply_tokens_when_the_critic_calls_the_m
 def test_should_record_a_critic_failure_naming_finish_reason_length_when_the_reply_is_cut(
     monkeypatch, caplog, local_vllm
 ):
-    _serve(monkeypatch, CUT, "length", completion_tokens=8192)
+    _serve(monkeypatch, CUT, "length", completion_tokens=CRITIC_MAX_TOKENS)
     critic = _critic(monkeypatch)
     caplog.set_level(logging.INFO)
 
@@ -99,13 +100,13 @@ def test_should_record_a_critic_failure_naming_finish_reason_length_when_the_rep
     assert result.concept_ids == [SEED], "a cut critic answer was used"
     assert "Invalid json output" in result.critic_failure, result.critic_failure
     assert "finish_reason=length" in result.critic_failure, result.critic_failure
-    assert "completion_tokens=8192" in result.critic_failure, result.critic_failure
+    assert f"completion_tokens={CRITIC_MAX_TOKENS}" in result.critic_failure, result.critic_failure
     assert result.mapping_failures() == [
         {"stage": "critic", "reason": result.critic_failure, "seedsOnly": True}
     ]
     [line] = _completion_lines(caplog)
     assert (line["finish_reason"], line["completion_tokens"], line["reply"]) == (
-        "length", 8192, "unparseable"
+        "length", CRITIC_MAX_TOKENS, "unparseable"
     )
 
 
@@ -129,7 +130,7 @@ def test_should_log_and_return_finish_reason_and_token_counts_when_the_reply_com
     [line] = _completion_lines(caplog)
     assert line == {
         "query": "q", "domain": "Condition", "model": f"vllm/{MODEL}",
-        "candidates": 1 + len(ANCHORS), "max_tokens": 8192, "finish_reason": "stop",
+        "candidates": 1 + len(ANCHORS), "max_tokens": CRITIC_MAX_TOKENS, "finish_reason": "stop",
         "completion_tokens": 1234, "prompt_tokens": 3456, "reply": "parsed",
     }
 
