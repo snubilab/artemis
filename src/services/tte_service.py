@@ -636,11 +636,22 @@ def _refuse_line_naming_no_entity(criterion: Mapping[str, Any], label: str) -> N
         :data:`~src.utils.criterion_refusal.REFUSAL_UNMAPPABLE_PLACEHOLDER` when the verified
         annotation says the line names no entity. Nothing is raised otherwise.
     """
-    from src.services.criterion_annotation import stated_no_entity
+    from src.services.criterion_annotation import stated_no_entity, stated_trial_only
 
     statement = stated_no_entity(criterion)
     if statement is None:
-        return
+        # A forbidden row whose own entity both wordings say exists only because of a clinical
+        # trial (calls 7/8, `check_forbidden`): a product or event known only by its role in a
+        # study, the same irreducible loss.
+        fragment = stated_trial_only(criterion)
+        if fragment is None:
+            return
+        raise CriterionRefused(
+            f"the protocol line of {label!r} names an entity only a trial produces "
+            f"({fragment!r}), so no record outside the trial can stand for it",
+            code=REFUSAL_UNMAPPABLE_PLACEHOLDER,
+            detail=fragment,
+        )
     raise CriterionRefused(
         f"the protocol line of {label!r} names no clinical entity a vocabulary could hold "
         f"({statement.kind.value}: {statement.span!r}), so no concept set can stand for it",
