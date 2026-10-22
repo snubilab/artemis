@@ -4,9 +4,8 @@ Integration tests: PMC enrichment pipeline across multiple preset NCT trials.
 Covers the full priority chain:
     PMC supplements -> PMC full-text eligibility -> PubMed abstract fallback
 
-Which text is a criterion is decided by the segmentation step and is stubbed here at that
-boundary; the step itself is tested on the real corpus in
-tests/test_eligibility_segmentation.py.
+The list splitter of the section rules is stubbed here at that boundary; the rules
+themselves are tested on the real corpus in tests/test_corpus_regression.py.
 
 All HTTP calls are mocked — no real network requests are made.
 
@@ -23,7 +22,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.agents.agent1.nct_fetcher import TrialData
-from src.agents.agent1.segmentation import Segmentation
 
 
 # ---------------------------------------------------------------------------
@@ -90,15 +88,15 @@ PMC_OA_XML_EMPTY = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-def _segmented_stub(text: str) -> Segmentation:
-    """The segmentation step's answer, stubbed: which text is a criterion is the model's
-    decision (tests/test_eligibility_segmentation.py covers it on the real corpus); these
-    tests cover what the enrichment chain does with the answer."""
-    assert text.strip(), "the article body reaches the step"
-    return Segmentation(items={
+def _items_stub(text: str) -> dict:
+    """The list splitter's answer, stubbed: the section rules are tested on the real
+    corpus elsewhere (tests/test_corpus_regression.py, tests/test_section_rules_candidate_input.py);
+    these tests cover what the enrichment chain does with the answer."""
+    assert text.strip(), "the eligibility section reaches the splitter"
+    return {
         "inclusion": ["STUB inclusion one", "STUB inclusion two"],
         "exclusion": ["STUB exclusion one"],
-    })
+    }
 
 
 def _make_tgz_bytes(members: dict) -> bytes:
@@ -173,7 +171,7 @@ class TestPmcFullTextEnrichment:
         fulltext_resp = _make_fulltext_response(LEADER_PMC_FULLTEXT)
 
         with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]), \
-                patch("src.agents.agent1.pmc_fetcher.segment_eligibility", _segmented_stub):
+                patch("src.agents.agent1.pmc_fetcher.extract_eligibility_from_text", _items_stub):
             result = get_pmc_eligibility("23953384")
 
         assert result is not None
@@ -217,8 +215,8 @@ class TestPmcFullTextEnrichment:
         fulltext_resp = _make_fulltext_response(results_only_body)
 
         with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]), \
-                patch("src.agents.agent1.pmc_fetcher.segment_eligibility",
-                      lambda text: Segmentation(items={"inclusion": [], "exclusion": []})):
+                patch("src.agents.agent1.pmc_fetcher.extract_eligibility_from_text",
+                      lambda text: {"inclusion": [], "exclusion": []}):
             result = get_pmc_eligibility("12345678")
 
         assert result is None
@@ -431,7 +429,7 @@ class TestEnrichmentPriorityChain:
         fulltext_resp = _make_fulltext_response(LEADER_PMC_FULLTEXT)
 
         with patch("requests.get", side_effect=[idconv_resp, fulltext_resp]), \
-                patch("src.agents.agent1.pmc_fetcher.segment_eligibility", _segmented_stub):
+                patch("src.agents.agent1.pmc_fetcher.extract_eligibility_from_text", _items_stub):
             pmc_criteria = get_pmc_eligibility("23953384")
 
         assert pmc_criteria is not None

@@ -114,8 +114,11 @@ table whose values are names or attributes is collected only where text is looke
 
 THE CHECKS
 ----------
-1. Every collected site has a ledger entry: ``allowed`` by ``(file, fingerprint)``, or
-   ``pending`` by ``(file, symbol, sink)``. This is what blocks a new rule.
+1. Every collected site has a ledger entry: ``allowed`` or ``section_locating`` by
+   ``(file, fingerprint)``, or ``pending`` by ``(file, symbol, sink)``. This is what blocks a new rule.
+   ``section_locating`` is the user-approved (2026-10-22) exception for rules that only locate and split
+   the eligibility section by document format; an entry of that kind outside
+   :data:`SECTION_LOCATING_MODULES` is a malformed ledger.
 2. Every ``pending`` entry still has a site with its sink in its symbol. A pending rule
    stays pending while any of its sinks remains; delete the entry when the last one goes.
 3. No ``allowed`` entry lives in a module whose only role is a text rule.
@@ -167,7 +170,15 @@ SEARCH_METHODS = frozenset(
 )
 CHAT_ROLES = frozenset({"system", "user", "human", "ai", "assistant"})
 CONSTANT_CONTAINERS = frozenset({"frozenset", "set", "tuple"})
-KINDS = frozenset({"allowed", "pending"})
+KINDS = frozenset({"allowed", "pending", "section_locating"})
+
+# The user's 2026-10-22 exception: rules that only LOCATE and SPLIT the eligibility section by document
+# format (section headings, list numbering and bullets, page furniture) are allowed again. They are ledgered
+# as ``section_locating`` -- keyed by (file, fingerprint) like ``allowed`` -- and admitted ONLY in these
+# modules, so the kind cannot become a way to file a meaning rule (conditional, exception, entity, scope,
+# OR-grouping) anywhere else. Each regex or word list still needs its own entry: a new one in this module
+# fails check 1 like any other site.
+SECTION_LOCATING_MODULES: frozenset[str] = frozenset({"src/agents/agent1/section_rules.py"})
 STATUSES = frozenset({"live", "dormant"})
 
 DIFFLIB_MATCHERS = frozenset({"SequenceMatcher", "get_close_matches"})
@@ -1968,8 +1979,8 @@ def _pending_key(entry: dict[str, str]) -> tuple[str, str, str]:
     return (entry["file"], entry["symbol"], entry["sink"])
 
 
-def load_ledger() -> list[dict[str, str]]:
-    entries = _ledger_entries()
+def ledger_problems(entries: list[dict[str, str]]) -> list[str]:
+    """Every malformed entry in ``entries``, one line each; empty when the ledger is well formed."""
     seen: set[tuple[str, ...]] = set()
     problems = []
     for entry in entries:
@@ -1991,8 +2002,20 @@ def load_ledger() -> list[dict[str, str]]:
                 problems.append(f"allowed entry lacks a fingerprint: {entry}")
                 continue
             key = ("allowed", entry["file"], entry["fingerprint"])
+        elif kind == "section_locating":
+            missing = [f for f in ("fingerprint", "decides", "approved") if not (entry.get(f) or "").strip()]
+            if missing:
+                problems.append(f"section_locating entry lacks {missing}: {entry}")
+                continue
+            if entry["file"] not in SECTION_LOCATING_MODULES:
+                problems.append(
+                    f"section_locating is admitted only in {sorted(SECTION_LOCATING_MODULES)}, "
+                    f"not in {entry['file']}: {entry['fingerprint'][:120]}"
+                )
+                continue
+            key = ("section_locating", entry["file"], entry["fingerprint"])
         else:
-            problems.append(f"kind must be allowed or pending: {entry}")
+            problems.append(f"kind must be allowed, pending or section_locating: {entry}")
             continue
         if key in seen:
             problems.append(f"duplicate entry {key}")
@@ -2001,8 +2024,19 @@ def load_ledger() -> list[dict[str, str]]:
             problems.append(f"inventory_id missing: {key}")
         if not (entry.get("reason") or "").strip():
             problems.append(f"reason missing: {key}")
+    return problems
+
+
+def load_ledger() -> list[dict[str, str]]:
+    entries = _ledger_entries()
+    problems = ledger_problems(entries)
     assert not problems, "malformed ledger:\n" + "\n".join(problems)
     return entries
+
+
+def fingerprinted(entries: list[dict[str, str]]) -> set[tuple[str, str]]:
+    """``(file, fingerprint)`` of every entry that covers one site exactly: allowed and section_locating."""
+    return {(e["file"], e["fingerprint"]) for e in entries if e["kind"] in ("allowed", "section_locating")}
 
 
 def _canonical_baseline_keys(keys: Iterable[Iterable[str]]) -> str:
@@ -2033,7 +2067,7 @@ def test_should_list_every_text_rule_site_in_the_ledger_when_src_is_scanned():
     assert len(files) > 100, f"scan found only {len(files)} files under {SCAN_DIRECTORY}"
     assert all(path.is_file() for path in DELIVERY_SCRIPTS), DELIVERY_SCRIPTS
     entries = load_ledger()
-    allowed = {(e["file"], e["fingerprint"]) for e in entries if e["kind"] == "allowed"}
+    allowed = fingerprinted(entries)
     pending = {_pending_key(e) for e in entries if e["kind"] == "pending"}
     unlisted: dict[tuple[str, str], list[Site]] = defaultdict(list)
     for site in collect_sites():
@@ -2110,3 +2144,53 @@ def test_should_not_grow_the_pending_list_when_the_baseline_is_unchanged():
         "pending entries that are not in the recorded baseline -- the pending list only shrinks; "
         "a new text rule is removed, not ledgered:\n" + "\n".join(f"  {key}" for key in grown)
     )
+
+
+# A meaning rule of the kind the user's 2026-10-22 decision keeps forbidden: a conditional keyword read off a
+# criterion's text to decide that the criterion is conditional.
+_CONDITIONAL_KEYWORD_RULE = '''
+
+def _is_conditional(criterion_text: str) -> bool:
+    return bool(re.search(r"\\b(?:if|unless|except when|only when)\\b", criterion_text, re.IGNORECASE))
+'''
+
+
+def _sites_in_source(rel: str, source: str) -> tuple[Site, ...]:
+    """What :func:`scan_paths` collects from ``source`` as if it were the file ``rel``."""
+    tree = ast.parse(source, filename=rel)
+    collector = _Collector(rel, tree)
+    collector.visit(tree)
+    return (*collector.sites, *_Taint(rel, tree, collector.reported).sites())
+
+
+def _uncovered(sites: Iterable[Site]) -> list[Site]:
+    entries = load_ledger()
+    allowed = fingerprinted(entries)
+    pending = {_pending_key(e) for e in entries if e["kind"] == "pending"}
+    return [site for site in sites if not _covered(site, allowed, pending)]
+
+
+def test_should_fail_on_a_meaning_rule_when_it_is_added_to_the_section_locating_module():
+    # The module the exception admits is still scanned site by site: a conditional-keyword rule added to it has
+    # no ledger entry, so check 1 fails on it.
+    for rel in sorted(SECTION_LOCATING_MODULES):
+        source = (ROOT / rel).read_text(encoding="utf-8")
+        assert not _uncovered(_sites_in_source(rel, source)), f"{rel} as committed must pass"
+        found = _uncovered(_sites_in_source(rel, source + _CONDITIONAL_KEYWORD_RULE))
+        assert any("unless" in site.fingerprint for site in found), (
+            f"a conditional-keyword rule added to {rel} was not caught: {found}"
+        )
+
+
+def test_should_refuse_a_section_locating_entry_when_it_names_a_module_outside_the_exception():
+    meaning_rule = {
+        "file": "src/agents/planner/planner.py",
+        "fingerprint": r"re:\b(?:if|unless|except when|only when)\b",
+        "kind": "section_locating",
+        "inventory_id": "S1",
+        "decides": "whether a criterion is conditional",
+        "approved": "user 2026-10-22",
+        "reason": "filed under the format exception",
+    }
+    problems = ledger_problems([meaning_rule])
+    assert problems and "admitted only in" in problems[0], problems

@@ -6,7 +6,9 @@ replaced them (fe7839e) did. The user re-admitted those format rules on 2026-10-
 offline -- every model call raises -- through ``parse_nct`` up to the prompt, and compares it with the candidate's
 actual input (``fixtures/section_rules/candidate_agent1_input.json``) list by list.
 
-Every difference is listed in :data:`DIFFERENCES` with its cause; anything else fails.
+Every difference is listed in ``fixtures/section_rules/differences.json`` with its cause; anything else fails.
+The rules not restored (A6, the LLM split pass, the similarity merges) account for most of them -- see that file
+and ``src/agents/agent1/section_rules.py``.
 """
 from __future__ import annotations
 
@@ -26,10 +28,13 @@ ROOT = Path(__file__).resolve().parents[1]
 CANDIDATE = json.loads((ROOT / "tests" / "fixtures" / "section_rules" / "candidate_agent1_input.json").read_text())
 KINDS = ("inclusion_criteria", "exclusion_criteria")
 
-# (trial, kind) -> why the rendered list is not the candidate's list item for item. "removed" are candidate items the
-# render does not have, "added" render items the candidate does not have (whitespace-folded); order="multiset" when
-# only the order may differ.
-DIFFERENCES: dict[tuple[str, str], dict] = {}
+# (trial, kind) -> why the rendered list is not the candidate's item for item: its causes, the render-only items
+# ("added") and the candidate-only items ("removed"), whitespace-folded. A list named with no added or removed item
+# differs in order only.
+DIFFERENCES: dict[tuple[str, str], dict] = {
+    (entry["trial"], entry["list"]): entry
+    for entry in json.loads((ROOT / "tests" / "fixtures" / "section_rules" / "differences.json").read_text())["lists"]
+}
 
 
 class _Stop(Exception):
@@ -75,6 +80,7 @@ def test_should_equal_the_candidates_input_when_built_by_the_section_rules(monke
             continue
         only_new = Counter(map(_fold, new)) - Counter(map(_fold, cand))
         only_cand = Counter(map(_fold, cand)) - Counter(map(_fold, new))
+        assert all(cause.strip() for cause in diff["causes"]), (trial, kind)
         if only_new != Counter(map(_fold, diff.get("added", []))):
             problems.append(f"{kind}: unlisted render-only items {sorted(only_new)}")
         if only_cand != Counter(map(_fold, diff.get("removed", []))):

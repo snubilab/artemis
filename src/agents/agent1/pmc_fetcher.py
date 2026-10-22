@@ -2,15 +2,14 @@
 Agent 1 - PMC Full-Text Fetcher.
 Converts PMIDs to PMCIDs and fetches full-text XML from PubMed Central Open Access.
 
-The article body is handed to the eligibility segmentation step (RFC-016 §5), which
-finds the inclusion and exclusion criteria in it; nothing here reads the text for
-section headings.
+The eligibility section of the article body is found by its heading and split into
+items by the section-locating rules (``section_rules`` S8, S2-S5).
 """
 import re
 import requests
 from typing import Dict, List, Optional
 
-from src.agents.agent1.segmentation import segment_eligibility
+from src.agents.agent1.section_rules import extract_eligibility_from_text, extract_pmc_eligibility_section
 
 
 PMC_IDCONV_URL = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/"
@@ -103,8 +102,8 @@ def get_pmc_eligibility(pmid: str, timeout: int = 30) -> Optional[Dict[str, List
     """
     High-level function: fetch PMC full-text and extract eligibility criteria.
 
-    Combines pmid_to_pmcid, fetch_pmc_fulltext and the eligibility segmentation step
-    into a single call.
+    Combines pmid_to_pmcid, fetch_pmc_fulltext, extract_pmc_eligibility_section and
+    extract_eligibility_from_text into a single call.
 
     Args:
         pmid: PubMed ID string
@@ -114,7 +113,7 @@ def get_pmc_eligibility(pmid: str, timeout: int = 30) -> Optional[Dict[str, List
         Dict with "inclusion" and "exclusion" lists, or None if:
         - No PMC version exists for the PMID
         - Full-text is unavailable
-        - The segmentation step found no criteria in it
+        - No eligibility section could be found
     """
     # Step 1: Convert PMID -> PMCID
     pmcid = pmid_to_pmcid(pmid, timeout=10)
@@ -126,13 +125,10 @@ def get_pmc_eligibility(pmid: str, timeout: int = 30) -> Optional[Dict[str, List
     if not fulltext:
         return None
 
-    # Step 3: The segmentation step finds and slices the criteria
-    segmented = segment_eligibility(fulltext)
-    if segmented.failures:
-        print(f"[PMC Fetcher] ⚠ {pmcid} eligibility segmentation: "
-              f"{segmented.describe_rejections(segmented.failures)}")
-    criteria = segmented.criteria()
-    if not any(criteria.values()):
-        print(f"[PMC Fetcher] No eligibility criteria found for {pmcid} (PMID {pmid})")
+    # Step 3: the section by its heading (section_rules S8), then its items (S2-S5)
+    section = extract_pmc_eligibility_section(fulltext)
+    if not section:
+        print(f"[PMC Fetcher] No eligibility section found for {pmcid} (PMID {pmid})")
         return None
+    criteria = extract_eligibility_from_text(section)
     return criteria

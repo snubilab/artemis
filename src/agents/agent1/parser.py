@@ -31,7 +31,14 @@ from src.agents.agent1.pubmed_linker import (
     search_pubmed_for_nct
 )
 from src.agents.agent1.pubmed_fetcher import fetch_pubmed_abstract
-from src.agents.agent1.segmentation import Segmentation, segment_eligibility
+from src.agents.agent1.section_rules import (
+    Missing,
+    Truncated,
+    extract_eligibility_from_text,
+    extract_eligibility_section,
+    rejoin_stranded_superscripts,
+    strip_pdf_furniture,
+)
 from src.agents.agent1.enricher import enrich_trial_data
 from src.agents.agent1.repair_accounting import (
     DISPOSITION_REFUSAL,
@@ -701,13 +708,38 @@ class LogicDecomposer:
                 )
                 return trial_data
 
-            full_text = re.sub(r'\f', '\n', full_text)
+            # Page furniture out, then superscripts pdftotext hoisted onto their own line put back,
+            # before the section is carved out (section_rules S9, S6).
+            full_text = rejoin_stranded_superscripts(strip_pdf_furniture(full_text))
 
-            # Where the criteria are, and where each one ends, is the segmentation
-            # step's decision (RFC-016 §5): the model quotes fragments, code slices.
-            segmented = segment_eligibility(full_text)
-            self._report_segmentation(pdf_name, segmented, len(full_text))
-            pdf_criteria = segmented.criteria()
+            # Extract ONLY the eligibility criteria section, not the entire PDF, by its heading
+            # (section_rules S1). Missing is the extractor failing; parsing the whole paper is
+            # the failure mode it exists to prevent, so it is announced as degraded.
+            section_result = extract_eligibility_section(full_text)
+            if isinstance(section_result, Missing):
+                self._report_pdf_outcome(
+                    pdf_name,
+                    f"DEGRADED: no eligibility section found — parsing the whole paper "
+                    f"({len(full_text)} chars) instead, so tables, figures and author "
+                    f"lists can be read as criteria.",
+                    degraded=True,
+                )
+                pdf_criteria = extract_eligibility_from_text(full_text)
+            else:
+                if isinstance(section_result, Truncated):
+                    self._report_pdf_outcome(
+                        pdf_name,
+                        f"eligibility section TRUNCATED at the {section_result.cap}-char cap — "
+                        f"{section_result.dropped} chars of the section were dropped and "
+                        f"are not read as criteria.",
+                        degraded=True,
+                    )
+                self._report_pdf_outcome(
+                    pdf_name,
+                    f"eligibility section extracted: {len(section_result.text)} chars "
+                    f"(from {len(full_text)} total)",
+                )
+                pdf_criteria = extract_eligibility_from_text(section_result.text)
 
             if not pdf_criteria["inclusion"] and not pdf_criteria["exclusion"]:
                 self._report_pdf_failure(
@@ -719,20 +751,6 @@ class LogicDecomposer:
                 return trial_data
 
             strategy = self._strategy_for_role(role)
-            if strategy == "supplement_priority":
-                # A section this PDF would put in place of the held one is used only
-                # when its choice was verified; otherwise the held section stands.
-                for kind in list(pdf_criteria):
-                    held = getattr(trial_data, f"{kind}_criteria")
-                    if pdf_criteria[kind] and held and segmented.unsettled(kind):
-                        self._report_pdf_outcome(
-                            pdf_name,
-                            f"{kind}: a failed part could have held this section, so the "
-                            f"{len(held)} held criteria are kept instead of the PDF's "
-                            f"{len(pdf_criteria[kind])}",
-                            degraded=True,
-                        )
-                        pdf_criteria[kind] = []
             enriched = enrich_trial_data(trial_data, pdf_criteria, strategy=strategy)
             self._report_pdf_outcome(
                 pdf_name,
@@ -759,38 +777,6 @@ class LogicDecomposer:
                 f"for this PDF (likely incomplete).",
             )
             return trial_data
-
-    @classmethod
-    def _report_segmentation(cls, pdf_name: str, segmented: Segmentation, chars: int) -> None:
-        """Announce what the segmentation step sliced from one PDF, and what it did not use.
-
-        A fragment the model quoted that is not in the text is a degraded outcome: the
-        criterion or boundary it marked was not sliced. A second statement of a list the
-        document already stated is recorded as unused, which is not a failure.
-
-        :param pdf_name: Basename of the PDF.
-        :param segmented: the step's result.
-        :param chars: length of the text the step read.
-        """
-        if segmented.failures:
-            cls._report_pdf_outcome(
-                pdf_name,
-                f"eligibility segmentation: {segmented.describe_rejections(segmented.failures)}",
-                degraded=True,
-            )
-        if segmented.unused:
-            cls._report_pdf_outcome(
-                pdf_name,
-                f"eligibility segmentation, restated list not used: "
-                f"{segmented.describe_rejections(segmented.unused, limit=3)}",
-            )
-        criteria = segmented.criteria()
-        cls._report_pdf_outcome(
-            pdf_name,
-            f"eligibility segmented: {len(criteria['inclusion'])} inclusion, "
-            f"{len(criteria['exclusion'])} exclusion criteria from {chars} chars "
-            f"in {segmented.parts} part(s)",
-        )
 
     def _enrich_from_pubmed(
         self, trial_data: TrialData, nct_id: str
@@ -977,11 +963,7 @@ class LogicDecomposer:
                 return trial_data, PaperStatus(source="nct_only", **pubmed_paper_status_kwargs)
 
             # Extract eligibility criteria from abstract
-            segmented = segment_eligibility(paper.abstract)
-            if segmented.failures:
-                print(f"[Agent 1] ⚠ PMID {first_pmid} abstract segmentation: "
-                      f"{segmented.describe_rejections(segmented.failures)}")
-            pubmed_criteria = segmented.criteria()
+            pubmed_criteria = extract_eligibility_from_text(paper.abstract)
 
             if not pubmed_criteria["inclusion"] and not pubmed_criteria["exclusion"]:
                 warnings.warn(

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from src.agents.agent1.segmentation import SectionKind, segment_eligibility
+from src.agents.agent1.section_rules import parse_registry_criteria
 
 
 # Default cache directory (relative to project root)
@@ -77,15 +77,8 @@ def _parse_protocol_to_trial_data(data: dict, nct_id: str) -> TrialData:
     eligibility = protocol.get("eligibilityModule", {})
     criteria_text = eligibility.get("eligibilityCriteria", "")
 
-    # Which text is an inclusion or an exclusion criterion is decided by the
-    # segmentation step (RFC-016 §5), not by splitting on headers and bullets.
-    segmented = segment_eligibility(eligibility_source_text(criteria_text))
-    if segmented.failures:
-        print(f"[Agent 1] ⚠ {nct_id}: registry eligibility segmentation: "
-              f"{segmented.describe_rejections(segmented.failures)}")
-    criteria = segmented.criteria()
-    inclusion = criteria[SectionKind.INCLUSION.value]
-    exclusion = criteria[SectionKind.EXCLUSION.value]
+    # The registry field's own headers and bullets split it (section_rules S7).
+    inclusion, exclusion = parse_registry_criteria(eligibility_source_text(criteria_text))
 
     return TrialData(
         nct_id=nct_id,

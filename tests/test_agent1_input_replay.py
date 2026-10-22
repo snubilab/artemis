@@ -38,8 +38,8 @@ def _input_sent(monkeypatch, tmp_path, records):
 
     for name in ("fetch_or_load_trial_data", "load_trial_data_from_file"):
         monkeypatch.setattr(parser_module, name, forbidden)
-    monkeypatch.setattr(parser_module, "segment_eligibility", forbidden)
-    monkeypatch.setattr(nct_fetcher, "segment_eligibility", forbidden)
+    monkeypatch.setattr(parser_module, "extract_eligibility_from_text", forbidden)
+    monkeypatch.setattr(nct_fetcher, "parse_registry_criteria", forbidden)
     monkeypatch.setattr(LogicDecomposer, "_enrich_from_pdf", forbidden)
     monkeypatch.setattr(LogicDecomposer, "_enrich_from_pubmed", forbidden)
 
