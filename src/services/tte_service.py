@@ -5175,8 +5175,12 @@ class TTEService:
         # stay the same, or to change, across a period ("Stable ... (unchanged daily dose) for
         # at least 8 weeks") has no CIRCE expression: a presence rule says only that the record
         # exists. Decided by `record_change` (span checked against its line); a label takes its
-        # members. Checked after the threshold skip, so a verified dose or statistical threshold
-        # stays recorded as the criterion loss it is rather than under this permitted reason.
+        # members. Checked BEFORE the threshold skip: a row both calls agree requires a record
+        # to stay the same (or change) has no faithful rule whatever threshold its line also
+        # states, so that is why it is not emitted. P8 MAIN CARMELINA inclusion 5 (#11/#13)
+        # shipped as threshold-not-representable on "not have changed by more than 10%", a
+        # tolerance on the very change, while #6/#7 (the same sentence) shipped as this reason.
+        # A row with no agreed record_change still falls to the threshold skip as loss.
         record_change_inclusions = record_change_skips(inc_criteria)
         record_change_exclusions = record_change_skips(exc_criteria)
         # Calls 3 and 4 of the annotation: per row call 4 was made for (or call 3 failed for),
@@ -5253,14 +5257,14 @@ class TTEService:
                 _record_prospective_skip(criterion, "inclusion", timing)
                 order += 1
                 continue
-            skip = threshold_inclusions.get(str(criterion.get("id", "")))
-            if skip is not None:
-                _record_threshold_skip(criterion, "inclusion", skip)
-                order += 1
-                continue
             change = record_change_inclusions.get(str(criterion.get("id", "")))
             if change is not None:
                 _record_record_change_skip(criterion, "inclusion", change)
+                order += 1
+                continue
+            skip = threshold_inclusions.get(str(criterion.get("id", "")))
+            if skip is not None:
+                _record_threshold_skip(criterion, "inclusion", skip)
                 order += 1
                 continue
             # Ahead of the demographic branch: a group label emits no rule of its own,
@@ -5310,14 +5314,14 @@ class TTEService:
                 _record_prospective_skip(criterion, "exclusion", timing)
                 order += 1
                 continue
-            skip = threshold_exclusions.get(str(criterion.get("id", "")))
-            if skip is not None:
-                _record_threshold_skip(criterion, "exclusion", skip)
-                order += 1
-                continue
             change = record_change_exclusions.get(str(criterion.get("id", "")))
             if change is not None:
                 _record_record_change_skip(criterion, "exclusion", change)
+                order += 1
+                continue
+            skip = threshold_exclusions.get(str(criterion.get("id", "")))
+            if skip is not None:
+                _record_threshold_skip(criterion, "exclusion", skip)
                 order += 1
                 continue
             # Ahead of the demographic branch, as in the inclusion loop: a group label

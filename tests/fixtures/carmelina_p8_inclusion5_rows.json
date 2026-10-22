@@ -1,0 +1,418 @@
+[
+ {
+  "id": 11,
+  "description": "Stable antidiabetic background medication for 8 weeks prior to randomization",
+  "domain": "Observation",
+  "valueConstraint": null,
+  "sourceText": "Antidiabetic background medication",
+  "protocolLine": "5. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization.",
+  "protocolSpan": "",
+  "window": {
+   "start": -56,
+   "end": 0
+  },
+  "conceptSetId": null,
+  "conceptSetName": "",
+  "logicType": "PRESENCE",
+  "groupId": "04aac8fe-e609-4298-9612-354bbf905fd5",
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": true,
+  "plannerRelation": {
+   "relation": "all",
+   "relation_span": "and",
+   "cardinality": null
+  },
+  "mappable": false,
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "f004807856ff36423366be46d0a53ef28467ec1a28ebded47761c025536ec639",
+   "outcome": "called",
+   "record_change": "stable",
+   "record_change_span": "(unchanged daily dose)",
+   "kept": {
+    "record_change": {
+     "value": "stable",
+     "span": "(unchanged daily dose)"
+    }
+   },
+   "dropped": {},
+   "second": {
+    "promptVersion": "rfc016-record-change-pf-v1",
+    "cacheKey": "0de44e2d110888455b1117437ead10f7f15e9f15405e1f5d1b93a11abb7ca53e",
+    "outcome": "called",
+    "record_change": "stable",
+    "record_change_span": "unchanged daily dose"
+   }
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "for at least 8 weeks prior to randomization",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "not have changed by more than 10%",
+   "quantity_kind": "dose",
+   "reference_bound": "none",
+   "record_change": "stable",
+   "record_change_span": "(unchanged daily dose)"
+  },
+  "_annotationRejected": [
+   {
+    "field": "relation",
+    "value": {
+     "relation": "all",
+     "relation_span": null,
+     "cardinality": null
+    },
+    "reason": "relation_span is not a substring of protocolLine"
+   }
+  ]
+ },
+ {
+  "id": 12,
+  "description": "Stable antidiabetic background medication",
+  "domain": "Drug",
+  "valueConstraint": {
+   "op": "eq",
+   "value": 1.0,
+   "valueHigh": null,
+   "unitText": "",
+   "referenceBound": "absolute",
+   "unitConceptId": null
+  },
+  "sourceText": "Antidiabetic medication",
+  "protocolLine": "5. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization.",
+  "protocolSpan": "Antidiabetic background medication",
+  "window": {
+   "start": -56,
+   "end": 0
+  },
+  "conceptSetId": null,
+  "conceptSetName": "",
+  "logicType": "PRESENCE",
+  "groupId": "04aac8fe-e609-4298-9612-354bbf905fd5",
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true,
+  "_annotationAgreement": {
+   "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "c7587906907aa848e16b617b42b16800a9dd8a6770bae6bd02a3fd032f3d170d",
+   "firstCacheKey": "60e717e452b8befcd581c7c9bd9ad0c86730829c795175fbb7b6ed40a649d851",
+   "outcome": "called",
+   "kept": {
+    "record_requirement": {
+     "value": "conditional",
+     "span": "If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization."
+    }
+   },
+   "dropped": {},
+   "second": {
+    "record_requirement": "conditional",
+    "conditional_span": "If insulin is part of the background therapy",
+    "excepted_entities": [],
+    "base_span": null,
+    "no_entity": "none",
+    "no_entity_span": null
+   },
+   "secondRejected": [
+    {
+     "field": "relation",
+     "value": {
+      "relation": "all",
+      "relation_span": null,
+      "cardinality": null
+     },
+     "reason": "relation_span is not a substring of protocolLine"
+    }
+   ]
+  },
+  "_conditionalCheck": {
+   "fragment": "If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization.",
+   "calls": [
+    {
+     "promptVersion": "rfc016-conditional-check-v1",
+     "cacheKey": "c2745fdb6f573d43ec419b4ddaa49c36f8972ee030d7a14361955a69c3ebd052",
+     "outcome": "called",
+     "fragment_role": "other",
+     "entity_outside_trial": "yes"
+    }
+   ],
+   "reverted": false
+  },
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "df12d03ad8dbaa13fb70dcca54d3482a9eaf8db742ef5f148745a2ab8950663f",
+   "outcome": "called",
+   "record_change": "stable",
+   "record_change_span": "(unchanged daily dose)",
+   "kept": {
+    "record_change": {
+     "value": "stable",
+     "span": "(unchanged daily dose)"
+    }
+   },
+   "dropped": {},
+   "second": {
+    "promptVersion": "rfc016-record-change-pf-v1",
+    "cacheKey": "f30731e511d4c4217cf7169acf2677b5458155e9029159497065cb60d58d9b7c",
+    "outcome": "called",
+    "record_change": "stable",
+    "record_change_span": "(unchanged daily dose)"
+   }
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "conditional",
+   "conditional_span": "If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization.",
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "for at least 8 weeks prior to randomization",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "not have changed by more than 10%",
+   "quantity_kind": "dose",
+   "reference_bound": "none",
+   "record_change": "stable",
+   "record_change_span": "(unchanged daily dose)"
+  },
+  "_annotationRejected": [
+   {
+    "field": "relation",
+    "value": {
+     "relation": "all",
+     "relation_span": null,
+     "cardinality": null
+    },
+    "reason": "relation_span is not a substring of protocolLine"
+   }
+  ]
+ },
+ {
+  "id": 13,
+  "description": "Duration of background medication",
+  "domain": "Observation",
+  "valueConstraint": {
+   "op": "gte",
+   "value": 8.0,
+   "valueHigh": null,
+   "unitText": "weeks",
+   "referenceBound": "absolute",
+   "unitConceptId": null
+  },
+  "sourceText": "Medication duration",
+  "protocolLine": "5. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization.",
+  "protocolSpan": "for at least 8 weeks prior to randomization",
+  "window": {
+   "start": -56,
+   "end": 0
+  },
+  "conceptSetId": null,
+  "conceptSetName": "",
+  "logicType": "PRESENCE",
+  "groupId": "04aac8fe-e609-4298-9612-354bbf905fd5",
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true,
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "63e2519c21e91e96002dc44cfda23c1eb10b73644e8a727344716b8868e50caa",
+   "outcome": "called",
+   "record_change": "stable",
+   "record_change_span": "unchanged daily dose",
+   "kept": {
+    "record_change": {
+     "value": "stable",
+     "span": "unchanged daily dose"
+    }
+   },
+   "dropped": {},
+   "second": {
+    "promptVersion": "rfc016-record-change-pf-v1",
+    "cacheKey": "8b35db9093ecdb15716becaba989081d6c1cad23c536140d39a5f2dd130dc673",
+    "outcome": "called",
+    "record_change": "stable",
+    "record_change_span": "unchanged daily dose"
+   }
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "for at least 8 weeks prior to randomization",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "not have changed by more than 10%",
+   "quantity_kind": "dose",
+   "reference_bound": "none",
+   "record_change": "stable",
+   "record_change_span": "unchanged daily dose"
+  }
+ },
+ {
+  "id": 14,
+  "description": "Insulin dose stability",
+  "domain": "Measurement",
+  "valueConstraint": {
+   "op": "lte",
+   "value": 0.1,
+   "valueHigh": null,
+   "unitText": "%",
+   "referenceBound": "absolute",
+   "unitConceptId": null
+  },
+  "sourceText": "Insulin dose change",
+  "protocolLine": "5. Stable antidiabetic background medication (unchanged daily dose) for at least 8 weeks prior to randomization. If insulin is part of the background therapy, the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization.",
+  "protocolSpan": "the average daily insulin dose should not have changed by more than 10% within the 8 weeks prior to randomization compared with the daily insulin dose at randomization",
+  "window": {
+   "start": -56,
+   "end": 0
+  },
+  "conceptSetId": null,
+  "conceptSetName": "",
+  "logicType": "PRESENCE",
+  "groupId": "04aac8fe-e609-4298-9612-354bbf905fd5",
+  "groupType": "ALL",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "mappable": true,
+  "_annotationAgreement": {
+   "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "296d81f2c4e213b491c361fbcbbf9361bf8e1aa0af7d1ab945c11a4b77978f21",
+   "firstCacheKey": "f7d6fb1a5542d3ccaca483ceb9e66ef7b7de3d5d8aedfe03e91702f32fc45428",
+   "outcome": "called",
+   "kept": {
+    "record_requirement": {
+     "value": "conditional",
+     "span": "If insulin is part of the background therapy"
+    }
+   },
+   "dropped": {},
+   "second": {
+    "record_requirement": "conditional",
+    "conditional_span": "If insulin is part of the background therapy",
+    "excepted_entities": [],
+    "base_span": null,
+    "no_entity": "none",
+    "no_entity_span": null
+   },
+   "secondRejected": [
+    {
+     "field": "relation",
+     "value": {
+      "relation": "all",
+      "relation_span": null,
+      "cardinality": null
+     },
+     "reason": "relation_span is not a substring of protocolLine"
+    }
+   ]
+  },
+  "_conditionalCheck": {
+   "fragment": "If insulin is part of the background therapy",
+   "calls": [
+    {
+     "promptVersion": "rfc016-conditional-check-v1",
+     "cacheKey": "79127b24b5fd0f586140c869cb1a415d915db8b019fd586a24c8d8dec28e718f",
+     "outcome": "called",
+     "fragment_role": "patients",
+     "entity_outside_trial": "yes"
+    }
+   ],
+   "reverted": false
+  },
+  "_recordChangeAgreement": {
+   "promptVersion": "rfc016-record-change-cf-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "cacheKey": "ab5e6a887ee0aca1d08f35f92fc2f1b09b2a76d69b79043f086526052462da77",
+   "outcome": "called",
+   "record_change": "stable",
+   "record_change_span": "should not have changed by more than 10%",
+   "kept": {
+    "record_change": {
+     "value": "stable",
+     "span": "should not have changed by more than 10%"
+    }
+   },
+   "dropped": {},
+   "second": {
+    "promptVersion": "rfc016-record-change-pf-v1",
+    "cacheKey": "e613225302ce6adafa06a0b6b1428a9f565b6630f3457e3ba27d088929800452",
+    "outcome": "called",
+    "record_change": "stable",
+    "record_change_span": "unchanged daily dose"
+   }
+  },
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "conditional",
+   "conditional_span": "If insulin is part of the background therapy",
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "within the 8 weeks prior to randomization",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": "more than 10%",
+   "quantity_kind": "dose",
+   "reference_bound": "none",
+   "record_change": "stable",
+   "record_change_span": "should not have changed by more than 10%"
+  }
+ }
+]
