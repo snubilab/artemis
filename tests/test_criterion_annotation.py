@@ -392,10 +392,14 @@ class TestProcessEligibilityAnnotatesBeforeMapping:
         # answers both the same way, so the conditional is kept), the conditional check
         # (call 5; the stub gives no fragment_role, so the conditional stays and no call 6),
         # and the record_change call (call 3), whose answer fills no record_change, so no call 4.
+        # Call 3 runs beside calls 1-2-5 (ARTEMIS_ANNOTATION_OVERLAP), so only the order within
+        # each branch is fixed.
         assert len(llm.calls) == 4
-        assert llm.calls[1].startswith(annotation_mod.AGREEMENT_SYSTEM_PROMPT)
-        assert "Fragment of the protocol line:" in llm.calls[2]
-        assert annotation_mod.RECORD_CHANGE_PROMPT_BLOCK.split("\n")[0] in llm.calls[3]
+        block = annotation_mod.RECORD_CHANGE_PROMPT_BLOCK.split("\n")[0]
+        main = [call for call in llm.calls if block not in call]
+        assert len(main) == 3
+        assert main[1].startswith(annotation_mod.AGREEMENT_SYSTEM_PROMPT)
+        assert "Fragment of the protocol line:" in main[2]
         assert seen["rows"][0][ANNOTATION_KEY]["record_change"] is None
         assert seen["rows"][0][ANNOTATION_KEY]["record_requirement"] == "conditional"
         stored = payload["proposedChanges"]["eligibility"]["inclusionCriteria"][0]

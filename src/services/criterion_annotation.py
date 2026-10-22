@@ -113,7 +113,7 @@ import logging
 import os
 import threading
 from collections.abc import Iterable, Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Executor, ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -1250,6 +1250,7 @@ def render_prompt(
 _CACHE_PATH_ENV = "ARTEMIS_ANNOTATION_CACHE_PATH"
 _CACHE_ENABLED_ENV = "ARTEMIS_ANNOTATION_CACHE"
 _WORKERS_ENV = "ARTEMIS_ANNOTATION_WORKERS"
+_OVERLAP_ENV = "ARTEMIS_ANNOTATION_OVERLAP"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CACHE_PATH = _REPO_ROOT / ".cache" / "criterion_annotation" / "annotations.jsonl"
 
@@ -1759,6 +1760,7 @@ def annotate_row(
     *,
     model: str,
     llm: Any,
+    branch_pool: Executor | None = None,
 ) -> str:
     """Annotate one rule in place. Never raises for a model failure.
 
@@ -1777,6 +1779,9 @@ def annotate_row(
     :param role: ``inclusion`` or ``exclusion``.
     :param model: the resolved model, recorded and part of the cache key.
     :param llm: the chat model handle (built once per run by the caller).
+    :param branch_pool: when given, calls 3-4 run on it while calls 1-2-5-6 run here. Neither
+        branch reads what the other writes (both render from the row's extracted fields), and
+        the merge below is the sequential one, so the row comes out the same.
     :returns: the first call's outcome: ``no-line``, ``cached``, ``called`` or ``error``. The
         agreement call's outcome is on the row's record.
     """
@@ -1784,6 +1789,10 @@ def annotate_row(
     if not isinstance(line, str) or not line.strip():
         # Nothing to check a fragment against, so nothing the model said could be kept.
         return "no-line"
+    branch = (
+        branch_pool.submit(_record_change, dict(row), members, role, model=model, llm=llm)
+        if branch_pool is not None else None
+    )
     outcome, key, payload, error = _ask(
         llm, row, members, role, model=model, template=ANNOTATION_PROMPT,
         system=ANNOTATION_SYSTEM_PROMPT, version=ANNOTATION_PROMPT_VERSION,
@@ -1805,7 +1814,10 @@ def annotate_row(
             )
         else:
             row.pop(CONDITIONAL_CHECK_KEY, None)
-    change, row[RECORD_CHANGE_KEY] = _record_change(row, members, role, model=model, llm=llm)
+    change, row[RECORD_CHANGE_KEY] = (
+        branch.result() if branch is not None
+        else _record_change(row, members, role, model=model, llm=llm)
+    )
     if error is not None:
         row[ANNOTATION_KEY] = {
             "promptVersion": ANNOTATION_PROMPT_VERSION,
@@ -1884,6 +1896,12 @@ def _workers() -> int:
     return max(1, int(raw)) if raw else 4
 
 
+def _overlap() -> bool:
+    """:returns: False only when ``ARTEMIS_ANNOTATION_OVERLAP`` is 0 (calls 3-4 then wait
+    for calls 1-2-5-6, as before)."""
+    return os.environ.get(_OVERLAP_ENV) != "0"
+
+
 def annotate_eligibility(
     eligibility: Mapping[str, Any], *, model: str | None = None
 ) -> dict[str, int]:
@@ -1912,10 +1930,19 @@ def annotate_eligibility(
         isinstance(r.get(_LINE), str) and r.get(_LINE).strip() for r, _m, _role in jobs
     )
     llm = _build_llm(resolved) if needs_model else None
-    with ThreadPoolExecutor(max_workers=_workers()) as pool:
+    workers = _workers()
+    # A pool of its own for calls 3-4: submitting them to ``pool`` from its own workers could
+    # leave every worker waiting on a branch no worker is free to run.
+    with ThreadPoolExecutor(max_workers=workers) as pool, ThreadPoolExecutor(
+        max_workers=workers
+    ) as branches:
+        branch_pool = branches if _overlap() else None
         outcomes = list(
             pool.map(
-                lambda job: annotate_row(job[0], job[1], job[2], model=resolved, llm=llm), jobs
+                lambda job: annotate_row(
+                    job[0], job[1], job[2], model=resolved, llm=llm, branch_pool=branch_pool
+                ),
+                jobs,
             )
         )
     for outcome in outcomes:
