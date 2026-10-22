@@ -295,13 +295,13 @@ def _render_tte_report_narrative() -> str:
     return _joined(recorder.calls)
 
 
-def _annotation_calls(reply: str) -> list[str]:
+def _annotation_calls(reply: str, line: str = f"{STUB} line") -> list[str]:
     """Every call ``annotate_eligibility`` makes with the model replaced, over a group label (so
     the members block is rendered) and its member; the cache is off so nothing is written."""
     from src.services import criterion_annotation
 
     recorder = _Recorder(reply=reply)
-    common = {"domain": "Drug", "protocolLine": f"{STUB} line", "logicType": "PRESENCE",
+    common = {"domain": "Drug", "protocolLine": line, "logicType": "PRESENCE",
               "window": {"start": -56, "end": 0}, "valueConstraint": None, "groupId": "g"}
     rows = [
         {"id": 1, "description": STUB, "sourceText": STUB, "isGroupLabel": True, **common},
@@ -323,9 +323,17 @@ def _record_change_call(prompt: str) -> bool:
     return criterion_annotation.RECORD_CHANGE_PROMPT_BLOCK.split("\n")[0] in prompt
 
 
+def _window_bound_call(prompt: str) -> bool:
+    """Whether a rendered call is call 9 or 10: they alone carry the window_bound block."""
+    from src.services import criterion_annotation
+
+    return criterion_annotation.WINDOW_BOUND_PROMPT_BLOCK.split("\n")[0] in prompt
+
+
 def _render_criterion_annotation() -> str:
     """The first call: an answer that fills nothing the agreement compares and no record_change,
-    so no second or fourth call. Call 3, made for every row, is linted on its own."""
+    so no second or fourth call. Calls 3 and 9, made for every row (9 not for a label with
+    members), are linted on their own."""
     from src.services import criterion_annotation
 
     calls = _annotation_calls(
@@ -333,8 +341,8 @@ def _render_criterion_annotation() -> str:
         '"excepted_entities": [], "base_span": null}'
     )
     first = [c for c in calls if c.startswith(criterion_annotation.ANNOTATION_SYSTEM_PROMPT)
-             and not _record_change_call(c)]
-    assert len(first) == len(calls) // 2 == 2, "calls 1 and 3 were not made for every row"
+             and not _record_change_call(c) and not _window_bound_call(c)]
+    assert len(first) == 2, "call 1 was not made for every row"
     return _joined(first)
 
 
@@ -378,6 +386,34 @@ def _render_criterion_annotation_record_change_agreement() -> str:
     ]
     assert len(fourth) == len(calls) // 3 == 2, "a record_change fill did not open call 4"
     return _joined(fourth)
+
+
+def _render_criterion_annotation_window_bound() -> str:
+    """Call 9 (``WINDOW_BOUND_PROMPT``), made for the member row (a label with members is not
+    asked); the answer fills no window_bound, so no call 10."""
+    calls = _annotation_calls('{"record_requirement": "required", "window_bound": "none"}')
+    ninth = [c for c in calls if _window_bound_call(c)]
+    assert len(ninth) == 1, "call 9 was not made for the member row"
+    return _joined(ninth)
+
+
+def _render_criterion_annotation_window_bound_agreement() -> str:
+    """Call 10 (``WINDOW_BOUND_AGREEMENT_PROMPT``): call 9 answers ``beyond`` with a fragment of
+    the line stating a duration, so the member row gets call 10."""
+    from src.services import criterion_annotation
+
+    calls = _annotation_calls(
+        '{"record_requirement": "required", "window_bound": "beyond", '
+        '"window_bound_span": "3 months"}',
+        line=f"{STUB} 3 months",
+    )
+    tenth = [
+        c for c in calls
+        if c.startswith(criterion_annotation.WINDOW_BOUND_AGREEMENT_SYSTEM_PROMPT)
+        and _window_bound_call(c)
+    ]
+    assert len(tenth) == 1, "a beyond answer did not open call 10"
+    return _joined(tenth)
 
 
 def _conditional_check_calls() -> list[str]:
@@ -669,6 +705,16 @@ PROMPTS["criterion_annotation.record_change"] = PromptSpec(
 )
 PROMPTS["criterion_annotation.record_change.agreement"] = PromptSpec(
     _render_criterion_annotation_record_change_agreement, tokens=_RECORD_CHANGE_TOKENS,
+)
+# Calls 9 and 10 ask the same fields plus window_bound (2026-10-22) and its values.
+_WINDOW_BOUND_TOKENS = PROMPTS["criterion_annotation"].tokens | frozenset({
+    "window_bound", "window_bound_span", "within", "beyond",
+})
+PROMPTS["criterion_annotation.window_bound"] = PromptSpec(
+    _render_criterion_annotation_window_bound, tokens=_WINDOW_BOUND_TOKENS,
+)
+PROMPTS["criterion_annotation.window_bound.agreement"] = PromptSpec(
+    _render_criterion_annotation_window_bound_agreement, tokens=_WINDOW_BOUND_TOKENS,
 )
 # Calls 5 and 6 (conditional check): one field and its three values.
 _CONDITIONAL_CHECK_TOKENS = frozenset(
@@ -1014,6 +1060,7 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/services/criterion_annotation.py": (
         3, ("criterion_annotation", "criterion_annotation.agreement",
             "criterion_annotation.record_change", "criterion_annotation.record_change.agreement",
+            "criterion_annotation.window_bound", "criterion_annotation.window_bound.agreement",
             "criterion_annotation.conditional_check",
             "criterion_annotation.conditional_check.agreement"),
     ),

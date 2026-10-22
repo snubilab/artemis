@@ -78,6 +78,7 @@ from src.models.ir import ProvisionalSectionSource, ProvisionalStudyIR
 from src.pipeline.webapi_client import CohortTableReference, WebAPIClient, WebAPIError
 from src.services.criterion_annotation import (
     AGREEMENT_RECORDS_KEY,
+    ANNOTATED_WINDOW_CRITERIA_KEY,
     CONDITIONAL_EXPLANATION,
     CONDITIONAL_REASON,
     EXTRACTED_CONDITIONAL_KEY,
@@ -96,6 +97,7 @@ from src.services.criterion_annotation import (
     UNREPRESENTABLE_THRESHOLDS_KEY,
     agreement_records,
     annotate_eligibility,
+    annotated_window,
     applied_value_constraint,
     conditional_skips,
     exception_anchored,
@@ -5576,6 +5578,7 @@ class TTEService:
         # the criterion and role it came from, so there is no second walk to fall out of
         # step with the first.
         defaulted_window_criteria: list[dict[str, Any]] = []
+        annotated_window_criteria: list[dict[str, Any]] = []
         restored_unit_criteria: list[dict[str, Any]] = []
         for criterion, result, role in ordered_pairs:
             if result and result.get("_mapping_metadata") is not None:
@@ -5606,6 +5609,12 @@ class TTEService:
                         or ""
                     ).strip(),
                     **result["_defaulted_window"],
+                })
+            if result and result.get("_annotated_window") is not None:
+                annotated_window_criteria.append({
+                    "criterionId": str(criterion.get("id", "")),
+                    "role": role,
+                    **result["_annotated_window"],
                 })
             if result and result.get("_restored_unit") is not None:
                 restored_unit_criteria.append({
@@ -5861,6 +5870,11 @@ class TTEService:
             SPECIMEN_DECISIONS_KEY: sorted(specimen_decisions, key=lambda r: r["codesetId"]),
             DEFAULTED_WINDOW_CRITERIA_KEY: sorted(
                 defaulted_window_criteria, key=lambda r: (r["role"], r["criterionId"])
+            ),
+            # Same present-and-empty contract: the criteria whose window the annotation's
+            # `window_bound` or stated duration changed, each with the extracted one beside it.
+            ANNOTATED_WINDOW_CRITERIA_KEY: sorted(
+                annotated_window_criteria, key=lambda r: (r["role"], r["criterionId"])
             ),
             # Same present-and-empty contract: the criteria whose concept set Agent 2 built
             # from its seeds alone because a KG/refiner lookup or the critic failed. Empty
@@ -7118,7 +7132,10 @@ class TTEService:
         # is the opposite of the value-filter case, where emitting without the threshold
         # INVERTS the rule ("ALT > 3x ULN" becomes "any ALT at all"). Nothing is hidden
         # by the choice: every application is recorded below.
-        window = criterion.get("window")
+        # The side or size the annotation states for this window (`annotated_window`): CAROLINA's
+        # "> 3 months prior" was extracted as -90..0, "within 3 months", and only the annotation
+        # records which side the protocol meant. None when the extracted window stands.
+        window, annotated_window_record = annotated_window(criterion)
         defaulted_window: dict[str, Any] | None = None
         if not window:
             window, default_source = default_criterion_window(resolved_domain)
@@ -7173,6 +7190,7 @@ class TTEService:
             # pairs it with the criterion's role and id and writes the rows under
             # `DEFAULTED_WINDOW_CRITERIA_KEY`.
             "_defaulted_window": defaulted_window,
+            "_annotated_window": annotated_window_record,
             # None when no LOINC lab test was refined. Written under `SPECIMEN_DECISIONS_KEY`
             # with the codeset id it is finally assigned, where gate (u) re-reads it.
             "_specimen_decision": specimen_decision,

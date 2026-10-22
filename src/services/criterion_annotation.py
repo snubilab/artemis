@@ -152,6 +152,9 @@ CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v
 #: Calls 7 and 8 (:func:`check_forbidden`); each part of its call's cache key.
 TRIAL_ONLY_PROMPT_VERSION = "fixk12-trial-only-v2"
 TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "fixk12-trial-only-placebo-v2"
+#: Calls 9 and 10 (:func:`_window_bound`); each part of its call's cache key.
+WINDOW_BOUND_PROMPT_VERSION = "window-bound-v1"
+WINDOW_BOUND_AGREEMENT_PROMPT_VERSION = "window-bound-placebo-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -207,6 +210,11 @@ PLANNER_RELATION_KEY = "plannerRelation"
 #: Where :func:`window_disagreement` records a verified ``window_span`` whose own duration
 #: is not the extracted window. A report: nothing reads it to change a rule.
 WINDOW_DISAGREEMENT_KEY = "_windowDisagreement"
+#: The record of calls 9 and 10 on a row (:func:`_window_bound`).
+WINDOW_BOUND_KEY = "_windowBound"
+#: The key `TTEService._build_seeded_target_circe` lists every criterion under whose emitted
+#: window :func:`annotated_window` changed. Present and empty when none was.
+ANNOTATED_WINDOW_CRITERIA_KEY = "_annotatedWindowCriteria"
 
 FIELD_ROUTE = "route"
 FIELD_ROUTE_SPAN = "route_span"
@@ -217,6 +225,8 @@ FIELD_TRIAL_ONLY = "trial_only"
 FIELD_NO_ENTITY_SPAN = "no_entity_span"
 FIELD_RECORD_CHANGE = "record_change"
 FIELD_RECORD_CHANGE_SPAN = "record_change_span"
+FIELD_WINDOW_BOUND = "window_bound"
+FIELD_WINDOW_BOUND_SPAN = "window_bound_span"
 #: The one ``route`` entry that states no restriction; it stands alone in the list.
 ROUTE_ANY = "any"
 #: RFC-016 step 3. The three stand or fall together (:func:`validate_annotation`).
@@ -329,7 +339,16 @@ class RecordChange(str, Enum):
     NONE = "none"
 
 
+class WindowBound(str, Enum):
+    """Which side of a length of time counted back from entry the entity falls on."""
+
+    WITHIN = "within"
+    BEYOND = "beyond"
+    NONE = "none"
+
+
 _ROUTE_VALUES = frozenset(route.value for route in AdministrationRoute)
+_WINDOW_BOUND_VALUES = frozenset(member.value for member in WindowBound)
 _SPECIMEN_VALUES = frozenset(member.value for member in Specimen)
 _NO_ENTITY_VALUES = frozenset(member.value for member in NoEntity)
 _RECORD_CHANGE_VALUES = frozenset(member.value for member in RecordChange)
@@ -700,22 +719,23 @@ _WINDOW_SPAN_DEFINITION = (
 _WINDOW_SPAN_KEY = '"window_span": "<fragment of the protocol line, or null>", '
 
 
-def _with_record_change(template: str) -> str:
-    """``template`` with the record_change block inserted where the over-fill A/B measured it.
+def _with_block(template: str, definition: str, keys: str) -> str:
+    """``template`` with a field's definition after the `window_span` definition and its output
+    keys after the `window_span` key -- where the over-fill A/B measured the record_change block.
 
     Prompt assembly from this module's own template text, not a reading of protocol text: each
     anchor must occur exactly once, or the import fails rather than send a prompt nobody measured.
     """
-    for anchor, block in (
-        (_WINDOW_SPAN_DEFINITION, RECORD_CHANGE_PROMPT_BLOCK),
-        (_WINDOW_SPAN_KEY, RECORD_CHANGE_PROMPT_KEYS),
-    ):
+    for anchor, block in ((_WINDOW_SPAN_DEFINITION, definition), (_WINDOW_SPAN_KEY, keys)):
         if template.count(anchor) != 1:
-            raise RuntimeError(
-                f"record_change anchor occurs {template.count(anchor)} times, not once"
-            )
+            raise RuntimeError(f"prompt anchor occurs {template.count(anchor)} times, not once")
         template = template.replace(anchor, anchor + block)
     return template
+
+
+def _with_record_change(template: str) -> str:
+    """``template`` with the record_change block inserted where the over-fill A/B measured it."""
+    return _with_block(template, RECORD_CHANGE_PROMPT_BLOCK, RECORD_CHANGE_PROMPT_KEYS)
 
 
 #: Call 3: stage 2's `current` with the block (`cf`), on every row with a protocol line.
@@ -724,6 +744,42 @@ RECORD_CHANGE_PROMPT = _with_record_change(ANNOTATION_PROMPT)
 #: Call 4: stage 2's `placebo` with the block (`pf`), only when call 3 fills record_change.
 RECORD_CHANGE_AGREEMENT_SYSTEM_PROMPT = AGREEMENT_SYSTEM_PROMPT
 RECORD_CHANGE_AGREEMENT_PROMPT = _with_record_change(AGREEMENT_PROMPT)
+
+# Calls 9 and 10 (coordinator, 2026-10-22): the two prompts above, each with the window_bound
+# block, placed as the record_change block is; only `window_bound` / `window_bound_span` are read
+# from their answers. Not in calls 1 and 2, for the reason the record_change block is not: a new
+# field there can shift the fields agreement is measured on. CAROLINA inclusion 7's
+# "> 3 months prior" was extracted as the window -90..0, which is "within 3 months": a window
+# holds two numbers and no side, and nothing else recorded which side the protocol meant.
+WINDOW_BOUND_PROMPT_BLOCK = """\
+`window_bound` states how a length of time that the protocol line counts back from the \
+patient's entry into the trial bounds when this criterion's entity occurred. One of:
+- `within`: the entity occurred inside that length of time, so the length of time is the most \
+that may have passed between the entity and entry.
+- `beyond`: the entity occurred before that length of time began, so the length of time is the \
+least that must have passed between the entity and entry.
+- `none`: the line counts back no length of time from entry for this criterion's entity.
+A length of time for which the entity must have lasted, or for which a treatment must have been \
+taken, is not counted back from entry, and gives `none`.
+
+`window_bound_span` is the fragment of the protocol line that states that length of time, with \
+its number and its unit. It is required when `window_bound` is not `none` and null otherwise.
+
+"""
+WINDOW_BOUND_PROMPT_KEYS = (
+    '"window_bound": "<within|beyond|none>", '
+    '"window_bound_span": "<fragment of the protocol line, or null>", '
+)
+#: Call 9: the first wording with the block, on every row with a line that is not a label with
+#: members. Call 10: the second wording with the block, only when call 9 answers `beyond`.
+WINDOW_BOUND_SYSTEM_PROMPT = ANNOTATION_SYSTEM_PROMPT
+WINDOW_BOUND_PROMPT = _with_block(
+    ANNOTATION_PROMPT, WINDOW_BOUND_PROMPT_BLOCK, WINDOW_BOUND_PROMPT_KEYS
+)
+WINDOW_BOUND_AGREEMENT_SYSTEM_PROMPT = AGREEMENT_SYSTEM_PROMPT
+WINDOW_BOUND_AGREEMENT_PROMPT = _with_block(
+    AGREEMENT_PROMPT, WINDOW_BOUND_PROMPT_BLOCK, WINDOW_BOUND_PROMPT_KEYS
+)
 
 #: ``fragment_role`` values (calls 5 and 6). Which revert a ``conditional`` depends on the
 #: criterion's role (:func:`_reverting_roles`).
@@ -1097,6 +1153,50 @@ def validate_record_change(
         spanless=RecordChange.NONE.value,
     )
     return fields, rejected
+
+
+def validate_window_bound(
+    payload: Any, protocol_line: str
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """The one field read from calls 9 and 10: ``window_bound`` and its fragment.
+
+    Kept when the value is ``within`` / ``beyond`` / ``none`` and, unless ``none``, its fragment
+    is a substring of the line AND states exactly one number followed by a time unit
+    (:func:`~src.agents.agent1.temporal_grounding.stated_durations`, a machine-format parse);
+    otherwise absent, with the rejection recorded.
+
+    :param payload: the parsed answer of call 9 or call 10.
+    :param protocol_line: the row's ``protocolLine``.
+    :returns: ``({window_bound, window_bound_span}, rejections)``.
+    """
+    fields: dict[str, Any] = {FIELD_WINDOW_BOUND: None, FIELD_WINDOW_BOUND_SPAN: None}
+    rejected: list[dict[str, Any]] = []
+    if not isinstance(payload, Mapping):
+        rejected.append(_rejection("*", payload, "the response is not a JSON object"))
+        return fields, rejected
+    _validate_choice(
+        payload, protocol_line, fields, rejected, field=FIELD_WINDOW_BOUND,
+        span_field=FIELD_WINDOW_BOUND_SPAN, values=_WINDOW_BOUND_VALUES,
+        spanless=WindowBound.NONE.value,
+    )
+    span = fields[FIELD_WINDOW_BOUND_SPAN]
+    if span is not None and _stated_days(span) is None:
+        rejected.append(_rejection(
+            FIELD_WINDOW_BOUND, {FIELD_WINDOW_BOUND: fields[FIELD_WINDOW_BOUND],
+                                 FIELD_WINDOW_BOUND_SPAN: span},
+            f"{FIELD_WINDOW_BOUND_SPAN} does not state exactly one number and time unit",
+        ))
+        fields = {FIELD_WINDOW_BOUND: None, FIELD_WINDOW_BOUND_SPAN: None}
+    return fields, rejected
+
+
+def _stated_days(span: Any) -> int | None:
+    """Days of the one ``<number> <unit>`` a quoted fragment states, or None when it states none
+    or more than one."""
+    from src.agents.agent1.temporal_grounding import stated_durations
+
+    durations = stated_durations(span if isinstance(span, str) else None)
+    return durations[0][0] if len(durations) == 1 else None
 
 
 def _validate_choice(
@@ -1736,6 +1836,97 @@ def _record_change(
     return fields, record
 
 
+def agree_window_bound(
+    first: Mapping[str, Any], second: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Call 9's ``beyond``, kept only when call 10 also answers ``beyond`` for the same number of
+    days. ``within`` and ``none`` change no window, so they pass through unconfirmed.
+
+    :param first: call 9's :func:`validate_window_bound` fields.
+    :param second: call 10's; empty when that call failed or was not made.
+    :returns: ``(fields, kept, dropped)``.
+    """
+    fields = {
+        FIELD_WINDOW_BOUND: first.get(FIELD_WINDOW_BOUND),
+        FIELD_WINDOW_BOUND_SPAN: first.get(FIELD_WINDOW_BOUND_SPAN),
+    }
+    kept: dict[str, Any] = {}
+    dropped: dict[str, Any] = {}
+    if fields[FIELD_WINDOW_BOUND] == WindowBound.BEYOND.value:
+        decision = {"value": WindowBound.BEYOND.value, "span": fields[FIELD_WINDOW_BOUND_SPAN]}
+        if (
+            second.get(FIELD_WINDOW_BOUND) == WindowBound.BEYOND.value
+            and _stated_days(second.get(FIELD_WINDOW_BOUND_SPAN))
+            == _stated_days(fields[FIELD_WINDOW_BOUND_SPAN])
+        ):
+            kept[FIELD_WINDOW_BOUND] = decision
+        else:
+            dropped[FIELD_WINDOW_BOUND] = decision
+            fields = {FIELD_WINDOW_BOUND: None, FIELD_WINDOW_BOUND_SPAN: None}
+    return fields, kept, dropped
+
+
+def _window_bound(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    *,
+    model: str,
+    llm: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Calls 9 and 10 for one row: ``window_bound`` and nothing else.
+
+    Call 9 sends :data:`WINDOW_BOUND_PROMPT`; when its validated answer is ``beyond``, call 10
+    sends :data:`WINDOW_BOUND_AGREEMENT_PROMPT` and :func:`agree_window_bound` keeps the
+    ``beyond`` only when call 10 gives it too. A failed call confirms nothing and is never cached.
+
+    :returns: the agreed ``{window_bound, window_bound_span}`` and the record stored under
+        :data:`WINDOW_BOUND_KEY`.
+    """
+    line = str(row.get(_LINE))
+    absent = {FIELD_WINDOW_BOUND: None, FIELD_WINDOW_BOUND_SPAN: None}
+    outcome, key, payload, error = _ask(
+        llm, row, members, role, model=model, template=WINDOW_BOUND_PROMPT,
+        system=WINDOW_BOUND_SYSTEM_PROMPT, version=WINDOW_BOUND_PROMPT_VERSION,
+    )
+    record: dict[str, Any] = {
+        "promptVersion": WINDOW_BOUND_PROMPT_VERSION, "model": model, "cacheKey": key,
+        "outcome": outcome, **absent, "kept": {}, "dropped": {}, "second": None,
+    }
+    if error is not None:
+        record["error"] = error
+        logger.warning(
+            "[annotation] window_bound call failed for row %s; window_bound absent: %s",
+            row.get(_ID), error,
+        )
+        return dict(absent), record
+    first, rejected = validate_window_bound(payload, line)
+    record.update(first)
+    if rejected:
+        record["rejected"] = rejected
+    if first[FIELD_WINDOW_BOUND] != WindowBound.BEYOND.value:
+        return first, record
+    outcome, key, payload, error = _ask(
+        llm, row, members, role, model=model, template=WINDOW_BOUND_AGREEMENT_PROMPT,
+        system=WINDOW_BOUND_AGREEMENT_SYSTEM_PROMPT, version=WINDOW_BOUND_AGREEMENT_PROMPT_VERSION,
+    )
+    second, second_rejected = ({}, []) if error is not None else validate_window_bound(
+        payload, line
+    )
+    fields, kept, dropped = agree_window_bound(first, second)
+    record.update(kept=kept, dropped=dropped)
+    record["second"] = {
+        "promptVersion": WINDOW_BOUND_AGREEMENT_PROMPT_VERSION,
+        "cacheKey": key,
+        "outcome": outcome,
+        FIELD_WINDOW_BOUND: second.get(FIELD_WINDOW_BOUND),
+        FIELD_WINDOW_BOUND_SPAN: second.get(FIELD_WINDOW_BOUND_SPAN),
+        **({"error": error} if error is not None else {}),
+        **({"rejected": second_rejected} if second_rejected else {}),
+    }
+    return fields, record
+
+
 def _reverting_roles(role: str) -> frozenset[str]:
     """The ``fragment_role`` values that revert a ``conditional`` on a criterion of ``role``.
 
@@ -1936,6 +2127,13 @@ def annotate_row(
         else:
             row.pop(TRIAL_ONLY_CHECK_KEY, None)
     change, row[RECORD_CHANGE_KEY] = _record_change(row, members, role, model=model, llm=llm)
+    # A label with members is never built as an occurrence, so it is not asked.
+    if members:
+        bound: dict[str, Any] = {}
+        row.pop(WINDOW_BOUND_KEY, None)
+    else:
+        bound, row[WINDOW_BOUND_KEY] = _window_bound(row, members, role, model=model, llm=llm)
+    change = {**change, **bound}
     if error is not None:
         row[ANNOTATION_KEY] = {
             "promptVersion": ANNOTATION_PROMPT_VERSION,
@@ -1998,6 +2196,72 @@ def window_disagreement(fields: Mapping[str, Any], window: Any) -> dict[str, Any
         "windowSpan": span,
         "statedDays": [low for low, _high in durations],
         "window": {"start": window.get("start"), "end": window.get("end")},
+    }
+
+
+def stated_window_bound(row: Mapping[str, Any]) -> int | None:
+    """Days that must have passed since the entity, when both wordings agreed ``beyond``.
+
+    Re-checked against the row's line, as the other readers are, so an edited row cannot carry
+    an unchecked bound into the build.
+
+    :returns: the days the agreed span states, or None.
+    """
+    fields = _annotation(row)
+    if fields.get(FIELD_WINDOW_BOUND) != WindowBound.BEYOND.value:
+        return None
+    span = fields.get(FIELD_WINDOW_BOUND_SPAN)
+    return _stated_days(span) if span_in_line(span, row.get(_LINE)) else None
+
+
+def annotated_window(row: Mapping[str, Any]) -> tuple[Any, dict[str, Any] | None]:
+    """The window the build emits for a row: the extracted one, unless the annotation states
+    the side or the size it should have.
+
+    * ``beyond`` agreed by both wordings (:func:`stated_window_bound`): the window ends that many
+      days before index, and starts at the extracted start when that is earlier still, else at
+      all prior history.
+    * otherwise, a verified ``window_span`` stating one duration that neither bound matches
+      (:func:`window_disagreement`): the window's one bound that is neither 0 nor all prior
+      history takes that duration, its side kept. Two such bounds, or two durations, change
+      nothing -- which number stands for which is not decided from numbers alone.
+
+    :returns: ``(window, record)``; ``record`` is None when the window is the extracted one, else
+        ``{window, extracted, source, span}``.
+    """
+    from src.utils.circe_lint import DEFAULT_WINDOW_START_DAYS_UNLISTED_DOMAIN as ALL_HISTORY
+
+    window = row.get("window")
+    fields = _annotation(row)
+    beyond = stated_window_bound(row)
+    if beyond is not None:
+        start = window.get("start") if isinstance(window, Mapping) else None
+        new = {
+            "start": start if isinstance(start, int) and start < -beyond else ALL_HISTORY,
+            "end": -beyond,
+        }
+        source, span = "window_bound", fields.get(FIELD_WINDOW_BOUND_SPAN)
+    else:
+        disagreement = window_disagreement(fields, window)
+        span = fields.get(FIELD_WINDOW_SPAN)
+        days = _stated_days(span)
+        if disagreement is None or days is None or not span_in_line(span, row.get(_LINE)):
+            return window, None
+        finite = [
+            k for k, v in window.items() if isinstance(v, int) and 0 < abs(v) < abs(ALL_HISTORY)
+        ]
+        if len(finite) != 1:
+            return window, None
+        (bound,) = finite
+        new = {**window, bound: days if window[bound] > 0 else -days}
+        source = "window_span_duration"
+    if isinstance(window, Mapping) and dict(window) == new:
+        return window, None
+    return new, {
+        "window": new,
+        "extracted": dict(window) if isinstance(window, Mapping) else None,
+        "source": source,
+        "span": span,
     }
 
 

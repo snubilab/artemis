@@ -1,0 +1,314 @@
+{
+ "_source": "output/site_gap/2026-10-20_p8_segoff/{arm_main,arm_placebo}/store/studies.json (P8, code 7829e37), rows copied verbatim minus build bookkeeping",
+ "carolina_inclusion_15": {
+  "id": 15,
+  "description": "Ischemic or hemorrhagic stroke",
+  "domain": "Condition",
+  "sourceText": "Stroke",
+  "protocolLine": "7. [OR-GROUP] High risk of CV events defined as any one (or more) of A), B), C) or D) with any of: Myocardial infarction (> 6 weeks prior to informed consent) | Documented coronary artery disease (≥ 50% luminal diameter narrowing of left main coronary artery or ≥50% in at least two major coronary arteries in angiogram) | Percutaneous Coronary Intervention (PCI) > 6 weeks prior informed consent | Coronary Artery By-pass Grafting (CABG) > 4 years prior to informed consent or with recurrent angina pectoris following surgery | Ischemic or hemorrhagic stroke (> 3 months prior to informed consent) | Peripheral occlusive arterial disease (previous limb bypass surgery, stenting or percutaneous transluminal angioplasty; previous limb or foot amputation due to circulatory insufficiency, angiographic or ultrasound detected significant vessel stenosis (≥ 50%) of major limb arteries (common iliac-, internal iliac-, external iliac-, femoral- and/or popliteal artery), history of intermittent claudication with uni- or bilateral ankle: arm blood pressure ratio < 0.90). | Moderately impaired renal function (as defined by modified diet of renal disease (MDRD) formula) with estimated glomerular filtration rate [eGFR]) 30-59 mL/min/1.73 m2 | Random spot urinary albumin creatinine ratio ≥ 30 μg/mg (≥ 3.4 mg/mmol) in two of three unrelated specimens in previous 12 months prior Visit 1a | Proliferative retinopathy defined as retinal neovascularisation or previous retinal laser coagulation therapy. | Age ≥ 70 years (at Visit 1a) | Type 2 diabetes mellitus duration > 10 years at Visit 1a. | Current* systolic blood pressure (SBP) > 140 mmHg (or on at least one blood pressure lowering treatment at Visit 1a) | Current daily cigarette smoking | Current* LDL cholesterol ≥ 135 mg/dL (3.5 mmol/l) (or specific current treatment for this lipid abnormality at Visit 1a)",
+  "protocolSpan": "",
+  "window": {
+   "start": -90,
+   "end": 0
+  },
+  "logicType": "PRESENCE",
+  "valueConstraint": null,
+  "groupId": "233118b9-26ef-45d2-ba7c-26f902fb4e76",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "prior to informed consent",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": null,
+   "quantity_kind": null,
+   "reference_bound": null,
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "carolina_inclusion_13": {
+  "id": 13,
+  "description": "Percutaneous Coronary Intervention (PCI)",
+  "domain": "Procedure",
+  "sourceText": "Percutaneous Coronary Intervention",
+  "protocolLine": "7. [OR-GROUP] High risk of CV events defined as any one (or more) of A), B), C) or D) with any of: Myocardial infarction (> 6 weeks prior to informed consent) | Documented coronary artery disease (≥ 50% luminal diameter narrowing of left main coronary artery or ≥50% in at least two major coronary arteries in angiogram) | Percutaneous Coronary Intervention (PCI) > 6 weeks prior informed consent | Coronary Artery By-pass Grafting (CABG) > 4 years prior to informed consent or with recurrent angina pectoris following surgery | Ischemic or hemorrhagic stroke (> 3 months prior to informed consent) | Peripheral occlusive arterial disease (previous limb bypass surgery, stenting or percutaneous transluminal angioplasty; previous limb or foot amputation due to circulatory insufficiency, angiographic or ultrasound detected significant vessel stenosis (≥ 50%) of major limb arteries (common iliac-, internal iliac-, external iliac-, femoral- and/or popliteal artery), history of intermittent claudication with uni- or bilateral ankle: arm blood pressure ratio < 0.90). | Moderately impaired renal function (as defined by modified diet of renal disease (MDRD) formula) with estimated glomerular filtration rate [eGFR]) 30-59 mL/min/1.73 m2 | Random spot urinary albumin creatinine ratio ≥ 30 μg/mg (≥ 3.4 mg/mmol) in two of three unrelated specimens in previous 12 months prior Visit 1a | Proliferative retinopathy defined as retinal neovascularisation or previous retinal laser coagulation therapy. | Age ≥ 70 years (at Visit 1a) | Type 2 diabetes mellitus duration > 10 years at Visit 1a. | Current* systolic blood pressure (SBP) > 140 mmHg (or on at least one blood pressure lowering treatment at Visit 1a) | Current daily cigarette smoking | Current* LDL cholesterol ≥ 135 mg/dL (3.5 mmol/l) (or specific current treatment for this lipid abnormality at Visit 1a)",
+  "protocolSpan": "",
+  "window": {
+   "start": -42,
+   "end": 0
+  },
+  "logicType": "PRESENCE",
+  "valueConstraint": null,
+  "groupId": "233118b9-26ef-45d2-ba7c-26f902fb4e76",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": "any",
+   "relation_span": "any one (or more) of A), B), C) or D)",
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": " > 6 weeks prior to informed consent",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": null,
+   "quantity_kind": null,
+   "reference_bound": null,
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "carolina_inclusion_14": {
+  "id": 14,
+  "description": "Coronary Artery By-pass Grafting (CABG)",
+  "domain": "Procedure",
+  "sourceText": "Coronary Artery By-pass Grafting",
+  "protocolLine": "7. [OR-GROUP] High risk of CV events defined as any one (or more) of A), B), C) or D) with any of: Myocardial infarction (> 6 weeks prior to informed consent) | Documented coronary artery disease (≥ 50% luminal diameter narrowing of left main coronary artery or ≥50% in at least two major coronary arteries in angiogram) | Percutaneous Coronary Intervention (PCI) > 6 weeks prior informed consent | Coronary Artery By-pass Grafting (CABG) > 4 years prior to informed consent or with recurrent angina pectoris following surgery | Ischemic or hemorrhagic stroke (> 3 months prior to informed consent) | Peripheral occlusive arterial disease (previous limb bypass surgery, stenting or percutaneous transluminal angioplasty; previous limb or foot amputation due to circulatory insufficiency, angiographic or ultrasound detected significant vessel stenosis (≥ 50%) of major limb arteries (common iliac-, internal iliac-, external iliac-, femoral- and/or popliteal artery), history of intermittent claudication with uni- or bilateral ankle: arm blood pressure ratio < 0.90). | Moderately impaired renal function (as defined by modified diet of renal disease (MDRD) formula) with estimated glomerular filtration rate [eGFR]) 30-59 mL/min/1.73 m2 | Random spot urinary albumin creatinine ratio ≥ 30 μg/mg (≥ 3.4 mg/mmol) in two of three unrelated specimens in previous 12 months prior Visit 1a | Proliferative retinopathy defined as retinal neovascularisation or previous retinal laser coagulation therapy. | Age ≥ 70 years (at Visit 1a) | Type 2 diabetes mellitus duration > 10 years at Visit 1a. | Current* systolic blood pressure (SBP) > 140 mmHg (or on at least one blood pressure lowering treatment at Visit 1a) | Current daily cigarette smoking | Current* LDL cholesterol ≥ 135 mg/dL (3.5 mmol/l) (or specific current treatment for this lipid abnormality at Visit 1a)",
+  "protocolSpan": "",
+  "window": {
+   "start": -1461,
+   "end": 0
+  },
+  "logicType": "PRESENCE",
+  "valueConstraint": null,
+  "groupId": "233118b9-26ef-45d2-ba7c-26f902fb4e76",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "required",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": null,
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": null,
+   "quantity_kind": null,
+   "reference_bound": null,
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "aristotle_exclusion_38": {
+  "id": 38,
+  "description": "Ischemic stroke within 7 days",
+  "domain": "Condition",
+  "sourceText": "Ischemic stroke",
+  "protocolLine": "15. Recent ischemic stroke (within 7 days)",
+  "protocolSpan": "ischemic stroke",
+  "window": {
+   "start": -7,
+   "end": 0
+  },
+  "logicType": "ABSENCE",
+  "valueConstraint": null,
+  "groupId": "c8323c90-fd4f-4126-a249-7a0e1a7a9627",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "forbidden",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "within 7 days",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": null,
+   "quantity_kind": null,
+   "reference_bound": null,
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "carmelina_exclusion_28": {
+  "id": 28,
+  "description": "Previous or planned open bariatric surgery",
+  "domain": "Procedure",
+  "sourceText": "open bariatric surgery",
+  "protocolLine": "6. Any previous (or planned within next 12 months) bariatric surgery (open or laparoscopic) or intervention (gastric sleeve)",
+  "protocolSpan": "open",
+  "window": {
+   "start": -12,
+   "end": 0
+  },
+  "logicType": "ABSENCE",
+  "valueConstraint": null,
+  "groupId": "aab225b7-dbdb-424c-8755-2dc6436fcc0a",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "forbidden",
+   "conditional_span": null,
+   "excepted_entities": [
+    {
+     "text": "gastric sleeve",
+     "span": "(gastric sleeve)"
+    }
+   ],
+   "base_span": "bariatric surgery (open or laparoscopic)",
+   "relation": "any",
+   "relation_span": "or",
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "within next 12 months",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": null,
+   "quantity_kind": null,
+   "reference_bound": null,
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "carmelina_exclusion_28_placebo": {
+  "id": 28,
+  "description": "Previous open bariatric surgery",
+  "domain": "Procedure",
+  "sourceText": "open bariatric surgery",
+  "protocolLine": "6. Any previous (or planned within next 12 months) bariatric surgery (open or laparoscopic) or intervention (gastric sleeve)",
+  "protocolSpan": "open",
+  "window": {
+   "start": -9999,
+   "end": 0
+  },
+  "logicType": "ABSENCE",
+  "valueConstraint": null,
+  "groupId": "93316922-5417-4911-9627-6a4c924ce1b3",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "forbidden",
+   "conditional_span": null,
+   "excepted_entities": [
+    {
+     "text": "gastric sleeve",
+     "span": "(gastric sleeve)"
+    }
+   ],
+   "base_span": "bariatric surgery (open or laparoscopic)",
+   "relation": "any",
+   "relation_span": "or",
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "within next 12 months",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": null,
+   "quantity_kind": null,
+   "reference_bound": null,
+   "record_change": "none",
+   "record_change_span": null
+  }
+ },
+ "plato_exclusion_39": {
+  "id": 39,
+  "description": "Fibrinolytic therapy within the previous 24 hours",
+  "domain": "Procedure",
+  "sourceText": "Fibrinolytic therapy within the previous 24 h",
+  "protocolLine": "6. Fibrinolytic therapy planned or within the previous 24 h",
+  "protocolSpan": "within the previous 24 h",
+  "window": {
+   "start": -24,
+   "end": 0
+  },
+  "logicType": "ABSENCE",
+  "valueConstraint": null,
+  "groupId": "bef8037d-1b48-49cd-90e3-388eab06cf15",
+  "parentGroupId": null,
+  "isGroupLabel": false,
+  "annotation": {
+   "promptVersion": "rfc016-steps1-4-agreement-v1",
+   "model": "vllm/google/gemma-4-E4B-it",
+   "record_requirement": "forbidden",
+   "conditional_span": null,
+   "excepted_entities": [],
+   "base_span": null,
+   "relation": null,
+   "relation_span": null,
+   "cardinality": null,
+   "timing": "prior",
+   "window_span": "previous 24 h",
+   "route": [
+    "any"
+   ],
+   "route_span": null,
+   "specimen": "any",
+   "specimen_span": null,
+   "no_entity": "none",
+   "no_entity_span": null,
+   "threshold_span": null,
+   "quantity_kind": null,
+   "reference_bound": null,
+   "record_change": "none",
+   "record_change_span": null
+  }
+ }
+}
