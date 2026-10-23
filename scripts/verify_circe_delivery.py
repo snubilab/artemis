@@ -390,6 +390,7 @@ from src.services.criterion_annotation import (  # noqa: E402
     agreement_records,
     applied_value_constraint,
     group_descendants,
+    header_over_listed_members,
     record_change_records,
     span_in_line,
     threshold_use,
@@ -2118,6 +2119,56 @@ def _annotation_skip_violations(
     return []
 
 
+def conditional_header_violations(
+    records: Any, index: dict[tuple[str, str], dict[str, Any]]
+) -> list[str]:
+    """A list header skipped as conditional together with every member under it.
+
+    The conditional permit re-derives (its span is in the header's line), so check (i)
+    passed it -- while the whole list left the file. P11 MAIN (sec-nest 3a253a4): LEADER
+    inclusion 9 and 18 ("age ≥50 and ≥1 of the following criteria:") with members 10-17 and
+    19-22, CARMELINA inclusion 12 ("High risk of CV events (I and/or II):") with 13-38.
+
+    Fails a header the producer itself treats as the group
+    (:func:`~src.services.criterion_annotation.header_over_listed_members`: its span is in
+    none of its members' lines) when it and every member are recorded under the conditional
+    reason. A real conditional group -- PLATO's WOCBP, split from one line -- shares that line
+    with its members and is not read here.
+
+    :param records: the value under ``_skippedCriteria``.
+    :param index: the store study's criteria, from :func:`criteria_index`.
+    :returns: one line per header; empty when none.
+    """
+    if not isinstance(records, list):
+        return []
+    conditional = {
+        (r.get("role"), str(r.get("criterionId") or "")): r
+        for r in records
+        if isinstance(r, dict) and r.get("reason") == CONDITIONAL_REASON
+    }
+    violations: list[str] = []
+    for (role, criterion_id), record in conditional.items():
+        label = index.get((role, criterion_id))
+        if label is None or str(record.get("conditionalDecidedBy") or criterion_id) != criterion_id:
+            continue
+        rows = [row for (row_role, _id), row in index.items() if row_role == role]
+        span = record.get("conditionalSpan")
+        if not header_over_listed_members(label, rows, span):
+            continue
+        groups = group_descendants(rows, str(label.get("groupId")))
+        members = [
+            str(row.get("id")) for row in rows if row is not label and row.get("groupId") in groups
+        ]
+        if all((role, member) in conditional for member in members):
+            violations.append(
+                f"{role} #{criterion_id} {_label_of(label)!r} is a list header (its span "
+                f"{span!r} is in none of its {len(members)} members' lines) skipped as "
+                f"{CONDITIONAL_REASON} with every member ({', '.join(members)}): the list is "
+                "lost under a permit that covers a condition on records, not the group itself"
+            )
+    return violations
+
+
 def repair_ledger_violations(study: dict[str, Any]) -> tuple[list[str], str]:
     """Check (k): re-judge the store study's repair ledger. ``(violations, summary)``.
 
@@ -2802,6 +2853,15 @@ def criterion_accounting(
         violations.append(
             f"skips recorded under an allowed reason that does not hold "
             f"({len(unreconciled)}): " + "; ".join(unreconciled)
+        )
+
+    # A permit that re-derives can still cover a whole list: the header's own wording
+    # read as the condition, taking every member with it (P11 MAIN LEADER, CARMELINA).
+    headers = conditional_header_violations(skipped, index)
+    if headers:
+        violations.append(
+            f"list headers skipped as conditional with all their members ({len(headers)}): "
+            + "; ".join(headers)
         )
 
     # "all permitted" now means permitted AND reconciled.

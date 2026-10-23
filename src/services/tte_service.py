@@ -97,15 +97,18 @@ from src.services.criterion_annotation import (
     agreement_records,
     annotate_eligibility,
     applied_value_constraint,
+    GROUP_RELATION_UNRESOLVED_REASON,
     conditional_skips,
     exception_anchored,
     prospective_skips,
     record_change_records,
     record_change_skips,
+    declared_group_type,
     relation_group_type,
     stated_exceptions,
     stated_exceptions_by_codeset,
     stated_relation,
+    unresolved_group_relations,
     threshold_skips,
     unrepresentable_threshold_records,
 )
@@ -514,6 +517,10 @@ def _group_expression_type(
         )
         if applied is not None:
             return applied
+        if group_type is None:
+            # The IR declared none; the relation cannot apply to these members, so its
+            # own declared reading stands rather than a guessed ALL.
+            return declared_group_type(logic, relation.relation, relation.cardinality), None
     declared = (group_type or "").strip().upper()
     all_absence = all(
         (crit.get("logicType") or "").strip().upper() == LOGIC_ABSENCE
@@ -5179,6 +5186,19 @@ class TTEService:
         # stays recorded as the criterion loss it is rather than under this permitted reason.
         record_change_inclusions = record_change_skips(inc_criteria)
         record_change_exclusions = record_change_skips(exc_criteria)
+        # A group the IR declared no group_type for, whose label states no verified relation:
+        # nothing says how its members combine, and ALL is not a reading. Nothing of it is
+        # built; its rows are recorded under a reason the delivery gate counts as loss.
+        unresolved_inclusions = unresolved_group_relations(inc_criteria)
+        unresolved_exclusions = unresolved_group_relations(exc_criteria)
+
+        def _record_unresolved_skip(criterion: dict[str, Any], role: str, group: str) -> None:
+            _record_skip(
+                criterion, role, GROUP_RELATION_UNRESOLVED_REASON,
+                "its group declares no group_type and its label states no verified relation, "
+                "so how the members combine is unknown; the group is not built",
+                extra={"unresolvedGroupId": group},
+            )
         # Calls 3 and 4 of the annotation: per row call 4 was made for (or call 3 failed for),
         # what they decided (`criterion_annotation.record_change_records`).
         record_changes = record_change_records(inc_criteria, "inclusion") + record_change_records(
@@ -5263,6 +5283,11 @@ class TTEService:
                 _record_record_change_skip(criterion, "inclusion", change)
                 order += 1
                 continue
+            unresolved = unresolved_inclusions.get(str(criterion.get("id", "")))
+            if unresolved is not None:
+                _record_unresolved_skip(criterion, "inclusion", unresolved)
+                order += 1
+                continue
             # Ahead of the demographic branch: a group label emits no rule of its own,
             # whatever its domain. Checked after it, a Demographics label carrying the
             # group's `gte 18` built an Age rule from the label (ARISTOTLE inclusion 16).
@@ -5318,6 +5343,11 @@ class TTEService:
             change = record_change_exclusions.get(str(criterion.get("id", "")))
             if change is not None:
                 _record_record_change_skip(criterion, "exclusion", change)
+                order += 1
+                continue
+            unresolved = unresolved_exclusions.get(str(criterion.get("id", "")))
+            if unresolved is not None:
+                _record_unresolved_skip(criterion, "exclusion", unresolved)
                 order += 1
                 continue
             # Ahead of the demographic branch, as in the inclusion loop: a group label
@@ -11772,7 +11802,8 @@ class TTEService:
             if sub_items:
                 # Composite group: assign a shared groupId to all sub-criteria
                 group_id = str(uuid.uuid4())
-                group_type = getattr(item, "group_type", "ALL") or "ALL"
+                # None when the IR declared none: `unresolved_group_relations` decides.
+                group_type = getattr(item, "group_type", None)
                 parent_logic_type = getattr(item, "logic_type", "PRESENCE") or "PRESENCE"
 
                 # If the parent has a meaningful name, emit it as the group label row
@@ -11833,7 +11864,7 @@ class TTEService:
         criterion_id: int,
         description: str,
         group_id: str | None = None,
-        group_type: str = "ALL",
+        group_type: str | None = "ALL",
         logic_type: str = "PRESENCE",
         parent_value_constraint: Any = None,
         parent_group_id: str | None = None,

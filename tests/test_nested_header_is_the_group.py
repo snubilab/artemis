@@ -186,7 +186,9 @@ class TestTheIrGroupTypeIsKeptWhenAbsent:
         group = Criteria(
             name="Prior cardiovascular disease cohort criteria", domain="Condition",
             source_text="4. Prior cardiovascular disease cohort: age ≥50 and ≥1 of the following",
-            sub_criteria=[Criteria(name="Prior MI", domain="Condition", source_text="4.1 Prior MI")],
+            sub_criteria=[
+                Criteria(name="Prior MI", domain="Condition", source_text="4.1 Prior MI")
+            ],
             group_type=None,
         )
         rows = TTEService.__new__(TTEService)._criteria_from_ir([group])

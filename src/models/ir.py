@@ -236,7 +236,10 @@ class Criteria(BaseModel):
     
     # Composite criteria: fan-out into sub-criteria
     sub_criteria: List["Criteria"] = Field(default_factory=list)
-    group_type: Literal["ALL", "ANY"] = "ALL"
+    # None on a group whose model output declared no group_type: nothing states how its
+    # members combine, and the builder records it unresolved rather than reading ALL
+    # (P11 MAIN, LEADER/CARMELINA nested lists). Leaves keep "ALL"; it is never read there.
+    group_type: Optional[Literal["ALL", "ANY"]] = "ALL"
 
     # If True, criterion is gated on a patient subgroup and must be skipped in CIRCE
     conditional: bool = False

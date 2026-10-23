@@ -1833,15 +1833,21 @@ class LogicDecomposer:
                 "row carries no criterion of its own"
             )
 
-        group_type = data.get("group_type", "ALL")
+        group_type = data.get("group_type")
         if isinstance(group_type, str):
             group_type = group_type.strip().upper()
         if group_type not in ("ALL", "ANY"):
-            logger.warning(
-                f"[Agent 1] Invalid group_type '{data.get('group_type')}' for rule "
-                f"'{data.get('name', 'Unnamed')}' — defaulting to 'ALL'"
-            )
-            group_type = "ALL"
+            if sub_criteria:
+                # A group the model gave no (readable) group_type: kept as None, so the
+                # build records it unresolved unless a verified relation states it.
+                # Defaulting to ALL made LEADER's "≥1 of the following" lists AND (P11).
+                logger.warning(
+                    f"[Agent 1] No group_type {data.get('group_type')!r} for group "
+                    f"'{data.get('name', 'Unnamed')}' — left unresolved"
+                )
+                group_type = None
+            else:
+                group_type = "ALL"
 
         return Criteria(
             name=data.get("name", "Unnamed Rule"),
