@@ -205,7 +205,7 @@ def _cached_pairs(entity: str, version: str, system: str, prompt: str, parse: An
                   model: str | None, llm: Any) -> list[list[str]] | list[tuple[str, str]] | None:
     """The parsed answer for this prompt, from the cache or one model call; None on failure."""
     from src.agents.agent2.critic import select_critic_model
-    from src.utils.llm import get_llm, resolve_model
+    from src.utils.llm import ENTITY_FULL_NAME_MAX_TOKENS, get_llm, resolve_model
 
     resolved = resolve_model(model or select_critic_model(None))
     key = hashlib.sha256(json.dumps([version, system, prompt, resolved]).encode()).hexdigest()
@@ -215,7 +215,8 @@ def _cached_pairs(entity: str, version: str, system: str, prompt: str, parse: An
     if pairs is not None:
         return pairs
     try:
-        payload = _ask(llm if llm is not None else get_llm(model_name=resolved, temperature=0.0, json_mode=True),
+        payload = _ask(llm if llm is not None else get_llm(model_name=resolved, temperature=0.0, json_mode=True,
+                                                       max_tokens=ENTITY_FULL_NAME_MAX_TOKENS),
                        system, prompt)
         pairs = parse(payload) if payload is not None else None
     except Exception as exc:  # a failed call maps the seed as written, as before this step existed

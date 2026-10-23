@@ -60,10 +60,6 @@ SEGMENTATION_PROMPT_VERSION = "rfc016-s5-v2"  # v2: answer constrained by ANSWER
 PART_CHARS = 48_000
 PART_OVERLAP = 8_000
 
-#: Upper bound on one answer, so a generation that stops producing content cannot run to
-#: the context ceiling. A part of the largest corpus section needs well under half of it.
-MAX_ANSWER_TOKENS = 4096
-
 #: Caps on `interruptions`, the one field whose length the document does not bound: live,
 #: it ran to whole copied pages and one entry per page number. A line past the cap is not
 #: a full line and is rejected, which only leaves it in the criterion text.
@@ -772,7 +768,7 @@ def reset_cache_for_tests() -> None:
 def _build_llm(model: str) -> Any:
     """:param model: the resolved model. :returns: a chat model handle (separate so a
     test substitutes a stub without reaching a network)."""
-    from src.utils.llm import get_llm
+    from src.utils.llm import SEGMENTATION_MAX_TOKENS, get_llm
 
     return get_llm(
         model_name=model,
@@ -785,7 +781,7 @@ def _build_llm(model: str) -> Any:
                 "strict": True,
             },
         },
-        max_tokens=MAX_ANSWER_TOKENS,
+        max_tokens=SEGMENTATION_MAX_TOKENS,
     )
 
 

@@ -14,7 +14,7 @@ from pydantic import ValidationError
 logger = logging.getLogger(__name__)
 
 from src.utils.env_flags import env_flag_enabled
-from src.utils.llm import get_llm, raise_if_truncated, resolve_model, token_usage
+from src.utils.llm import EXTRACTION_MAX_TOKENS, get_llm, raise_if_truncated, resolve_model, token_usage
 from src.models.ir import ARTEMISRequest, CohortDefinition, PrimaryCriteria, Criteria, CohortOutcome, TemporalWindow, ValueConstraint
 from src.agents.agent1.prompts import (
     SYSTEM_PROMPT, DECOMPOSITION_PROMPT,
@@ -190,6 +190,7 @@ class LogicDecomposer:
             model_name=model_name,
             temperature=0.0,
             response_format={"type": "json_object"},
+            max_tokens=EXTRACTION_MAX_TOKENS,
         )
         # The IR cache key is built from this; "default" collapsed every model
         # into one file, so a second-arm run replayed arm one's cached IR.

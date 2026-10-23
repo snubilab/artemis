@@ -6,7 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from src.utils.env_flags import env_flag_enabled
-from src.utils.llm import StrictJsonOutputParser, get_llm
+from src.utils.llm import RERANKER_MAX_TOKENS, StrictJsonOutputParser, get_llm
 from src.agents.agent2.retriever import CandidateConcept
 
 logger = logging.getLogger(__name__)
@@ -120,7 +120,7 @@ class ConceptReranker:
     """
     
     def __init__(self):
-        self.llm = get_llm(temperature=0.0, json_mode=True)
+        self.llm = get_llm(temperature=0.0, json_mode=True, max_tokens=RERANKER_MAX_TOKENS)
         self.parser = StrictJsonOutputParser(pydantic_object=RerankResult)
 
         domain_aware = env_flag_enabled("AGENT2_RERANKER_DOMAIN_AWARE")
