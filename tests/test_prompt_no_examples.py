@@ -368,7 +368,8 @@ def _render_criterion_annotation_record_change() -> str:
     record_change, so no call 4."""
     calls = _annotation_calls('{"record_requirement": "required", "record_change": "none"}')
     third = [c for c in calls if _record_change_call(c)]
-    assert len(third) == len(calls) // 2 == 2, "call 3 was not made for every row"
+    # Two rows; the member row is also asked call 7 (trial_only, a required row) and call 9.
+    assert len(third) == 2, "call 3 was not made for every row"
     return _joined(third)
 
 
@@ -478,6 +479,47 @@ def _render_criterion_annotation_trial_only_agreement() -> str:
     calls = [c for c in _trial_only_calls()
              if c.startswith(criterion_annotation.AGREEMENT_SYSTEM_PROMPT)]
     assert len(calls) == 1, "the second wording was not asked after a yes"
+    return _joined(calls)
+
+
+def _own_entity_calls() -> list[str]:
+    """Every call 11/12 made when calls 1 and 2 agree a ``no_entity`` fragment lying wholly
+    outside the row's own span and call 11 answers ``named``, so call 12 is made too."""
+    from src.services import criterion_annotation
+
+    recorder = _Recorder(reply=(
+        f'{{"record_requirement": "required", "no_entity": "investigator_judgement", '
+        f'"no_entity_span": "{STUB} two", "own_entity": "named"}}'
+    ))
+    row = {"id": 1, "description": STUB, "sourceText": STUB, "isGroupLabel": False,
+           "domain": "Condition", "protocolLine": f"{STUB} one; {STUB} two",
+           "protocolSpan": f"{STUB} one", "logicType": "PRESENCE",
+           "window": {"start": -56, "end": 0}, "valueConstraint": None}
+    with patch.object(criterion_annotation, "_build_llm", lambda _model: recorder.runnable()), \
+            patch.dict(os.environ, {"ARTEMIS_ANNOTATION_CACHE": "0"}):
+        criterion_annotation.annotate_eligibility(
+            {"inclusionCriteria": [row], "exclusionCriteria": []}, model="stub-model",
+        )
+    return [c for c in recorder.calls if f'"{criterion_annotation.FIELD_OWN_ENTITY}"' in c]
+
+
+def _render_criterion_annotation_own_entity() -> str:
+    """``OWN_ENTITY_PROMPT`` (call 11), linted on its own."""
+    from src.services import criterion_annotation
+
+    calls = [c for c in _own_entity_calls()
+             if c.startswith(criterion_annotation.ANNOTATION_SYSTEM_PROMPT)]
+    assert len(calls) == 1, "call 11 was not asked of a row whose no_entity lies outside its span"
+    return _joined(calls)
+
+
+def _render_criterion_annotation_own_entity_agreement() -> str:
+    """``OWN_ENTITY_AGREEMENT_PROMPT`` (call 12), linted on its own."""
+    from src.services import criterion_annotation
+
+    calls = [c for c in _own_entity_calls()
+             if c.startswith(criterion_annotation.AGREEMENT_SYSTEM_PROMPT)]
+    assert len(calls) == 1, "call 12 was not asked after call 11 answered named"
     return _joined(calls)
 
 
@@ -754,6 +796,14 @@ PROMPTS["criterion_annotation.trial_only"] = PromptSpec(
 )
 PROMPTS["criterion_annotation.trial_only.agreement"] = PromptSpec(
     _render_criterion_annotation_trial_only_agreement, tokens=_TRIAL_ONLY_TOKENS,
+)
+# Calls 11 and 12 (own_entity, p11-fixes c19f9b9): one field and its two values.
+_OWN_ENTITY_TOKENS = frozenset({"own_entity", "named", "not_named"})
+PROMPTS["criterion_annotation.own_entity"] = PromptSpec(
+    _render_criterion_annotation_own_entity, tokens=_OWN_ENTITY_TOKENS,
+)
+PROMPTS["criterion_annotation.own_entity.agreement"] = PromptSpec(
+    _render_criterion_annotation_own_entity_agreement, tokens=_OWN_ENTITY_TOKENS,
 )
 
 # ---------------------------------------------------------------------------
