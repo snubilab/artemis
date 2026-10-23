@@ -1,0 +1,65 @@
+5) Atrial fibrillation or flutter due to reversible causes (e.g. thyrotoxicosis, pericarditis)
+6) Clinically significant (moderate or severe) mitral stenosis
+7) Increased bleeding risk that is believed to be a contraindication to oral anticoagulation
+(e.g. previous intracranial hemorrhage)
+8) Conditions other than atrial fibrillation that require chronic anticoagulation (e.g.
+prosthetic mechanical heart valve)
+9) Persistent, uncontrolled hypertension (systolic BP > 180 mm Hg, or diastolic BP
+> 100 mm Hg)
+10) Active infective endocarditis
+
+
+
+
+
+
+
+11) Planned major surgery
+12) Planned atrial fibrillation or flutter ablation procedure
+13) Use of an unapproved, investigational drug or device within the past 30 days
+14) Required treatment with aspirin > 165 mg/day
+15) Simultaneous treatment with both aspirin and a thienopyridine (e.g., clopidogrel,
+ticlopidine)
+16) Severe comorbid condition with life expectancy of ≤ 1 year
+17) Active alcohol or drug abuse, or psychosocial reasons that make study participation
+impractical
+18) Recent ischemic stroke (within 7 days)
+19) Severe renal insufficiency (serum creatinine > 2.5 mg/dL or a calculated creatinine
+clearance < 25 mL/min, See Section 6.3.2.2)
+20) ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative
+causative factor [e.g., Gilbert’s syndrome] is identified)
+
+21) Platelet count ≤ 100,000/ mm3
+22) Hemoglobin < 9 g/dL
+23) Inability to comply with INR monitoring
+24) Prior randomization into an apixaban clinical study
+25) Prisoners or subjects who are involuntarily incarcerated
+26) Subjects who are compulsorily detained for treatment of either a psychiatric or
+physical (e.g., infectious disease) illness
+27) Women of child bearing potential (WOCBP) unwilling or unable to use an acceptable
+method to avoid pregnancy:
+a) WOCBP using a prohibited contraceptive method
+b) WOCBP include any female who has experienced menarche and who has not
+undergone successful surgical sterilization (hysterectomy, bilateral tubal ligation,
+or bilateral oophorectomy) or is not postmenopausal [defined as amenorrhea ≥ 12
+consecutive months; or women on hormone replacement therapy (HRT) with
+documented serum follicle stimulating hormone (FSH) level > 35 mIU/mL]. Even
+women who are using oral contraceptives, other hormonal contraceptives (vaginal
+products, skin patches, or implanted or injectable products), or mechanical
+products such as an intrauterine device or barrier methods (diaphragm, condoms,
+spermicides) to prevent pregnancy, or are practicing abstinence or where their
+partner is sterile (e.g., vasectomy) should be considered to be of child bearing
+potential
+
+
+
+
+
+
+
+c) Women who are pregnant or breastfeeding
+d) Women with a positive pregnancy test on enrollment or prior to administration of
+investigational product.
+Eligibility criteria for this study have been carefully considered to ensure the safety of the
+study subjects and to ensure that the results of the study can be used. It is imperative that
+subjects fully meet all eligibility criteria.

@@ -145,3 +145,55 @@ def test_should_number_members_k_j_and_their_members_k_j_m():
 def test_should_render_a_criterion_with_no_members_byte_for_byte_as_before():
     criteria = ["Age ≥ 18 years", "HbA1c ≥ 7.0%"]
     assert LogicDecomposer._format_criteria(criteria) == "  1. Age ≥ 18 years\n  2. HbA1c ≥ 7.0%"
+
+
+# A wrapped line is read as a wrap by the punctuation the line before it was cut at, never by its words. Two cuts
+# reopened a wrapped line as a new item at 3a253a4 whatever its first letter: a line ending in a comma (the item has
+# not ended) and a line that opened a bracket it did not close (the item cannot end inside the bracket).
+
+
+def test_should_keep_plato_tia_line_inside_item_d_when_the_line_before_ends_in_a_comma():
+    got = _parse("PLATO_01")
+    head = _criterion(got, "One of the following:")
+    assert _members(head) == [
+        "≥60 y of age",
+        "Previous MI or CABG",
+        "CAD with ≥50% stenosis in ≥2 vessels",
+        "Previous ischemic stroke, TIA (hospital-based diagnosis), carotid stenosis (≥50%), or cerebral "
+        "revascularization",
+        "Diabetes mellitus",
+        "Peripheral artery disease",
+        "Chronic renal dysfunction",
+    ]
+    # the unmarked footnote after (g) opens with a capital after a full stop: it is not a member
+    assert any(c.startswith("Urinary and/or blood pregnancy tests") for c in got)
+
+
+def test_should_keep_carolina_exclusions_whole_when_a_line_is_cut_inside_a_bracket():
+    got = _parse("CAROLINA_04")
+    assert any(c.startswith("Any history and/or current treatment with other antidiabetic drugs (e.g. rosiglitazone, "
+                            "pioglitazone, GLP-1 analogue/agonists, DPP-IV inhibitors or any insulin) prior") for c in got)
+    assert any(c.startswith("Uncontrolled hyperglycaemia with a glucose level >240 mg/dl (>13.3 mmol/L) after an "
+                            "overnight fast") for c in got)
+    assert any(c.startswith("Current treatment with systemic corticosteroids") and "steroids (e.g. for asthma/COPD) is "
+               "no exclusion criterion" in c for c in got)
+    assert not [c for c in got if c.startswith(("rosiglitazone", "mmol/L)", "for asthma"))]
+
+
+def test_should_keep_empa_reg_egfr_whole_when_the_wrap_inside_its_bracket_opens_with_a_capital():
+    got = _parse("EMPA-REG_01")
+    assert any("(according to the Modification of Diet in Renal Disease equation) at screening" in c for c in got)
+    assert not [c for c in got if c.startswith("Diet in Renal Disease")]
+
+
+def test_should_keep_aristotle_and_carmelina_wraps_after_a_comma_or_inside_a_bracket():
+    assert any("(e.g. prosthetic mechanical heart valve)" in c for c in _parse("ARISTOTLE_02"))
+    assert any("on a rhythm strip, Holter recording, or intracardiac electrogram" in c for c in _parse("ARISTOTLE_01"))
+    assert any("by coronary angiography, MRI angiography or CT angiography" in c for c in _parse("CARMELINA_01"))
+
+
+def test_should_still_open_an_item_at_a_capital_after_a_full_stop_or_a_marker():
+    got = _regex_parse_criteria("Age ≥ 18 years (at screening).\nBody mass index ≤ 45\n- Wrapped list item (one,\n"
+                                "- Next item, opens at its marker")
+    assert got == ["Age ≥ 18 years (at screening)", "Body mass index ≤ 45", "Wrapped list item (one,",
+                   "Next item, opens at its marker"]
