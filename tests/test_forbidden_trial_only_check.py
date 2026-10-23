@@ -176,3 +176,17 @@ def test_should_not_show_the_span_to_the_trial_only_pair():
     products'; shown it, the model judged the product, not the reaction (fix-k12 v2 replay)."""
     for prompt in (annotation.TRIAL_ONLY_PROMPT, annotation.TRIAL_ONLY_AGREEMENT_PROMPT):
         assert "{fragment}" not in prompt and "Fragment of the protocol line" not in prompt
+
+
+def test_should_ask_whether_routine_records_from_before_the_approach_could_check_the_criterion():
+    """gate-fix v3 definition: the question a cohort definition needs. 7af0950's 'exists only
+    because the patient takes part in a trial' left EMPA-REG inc 6 'Signed and dated informed
+    consent' and CAROLINA inc 21 (ICF) answered `no` (P8 MAIN/PLACEBO, 2026-10-24)."""
+    for prompt in (annotation.TRIAL_ONLY_PROMPT, annotation.TRIAL_ONLY_AGREEMENT_PROMPT):
+        assert "routine" in prompt and "before the patient was approached" in prompt
+
+
+def test_should_version_the_new_definition_apart_from_fix_k12s():
+    versions = {annotation.TRIAL_ONLY_PROMPT_VERSION, annotation.TRIAL_ONLY_AGREEMENT_PROMPT_VERSION}
+    assert len(versions) == 2
+    assert not any(v.startswith("fixk12-") for v in versions)

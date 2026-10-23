@@ -152,8 +152,9 @@ RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
 CONDITIONAL_CHECK_PROMPT_VERSION = "rfc016-conditional-check-v1"
 CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v1"
 #: Calls 7 and 8 (:func:`check_forbidden`); each part of its call's cache key.
-TRIAL_ONLY_PROMPT_VERSION = "fixk12-trial-only-v2"
-TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "fixk12-trial-only-placebo-v2"
+#: gate-fix v3: the routine-records definition; named by field, apart from other branches' calls 9/10.
+TRIAL_ONLY_PROMPT_VERSION = "gatefix-trial-only-routine-records-v1"
+TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "gatefix-trial-only-routine-records-placebo-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -821,32 +822,28 @@ TRIAL_ONLY_YES = "yes"
 TRIAL_ONLY_NO = "no"
 _TRIAL_ONLY_VALUES = frozenset({TRIAL_ONLY_YES, TRIAL_ONLY_NO})
 
-#: Call 7: whether a ``forbidden`` criterion's own entity exists only because of a clinical trial.
+#: Call 7: whether routine records from before the approach for this trial could check the criterion.
 #: Field definition only. Asked of forbidden and required rows; calls 5/6 are not reused as their
 #: ``entity_outside_trial`` is about this trial, and products of another trial answered ``yes``.
 TRIAL_ONLY_PROMPT = _TRIAL_ONLY_HEAD + """\
-`trial_only` states whether this criterion's own entity -- the entity this criterion names -- \
-exists only because the patient takes part in a clinical trial, this trial or any other. One of:
-- `yes`: the entity exists only through the patient's taking part in a clinical trial: a trial's \
-own procedures, periods or visits, a product or device given or used only under a trial, the \
-patient's enrolment in a trial, or the patient's conduct toward a trial.
-- `no`: the entity can exist in a patient who takes part in no clinical trial. A condition, a \
-reaction, a treatment or a measurement that a patient outside any trial can have is `no`, \
-whatever product or trial the line names beside it.
+`trial_only` states whether this criterion could be checked from the patient's routine health \
+records as they stood before the patient was approached for this trial. One of:
+- `no`: it could. What the criterion requires, or requires to be absent, is the kind of thing \
+routine care records for a patient who takes part in no trial.
+- `yes`: it could not. What the criterion requires comes into being only through the conduct of \
+a trial -- this one or another -- or through the patient's conduct toward a trial, so no routine \
+record from before the approach can hold it.
 """ + _TRIAL_ONLY_TAIL
 
 #: Call 8: the same definition in other words, asked only when call 7 answers ``yes``.
 TRIAL_ONLY_AGREEMENT_PROMPT = _TRIAL_ONLY_HEAD + """\
-`trial_only` says whether the own entity of this criterion -- the entity named by this \
-criterion -- comes into being only because the patient is taking part in a clinical trial, \
-whether this one or another. One of:
-- `yes`: the entity comes about only through the patient's taking part in a clinical trial: \
-through a trial's own procedures, periods or visits, through a product or device that is given \
-or used only under a trial, through the patient's enrolment in a trial, or through the patient's \
-conduct toward a trial.
-- `no`: a patient taking part in no clinical trial can have the entity. Whatever product or trial \
-the line names beside it, a condition, a reaction, a treatment or a measurement that a patient \
-outside every trial can have is `no`.
+`trial_only` says whether the patient's routine health records, as they stood before the patient \
+was approached for this trial, could be used to check this criterion. One of:
+- `no`: they could. Routine care records the kind of thing this criterion requires, or requires \
+to be absent, for patients who take part in no trial.
+- `yes`: they could not. The thing this criterion requires is produced only by the conduct of a \
+trial, whether this one or another, or by the patient's conduct toward a trial, so no routine \
+record made before the approach can contain it.
 """ + _TRIAL_ONLY_TAIL
 
 # --------------------------------------------------------------------------- #
