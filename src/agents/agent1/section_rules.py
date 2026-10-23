@@ -773,6 +773,7 @@ def _regex_parse_criteria(text: str) -> list[str]:
     # text of its own on its line goes to the next line's item.
     rejoined_lines: list[list] = []  # [text, marker, wrap-shaped]
     pending = None
+    last_line = ""  # the previous physical line, where the cut that made this line was
     for line in normalized.split("\n"):
         stripped = line.strip()
         sentinel = _MARKER_SENTINEL_RE.match(stripped)
@@ -795,12 +796,19 @@ def _regex_parse_criteria(text: str) -> list[str]:
         first_word = stripped.split()[0]
         resumes_lowercase = first_char.islower() and not any(c.isupper() for c in first_word[1:])
         previous_ended = bool(rejoined_lines) and rejoined_lines[-1][0].rstrip()[-1:] in ".;:"
+        # Two cuts mean the item has not ended, whatever the next line opens with (unless it carries a marker):
+        # a line ending in a comma (PLATO's "Previous ischemic stroke," / "TIA (hospital-based diagnosis),") and a
+        # line that opened a bracket it did not close (CAROLINA's "(e.g." / "rosiglitazone, ..." and "(>13.3" /
+        # "mmol/L)", EMPA-REG's "(according to the Modification of" / "Diet in Renal Disease equation)").
+        cut_mid_item = pending is None and (
+            last_line[-1:] == "," or last_line.count("(") > last_line.count(")"))
 
-        if rejoined_lines and not previous_ended and (resumes_with_symbol or resumes_lowercase):
+        if rejoined_lines and (cut_mid_item or (not previous_ended and (resumes_with_symbol or resumes_lowercase))):
             rejoined_lines[-1][0] = rejoined_lines[-1][0].rstrip() + " " + stripped
         else:
             rejoined_lines.append([stripped, pending, resumes_with_symbol or resumes_lowercase])
         pending = None
+        last_line = stripped
 
     raw_items = [(line.strip(), marker, wrap) for line, marker, wrap in rejoined_lines if line.strip()]
 

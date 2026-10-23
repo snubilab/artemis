@@ -118,8 +118,9 @@ def test_should_nest_plato_lettered_risk_factors_under_one_of_the_following():
 @pytest.mark.parametrize("name", sorted(FLAT))
 def test_should_lose_no_line_of_text_when_lines_are_nested(name):
     """Every word e5f423a passed on is still there, in order; only list markers leave (CARMELINA's bare "a"/"b",
-    LEADER's private-use square bullet), because they are read as markers now."""
-    old, new = " ".join(FLAT[name]).split(), " ".join(_flat(_parse(name))).split()
+    LEADER's private-use square bullet), because they are read as markers now. A word is compared without a trailing
+    full stop: an item's closing stop is stripped, so "(e.g." that ended an item at e5f423a reads "(e.g" there."""
+    old, new = ([w.rstrip(".") for w in " ".join(x).split()] for x in (FLAT[name], _flat(_parse(name))))
     removed, at = [], 0
     for word in old:
         if at < len(new) and new[at] == word:
@@ -130,7 +131,8 @@ def test_should_lose_no_line_of_text_when_lines_are_nested(name):
     assert all(len(word) == 1 for word in removed), removed
 
 
-@pytest.mark.parametrize("name", ["CAROLINA_04", "LEADER_02", "PLATO_02"])
+# CAROLINA_04 left this set on purpose: three of its items were wraps cut inside a bracket (see below)
+@pytest.mark.parametrize("name", ["LEADER_02", "PLATO_02"])
 def test_should_leave_a_list_with_one_level_exactly_as_before(name):
     assert _parse(name) == FLAT[name]
 

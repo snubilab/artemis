@@ -9,7 +9,8 @@
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
     "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order",
     "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the WOCBP criterion is no longer cut at 'treatment period', and the pregnancy-test and consent criteria after it are read",
-    "page furniture removed before the section is located (page_layout.without_page_furniture, from seg-page f1b2987): a line recurring in the top/bottom 8 lines of >= half the pages of one parity and >= 3 pages is dropped, so CAROLINA's copyright footer and ARISTOTLE's / LEADER's page numbers no longer join the criterion that crosses a page or stand as a criterion; the candidate's list still carries them"
+    "page furniture removed before the section is located (page_layout.without_page_furniture, from seg-page f1b2987): a line recurring in the top/bottom 8 lines of >= half the pages of one parity and >= 3 pages is dropped, so CAROLINA's copyright footer and ARISTOTLE's / LEADER's page numbers no longer join the criterion that crosses a page or stand as a criterion; the candidate's list still carries them",
+    "a wrapped line stays in its item when the line before it was cut after a comma or inside a bracket it opened (section_rules._regex_parse_criteria, 2026-10-24): the candidate split those lines into items of their own, and so did the render until 3a253a4"
    ],
    "added": [
     "Age 75 years or older",
@@ -21,12 +22,15 @@
     "Prior stroke, TIA or systemic embolus",
     "WOCBP include any female who has experienced menarche and who has not undergone successful surgical sterilization (hysterectomy, bilateral tubal ligation, or bilateral oophorectomy) or is not postmenopausal (defined as amenorrhea ≥ 12 consecutive months; or women on hormone replacement therapy [HRT] with documented serum follicle stimulating hormone [FSH] level > 35 mIU/mL). Even women who are using oral contraceptives, other hormonal contraceptives (vaginal products, skin patches, or implanted or injectable products), or mechanical products such as an intrauterine device or barrier methods (diaphragm, condoms, spermicides) to prevent pregnancy, or are practicing abstinence or where their partner is sterile (eg, vasectomy) should be considered to be of childbearing potential",
     "WOCBP must have a negative serum or urine pregnancy test (minimum sensitivity 25 IU/L or equivalent units of HCG) within 48 hours prior to the start of investigational product",
-    "Women of childbearing potential (WOCBP) must be using an adequate method of contraception to avoid pregnancy throughout the treatment period of the study or for 2 weeks after the last dose of study medication, whichever is longer, in such a manner that the risk of pregnancy is minimized"
+    "Women of childbearing potential (WOCBP) must be using an adequate method of contraception to avoid pregnancy throughout the treatment period of the study or for 2 weeks after the last dose of study medication, whichever is longer, in such a manner that the risk of pregnancy is minimized",
+    "If not in atrial fibrillation/flutter at the time of enrollment, must have atrial fibrillation/flutter documented on two separate occasions, not due to a reversible cause at least 2 weeks apart in the 12 months prior to enrollment. Atrial fibrillation/flutter may be documented by ECG, or as an episode lasting at least one minute on a rhythm strip, Holter recording, or intracardiac electrogram (from an implanted pacemaker or defibrillator)"
    ],
    "removed": [
     "* Males and females ≥ 18 yrs with atrial fibrillation (AF) and one or more of the following risk factors for stroke:",
     "Women of childbearing potential (WOCBP) must be using an adequate method of contraception to avoid pregnancy throughout the",
-    "[OR-GROUP] 3) One or more of the following risk factor(s) for stroke with any of: Age 75 years or older | Prior stroke, TIA or systemic embolus | Either symptomatic congestive heart failure within 3 months or left ventricular dysfunction with an LV ejection fraction (LVEF) ≤ 40% by echocardiography, radionuclide study or contrast angiography | Diabetes mellitus | Hypertension requiring pharmacological treatment"
+    "[OR-GROUP] 3) One or more of the following risk factor(s) for stroke with any of: Age 75 years or older | Prior stroke, TIA or systemic embolus | Either symptomatic congestive heart failure within 3 months or left ventricular dysfunction with an LV ejection fraction (LVEF) ≤ 40% by echocardiography, radionuclide study or contrast angiography | Diabetes mellitus | Hypertension requiring pharmacological treatment",
+    "Holter recording, or intracardiac electrogram (from an implanted pacemaker or defibrillator)",
+    "If not in atrial fibrillation/flutter at the time of enrollment, must have atrial fibrillation/flutter documented on two separate occasions, not due to a reversible cause at least 2 weeks apart in the 12 months prior to enrollment. Atrial fibrillation/flutter may be documented by ECG, or as an episode lasting at least one minute on a rhythm strip,"
    ]
   },
   {
@@ -36,7 +40,8 @@
     "S6 rejoin_stranded_superscripts (2026-09-12) postdates the candidate's 2026-09-10 IR: the hoisted '3' of 'mm3' is back on its unit, not glued to the criterion above",
     "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order",
     "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'randomization' inside 'Prior randomization into an apixaban clinical study'; it runs to the section number 4.2.3, which adds the remaining WOCBP/pregnancy/prisoner criteria and the paragraph before 4.2.3 ('Eligibility criteria for this study have been carefully considered ...', not a criterion)",
-    "page furniture removed before the section is located (page_layout.without_page_furniture, from seg-page f1b2987): a line recurring in the top/bottom 8 lines of >= half the pages of one parity and >= 3 pages is dropped, so CAROLINA's copyright footer and ARISTOTLE's / LEADER's page numbers no longer join the criterion that crosses a page or stand as a criterion; the candidate's list still carries them"
+    "page furniture removed before the section is located (page_layout.without_page_furniture, from seg-page f1b2987): a line recurring in the top/bottom 8 lines of >= half the pages of one parity and >= 3 pages is dropped, so CAROLINA's copyright footer and ARISTOTLE's / LEADER's page numbers no longer join the criterion that crosses a page or stand as a criterion; the candidate's list still carries them",
+    "a wrapped line stays in its item when the line before it was cut after a comma or inside a bracket it opened (section_rules._regex_parse_criteria, 2026-10-24): the candidate split those lines into items of their own, and so did the render until 3a253a4"
    ],
    "added": [
     "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified)",
@@ -50,13 +55,16 @@
     "WOCBP using a prohibited contraceptive method",
     "Women of child bearing potential (WOCBP) unwilling or unable to use an acceptable method to avoid pregnancy:",
     "Women who are pregnant or breastfeeding",
-    "Women with a positive pregnancy test on enrollment or prior to administration of investigational product"
+    "Women with a positive pregnancy test on enrollment or prior to administration of investigational product",
+    "Conditions other than atrial fibrillation that require chronic anticoagulation (e.g. prosthetic mechanical heart valve)"
    ],
    "removed": [
     "ALT or AST > 2X ULN or a Total Bilirubin ≥ 1.5X ULN (unless an alternative causative factor [e.g., Gilbert’s syndrome] is identified) 3",
     "Active infective endocarditis 38",
     "Platelet count ≤ 100,000/ mm",
-    "Prior"
+    "Prior",
+    "Conditions other than atrial fibrillation that require chronic anticoagulation (e.g",
+    "prosthetic mechanical heart valve)"
    ]
   },
   {
@@ -65,7 +73,8 @@
    "causes": [
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
     "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'prior to randomization' inside criterion 3; criteria 3-8 and their members come from the PDF, and the container heading 'eAppendix 4' before the exclusion list is read as an item (not a criterion)",
-    "section_rules S10: a bare lowercase letter in sequence (a, b, c ...) is read as a list marker, so 'a <item> b <item>' that e5f423a glued into one line is two lines, the letters gone as markers"
+    "section_rules S10: a bare lowercase letter in sequence (a, b, c ...) is read as a list marker, so 'a <item> b <item>' that e5f423a glued into one line is two lines, the letters gone as markers",
+    "a wrapped line stays in its item when the line before it was cut after a comma or inside a bracket it opened (section_rules._regex_parse_criteria, 2026-10-24): the candidate split those lines into items of their own, and so did the render until 3a253a4"
    ],
    "added": [
     "A positive non invasive stress-test, confirmed by either:",
@@ -77,11 +86,9 @@
     "Evidence of impaired renal function with predefined UACR, with or without CV comorbidities, defined as follows (and/or criteria):",
     "HbA1c of ≥ 6.5% and ≤ 10.0% at visit 1 (screening)",
     "High risk of CV events (I and/or II):",
-    "High-risk single-vessel coronary artery disease, defined as the presence of ≥ 50% narrowing of the luminal diameter of one major coronary artery by coronary angiography,",
     "Impaired renal function (as defined by MDRD formula) with an eGFR ≥ 45-75",
     "Impaired renal function (as defined by MDRD formula) with an eGFR:15- <45",
     "Left main stem coronary artery with ≥ 50% narrowing of the luminal diameter by coronary angiography, MRI angiography or CT angiography;",
-    "MRI angiography or CT angiography in patients not revascularized:",
     "Patient discharged from hospital with a documented diagnosis of unstable angina pectoris between 2 and 12 months prior to visit 1 (screening)",
     "Presence of peripheral artery disease documented by either:",
     "Prior percutaneous or surgical revascularization of ≥ 2 major coronary arteries at least 2 months prior to Visit 1 (screening);",
@@ -104,7 +111,8 @@
     "previous limb angioplasty, stenting or bypass surgery;",
     "previous limb or foot amputation due to macrocirculatory insufficiency;",
     "prior percutaneous or surgical carotid revascularization",
-    "≥ 50% narrowing of the luminal diameter in 2 or more major coronary arteries by coronary angiography, MRI angiography or CT angiography;"
+    "≥ 50% narrowing of the luminal diameter in 2 or more major coronary arteries by coronary angiography, MRI angiography or CT angiography;",
+    "High-risk single-vessel coronary artery disease, defined as the presence of ≥ 50% narrowing of the luminal diameter of one major coronary artery by coronary angiography, MRI angiography or CT angiography in patients not revascularized:"
    ],
    "removed": [
     "Age => 18 years at Visit 1(screening). For Japan only: Age => 20 years at Visit 1",
@@ -175,10 +183,14 @@
    "list": "exclusion_criteria",
    "causes": [
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
-    "page furniture removed before the section is located (page_layout.without_page_furniture, from seg-page f1b2987): a line recurring in the top/bottom 8 lines of >= half the pages of one parity and >= 3 pages is dropped, so CAROLINA's copyright footer and ARISTOTLE's / LEADER's page numbers no longer join the criterion that crosses a page or stand as a criterion; the candidate's list still carries them"
+    "page furniture removed before the section is located (page_layout.without_page_furniture, from seg-page f1b2987): a line recurring in the top/bottom 8 lines of >= half the pages of one parity and >= 3 pages is dropped, so CAROLINA's copyright footer and ARISTOTLE's / LEADER's page numbers no longer join the criterion that crosses a page or stand as a criterion; the candidate's list still carries them",
+    "a wrapped line stays in its item when the line before it was cut after a comma or inside a bracket it opened (section_rules._regex_parse_criteria, 2026-10-24): the candidate split those lines into items of their own, and so did the render until 3a253a4"
    ],
    "added": [
-    "Participation in another trial with an investigational drug given within 2 months prior to informed consent"
+    "Participation in another trial with an investigational drug given within 2 months prior to informed consent",
+    "Any history and/or current treatment with other antidiabetic drugs (e.g. rosiglitazone, pioglitazone, GLP-1 analogue/agonists, DPP-IV inhibitors or any insulin) prior to informed consent. Note 1: This also includes clinical trials where these antidiabetic drugs have been provided to the patient. Note 2: Previous short term use of insulin (up to two consecutive weeks) is allowed (e.g. during hospitalisation) if taken at least 8 weeks prior informed consent",
+    "Current treatment with systemic corticosteroids at time of informed consent or pre-planned initiation of such therapy. Note: inhaled use of steroids (e.g. for asthma/COPD) is no exclusion criterion, as this does not cause systemic steroid action",
+    "Uncontrolled hyperglycaemia with a glucose level >240 mg/dl (>13.3 mmol/L) after an overnight fast during placebo run-in and confirmed by a second measurement (not on the same day)"
    ],
    "removed": [
     "Participation in another trial with an investigational drug given within 2 months prior to informed consent ! 2016 Boehringer Ingelheim International GmbH or one or more of its affiliated companies. All rights reserved",
@@ -190,7 +202,13 @@
     "known hypersensitivity to any of the components",
     "participation in another trail with IMP given 2 months before Investigational Medicinal/Medical Product (IMP) start",
     "patients considered reliable by the investigator",
-    "pre-menopausal women who are nursing or pregnant or of child-bearing potential and not willing to use acceptable method of birth control"
+    "pre-menopausal women who are nursing or pregnant or of child-bearing potential and not willing to use acceptable method of birth control",
+    "Any history and/or current treatment with other antidiabetic drugs (e.g",
+    "Current treatment with systemic corticosteroids at time of informed consent or pre-planned initiation of such therapy. Note: inhaled use of steroids (e.g",
+    "Uncontrolled hyperglycaemia with a glucose level >240 mg/dl (>13.3",
+    "for asthma/COPD) is no exclusion criterion, as this does not cause systemic steroid action",
+    "mmol/L) after an overnight fast during placebo run-in and confirmed by a second measurement (not on the same day)",
+    "rosiglitazone, pioglitazone, GLP-1 analogue/agonists, DPP-IV inhibitors or any insulin) prior to informed consent. Note 1: This also includes clinical trials where these antidiabetic drugs have been provided to the patient. Note 2: Previous short term use of insulin (up to two consecutive weeks) is allowed (e.g. during hospitalisation) if taken at least 8 weeks prior informed consent"
    ]
   },
   {
@@ -198,14 +216,16 @@
    "list": "exclusion_criteria",
    "causes": [
     "registry gap-fill not restored: 2498fcb's supplement_priority appended every registry criterion that a SequenceMatcher >= 0.7 gate found unlike all of the PDF's (a duplicate decision by wording); since ac638dc the section is the PDF's alone",
-    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'study procedures' inside criterion 13; criterion 13 is whole and the last four criteria come from the PDF"
+    "a found section's list ends only at a heading line (section_rules._OTHER_SECTION_HEADING), not at a section name inside a sentence as in 2498fcb: the list is no longer cut at 'study procedures' inside criterion 13; criterion 13 is whole and the last four criteria come from the PDF",
+    "a wrapped line stays in its item when the line before it was cut after a comma or inside a bracket it opened (section_rules._regex_parse_criteria, 2026-10-24): the candidate split those lines into items of their own, and so did the render until 3a253a4"
    ],
    "added": [
     "Acute coronary syndrome, stroke, or transient ischemic attack within 2 months prior to informed consent",
     "Alcohol or drug abuse within 3 months of informed consent that would interfere with trial participation or any ongoing condition leading to decreased compliance with study procedures or study drug intake",
     "Any clinical condition that would jeopardize patient safety while participating in this clinical trial (in Canada, this included current genito-urinal infection or genito-urinal infection within 2 weeks prior to informed consent)",
     "In South Africa: blood pressure >160/100 mmHg at screening",
-    "Intake of an investigational drug in another trial within 30 days prior to intake of study medication in this trial or participating in another trial involving an investigational drug and/or follow-up"
+    "Intake of an investigational drug in another trial within 30 days prior to intake of study medication in this trial or participating in another trial involving an investigational drug and/or follow-up",
+    "Estimated glomerular filtration rate <30 ml/min/1.73 m2 (according to the Modification of Diet in Renal Disease equation) at screening or during run-in phase"
    ],
    "removed": [
     "Acute coronary syndrome, stroke or TIA within 2 months prior to informed consent",
@@ -215,7 +235,9 @@
     "Indication of liver disease, defined by serum levels of either alanine aminotransferase (ALT), aspartate aminotransferase ALT or alkaline phosphatase above 3 x upper limit of normal (ULN) as determined at screening and/or run in.",
     "Participation in another trial with an investigational drug within 30 days prior to informed consent",
     "Pre-menopausal women (last menstruation <+ 1 year prior to informed consent) who:",
-    "are nursing or pregnant or"
+    "are nursing or pregnant or",
+    "Diet in Renal Disease equation) at screening or during run-in phase",
+    "Estimated glomerular filtration rate <30 ml/min/1.73 m2 (according to the Modification of"
    ]
   },
   {
@@ -255,10 +277,22 @@
    "trial": "PLATO",
    "list": "inclusion_criteria",
    "causes": [
-    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order"
+    "order only: the candidate's list is alphabetical (IR extracted 2026-09-10, before a2fb858 removed the sort); the render keeps document order",
+    "a wrapped line stays in its item when the line before it was cut after a comma or inside a bracket it opened (section_rules._regex_parse_criteria, 2026-10-24): the candidate split those lines into items of their own, and so did the render until 3a253a4"
    ],
-   "added": [],
-   "removed": []
+   "added": [
+    "Previous ischemic stroke, TIA (hospital-based diagnosis), carotid stenosis (≥50%), or cerebral revascularization",
+    "ST-segment changes on elevation ≥1 mm (not known ECG indicating ischemia",
+    "Urinary and/or blood pregnancy tests are to be performed in women of child-bearing potential and repeated at least every 6 months. Women of child-bearing potential must be using ≥2 forms of reliable contraception, including one barrier method. CAD, Coronary artery disease; LBBB, left bundle-branch block"
+   ],
+   "removed": [
+    "Coronary artery disease; LBBB, left bundle-branch block",
+    "ECG indicating ischemia",
+    "Previous ischemic stroke,",
+    "ST-segment changes on elevation ≥1 mm (not known",
+    "TIA (hospital-based diagnosis), carotid stenosis (≥50%), or cerebral revascularization",
+    "Urinary and/or blood pregnancy tests are to be performed in women of child-bearing potential and repeated at least every 6 months. Women of child-bearing potential must be using ≥2 forms of reliable contraception, including one barrier method. CAD,"
+   ]
   },
   {
    "trial": "PLATO",
