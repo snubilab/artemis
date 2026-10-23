@@ -28,13 +28,16 @@ TIA_LINE = "16. Stroke or TIA ≤ 3 months prior to visit 1 (screening)"
 
 
 class _Stub:
-    def __init__(self, answer: str):
-        self.answer = answer
+    """Answers each call with the next of ``answers``; the last one repeats."""
+
+    def __init__(self, *answers: str):
+        self.answers = list(answers)
         self.prompts: list[str] = []
 
     def invoke(self, messages):
         self.prompts.append(messages[-1].content)
-        return SimpleNamespace(content=self.answer, response_metadata={})
+        answer = self.answers[min(len(self.prompts), len(self.answers)) - 1]
+        return SimpleNamespace(content=answer, response_metadata={})
 
 
 @pytest.fixture(autouse=True)
@@ -164,3 +167,132 @@ def test_should_pass_the_rows_protocol_line_to_the_mapper():
         with pytest.raises(RuntimeError):
             svc._build_seeded_eligibility_rule(criterion=row, codeset_id=0, exclusion=True)
     assert rec.call_args.kwargs["source_line"] == TIA_LINE
+
+
+# --------------------------------------------------------------------------- #
+# A more specific form the line names: EMPA-REG inclusion 1 (P8 MAIN store, art_224).
+# Agent 1 seeded 'Diabetes Mellitus' on a line that says type 2; the seed mapped to
+# 201820 Diabetes mellitus (gold T2DM rows P 0.45) and the comparator could not anchor
+# on the registered condition 201826 (DiseaseAnchorError).
+# --------------------------------------------------------------------------- #
+
+EMPA_LINE = "1. Diagnosis of type 2 diabetes mellitus prior to informed consent"
+
+
+SPAN_T2DM = json.dumps({"specific_span": "type 2 diabetes mellitus"})
+KIND_YES = json.dumps({"narrower_kind": "yes"})
+KIND_NO = json.dumps({"narrower_kind": "no"})
+
+
+def test_should_map_the_narrower_span_when_the_line_names_a_more_specific_form_of_the_seed():
+    stub = _Stub(SPAN_T2DM, KIND_YES)
+    assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
+        "type 2 diabetes mellitus"
+    )
+    assert EMPA_LINE in stub.prompts[0] and "Diabetes Mellitus" in stub.prompts[0]
+    assert "type 2 diabetes mellitus" in stub.prompts[1]
+
+
+def test_should_keep_the_seed_when_the_second_call_says_the_span_is_no_narrower_kind():
+    """CARMELINA exclusion 43 (P8 MAIN): 'Drug abuse' on "... any previous or current alcohol or
+    drug abuse ..." came back as 'alcohol or drug abuse' -- another entity joined, not a kind."""
+    line = ("26. Any previous or current alcohol or drug abuse that would interfere with trial "
+            "participation in the opinion of the investigator")
+    stub = _Stub(json.dumps({"specific_span": "alcohol or drug abuse"}), KIND_NO)
+    assert efn.specific_entity_name("Drug abuse", line, llm=stub, model="m") == "Drug abuse"
+    assert len(stub.prompts) == 2
+
+
+def test_should_keep_the_seed_without_a_second_call_when_words_follow_the_seed_in_the_span():
+    """EMPA-REG exclusion 12 (P8 MAIN): the v1 answer carried the threshold after the seed."""
+    line = ("5. Impaired renal function, defined as Estimated glomerular filtration rate <30 ml/min/1.73 m2 "
+            "(according to the Modification of Diet in Renal Disease equation) during screening")
+    span = ("Estimated glomerular filtration rate <30 ml/min/1.73 m2 (according to the Modification of Diet "
+            "in Renal Disease equation)")
+    stub = _Stub(json.dumps({"specific_span": span}), KIND_YES)
+    seed = "Estimated glomerular filtration rate"
+    assert efn.specific_entity_name(seed, line, llm=stub, model="m") == seed
+    assert len(stub.prompts) == 1
+
+
+def test_should_keep_the_seed_when_the_span_is_not_copied_from_the_line():
+    stub = _Stub(json.dumps({"specific_span": "type II diabetes mellitus"}), KIND_YES)
+    assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
+        "Diabetes Mellitus"
+    )
+
+
+def test_should_keep_the_seed_when_the_span_does_not_hold_the_seed():
+    stub = _Stub(json.dumps({"specific_span": "prior to informed consent"}), KIND_YES)
+    assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
+        "Diabetes Mellitus"
+    )
+
+
+def test_should_keep_the_seed_when_the_span_is_the_seed_or_empty():
+    for answer in ("", "diabetes mellitus"):
+        efn.reset_for_tests()
+        stub = _Stub(json.dumps({"specific_span": answer}), KIND_YES)
+        assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
+            "Diabetes Mellitus"
+        )
+
+
+def test_should_not_ask_when_the_line_does_not_hold_the_seed():
+    stub = _Stub(json.dumps({"specific_span": "anything"}))
+    assert efn.specific_entity_name("Pregnancy", "13. Women who are nursing or pregnant",
+                                    llm=stub, model="m") == "Pregnancy"
+    assert stub.prompts == []
+
+
+def test_should_answer_the_specific_form_from_the_cache_without_asking_again():
+    stub = _Stub(SPAN_T2DM, KIND_YES)
+    efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m")
+    efn.reset_for_tests()  # read back from the file, not the in-process dict
+    assert efn.specific_entity_name("Diabetes Mellitus", EMPA_LINE, llm=stub, model="m") == (
+        "type 2 diabetes mellitus"
+    )
+    assert len(stub.prompts) == 2
+
+
+def test_should_query_agent2_with_the_specific_form_when_the_seed_is_no_abbreviation():
+    from src.models.ir import MappingResult
+
+    svc = TTEService(store=MagicMock())
+    workflow = MagicMock()
+    workflow.process_with_details.return_value = MappingResult(
+        concept_ids=[201826], overbroad_concept_ids=[], route_path="slow"
+    )
+    recommendation = MagicMock()
+    recommendation.name = None
+    recommendation.expression.to_atlas_json.side_effect = lambda: {
+        "items": [{"concept": {"CONCEPT_ID": 201826, "CONCEPT_NAME": "Type 2 diabetes mellitus"}}]}
+    builder = MagicMock()
+    builder.build_expression.return_value = recommendation
+    candidate = MagicMock(concept_id=201826, concept_name="Type 2 diabetes mellitus", domain_id="Condition")
+    with (
+        patch.object(TTEService, "_exact_ingredient_match_enabled", return_value=False),
+        patch.object(TTEService, "_fetch_concept_candidates", return_value=[candidate]),
+        patch("src.agents.conceptset.expression_builder.get_expression_builder", return_value=builder),
+        patch("src.services.tte_service._criterion_cache_enabled", return_value=False),
+        patch("src.agents.agent2.entity_full_name.full_entity_name", side_effect=lambda s, _l: s),
+        patch("src.agents.agent2.entity_full_name.specific_entity_name",
+              return_value="type 2 diabetes mellitus") as specific,
+        patch("src.agents.agent2.retriever.ConceptRetriever") as retriever,
+    ):
+        retriever.return_value.search.return_value = [MagicMock(concept_id=201826, adjusted_score=0.5)]
+        result = svc._recommend_seeded_concept_set(
+            "Diabetes Mellitus", expected_domain="Condition", workflow=workflow,
+            pre_fetched_candidates=[MagicMock(concept_id=201820, adjusted_score=0.9)],
+            source_line=EMPA_LINE,
+        )
+    specific.assert_called_once_with("Diabetes Mellitus", EMPA_LINE)
+    args, kwargs = workflow.process_with_details.call_args
+    assert args[0] == "type 2 diabetes mellitus"
+    assert [c.concept_id for c in kwargs["pre_fetched_candidates"]] == [201826]
+    # The set holds the narrower entity, so it is named by the line's span (EMPA-REG codeset 2
+    # shipped as 'Diabetes Mellitus' holding only T2DM, and the scorer paired gold T2DM to codeset 9).
+    assert result["name"] == "type 2 diabetes mellitus"
+    assert builder.build_expression.call_args.kwargs["criterion_name"] == "type 2 diabetes mellitus"
+    assert result["mapping_metadata"].queryUsed == "type 2 diabetes mellitus"
+

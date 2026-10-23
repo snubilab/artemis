@@ -335,3 +335,61 @@ class TestTheLintFailsAProspectiveOccurrence:
         expression = {**self._expression(), "_criterionConceptSetRefs": {"exclusion:27": 49}}
         findings = prospective_occurrence_criteria(expression, self._study(rows))
         assert len(findings) == 1 and "exclusion #27" in findings[0], findings
+
+
+# P8 MAIN store (2026-10-20_p8_segoff/arm_main, art_222, CAROLINA exclusion 12): Agent 1 read
+# both halves of the line into one window, 42 days before V1a to 180 after; the annotation can
+# name one timing per row and said prospective, so the "previous PCI and/or CABG <= 6 weeks"
+# half was skipped with the planned half (gold PCI rows 147/176 no counterpart).
+P8_REVASC_LINE = (
+    "12. Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months after V1a "
+    "or any previous PCI and/or CABG ≤ 6 weeks prior informed consent"
+)
+P8_REVASC_WINDOW_SPAN = (
+    "within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent"
+)
+
+
+def _p8_revasc_rows() -> list[dict[str, Any]]:
+    common = {"domain": "Procedure", "valueConstraint": None, "protocolLine": P8_REVASC_LINE,
+              "window": {"start": -42, "end": 180}, "logicType": "ABSENCE",
+              "groupId": "83787c2b-635c-456d-833e-2fa2de56942e", "groupType": "ALL", "parentGroupId": None}
+    rows = [
+        {**common, "id": 26, "description": "Pre-planned coronary artery re-vascularisation",
+         "sourceText": "Coronary artery re-vascularisation", "isGroupLabel": True, "mappable": False},
+        {**common, "id": 27, "description": "Pre-planned PCI", "sourceText": "Percutaneous coronary intervention",
+         "isGroupLabel": False, "mappable": True},
+        {**common, "id": 28, "description": "Pre-planned CABG", "sourceText": "Coronary artery bypass grafting",
+         "isGroupLabel": False, "mappable": True},
+    ]
+    return [_annotated(r, _payload(record_requirement="forbidden", timing="prospective",
+                                   window_span=P8_REVASC_WINDOW_SPAN)) for r in rows]
+
+
+class TestTheObservablePartOfAWindowThatStraddlesIndex:
+    def test_should_emit_the_part_before_index_when_a_prospective_rows_window_starts_before_it(self, service):
+        circe = _build(service, exclusion=_p8_revasc_rows())
+        assert [r["reason"] for r in circe.get("_skippedCriteria", [])] == ["group-label"]
+        entries = [e for rule in circe["InclusionRules"]
+                   for e in rule["expression"]["CriteriaList"]
+                   + [c for g in rule["expression"]["Groups"] for c in g["CriteriaList"]]]
+        assert entries, circe["InclusionRules"]
+        for entry in entries:
+            assert entry["StartWindow"]["Start"] == {"Days": 42, "Coeff": -1}
+            assert entry["StartWindow"]["End"] == {"Days": 0, "Coeff": 1}
+
+    def test_should_pass_the_prospective_lint_on_the_file_it_built(self, service):
+        from src.utils.circe_lint import prospective_occurrence_criteria
+
+        rows = _p8_revasc_rows()
+        built = _build(service, exclusion=rows)
+        study = {"eligibility": {"inclusionCriteria": [], "exclusionCriteria": rows}}
+        assert prospective_occurrence_criteria(built, study) == []
+
+    def test_should_still_skip_a_prospective_row_whose_window_ends_at_index(self, service):
+        rows = _p8_revasc_rows()
+        for row in rows:
+            row["window"] = {"start": -90, "end": 0}
+        circe = _build(service, exclusion=rows)
+        assert circe["InclusionRules"] == []
+        assert {r["reason"] for r in circe["_skippedCriteria"]} == {annotation_mod.PROSPECTIVE_REASON}

@@ -101,6 +101,7 @@ from src.services.criterion_annotation import (
     applied_value_constraint,
     conditional_skips,
     exception_anchored,
+    prospective_past_window,
     prospective_skips,
     record_change_records,
     record_change_skips,
@@ -7132,10 +7133,21 @@ class TTEService:
         # is the opposite of the value-filter case, where emitting without the threshold
         # INVERTS the rule ("ALT > 3x ULN" becomes "any ALT at all"). Nothing is hidden
         # by the choice: every application is recorded below.
-        # The side or size the annotation states for this window (`annotated_window`): CAROLINA's
-        # "> 3 months prior" was extracted as -90..0, "within 3 months", and only the annotation
-        # records which side the protocol meant. None when the extracted window stands.
-        window, annotated_window_record = annotated_window(criterion)
+        # A prospective row whose window also reaches before index emits that past part only
+        # (criterion_annotation.prospective_past_window); the rest is not observable at index.
+        # It takes precedence over the annotated side/size below, which describes a window that
+        # is observed whole.
+        past_window = prospective_past_window(criterion)
+        if past_window is not None:
+            logging.warning("[TTE] '%s': window %s straddles index under a prospective annotation; "
+                            "emitted as %s", label, criterion.get("window"), past_window)
+            window, annotated_window_record = past_window, None
+        else:
+            # The side or size the annotation states for this window (`annotated_window`):
+            # CAROLINA's "> 3 months prior" was extracted as -90..0, "within 3 months", and only
+            # the annotation records which side the protocol meant. None when the extracted
+            # window stands.
+            window, annotated_window_record = annotated_window(criterion)
         defaulted_window: dict[str, Any] | None = None
         if not window:
             window, default_source = default_criterion_window(resolved_domain)
@@ -8286,14 +8298,22 @@ class TTEService:
 
         # The seed as the criterion's protocol line spells it out (agent2/entity_full_name):
         # a bare 'TIA' or 'eGFR' retrieves no Transient cerebral ischemia / no GFR test at
-        # all. `query` is what Agent 2, the cache and the fallback are asked; the set keeps
-        # the seed's name. A prefetch made for the seed answers another string, so the
-        # query gets its own, as large as the batch prefetch every other seed gets.
+        # all. `query` is what Agent 2, the cache and the fallback are asked. An abbreviation
+        # spelled out is the same entity, so the set keeps the seed's name; a narrower span
+        # names what the set now holds, so it names the set (`set_name`). A prefetch made for
+        # the seed answers another string, so the query gets its own, as large as the batch
+        # prefetch every other seed gets.
         query = seed
+        set_name = seed
         if source_line:
-            from src.agents.agent2.entity_full_name import full_entity_name
+            from src.agents.agent2.entity_full_name import full_entity_name, specific_entity_name
 
             query = full_entity_name(seed, source_line)
+            # A seed broader than its line ('Diabetes Mellitus' on "type 2 diabetes
+            # mellitus") is asked as the line's narrower span, copied verbatim from it.
+            if query == seed:
+                query = specific_entity_name(seed, source_line)
+                set_name = query
             if query != seed:
                 from src.agents.agent2.retriever import ConceptRetriever
 
@@ -8362,7 +8382,7 @@ class TTEService:
                     overbroad_set = set(mapping_result.overbroad_concept_ids or [])
                     builder = get_expression_builder()
                     recommendation = builder.build_expression(
-                        candidates, roll_up=True, criterion_name=seed,
+                        candidates, roll_up=True, criterion_name=set_name,
                         seed_concept_ids=mapping_result.seed_concept_ids or None,
                     )
                     expression = recommendation.expression.to_atlas_json()
@@ -8437,7 +8457,7 @@ class TTEService:
                                     CriterionCacheEntry(
                                         concept_ids=mapping_result.concept_ids,
                                         expression=expression,
-                                        name=recommendation.name or seed,
+                                        name=recommendation.name or set_name,
                                         domain=resolved_domain,
                                         route_path=getattr(mapping_result, "route_path", "") or "",
                                         mapping_metadata=mapping_meta.model_dump() if mapping_meta else None,
@@ -8448,7 +8468,7 @@ class TTEService:
                                 logging.debug("Criterion cache store failed: %s", exc)
 
                         return {
-                            "name": recommendation.name or seed,
+                            "name": recommendation.name or set_name,
                             "expression": expression,
                             "domain": resolved_domain,
                             "mapping_metadata": mapping_meta,
