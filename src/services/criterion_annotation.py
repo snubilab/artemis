@@ -94,13 +94,14 @@ ARISTOTLE inclusion 4 'If not in atrial fibrillation/flutter at the time of enro
 with an unrelated change to the prompt -- which is why a revert needs both. Recorded on the row
 under :data:`CONDITIONAL_CHECK_KEY`; it never fills anything and touches no other field.
 
-Calls 7 and 8 (trial-only check, fix-k12). An agreed ``forbidden`` row with ``no_entity: none``
-that is not a label with members is asked ``trial_only`` (:data:`TRIAL_ONLY_PROMPT`): does its own
-entity exist only because the patient takes part in a clinical trial, any trial. Call 8
-(:data:`TRIAL_ONLY_AGREEMENT_PROMPT`) confirms a ``yes``; both ``yes`` refuses the row before mapping
-as ``unmappable-placeholder`` (:func:`stated_trial_only`), recorded under
-:data:`TRIAL_ONLY_CHECK_KEY`. Calls 5/6 were not reused: their ``entity_outside_trial`` is about this
-trial, and another trial's product (P8 CAROLINA K1, ARISTOTLE K2) answered ``yes`` to it.
+Calls 7 and 8 (trial-only check, fix-k12). An agreed ``forbidden`` or ``required`` row with
+``no_entity: none`` that is not a label with members is asked ``trial_only``
+(:data:`TRIAL_ONLY_PROMPT`): does its own entity exist only because the patient takes part in a
+clinical trial, any trial. Call 8 (:data:`TRIAL_ONLY_AGREEMENT_PROMPT`) confirms a ``yes``; both
+``yes`` refuses the row before mapping as ``unmappable-placeholder`` (:func:`stated_trial_only`),
+recorded under :data:`TRIAL_ONLY_CHECK_KEY`. Calls 5/6 were not reused: their
+``entity_outside_trial`` is about this trial, and another trial's product (P8 CAROLINA K1,
+ARISTOTLE K2) answered ``yes`` to it.
 
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
@@ -119,6 +120,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import threading
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -150,8 +152,9 @@ RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
 CONDITIONAL_CHECK_PROMPT_VERSION = "rfc016-conditional-check-v1"
 CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v1"
 #: Calls 7 and 8 (:func:`check_forbidden`); each part of its call's cache key.
-TRIAL_ONLY_PROMPT_VERSION = "fixk12-trial-only-v2"
-TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "fixk12-trial-only-placebo-v2"
+#: gate-fix v3: the routine-records definition; named by field, apart from calls 9-12.
+TRIAL_ONLY_PROMPT_VERSION = "gatefix-trial-only-routine-records-v1"
+TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "gatefix-trial-only-routine-records-placebo-v1"
 #: Calls 9 and 10 (:func:`_window_bound`); each part of its call's cache key.
 WINDOW_BOUND_PROMPT_VERSION = "window-bound-v1"
 WINDOW_BOUND_AGREEMENT_PROMPT_VERSION = "window-bound-placebo-v1"
@@ -885,32 +888,28 @@ TRIAL_ONLY_YES = "yes"
 TRIAL_ONLY_NO = "no"
 _TRIAL_ONLY_VALUES = frozenset({TRIAL_ONLY_YES, TRIAL_ONLY_NO})
 
-#: Call 7: whether a ``forbidden`` criterion's own entity exists only because of a clinical trial.
-#: Field definition only. Asked of forbidden rows alone; calls 5/6 are not reused because their
+#: Call 7: whether routine records from before the approach for this trial could check the criterion.
+#: Field definition only. Asked of forbidden and required rows; calls 5/6 are not reused as their
 #: ``entity_outside_trial`` is about this trial, and products of another trial answered ``yes``.
 TRIAL_ONLY_PROMPT = _TRIAL_ONLY_HEAD + """\
-`trial_only` states whether this criterion's own entity -- the entity this criterion names -- \
-exists only because the patient takes part in a clinical trial, this trial or any other. One of:
-- `yes`: the entity exists only through the patient's taking part in a clinical trial: a trial's \
-own procedures, periods or visits, a product or device given or used only under a trial, the \
-patient's enrolment in a trial, or the patient's conduct toward a trial.
-- `no`: the entity can exist in a patient who takes part in no clinical trial. A condition, a \
-reaction, a treatment or a measurement that a patient outside any trial can have is `no`, \
-whatever product or trial the line names beside it.
+`trial_only` states whether this criterion could be checked from the patient's routine health \
+records as they stood before the patient was approached for this trial. One of:
+- `no`: it could. What the criterion requires, or requires to be absent, is the kind of thing \
+routine care records for a patient who takes part in no trial.
+- `yes`: it could not. What the criterion requires comes into being only through the conduct of \
+a trial -- this one or another -- or through the patient's conduct toward a trial, so no routine \
+record from before the approach can hold it.
 """ + _TRIAL_ONLY_TAIL
 
 #: Call 8: the same definition in other words, asked only when call 7 answers ``yes``.
 TRIAL_ONLY_AGREEMENT_PROMPT = _TRIAL_ONLY_HEAD + """\
-`trial_only` says whether the own entity of this criterion -- the entity named by this \
-criterion -- comes into being only because the patient is taking part in a clinical trial, \
-whether this one or another. One of:
-- `yes`: the entity comes about only through the patient's taking part in a clinical trial: \
-through a trial's own procedures, periods or visits, through a product or device that is given \
-or used only under a trial, through the patient's enrolment in a trial, or through the patient's \
-conduct toward a trial.
-- `no`: a patient taking part in no clinical trial can have the entity. Whatever product or trial \
-the line names beside it, a condition, a reaction, a treatment or a measurement that a patient \
-outside every trial can have is `no`.
+`trial_only` says whether the patient's routine health records, as they stood before the patient \
+was approached for this trial, could be used to check this criterion. One of:
+- `no`: they could. Routine care records the kind of thing this criterion requires, or requires \
+to be absent, for patients who take part in no trial.
+- `yes`: they could not. The thing this criterion requires is produced only by the conduct of a \
+trial, whether this one or another, or by the patient's conduct toward a trial, so no routine \
+record made before the approach can contain it.
 """ + _TRIAL_ONLY_TAIL
 
 _OWN_ENTITY_TAIL = """
@@ -2057,7 +2056,8 @@ def check_forbidden(
     model: str,
     llm: Any,
 ) -> dict[str, Any]:
-    """Calls 7 and 8 on an agreed ``forbidden`` row: does its entity exist only through a trial?
+    """Calls 7 and 8 on an agreed ``forbidden`` or ``required`` row: does its entity exist only
+    through a trial? (Required rows since gate-fix: P8 MAIN's consent rows shipped as required.)
 
     :data:`TRIAL_ONLY_PROMPT` and :data:`TRIAL_ONLY_AGREEMENT_PROMPT`, shown the line, the entity
     text and the description but no fragment. The row's own verified span (``protocolSpan``; the
@@ -2220,9 +2220,12 @@ def annotate_row(
             )
         else:
             row.pop(CONDITIONAL_CHECK_KEY, None)
-        # A label with members is never mapped, so it is not asked.
+        # A label with members is never mapped, so it is not asked. Required rows too (P8 MAIN:
+        # every delivered CARMELINA/CAROLINA/EMPA-REG file required a consent-procedure record
+        # mapped from an agreed `required` row); a conditional row is skipped by its own reason.
         if (
-            fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.FORBIDDEN.value
+            fields.get(FIELD_RECORD_REQUIREMENT)
+            in (RecordRequirement.FORBIDDEN.value, RecordRequirement.REQUIRED.value)
             and fields.get(FIELD_NO_ENTITY) in (None, NoEntity.NONE.value)
             and not members
         ):
@@ -3139,8 +3142,49 @@ def applied_value_constraint(row: Mapping[str, Any]) -> Any:
     if use in (ThresholdUse.NOT_REPRESENTABLE, ThresholdUse.SKIP_CRITERION):
         return None
     if use is ThresholdUse.MEASURED and isinstance(constraint, Mapping):
-        return {**constraint, "referenceBound": stated.bound}
+        applied = {**constraint, "referenceBound": stated.bound}
+        if not (constraint.get("unitText") or "").strip() and stated.bound == "absolute":
+            from src.api.models.tte import DEMOGRAPHIC_DOMAINS  # built as an Age: no unit
+
+            unit = _unit_after_bound(stated.span, constraint)
+            if unit is not None and row.get("domain") not in DEMOGRAPHIC_DOMAINS:
+                applied["unitText"] = unit
+        return applied
     return constraint
+
+
+#: A number as a protocol writes it: digits, thousands commas, one decimal point.
+_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def _unit_after_bound(span: str, constraint: Mapping[str, Any]) -> str | None:
+    """The unit the verified threshold span states right after the bound's own number.
+
+    Extraction sometimes writes ``unitText: ''`` while the line says "<= 45 kg/m2" (P8 MAIN
+    CAROLINA inclusion 25). Format only: the token directly after the number equal to the
+    bound (the upper one of a range), kept only when :func:`normalize_unit` resolves it.
+
+    :param span: the annotation's ``threshold_span``, already checked against the line.
+    :param constraint: the row's ``valueConstraint``.
+    :returns: the unit spelling as the span writes it, or None.
+    """
+    from src.services.value_constraint import normalize_unit
+
+    high = constraint.get("valueHigh")
+    target = high if constraint.get("op") == "bt" and high is not None else constraint.get("value")
+    if not isinstance(target, (int, float)):
+        return None
+    for match in _NUMBER.finditer(span or ""):
+        try:
+            if float(match.group().replace(",", "")) != float(target):
+                continue
+        except ValueError:
+            continue
+        rest = span[match.end():].split()
+        token = rest[0].rstrip(").,;:") if rest else ""
+        if token and normalize_unit(token) is not None:
+            return token
+    return None
 
 
 def unrepresentable_threshold_records(

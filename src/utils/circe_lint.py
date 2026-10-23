@@ -3184,6 +3184,53 @@ def prospective_occurrence_criteria(
 
 
 
+def trial_only_occurrence_criteria(
+    expression: dict[str, Any], study: Mapping[str, Any]
+) -> list[str]:
+    """Locators for a criterion both trial_only wordings (calls 7/8) called trial-only that emitted.
+
+    Such a row names an entity only a trial produces (consent to the trial, its run-in), so a
+    rule over it requires a record no patient outside the trial has: P8 MAIN CARMELINA rule 6
+    'Informed Consent Provision' over consent-verification procedures. The builder refuses the
+    row (:func:`src.services.criterion_annotation.stated_trial_only`); this fails a file in which
+    one reached a rule anyway. Structural: the store row's own record and the file's refs map
+    (else the store row's ``conceptSetId`` against the codesets the rules read); no name is read.
+
+    :param expression: a CIRCE cohort expression.
+    :param study: the store study the expression was built from.
+    :returns: one locator per emitted trial-only criterion, empty when none.
+    """
+    from src.services.criterion_annotation import EXCLUSION, INCLUSION, stated_trial_only
+
+    eligibility = study.get("eligibility") if isinstance(study, Mapping) else None
+    if not isinstance(eligibility, Mapping):
+        return []
+    refs = expression.get(CRITERION_CONCEPT_SET_REFS_KEY)
+    referenced: set[Any] = set()
+    for rule in expression.get("InclusionRules") or []:
+        for entry in _walk_criteria_entries(rule.get("expression") or {}):
+            codeset = _leaf_codeset_id(entry)
+            if codeset is not None:
+                referenced.add(codeset)
+    findings: list[str] = []
+    for role, key in ((INCLUSION, "inclusionCriteria"), (EXCLUSION, "exclusionCriteria")):
+        for row in eligibility.get(key) or []:
+            if not isinstance(row, Mapping) or stated_trial_only(row) is None:
+                continue
+            criterion_id = str(row.get("id", ""))
+            if isinstance(refs, Mapping):
+                emitted = f"{role}:{criterion_id}" in refs
+            else:
+                emitted = row.get("conceptSetId") is not None and row["conceptSetId"] in referenced
+            if emitted:
+                findings.append(
+                    f"{role} #{criterion_id} {(row.get('description') or '')!r} was called "
+                    "trial-only by both wordings (calls 7/8) and was emitted -- it requires a "
+                    "record only taking part in a trial produces"
+                )
+    return findings
+
+
 def record_change_occurrence_criteria(
     expression: Mapping[str, Any], study: Mapping[str, Any]
 ) -> list[str]:

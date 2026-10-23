@@ -105,11 +105,49 @@ def test_should_ask_the_second_wording_only_to_confirm_a_yes():
     _refuse_line_naming_no_entity(row, "x")
 
 
-def test_should_not_ask_a_required_row():
-    row = _k1_row()
-    llm = _annotate(row, ("yes", "yes"), first={**FORBIDDEN, "record_requirement": "required"})
+#: CARMELINA inclusion 8 as P8 MAIN stored it (#20 'Signed'): agreed `required`, mapped onto
+#: consent-verification procedures, and so every delivered CARMELINA file required one.
+CONSENT_LINE = (
+    "8. Signed and dated written informed consent by date of Visit 1(screening) in accordance with "
+    "Good Clinical Practice (GCP) and local legislation prior to any study related procedure"
+)
+REQUIRED = {**FORBIDDEN, "record_requirement": "required"}
+
+
+def _consent_row() -> dict[str, Any]:
+    return {
+        "id": 20, "description": "Consent Signature", "domain": "Procedure",
+        "sourceText": "Signed", "protocolLine": CONSENT_LINE, "protocolSpan": "",
+        "window": {"start": -180, "end": 0}, "logicType": "PRESENCE",
+        "groupId": "7dabb2", "isGroupLabel": False,
+    }
+
+
+def test_should_refuse_a_required_row_when_both_wordings_say_only_a_trial_produces_it():
+    row = _consent_row()
+    llm = _Replay(REQUIRED, ("yes", "yes"))
+    annotation.annotate_row(row, [], "inclusion", model="stub", llm=llm)
+    assert {"check1", "check2"} <= set(llm.kinds)
+    with pytest.raises(CriterionRefused) as refused:
+        _refuse_line_naming_no_entity(row, "Signed")
+    assert refused.value.code == REFUSAL_UNMAPPABLE_PLACEHOLDER
+    assert refused.value.detail == CONSENT_LINE
+
+
+def test_should_keep_a_required_row_when_the_first_wording_says_no():
+    row = _consent_row()
+    llm = _Replay(REQUIRED, ("no", "yes"))
+    annotation.annotate_row(row, [], "inclusion", model="stub", llm=llm)
+    assert "check2" not in llm.kinds
+    _refuse_line_naming_no_entity(row, "x")  # no raise
+
+
+def test_should_not_ask_a_conditional_row():
+    """A conditional row is skipped by its own reason; it never reaches the mapper."""
+    row = _consent_row()
+    llm = _Replay({**FORBIDDEN, "record_requirement": "conditional"}, ("yes", "yes"))
+    annotation.annotate_row(row, [], "inclusion", model="stub", llm=llm)
     assert not {"check1", "check2"} & set(llm.kinds)
-    _refuse_line_naming_no_entity(row, "x")
 
 
 def test_should_not_ask_a_group_label_that_has_members():
@@ -138,3 +176,17 @@ def test_should_not_show_the_span_to_the_trial_only_pair():
     products'; shown it, the model judged the product, not the reaction (fix-k12 v2 replay)."""
     for prompt in (annotation.TRIAL_ONLY_PROMPT, annotation.TRIAL_ONLY_AGREEMENT_PROMPT):
         assert "{fragment}" not in prompt and "Fragment of the protocol line" not in prompt
+
+
+def test_should_ask_whether_routine_records_from_before_the_approach_could_check_the_criterion():
+    """gate-fix v3 definition: the question a cohort definition needs. 7af0950's 'exists only
+    because the patient takes part in a trial' left EMPA-REG inc 6 'Signed and dated informed
+    consent' and CAROLINA inc 21 (ICF) answered `no` (P8 MAIN/PLACEBO, 2026-10-24)."""
+    for prompt in (annotation.TRIAL_ONLY_PROMPT, annotation.TRIAL_ONLY_AGREEMENT_PROMPT):
+        assert "routine" in prompt and "before the patient was approached" in prompt
+
+
+def test_should_version_the_new_definition_apart_from_fix_k12s():
+    versions = {annotation.TRIAL_ONLY_PROMPT_VERSION, annotation.TRIAL_ONLY_AGREEMENT_PROMPT_VERSION}
+    assert len(versions) == 2
+    assert not any(v.startswith("fixk12-") for v in versions)

@@ -454,6 +454,7 @@ from src.utils.circe_lint import (  # noqa: E402
     prospective_occurrence_criteria,
     record_change_occurrence_criteria,
     rule_names,
+    trial_only_occurrence_criteria,
     specimen_mismatched_measurement_criteria,
     unfiltered_measurement_absence_criteria,
     unitless_value_bound_criteria,
@@ -1385,6 +1386,37 @@ def absence_forbids_required_values_findings(
     return findings
 
 
+def cohort_aliased_concept_sets(expression: dict[str, Any]) -> list[str]:
+    """Check (m) over the concept sets the cohort itself reads.
+
+    A set only a ``_``-prefixed record reads (a ``_restatedRuleCollapse`` record keeps the removed
+    rule's set so the collapse can be re-derived) selects nobody, so its name describes nothing a
+    site runs. P8 MAIN ``carmelina_treatment`` failed (m) on codesets 5 and 7 '... (repetition)',
+    read by collapse records alone, each identical to the referenced codeset 3.
+
+    :param expression: the delivered CIRCE expression.
+    :returns: :func:`src.utils.circe_lint.aliased_concept_sets` over the read sets only.
+    """
+    read: set[Any] = set()
+
+    def walk(value: Any) -> None:
+        if isinstance(value, Mapping):
+            for key, child in value.items():
+                if key == "CodesetId":
+                    read.add(child)
+                else:
+                    walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk({k: v for k, v in expression.items() if k != "ConceptSets" and not str(k).startswith("_")})
+    concept_sets = [cs for cs in expression.get("ConceptSets") or [] if isinstance(cs, Mapping)]
+    return aliased_concept_sets(
+        {**expression, "ConceptSets": [cs for cs in concept_sets if cs.get("id") in read]}
+    )
+
+
 def mapping_failure_findings(expression: dict[str, Any]) -> tuple[list[str], str]:
     """Check (ab): every criterion the producer mapped while an Agent 2 stage failed.
 
@@ -1852,6 +1884,23 @@ def _group_label_violations(
         for key, _criterion in members
     ]
     if any(survivor_key is not None for survivor_key, _why in chains):
+        return violations
+
+    # Every member gone, but each one refused under a code PERMITTED_REFUSAL_CODES covers
+    # (span check included) -- the gate's own verdict that the loss is irreducible. The group
+    # then lost exactly what its members did, so the label is not a second loss. Measured on
+    # P8 MAIN CARMELINA exclusion 10 (#41): both members refused 'in the opinion of the
+    # investigator', and the label failed the file on this line alone. A member skipped, or
+    # refused under any other code, keeps the line.
+    refusals = {
+        (record.get("role"), str(record.get("criterionId") or "")): record
+        for record in expression.get("_unmappedCriteria") or []
+        if isinstance(record, dict)
+    }
+    if all(
+        key in refusals and unmapped_refusal_block_reason(refusals[key], criterion) is None
+        for key, criterion in members
+    ):
         return violations
 
     # `why_not` is None for a member that never claimed to be a restatement, and such a
@@ -3243,7 +3292,7 @@ def main(argv: list[str] | None = None) -> int:
         # check above reads ONE concept set and asks whether the criterion using it is
         # wrong; this one reads a PAIR, which is the only way a name that describes an
         # exclusion its members never had becomes visible without a vocabulary.
-        aliases = aliased_concept_sets(expression)
+        aliases = cohort_aliased_concept_sets(expression)
         if aliases:
             reasons.append(
                 f"aliased concept sets ({len(aliases)}): {'; '.join(aliases)}"
@@ -3447,6 +3496,15 @@ def main(argv: list[str] | None = None) -> int:
             reasons.append(
                 f"record_change criterion emitted ({len(record_change_emitted)}): "
                 f"{'; '.join(record_change_emitted)}"
+            )
+
+        # (ae) a criterion both trial_only wordings called trial-only, emitted anyway: it requires
+        # a record only taking part in a trial produces (consent, run-in). Structural only.
+        trial_only_emitted = trial_only_occurrence_criteria(expression, study)
+        if trial_only_emitted:
+            reasons.append(
+                f"trial-only criterion emitted ({len(trial_only_emitted)}): "
+                f"{'; '.join(trial_only_emitted)}"
             )
 
         # (ab) a criterion mapped while a KG/refiner lookup or the critic failed: its concept

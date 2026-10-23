@@ -493,6 +493,111 @@ class TestAGroupLabelSkipIsReDerivedFromTheStore:
         assert "the store row is not a group label" in out
 
 
+#: CARMELINA exclusion 10 as P8 MAIN (2026-10-20) stored it: a label and two members that all
+#: carry the same protocol line, whose deciding clause is the investigator's opinion.
+CARMELINA_ABUSE_LINE = (
+    "10. Any previous or current alcohol or drug abuse that would interfere with trial "
+    "participation in the opinion of the investigator"
+)
+#: CARMELINA exclusion 14, whose cancer member the reranker refused (a real mapping loss).
+CARMELINA_UNRELIABLE_LINE = (
+    "14. Patients considered unreliable by the investigator concerning the requirements for "
+    "followup during the study and/or compliance with study drug administration, have a life "
+    "expectancy less than 5 years for non-CV causes, or have cancer other than nonmelanoma skin "
+    "cancer within last 3 years, or has any other condition than mentioned which in the opinion "
+    "of the investigator, would not allow safe participation in the study"
+)
+
+
+def _row(criterion_id: int, label: str, line: str, *, group_id: str, is_group_label: bool = False,
+         domain: str = "Condition") -> dict[str, Any]:
+    return {**_criterion(criterion_id, label, domain=domain, is_group_label=is_group_label,
+                         group_id=group_id), "protocolLine": line}
+
+
+def _refused(criterion_id: str, label: str, code: str, detail: str) -> dict[str, Any]:
+    """An `_unmappedCriteria` row in the producer's shape (P8 MAIN carmelina_treatment)."""
+    return {**_unmapped(criterion_id, label, reason=f"CriterionRefused: {label}"),
+            "refusalCode": code, "refusalDetail": detail}
+
+
+class TestAGroupWhoseMembersAreAllIrreduciblyRefused:
+    """A label is skipped because its members carry it. When every member is refused under a
+    code the gate itself permits (each judged on its own line), the group's loss is that same
+    irreducible loss, not a second one -- P8 MAIN CARMELINA exclusion 10 (#41, members #42/#43
+    'in the opinion of the investigator') failed on this line alone."""
+
+    def _abuse_study(self) -> dict[str, Any]:
+        return _study(exclusion=[
+            _row(41, "Alcohol or drug abuse", CARMELINA_ABUSE_LINE, group_id="g-abuse",
+                 is_group_label=True, domain="Observation"),
+            _row(42, "Alcohol abuse", CARMELINA_ABUSE_LINE, group_id="g-abuse"),
+            _row(43, "Drug abuse", CARMELINA_ABUSE_LINE, group_id="g-abuse"),
+        ])
+
+    def test_should_pass_a_label_when_every_member_is_a_permitted_refusal(self, gate):
+        study = self._abuse_study()
+        detail = "in the opinion of the investigator"
+        records = _records(
+            skipped=[_skip("41", "Alcohol or drug abuse", "group-label", domain="Observation")],
+            unmapped=[
+                _refused("42", "Alcohol abuse", "unmappable-placeholder", detail),
+                _refused("43", "Drug abuse", "unmappable-placeholder", detail),
+            ],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert "whole group left the cohort" not in out, out
+        assert rc == 0, out
+
+    def test_should_still_fail_a_label_when_one_member_is_a_real_mapping_loss(self, gate):
+        """CARMELINA exclusion 14 (#60): the cancer member was refused as reranker-no-match,
+        a loss a correct pipeline would not incur, so the group still left the cohort."""
+        study = _study(exclusion=[
+            _row(60, "Unreliable patient", CARMELINA_UNRELIABLE_LINE, group_id="g-unrel",
+                 is_group_label=True, domain="Observation"),
+            _row(61, "Patient considered unreliable", CARMELINA_UNRELIABLE_LINE,
+                 group_id="g-unrel", domain="Observation"),
+            _row(63, "Cancer other than nonmelanoma skin cancer within last 3 years",
+                 CARMELINA_UNRELIABLE_LINE, group_id="g-unrel"),
+        ])
+        records = _records(
+            skipped=[_skip("60", "Unreliable patient", "group-label", domain="Observation")],
+            unmapped=[
+                _refused("61", "Patient considered unreliable", "unmappable-placeholder",
+                         "in the opinion of the investigator, would not allow safe participation "
+                         "in the study"),
+                _refused("63", "Cancer other than nonmelanoma skin cancer within last 3 years",
+                         "reranker-no-match", "20 candidates offered, none selected"),
+            ],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert "none of its 2 member(s) emitted" in out
+
+    def test_should_still_fail_a_label_when_a_permitted_code_rests_on_a_span_not_in_the_line(
+        self, gate
+    ):
+        """The permit is the gate's own verdict on each member, span check included -- a
+        placeholder code whose fragment the line does not hold forgives nothing."""
+        study = self._abuse_study()
+        records = _records(
+            skipped=[_skip("41", "Alcohol or drug abuse", "group-label", domain="Observation")],
+            unmapped=[
+                _refused("42", "Alcohol abuse", "unmappable-placeholder", "not in the line"),
+                _refused("43", "Drug abuse", "unmappable-placeholder", "not in the line"),
+            ],
+            demographic_rules=0,
+            store_criteria=_store_criteria(study),
+        )
+        rc, out = gate(records, study)
+        assert rc == 1, out
+        assert "whole group left the cohort" in out
+
+
 class TestADemographicNoRuleSkipIsReDerivedFromTheStore:
     def test_should_fail_when_a_demographic_no_rule_skip_carried_a_bound(self, gate):
         """The producer had a number and built no rule from it: that is a lost age
