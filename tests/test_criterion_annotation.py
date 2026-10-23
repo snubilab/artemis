@@ -391,8 +391,9 @@ class TestProcessEligibilityAnnotatesBeforeMapping:
         # The annotation call, the agreement call its `conditional` asks for (the stub
         # answers both the same way, so the conditional is kept), the conditional check
         # (call 5; the stub gives no fragment_role, so the conditional stays and no call 6),
-        # and the record_change call (call 3), whose answer fills no record_change, so no call 4.
-        assert len(llm.calls) == 4
+        # the record_change call (call 3), whose answer fills no record_change, so no call 4, and
+        # the window_bound call (call 9), whose answer fills no window_bound, so no call 10.
+        assert len(llm.calls) == 5
         assert llm.calls[1].startswith(annotation_mod.AGREEMENT_SYSTEM_PROMPT)
         assert "Fragment of the protocol line:" in llm.calls[2]
         assert annotation_mod.RECORD_CHANGE_PROMPT_BLOCK.split("\n")[0] in llm.calls[3]

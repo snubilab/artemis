@@ -12,7 +12,7 @@ went unmatched in every P10/P11 arm.
 The rule now reads the row's own verified span (``protocolSpan``) against that fragment:
 
 * own span overlapping the fragment, or not verifiable: refused as before, nothing asked;
-* own span wholly outside it: calls 9/10 (:data:`OWN_ENTITY_PROMPT`,
+* own span wholly outside it: calls 11/12 (:data:`OWN_ENTITY_PROMPT`,
   :data:`OWN_ENTITY_AGREEMENT_PROMPT`) are shown that span and asked whether it names a clinical
   entity a vocabulary could hold. The row is no longer refused only when both answer ``named``;
   a store annotated before this (no record) keeps the refusal.
@@ -79,7 +79,7 @@ CAROLINA_58 = ("CAROLINA exclusion 58", _row(
 
 
 class _Replay:
-    """Calls 1/2 answer the row's P11 annotation; calls 9/10 answer ``own``."""
+    """Calls 1/2 answer the row's P11 annotation; calls 11/12 answer ``own``."""
 
     def __init__(self, fragment: str, own: tuple[str, str]) -> None:
         self.first = {"record_requirement": "forbidden", "timing": "prior",
