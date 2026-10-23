@@ -211,6 +211,7 @@ def production_side(args: argparse.Namespace) -> dict[str, Any]:
     """Render every needed study through this tree's annotate_eligibility, model recorded."""
     os.environ["ARTEMIS_ANNOTATION_CACHE"] = "0"
     os.environ["ARTEMIS_ANNOTATION_WORKERS"] = "1"
+    os.environ["ARTEMIS_ANNOTATION_OVERLAP"] = "0"  # calls 3-4 after 1-2-5-6, in job order
     from src.services import criterion_annotation as production  # noqa: PLC0415
 
     src_root = Path(production.__file__).resolve().parents[2]
