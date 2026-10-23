@@ -150,11 +150,16 @@ BASELINE = {
     # Counted in lines since section_rules S10 (2026-10-22) nests a member under its item: a nested member is still
     # one line. Two lines that were glued are now split by markers S10 reads: CARMELINA's bare letters a/b and d/e
     # (+2 inclusion), LEADER's U+F0A7 eGFR sub-bullets (+1 inclusion). No text left any list.
-    "CAROLINA": (34, 28, 1),
-    "ARISTOTLE": (16, 29, 1),
-    "CARMELINA": (39, 16, 1),
-    "EMPA-REG": (0, 19, 1),
-    "PLATO": (24, 19, 1),
+    # A wrapped line stays in its item after a line cut at a comma or inside a bracket it opened (2026-10-24): 13
+    # lines rejoin the line before them, no text added or lost -- CAROLINA's "(e.g." / "(>13.3" wraps (-3 exclusion),
+    # ARISTOTLE's "Holter recording" and "(e.g." wraps (-1 / -1), CARMELINA's "MRI angiography" (-1 inclusion),
+    # EMPA-REG's "Diet in Renal Disease" (-1 exclusion), PLATO's "TIA (hospital-based diagnosis)," "ECG indicating
+    # ischemia" and "Coronary artery disease; LBBB" (-3 inclusion).
+    "CAROLINA": (34, 25, 1),
+    "ARISTOTLE": (15, 28, 1),
+    "CARMELINA": (38, 16, 1),
+    "EMPA-REG": (0, 18, 1),
+    "PLATO": (21, 19, 1),
     "LEADER": (18, 14, 0),
 }
 
