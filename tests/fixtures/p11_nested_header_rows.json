@@ -1,0 +1,3781 @@
+{
+ "_source": {
+  "store": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-22_p11_secnest/arm_main/store/studies.json",
+  "store_sha256": "f00577dccf3d7b8f5c1ec985b3151339b775e8078c714174302d460b352bfe95",
+  "delivery": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-22_p11_secnest/arm_main/DELIVERY",
+  "code": "3a253a4 (sec-nest, P11 MAIN)",
+  "note": "verbatim store rows (subset of keys) and the delivered treatment files _skippedCriteria records"
+ },
+ "leader_inclusion_9_22": {
+  "rows": [
+   {
+    "id": 9,
+    "description": "Prior cardiovascular disease cohort criteria",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4. Prior cardiovascular disease cohort: age ≥50 and ≥1 of the following criteria:",
+    "protocolSpan": "",
+    "sourceText": "",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "age ≥50 and ≥1 of the following criteria:",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "≥1 of the following criteria:",
+     "cardinality": 1,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "age ≥50",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5",
+     "firstCacheKey": "051669ca4ded848f32ad6d4c44cae912a817b5eb06d2b46a3190997c2026e7c8",
+     "outcome": "called",
+     "kept": {
+      "record_requirement": {
+       "value": "conditional",
+       "span": "age ≥50 and ≥1 of the following criteria:"
+      }
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "conditional",
+      "conditional_span": "Prior cardiovascular disease cohort",
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    }
+   },
+   {
+    "id": 10,
+    "description": "Prior MI",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4.1 Prior MI",
+    "protocolSpan": "",
+    "sourceText": "Prior MI",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 11,
+    "description": "Prior stroke or TIA",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4.2 Prior stroke or TIA",
+    "protocolSpan": "",
+    "sourceText": "Prior stroke or TIA",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 12,
+    "description": "Prior revascularization with significant stenosis",
+    "domain": "Procedure",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4.3 Prior coronary, carotid or peripheral arterial revascularization >50% stenosis of coronary, carotid, or lower extremity arteries",
+    "protocolSpan": "",
+    "sourceText": "revascularization",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": ">50% stenosis",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "30ce89e2b8f3472c4fddabfa6ac95cd910c9e991265ca237134d8c8433fcfa90",
+     "firstCacheKey": "a596e123c30f427118b803d749582e3d90add0b561eafe848d3e1cc3c886433e",
+     "outcome": "called",
+     "kept": {},
+     "dropped": {
+      "excepted_entities": [
+       {
+        "text": "coronary",
+        "span": "coronary",
+        "offsets": [
+         10,
+         18
+        ]
+       },
+       {
+        "text": "carotid",
+        "span": "carotid",
+        "offsets": [
+         20,
+         27
+        ]
+       },
+       {
+        "text": "peripheral arterial",
+        "span": "peripheral arterial",
+        "offsets": [
+         31,
+         50
+        ]
+       }
+      ],
+      "base_span": "coronary, carotid, or lower extremity arteries"
+     },
+     "second": {
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     },
+     "secondRejected": [
+      {
+       "field": "relation",
+       "value": {
+        "relation": "any",
+        "relation_span": null,
+        "cardinality": null
+       },
+       "reason": "relation_span is not a substring of protocolLine"
+      }
+     ]
+    }
+   },
+   {
+    "id": 13,
+    "description": "History of symptomatic CHD",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4.4 History of symptomatic CHD documented by positive exercise stress test or any cardiac imaging or unstable angina with ECG changes",
+    "protocolSpan": "",
+    "sourceText": "symptomatic CHD",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "or",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 14,
+    "description": "Asymptomatic cardiac ischemia",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4.5 Asymptomatic cardiac ischemia documented by positive nuclear imaging test, exercise test or dobutamine stress echo",
+    "protocolSpan": "",
+    "sourceText": "Asymptomatic cardiac ischemia",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": ", ",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 15,
+    "description": "Chronic heart failure NYHA class II-III",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4.6 Chronic heart failure NYHA class II-III",
+    "protocolSpan": "",
+    "sourceText": "Chronic heart failure",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 16,
+    "description": "Chronic renal failure eGFR <60 mL/min/1.73m2",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4.7.1 eGFR <60 mL/min/1.73m2 (Modification of Diet in Renal Disease formula)",
+    "protocolSpan": "",
+    "sourceText": "eGFR",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 17,
+    "description": "Chronic renal failure eGFR <60 mL/min",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "0112eca7-810e-4856-9778-7217a3aae972",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "4.7.2 eGFR <60 mL/min (Cockcroft-Gault formula)",
+    "protocolSpan": "",
+    "sourceText": "eGFR",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "60 mL/min",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 18,
+    "description": "No Prior cardiovascular disease cohort criteria",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "c007829a-72c5-4334-a814-d81fca2b2ad9",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "5. No Prior cardiovascular disease group: Age ≥60 y and ≥1 of the following criteria:",
+    "protocolSpan": "",
+    "sourceText": "",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Age ≥60 y and ≥1 of the following criteria:",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "≥1 of the following criteria:",
+     "cardinality": 1,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "3a8b48cc1427a9fb663a39f6703dafa5c442a8e22e60f34e88f001cfbc466c16",
+     "firstCacheKey": "9a40e43bb565f48845bddcca3758f8b994f1e9b199128325b0761deb743fee07",
+     "outcome": "called",
+     "kept": {
+      "record_requirement": {
+       "value": "conditional",
+       "span": "Age ≥60 y and ≥1 of the following criteria:"
+      }
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "conditional",
+      "conditional_span": "Age ≥60 y",
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     },
+     "secondRejected": [
+      {
+       "field": "quantity_kind",
+       "value": {
+        "threshold_span": null,
+        "quantity_kind": "count",
+        "reference_bound": "none"
+       },
+       "reason": "given without a threshold_span"
+      }
+     ]
+    }
+   },
+   {
+    "id": 19,
+    "description": "Microalbuminuria or proteinuria",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "c007829a-72c5-4334-a814-d81fca2b2ad9",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "5.1 Microalbuminuria or proteinuria",
+    "protocolSpan": "",
+    "sourceText": "Microalbuminuria or proteinuria",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": null,
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 20,
+    "description": "Hypertension and LVH",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "c007829a-72c5-4334-a814-d81fca2b2ad9",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "5.2 Hypertension and left ventricular hypertrophy by ECG or imaging",
+    "protocolSpan": "",
+    "sourceText": "Hypertension and left ventricular hypertrophy",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 21,
+    "description": "LV systolic or diastolic dysfunction",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "c007829a-72c5-4334-a814-d81fca2b2ad9",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "5.3 Left ventricular systolic or diastolic dysfunction by imaging",
+    "protocolSpan": "",
+    "sourceText": "Left ventricular systolic or diastolic dysfunction",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 22,
+    "description": "Ankle-brachial index <0.9",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "c007829a-72c5-4334-a814-d81fca2b2ad9",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "5.4 Ankle-brachial index <0.9",
+    "protocolSpan": "",
+    "sourceText": "Ankle-brachial index",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   }
+  ],
+  "skipped": [
+   {
+    "criterionId": "10",
+    "role": "inclusion",
+    "label": "Prior MI",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   },
+   {
+    "criterionId": "11",
+    "role": "inclusion",
+    "label": "Prior stroke or TIA",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   },
+   {
+    "criterionId": "12",
+    "role": "inclusion",
+    "label": "revascularization",
+    "domain": "Procedure",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   },
+   {
+    "criterionId": "13",
+    "role": "inclusion",
+    "label": "symptomatic CHD",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   },
+   {
+    "criterionId": "14",
+    "role": "inclusion",
+    "label": "Asymptomatic cardiac ischemia",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   },
+   {
+    "criterionId": "15",
+    "role": "inclusion",
+    "label": "Chronic heart failure",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   },
+   {
+    "criterionId": "16",
+    "role": "inclusion",
+    "label": "eGFR",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   },
+   {
+    "criterionId": "17",
+    "role": "inclusion",
+    "label": "eGFR",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   },
+   {
+    "criterionId": "18",
+    "role": "inclusion",
+    "label": "No Prior cardiovascular disease cohort criteria",
+    "domain": "Condition",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Age ≥60 y and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "18",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "3a8b48cc1427a9fb663a39f6703dafa5c442a8e22e60f34e88f001cfbc466c16"
+    }
+   },
+   {
+    "criterionId": "19",
+    "role": "inclusion",
+    "label": "Microalbuminuria or proteinuria",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Age ≥60 y and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "18",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "3a8b48cc1427a9fb663a39f6703dafa5c442a8e22e60f34e88f001cfbc466c16"
+    }
+   },
+   {
+    "criterionId": "20",
+    "role": "inclusion",
+    "label": "Hypertension and left ventricular hypertrophy",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Age ≥60 y and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "18",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "3a8b48cc1427a9fb663a39f6703dafa5c442a8e22e60f34e88f001cfbc466c16"
+    }
+   },
+   {
+    "criterionId": "21",
+    "role": "inclusion",
+    "label": "Left ventricular systolic or diastolic dysfunction",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Age ≥60 y and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "18",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "3a8b48cc1427a9fb663a39f6703dafa5c442a8e22e60f34e88f001cfbc466c16"
+    }
+   },
+   {
+    "criterionId": "22",
+    "role": "inclusion",
+    "label": "Ankle-brachial index",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Age ≥60 y and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "18",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "3a8b48cc1427a9fb663a39f6703dafa5c442a8e22e60f34e88f001cfbc466c16"
+    }
+   },
+   {
+    "criterionId": "9",
+    "role": "inclusion",
+    "label": "Prior cardiovascular disease cohort criteria",
+    "domain": "Condition",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "age ≥50 and ≥1 of the following criteria:",
+    "conditionalDecidedBy": "9",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ba9aae52dc48d9120e6af7c64838790873c7beae835859106b3f809c562df7b5"
+    }
+   }
+  ]
+ },
+ "carmelina_inclusion_12_38": {
+  "rows": [
+   {
+    "id": 12,
+    "description": "High risk of CV events (I and/or II)",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "8. High risk of CV events (I and/or II):",
+    "protocolSpan": "",
+    "sourceText": "",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "High risk of CV events (I and/or II):",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": ":",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": null,
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7",
+     "firstCacheKey": "9b929af3bf5dcebec23f9e4f5823d1e2dff64a3a126bb895fedadf9e2160e896",
+     "outcome": "called",
+     "kept": {
+      "record_requirement": {
+       "value": "conditional",
+       "span": "High risk of CV events (I and/or II):"
+      }
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "conditional",
+      "conditional_span": "High risk of CV events (I and/or II):",
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": null,
+      "no_entity_span": null
+     },
+     "secondRejected": [
+      {
+       "field": "no_entity",
+       "value": {
+        "no_entity": "investigator_judgement",
+        "no_entity_span": null
+       },
+       "reason": "no_entity_span is not a substring of protocolLine"
+      }
+     ]
+    }
+   },
+   {
+    "id": 13,
+    "description": "Albuminuria and previous macrovascular disease",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "8.1 Albuminuria (UACR ≥ 30 mg/g creatinine or ≥ 30 µg/min [microgram albumin per minute] or ≥ 30 mg/24 h [milligram albumin per 24 hours] in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization)* AND previous macrovascular disease, defined as either one or more:",
+    "protocolSpan": "",
+    "sourceText": "Albuminuria",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": "AND",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "in the last 24 months prior to randomization",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "urine",
+     "specimen_span": "urine",
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 30 mg/g creatinine or ≥ 30 µg/min [microgram albumin per minute] or ≥ 30 mg/24 h [milligram albumin per 24 hours]",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 14,
+    "description": "Confirmed history of MI (> 2 months prior to Visit 1)",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "8.1.1 Confirmed history of MI (> 2 months prior to Visit 1)",
+    "protocolSpan": "",
+    "sourceText": "Myocardial Infarction",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "2 months prior to Visit 1",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 15,
+    "description": "Advanced coronary artery disease (>= 50% narrowing in 2+ major arteries)",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "f167c554-1ac4-4760-bc13-82d6c2819396",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.2 Advanced coronary artery disease, defined by any one of the following:",
+    "protocolSpan": "",
+    "sourceText": "",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": ":",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 16,
+    "description": ">= 50% narrowing in 2 or more major coronary arteries",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "f167c554-1ac4-4760-bc13-82d6c2819396",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.3 ≥ 50% narrowing of the luminal diameter in 2 or more major coronary arteries by coronary angiography, MRI angiography or CT angiography;",
+    "protocolSpan": "",
+    "sourceText": "Coronary artery narrowing",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "in 2 or more major coronary arteries",
+     "cardinality": 2,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 50%",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 17,
+    "description": "Left main stem coronary artery with >= 50% narrowing",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "f167c554-1ac4-4760-bc13-82d6c2819396",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.5 Left main stem coronary artery with ≥ 50% narrowing of the luminal diameter by coronary angiography, MRI angiography or CT angiography;",
+    "protocolSpan": "",
+    "sourceText": "Left main stem coronary artery narrowing",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 50%",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 18,
+    "description": "Prior revascularization of >= 2 major coronary arteries",
+    "domain": "Procedure",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "f167c554-1ac4-4760-bc13-82d6c2819396",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.6 Prior percutaneous or surgical revascularization of ≥ 2 major coronary arteries at least 2 months prior to Visit 1 (screening);",
+    "protocolSpan": "",
+    "sourceText": "Coronary artery revascularization",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "of",
+     "cardinality": 2,
+     "timing": "prior",
+     "window_span": "at least 2 months prior to Visit 1 (screening)",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 2",
+     "quantity_kind": "count",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 19,
+    "description": "Prior revascularization of 1 major artery AND >= 50% narrowing of 1 additional major artery",
+    "domain": "Procedure",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "f167c554-1ac4-4760-bc13-82d6c2819396",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.7 The combination of prior percutaneous or surgical revascularization of 1 major coronary artery at least 2 months prior to visit 1 (screening), and ≥ 50% narrowing of the luminal diameter by coronary angiography, MRI angiography or CT angiography of at least 1 additional major coronary artery",
+    "protocolSpan": "",
+    "sourceText": "revascularization",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": ", and",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "at least 2 months prior to visit 1 (screening)",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 50%",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 20,
+    "description": "High-risk single-vessel coronary artery disease (>= 50% narrowing)",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "f167c554-1ac4-4760-bc13-82d6c2819396",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.8 High-risk single-vessel coronary artery disease, defined as the presence of ≥ 50% narrowing of the luminal diameter of one major coronary artery by coronary angiography, MRI angiography or CT angiography in patients not revascularized:",
+    "protocolSpan": "",
+    "sourceText": "Coronary artery narrowing",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "in patients not revascularized",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 50%",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "ca8f8b88fe0f91f0fbb5b20e530f15f6808f0bb2d57f83b2aa4b71f7a69269fb",
+     "firstCacheKey": "ac1b636f010d638fe91bffc3ed0da82c9bbed2d73b0a08272f29c2f12d2293ce",
+     "outcome": "called",
+     "kept": {
+      "record_requirement": {
+       "value": "conditional",
+       "span": "in patients not revascularized"
+      }
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "conditional",
+      "conditional_span": "in patients not revascularized",
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    }
+   },
+   {
+    "id": 21,
+    "description": "Positive non invasive stress-test or related history",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.10 AND at least one of the following:",
+    "protocolSpan": "",
+    "sourceText": "",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": ":",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 22,
+    "description": "Positive ECG exercise tolerance test",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.12 a positive ECG exercise tolerance test in patients without left bundle branch block, Wolff-Parkinson-White syndrome, left ventricular hypertrophy with repolarization abnormality, or paced ventricular rhythm, atrial fibrillation in case of abnormal ST-T segments;",
+    "protocolSpan": "",
+    "sourceText": "ECG exercise tolerance test",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [
+      {
+       "text": "left bundle branch block",
+       "span": "left bundle branch block"
+      },
+      {
+       "text": "Wolff-Parkinson-White syndrome",
+       "span": "Wolff-Parkinson-White syndrome"
+      },
+      {
+       "text": "left ventricular hypertrophy with repolarization abnormality",
+       "span": "left ventricular hypertrophy with repolarization abnormality"
+      },
+      {
+       "text": "paced ventricular rhythm",
+       "span": "paced ventricular rhythm"
+      },
+      {
+       "text": "atrial fibrillation",
+       "span": "atrial fibrillation"
+      }
+     ],
+     "base_span": "patients without left bundle branch block, Wolff-Parkinson-White syndrome, left ventricular hypertrophy with repolarization abnormality, or paced ventricular rhythm, atrial fibrillation in case of abnormal ST-T segments",
+     "relation": "all",
+     "relation_span": "or",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "a2d8d5b3d5ff6811b7818b430f273a0b4f8bc56378ca750a151d9e53f1febaad",
+     "firstCacheKey": "45f6e5778a52a549597383961a38bf2bd557ac76da9a61b30b582e29ce50c4be",
+     "outcome": "called",
+     "kept": {
+      "excepted_entities": [
+       {
+        "text": "left bundle branch block",
+        "span": "left bundle branch block",
+        "offsets": [
+         66,
+         90
+        ]
+       },
+       {
+        "text": "Wolff-Parkinson-White syndrome",
+        "span": "Wolff-Parkinson-White syndrome",
+        "offsets": [
+         92,
+         122
+        ]
+       },
+       {
+        "text": "left ventricular hypertrophy with repolarization abnormality",
+        "span": "left ventricular hypertrophy with repolarization abnormality",
+        "offsets": [
+         124,
+         184
+        ]
+       },
+       {
+        "text": "paced ventricular rhythm",
+        "span": "paced ventricular rhythm",
+        "offsets": [
+         189,
+         213
+        ]
+       },
+       {
+        "text": "atrial fibrillation",
+        "span": "atrial fibrillation",
+        "offsets": [
+         215,
+         234
+        ]
+       }
+      ],
+      "base_span": "patients without left bundle branch block, Wolff-Parkinson-White syndrome, left ventricular hypertrophy with repolarization abnormality, or paced ventricular rhythm, atrial fibrillation in case of abnormal ST-T segments"
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [
+       {
+        "text": "left bundle branch block",
+        "span": "left bundle branch block",
+        "offsets": [
+         66,
+         90
+        ]
+       },
+       {
+        "text": "Wolff-Parkinson-White syndrome",
+        "span": "Wolff-Parkinson-White syndrome",
+        "offsets": [
+         92,
+         122
+        ]
+       },
+       {
+        "text": "left ventricular hypertrophy with repolarization abnormality",
+        "span": "left ventricular hypertrophy with repolarization abnormality",
+        "offsets": [
+         124,
+         184
+        ]
+       },
+       {
+        "text": "paced ventricular rhythm",
+        "span": "paced ventricular rhythm",
+        "offsets": [
+         189,
+         213
+        ]
+       },
+       {
+        "text": "atrial fibrillation",
+        "span": "atrial fibrillation",
+        "offsets": [
+         215,
+         234
+        ]
+       }
+      ],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     },
+     "secondRejected": [
+      {
+       "field": "base_span",
+       "value": null,
+       "reason": "not a substring of protocolLine"
+      }
+     ]
+    }
+   },
+   {
+    "id": 23,
+    "description": "Positive stress echocardiogram",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.13 a positive stress echocardiogram showing induced regional systolic wall motion abnormalities;",
+    "protocolSpan": "",
+    "sourceText": "Stress echocardiogram",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 24,
+    "description": "Positive nuclear myocardial perfusion imaging stress test",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.14 a positive nuclear myocardial perfusion imaging stress test showing stressinduced reversible perfusion abnormality;",
+    "protocolSpan": "",
+    "sourceText": "Nuclear myocardial perfusion imaging stress test",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 25,
+    "description": "Positive cardiac stress perfusion MRI",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.15 a positive cardiac stress perfusion MRI showing a stress induced perfusion defect;",
+    "protocolSpan": "",
+    "sourceText": "Cardiac stress perfusion MRI",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 26,
+    "description": "Discharged with unstable angina pectoris",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.16 Patient discharged from hospital with a documented diagnosis of unstable angina pectoris between 2 and 12 months prior to visit 1 (screening)",
+    "protocolSpan": "",
+    "sourceText": "Unstable angina pectoris",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": "between 2 and 12 months prior to visit 1 (screening)",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 27,
+    "description": "History of ischemic or haemorrhagic stroke",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.1.17 History of ischemic or haemorrhagic stroke (>3 months prior to visit 1 (screening))",
+    "protocolSpan": "",
+    "sourceText": "Stroke",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": ">3 months prior to visit 1 (screening)",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 28,
+    "description": "Presence of carotid artery disease",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "c310245d-12ce-4d9a-b3d9-1950db88b19c",
+    "parentGroupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "groupType": "ALL",
+    "protocolLine": "8.1.18 Presence of carotid artery disease (symptomatic or not) documented by either:",
+    "protocolSpan": "",
+    "sourceText": "Carotid artery disease",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": ":",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 29,
+    "description": "Carotid artery disease with >= 50% narrowing",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "c310245d-12ce-4d9a-b3d9-1950db88b19c",
+    "parentGroupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "groupType": "ALL",
+    "protocolLine": "8.1.19 imaging techniques with at least one lesion estimated to be ≥ 50% narrowing of the luminal diameter;",
+    "protocolSpan": "",
+    "sourceText": "Carotid artery narrowing",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "with at least one",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 50% narrowing",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 30,
+    "description": "Prior carotid revascularization",
+    "domain": "Procedure",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "c310245d-12ce-4d9a-b3d9-1950db88b19c",
+    "parentGroupId": "48bf5c6e-e700-477f-8007-33a715ca1e55",
+    "groupType": "ALL",
+    "protocolLine": "8.1.20 prior percutaneous or surgical carotid revascularization",
+    "protocolSpan": "",
+    "sourceText": "Carotid revascularization",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 31,
+    "description": "Presence of peripheral artery disease",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "bd599e49-71fb-4c63-823d-86fc4446f87d",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.2 Presence of peripheral artery disease documented by either:",
+    "protocolSpan": "",
+    "sourceText": "Peripheral artery disease",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "documented by either:",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 32,
+    "description": "Previous limb angioplasty, stenting or bypass surgery",
+    "domain": "Procedure",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "bd599e49-71fb-4c63-823d-86fc4446f87d",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.3 previous limb angioplasty, stenting or bypass surgery;",
+    "protocolSpan": "",
+    "sourceText": "Limb revascularization",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": ";",
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 33,
+    "description": "Previous limb or foot amputation due to macrocirculatory insufficiency",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "bd599e49-71fb-4c63-823d-86fc4446f87d",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.4 previous limb or foot amputation due to macrocirculatory insufficiency;",
+    "protocolSpan": "",
+    "sourceText": "Amputation due to macrocirculatory insufficiency",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 34,
+    "description": "Angiographic evidence of peripheral artery stenosis >= 50%",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "bd599e49-71fb-4c63-823d-86fc4446f87d",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.5 angiographic evidence of peripheral artery stenosis ≥ 50% narrowing of the luminal diameter in at least one limb (definition of peripheral artery: common iliac artery, internal iliac artery, external iliac artery, femoral artery, popliteal artery)",
+    "protocolSpan": "",
+    "sourceText": "Peripheral artery stenosis",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "in at least one limb",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥ 50% narrowing",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "5d4074ff40168044c5809744662e3330701e4a4b6a0ee9fe2b63c4877503421a",
+     "firstCacheKey": "274089d609b9a1101846983a1d18504d971d9dea6bdc7ee5a255bb36c537148e",
+     "outcome": "called",
+     "kept": {},
+     "dropped": {
+      "excepted_entities": [
+       {
+        "text": "common iliac artery",
+        "span": "common iliac artery",
+        "offsets": [
+         151,
+         170
+        ]
+       },
+       {
+        "text": "internal iliac artery",
+        "span": "internal iliac artery",
+        "offsets": [
+         172,
+         193
+        ]
+       },
+       {
+        "text": "external iliac artery",
+        "span": "external iliac artery",
+        "offsets": [
+         195,
+         216
+        ]
+       },
+       {
+        "text": "femoral artery",
+        "span": "femoral artery",
+        "offsets": [
+         218,
+         232
+        ]
+       },
+       {
+        "text": "popliteal artery",
+        "span": "popliteal artery",
+        "offsets": [
+         234,
+         250
+        ]
+       }
+      ],
+      "base_span": "peripheral artery"
+     },
+     "second": {
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    }
+   },
+   {
+    "id": 35,
+    "description": "Impaired renal function (eGFR 15- <45) with any UACR",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "38f159e7-977a-44f4-8a0c-831a076563ed",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.6 Evidence of impaired renal function with predefined UACR, with or without CV comorbidities, defined as follows (and/or criteria):",
+    "protocolSpan": "",
+    "sourceText": "",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "(and/or criteria)",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 36,
+    "description": "eGFR 15- <45 (MDRD)",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "38f159e7-977a-44f4-8a0c-831a076563ed",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.7 Impaired renal function (as defined by MDRD formula) with an eGFR:15- <45",
+    "protocolSpan": "",
+    "sourceText": "eGFR",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "15- <45",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 37,
+    "description": "eGFR >= 45-75 (MDRD) with UACR > 200",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "38f159e7-977a-44f4-8a0c-831a076563ed",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.9 Impaired renal function (as defined by MDRD formula) with an eGFR ≥ 45-75",
+    "protocolSpan": "",
+    "sourceText": "eGFR",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "eGFR ≥ 45-75",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 38,
+    "description": "eGFR >= 45-75 (MDRD) with UACR > 200",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "38f159e7-977a-44f4-8a0c-831a076563ed",
+    "parentGroupId": "a735b1c4-33ff-4730-a291-1e36cbe429e8",
+    "groupType": "ALL",
+    "protocolLine": "8.10 mL/min/1.73 m2 at visit 1 (screening) with an UACR > 200 mg/g creatinine or > 200 µg/min (microgram albumin per minute) or > 200 mg/24 h [milligram albumin per 24 hours] demonstrated in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization",
+    "protocolSpan": "",
+    "sourceText": "eGFR",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization",
+     "cardinality": 2,
+     "timing": "prior",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "urine",
+     "specimen_span": "urine",
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "> 200 mg/g creatinine or > 200 µg/min (microgram albumin per minute) or > 200 mg/24 h [milligram albumin per 24 hours]",
+     "quantity_kind": "lab_value",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   }
+  ],
+  "skipped": [
+   {
+    "criterionId": "12",
+    "role": "inclusion",
+    "label": "High risk of CV events (I and/or II)",
+    "domain": "Condition",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "13",
+    "role": "inclusion",
+    "label": "Albuminuria",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "14",
+    "role": "inclusion",
+    "label": "Myocardial Infarction",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "15",
+    "role": "inclusion",
+    "label": "Advanced coronary artery disease (>= 50% narrowing in 2+ major arteries)",
+    "domain": "Condition",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "16",
+    "role": "inclusion",
+    "label": "Coronary artery narrowing",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "17",
+    "role": "inclusion",
+    "label": "Left main stem coronary artery narrowing",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "18",
+    "role": "inclusion",
+    "label": "Coronary artery revascularization",
+    "domain": "Procedure",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "19",
+    "role": "inclusion",
+    "label": "revascularization",
+    "domain": "Procedure",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "20",
+    "role": "inclusion",
+    "label": "Coronary artery narrowing",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "in patients not revascularized",
+    "conditionalDecidedBy": "20",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "ca8f8b88fe0f91f0fbb5b20e530f15f6808f0bb2d57f83b2aa4b71f7a69269fb"
+    }
+   },
+   {
+    "criterionId": "21",
+    "role": "inclusion",
+    "label": "Positive non invasive stress-test or related history",
+    "domain": "Condition",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "22",
+    "role": "inclusion",
+    "label": "ECG exercise tolerance test",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "23",
+    "role": "inclusion",
+    "label": "Stress echocardiogram",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "24",
+    "role": "inclusion",
+    "label": "Nuclear myocardial perfusion imaging stress test",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "25",
+    "role": "inclusion",
+    "label": "Cardiac stress perfusion MRI",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "26",
+    "role": "inclusion",
+    "label": "Unstable angina pectoris",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "27",
+    "role": "inclusion",
+    "label": "Stroke",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "28",
+    "role": "inclusion",
+    "label": "Carotid artery disease",
+    "domain": "Condition",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "29",
+    "role": "inclusion",
+    "label": "Carotid artery narrowing",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "30",
+    "role": "inclusion",
+    "label": "Carotid revascularization",
+    "domain": "Procedure",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "31",
+    "role": "inclusion",
+    "label": "Peripheral artery disease",
+    "domain": "Condition",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "32",
+    "role": "inclusion",
+    "label": "Limb revascularization",
+    "domain": "Procedure",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "33",
+    "role": "inclusion",
+    "label": "Amputation due to macrocirculatory insufficiency",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "34",
+    "role": "inclusion",
+    "label": "Peripheral artery stenosis",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "35",
+    "role": "inclusion",
+    "label": "Impaired renal function (eGFR 15- <45) with any UACR",
+    "domain": "Condition",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "36",
+    "role": "inclusion",
+    "label": "eGFR",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "37",
+    "role": "inclusion",
+    "label": "eGFR",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   },
+   {
+    "criterionId": "38",
+    "role": "inclusion",
+    "label": "eGFR",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "High risk of CV events (I and/or II):",
+    "conditionalDecidedBy": "12",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "967e2eebdfb1618cbebd4c664cefbad550cad25be710ed92a8575197d41d9bc7"
+    }
+   }
+  ]
+ },
+ "carmelina_exclusion_30_36": {
+  "rows": [
+   {
+    "id": 30,
+    "description": "Exclusion: Pre-menopausal women who are nursing/pregnant or not using acceptable birth control",
+    "domain": "Demographics",
+    "logicType": "ABSENCE",
+    "isGroupLabel": true,
+    "groupId": "fcea08f5-6572-4222-80f2-b4eb8c3f1048",
+    "parentGroupId": null,
+    "groupType": "ANY",
+    "protocolLine": "12. Pre-menopausal women (last menstruation ≤ 1 year prior to informed consent) who:\n12.1 are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "protocolSpan": "",
+    "sourceText": "Pre-menopausal women",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Pre-menopausal women",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "who:",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "b859fc066fff69f8996bacde0bdfba9eca7377efbe4ba9e42f83a69407bf0b70",
+     "firstCacheKey": "aacf526a910a835dcba17dd8cd3e514ded2a5954112f0eec383d60ef0fc506de",
+     "outcome": "called",
+     "kept": {
+      "record_requirement": {
+       "value": "conditional",
+       "span": "Pre-menopausal women"
+      }
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "conditional",
+      "conditional_span": "Pre-menopausal women",
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    },
+    "plannerRelation": {
+     "relation": "all",
+     "relation_span": "who:",
+     "cardinality": null
+    }
+   },
+   {
+    "id": 31,
+    "description": "Pre-menopausal status",
+    "domain": "Demographics",
+    "logicType": "ABSENCE",
+    "isGroupLabel": false,
+    "groupId": "fcea08f5-6572-4222-80f2-b4eb8c3f1048",
+    "parentGroupId": null,
+    "groupType": "ANY",
+    "protocolLine": "12. Pre-menopausal women (last menstruation ≤ 1 year prior to informed consent) who:\n12.1 are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "protocolSpan": "Pre-menopausal women",
+    "sourceText": "Pre-menopausal women",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Pre-menopausal women",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "8b86745fad53e9c3daf5e25b0a8c179068c1b24b764c4adcd0a98fdceb79e88e",
+     "firstCacheKey": "58cdd457f76730383cdecd7baee562ab213a67167d2806e0240f0d117fabfb10",
+     "outcome": "called",
+     "kept": {
+      "record_requirement": {
+       "value": "conditional",
+       "span": "Pre-menopausal women"
+      }
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "conditional",
+      "conditional_span": "Pre-menopausal women",
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    }
+   },
+   {
+    "id": 32,
+    "description": "Nursing status",
+    "domain": "Condition",
+    "logicType": "ABSENCE",
+    "isGroupLabel": false,
+    "groupId": "fcea08f5-6572-4222-80f2-b4eb8c3f1048",
+    "parentGroupId": null,
+    "groupType": "ANY",
+    "protocolLine": "12. Pre-menopausal women (last menstruation ≤ 1 year prior to informed consent) who:\n12.1 are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "protocolSpan": "are nursing or pregnant",
+    "sourceText": "nursing",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "or",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 33,
+    "description": "Pregnant status",
+    "domain": "Condition",
+    "logicType": "ABSENCE",
+    "isGroupLabel": false,
+    "groupId": "fcea08f5-6572-4222-80f2-b4eb8c3f1048",
+    "parentGroupId": null,
+    "groupType": "ANY",
+    "protocolLine": "12. Pre-menopausal women (last menstruation ≤ 1 year prior to informed consent) who:\n12.1 are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "protocolSpan": "are nursing or pregnant",
+    "sourceText": "pregnant",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 34,
+    "description": "Not using acceptable birth control",
+    "domain": "Condition",
+    "logicType": "ABSENCE",
+    "isGroupLabel": false,
+    "groupId": "fcea08f5-6572-4222-80f2-b4eb8c3f1048",
+    "parentGroupId": null,
+    "groupType": "ANY",
+    "protocolLine": "12. Pre-menopausal women (last menstruation ≤ 1 year prior to informed consent) who:\n12.1 are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "protocolSpan": "are of child-bearing potential and are not practicing an acceptable method of birth control",
+    "sourceText": "not practicing an acceptable method of birth control",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "forbidden",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "any",
+     "relation_span": "acceptable method of birth control",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "5115c42fcc5652250ede49cbbcb53ed8b1e0a633df3fd23b06736457e76acd21",
+     "firstCacheKey": "ee4863819fb6e85646d49a9bda8420ab00cd2a86d4c81bcb94e110874074e323",
+     "outcome": "called",
+     "kept": {},
+     "dropped": {
+      "excepted_entities": [
+       {
+        "text": "tubal ligation",
+        "span": "tubal ligation",
+        "offsets": [
+         255,
+         269
+        ]
+       },
+       {
+        "text": "transdermal patch",
+        "span": "transdermal patch",
+        "offsets": [
+         271,
+         288
+        ]
+       },
+       {
+        "text": "intra uterine devices/systems (IUDs/IUSs)",
+        "span": "intra uterine devices/systems (IUDs/IUSs)",
+        "offsets": [
+         290,
+         331
+        ]
+       },
+       {
+        "text": "oral contraceptives",
+        "span": "oral",
+        "offsets": [
+         333,
+         337
+        ]
+       },
+       {
+        "text": "implantable contraceptives",
+        "span": "implantable",
+        "offsets": [
+         339,
+         350
+        ]
+       },
+       {
+        "text": "injectable contraceptives",
+        "span": "injectable",
+        "offsets": [
+         354,
+         364
+        ]
+       },
+       {
+        "text": "sexual abstinence",
+        "span": "sexual abstinence (if allowed by local authorities)",
+        "offsets": [
+         381,
+         432
+        ]
+       },
+       {
+        "text": "double barrier method",
+        "span": "double barrier method",
+        "offsets": [
+         434,
+         455
+        ]
+       },
+       {
+        "text": "vasectomised partner",
+        "span": "vasectomised partner",
+        "offsets": [
+         460,
+         480
+        ]
+       }
+      ],
+      "base_span": "acceptable method of birth control"
+     },
+     "second": {
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    }
+   },
+   {
+    "id": 35,
+    "description": "Not planning to use acceptable birth control",
+    "domain": "Condition",
+    "logicType": "ABSENCE",
+    "isGroupLabel": false,
+    "groupId": "fcea08f5-6572-4222-80f2-b4eb8c3f1048",
+    "parentGroupId": null,
+    "groupType": "ANY",
+    "protocolLine": "12. Pre-menopausal women (last menstruation ≤ 1 year prior to informed consent) who:\n12.1 are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "protocolSpan": "do not plan to continue using acceptable method of birth control throughout the study",
+    "sourceText": "do not plan to continue using acceptable method of birth control throughout the study",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": null,
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 36,
+    "description": "Failure to agree to periodic pregnancy testing",
+    "domain": "Condition",
+    "logicType": "ABSENCE",
+    "isGroupLabel": false,
+    "groupId": "fcea08f5-6572-4222-80f2-b4eb8c3f1048",
+    "parentGroupId": null,
+    "groupType": "ANY",
+    "protocolLine": "12. Pre-menopausal women (last menstruation ≤ 1 year prior to informed consent) who:\n12.1 are nursing or pregnant, or are of child-bearing potential and are not practicing an acceptable method of birth control (acceptable methods of birth control include tubal ligation, transdermal patch, intra uterine devices/systems (IUDs/IUSs), oral, implantable or injectable contraceptives, sexual abstinence (if allowed by local authorities), double barrier method and vasectomised partner) or do not plan to continue using acceptable method of birth control throughout the study and do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "protocolSpan": "do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "sourceText": "do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prospective",
+     "window_span": "during participation in the trial",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   }
+  ],
+  "skipped": [
+   {
+    "criterionId": "30",
+    "role": "exclusion",
+    "label": "Pre-menopausal women",
+    "domain": "Demographics",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Pre-menopausal women",
+    "conditionalDecidedBy": "30",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "b859fc066fff69f8996bacde0bdfba9eca7377efbe4ba9e42f83a69407bf0b70"
+    }
+   },
+   {
+    "criterionId": "31",
+    "role": "exclusion",
+    "label": "Pre-menopausal women",
+    "domain": "Demographics",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Pre-menopausal women",
+    "conditionalDecidedBy": "31",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "8b86745fad53e9c3daf5e25b0a8c179068c1b24b764c4adcd0a98fdceb79e88e"
+    }
+   },
+   {
+    "criterionId": "32",
+    "role": "exclusion",
+    "label": "nursing",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Pre-menopausal women",
+    "conditionalDecidedBy": "30",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "b859fc066fff69f8996bacde0bdfba9eca7377efbe4ba9e42f83a69407bf0b70"
+    }
+   },
+   {
+    "criterionId": "33",
+    "role": "exclusion",
+    "label": "pregnant",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Pre-menopausal women",
+    "conditionalDecidedBy": "30",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "b859fc066fff69f8996bacde0bdfba9eca7377efbe4ba9e42f83a69407bf0b70"
+    }
+   },
+   {
+    "criterionId": "34",
+    "role": "exclusion",
+    "label": "not practicing an acceptable method of birth control",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Pre-menopausal women",
+    "conditionalDecidedBy": "30",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "b859fc066fff69f8996bacde0bdfba9eca7377efbe4ba9e42f83a69407bf0b70"
+    }
+   },
+   {
+    "criterionId": "35",
+    "role": "exclusion",
+    "label": "do not plan to continue using acceptable method of birth control throughout the study",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Pre-menopausal women",
+    "conditionalDecidedBy": "30",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "b859fc066fff69f8996bacde0bdfba9eca7377efbe4ba9e42f83a69407bf0b70"
+    }
+   },
+   {
+    "criterionId": "36",
+    "role": "exclusion",
+    "label": "do not agree to submit to periodic pregnancy testing during participation in the trial",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Pre-menopausal women",
+    "conditionalDecidedBy": "30",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "b859fc066fff69f8996bacde0bdfba9eca7377efbe4ba9e42f83a69407bf0b70"
+    }
+   }
+  ]
+ },
+ "plato_inclusion_7_10": {
+  "rows": [
+   {
+    "id": 7,
+    "description": "Negative Pregnancy Test and Contraception for Females",
+    "domain": "Observation",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "dfb45cd9-5911-48d0-b59c-dfdbc2d9ab6d",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "Females of child-bearing potential must have a negative pregnancy test at enrollment and be willing to use 2 methods of reliable contraception",
+    "protocolSpan": "",
+    "sourceText": "pregnancy test",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "Females of child-bearing potential",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": "and",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "9499017357ecd8277a8db7440879fa2ce8d908dff5eaf2f50d216a697e5884c8",
+     "firstCacheKey": "3e223a8b9b73687d6c3dc006d5e25f0f9f9e9a23ca20dbc03e3bc55f033ea822",
+     "outcome": "called",
+     "kept": {
+      "record_requirement": {
+       "value": "conditional",
+       "span": "Females of child-bearing potential"
+      }
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "conditional",
+      "conditional_span": "Females of child-bearing potential",
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    },
+    "plannerRelation": {
+     "relation": "all",
+     "relation_span": "and",
+     "cardinality": null
+    }
+   },
+   {
+    "id": 8,
+    "description": "Negative Pregnancy Test",
+    "domain": "Observation",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "dfb45cd9-5911-48d0-b59c-dfdbc2d9ab6d",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "Females of child-bearing potential must have a negative pregnancy test at enrollment and be willing to use 2 methods of reliable contraception",
+    "protocolSpan": "negative pregnancy test",
+    "sourceText": "Pregnancy test result negative",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 9,
+    "description": "Use of Contraception Method 1",
+    "domain": "Drug",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "dfb45cd9-5911-48d0-b59c-dfdbc2d9ab6d",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "Females of child-bearing potential must have a negative pregnancy test at enrollment and be willing to use 2 methods of reliable contraception",
+    "protocolSpan": "2 methods of reliable contraception",
+    "sourceText": "Contraceptive method use",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "2 methods of reliable contraception",
+     "cardinality": 2,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 10,
+    "description": "Use of Contraception Method 2",
+    "domain": "Drug",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "dfb45cd9-5911-48d0-b59c-dfdbc2d9ab6d",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "Females of child-bearing potential must have a negative pregnancy test at enrollment and be willing to use 2 methods of reliable contraception",
+    "protocolSpan": "2 methods of reliable contraception",
+    "sourceText": "Contraceptive method use",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": "2 methods of reliable contraception",
+     "cardinality": 2,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   }
+  ],
+  "skipped": [
+   {
+    "criterionId": "10",
+    "role": "inclusion",
+    "label": "Contraceptive method use",
+    "domain": "Drug",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Females of child-bearing potential",
+    "conditionalDecidedBy": "7",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "9499017357ecd8277a8db7440879fa2ce8d908dff5eaf2f50d216a697e5884c8"
+    }
+   },
+   {
+    "criterionId": "7",
+    "role": "inclusion",
+    "label": "pregnancy test",
+    "domain": "Observation",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Females of child-bearing potential",
+    "conditionalDecidedBy": "7",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "9499017357ecd8277a8db7440879fa2ce8d908dff5eaf2f50d216a697e5884c8"
+    }
+   },
+   {
+    "criterionId": "8",
+    "role": "inclusion",
+    "label": "Pregnancy test result negative",
+    "domain": "Observation",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Females of child-bearing potential",
+    "conditionalDecidedBy": "7",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "9499017357ecd8277a8db7440879fa2ce8d908dff5eaf2f50d216a697e5884c8"
+    }
+   },
+   {
+    "criterionId": "9",
+    "role": "inclusion",
+    "label": "Contraceptive method use",
+    "domain": "Drug",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "Females of child-bearing potential",
+    "conditionalDecidedBy": "7",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "9499017357ecd8277a8db7440879fa2ce8d908dff5eaf2f50d216a697e5884c8"
+    }
+   }
+  ]
+ },
+ "plato_inclusion_49_54": {
+  "rows": [
+   {
+    "id": 49,
+    "description": "Contraception and Pregnancy Testing for Women",
+    "domain": "Observation",
+    "logicType": "PRESENCE",
+    "isGroupLabel": true,
+    "groupId": "fdd16a97-525f-4f94-8e19-770b9100c976",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "20. Urinary and/or blood pregnancy tests are to be performed in women of child-bearing potential and repeated at least every 6 months. Women of child-bearing potential must be using ≥2 forms of reliable contraception, including one barrier method.",
+    "protocolSpan": "",
+    "sourceText": "pregnancy test",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "conditional",
+     "conditional_span": "in women of child-bearing potential",
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": ", ",
+     "cardinality": null,
+     "timing": "prospective",
+     "window_span": "repeated at least every 6 months",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "urine",
+     "specimen_span": "Urinary",
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    },
+    "_annotationAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "cacheKey": "048282c79d29faef02f20f4f55f45363af5c66c0044296630a7859b393d9713d",
+     "firstCacheKey": "0e8436ed0ab3a998720ef9b387483c258aa4346ec431cff32cd3b292cf865dc7",
+     "outcome": "called",
+     "kept": {
+      "record_requirement": {
+       "value": "conditional",
+       "span": "in women of child-bearing potential"
+      }
+     },
+     "dropped": {},
+     "second": {
+      "record_requirement": "conditional",
+      "conditional_span": "in women of child-bearing potential",
+      "excepted_entities": [],
+      "base_span": null,
+      "no_entity": "none",
+      "no_entity_span": null
+     }
+    },
+    "plannerRelation": {
+     "relation": "all",
+     "relation_span": "and",
+     "cardinality": null
+    }
+   },
+   {
+    "id": 50,
+    "description": "Urinary pregnancy test",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "fdd16a97-525f-4f94-8e19-770b9100c976",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "20. Urinary and/or blood pregnancy tests are to be performed in women of child-bearing potential and repeated at least every 6 months. Women of child-bearing potential must be using ≥2 forms of reliable contraception, including one barrier method.",
+    "protocolSpan": "Urinary and/or blood pregnancy tests",
+    "sourceText": "Urinary pregnancy test",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prospective",
+     "window_span": "at least every 6 months",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "urine",
+     "specimen_span": "Urinary",
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 51,
+    "description": "Blood pregnancy test",
+    "domain": "Measurement",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "fdd16a97-525f-4f94-8e19-770b9100c976",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "20. Urinary and/or blood pregnancy tests are to be performed in women of child-bearing potential and repeated at least every 6 months. Women of child-bearing potential must be using ≥2 forms of reliable contraception, including one barrier method.",
+    "protocolSpan": "Urinary and/or blood pregnancy tests",
+    "sourceText": "Blood pregnancy test",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prospective",
+     "window_span": "at least every 6 months",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "blood",
+     "specimen_span": "blood",
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 52,
+    "description": "Pregnancy test frequency",
+    "domain": "Observation",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "fdd16a97-525f-4f94-8e19-770b9100c976",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "20. Urinary and/or blood pregnancy tests are to be performed in women of child-bearing potential and repeated at least every 6 months. Women of child-bearing potential must be using ≥2 forms of reliable contraception, including one barrier method.",
+    "protocolSpan": "repeated at least every 6 months",
+    "sourceText": "Pregnancy test performed at least every 6 months",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": null,
+     "relation_span": null,
+     "cardinality": null,
+     "timing": "prospective",
+     "window_span": "at least every 6 months",
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "urine",
+     "specimen_span": "Urinary",
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": null,
+     "quantity_kind": null,
+     "reference_bound": null,
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 53,
+    "description": "Use of reliable contraception (minimum 2 forms)",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "fdd16a97-525f-4f94-8e19-770b9100c976",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "20. Urinary and/or blood pregnancy tests are to be performed in women of child-bearing potential and repeated at least every 6 months. Women of child-bearing potential must be using ≥2 forms of reliable contraception, including one barrier method.",
+    "protocolSpan": "must be using ≥2 forms of reliable contraception",
+    "sourceText": "use of ≥2 forms of reliable contraception",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "at_least",
+     "relation_span": ", including",
+     "cardinality": 2,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥2",
+     "quantity_kind": "count",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   },
+   {
+    "id": 54,
+    "description": "Use of barrier contraception method",
+    "domain": "Condition",
+    "logicType": "PRESENCE",
+    "isGroupLabel": false,
+    "groupId": "fdd16a97-525f-4f94-8e19-770b9100c976",
+    "parentGroupId": null,
+    "groupType": "ALL",
+    "protocolLine": "20. Urinary and/or blood pregnancy tests are to be performed in women of child-bearing potential and repeated at least every 6 months. Women of child-bearing potential must be using ≥2 forms of reliable contraception, including one barrier method.",
+    "protocolSpan": "including one barrier method",
+    "sourceText": "use of one barrier method",
+    "annotation": {
+     "promptVersion": "rfc016-steps1-4-agreement-v1",
+     "model": "vllm/google/gemma-4-E4B-it",
+     "record_requirement": "required",
+     "conditional_span": null,
+     "excepted_entities": [],
+     "base_span": null,
+     "relation": "all",
+     "relation_span": ", including",
+     "cardinality": null,
+     "timing": "at_index",
+     "window_span": null,
+     "route": [
+      "any"
+     ],
+     "route_span": null,
+     "specimen": "any",
+     "specimen_span": null,
+     "no_entity": "none",
+     "no_entity_span": null,
+     "threshold_span": "≥2",
+     "quantity_kind": "count",
+     "reference_bound": "none",
+     "record_change": "none",
+     "record_change_span": null
+    }
+   }
+  ],
+  "skipped": [
+   {
+    "criterionId": "49",
+    "role": "inclusion",
+    "label": "pregnancy test",
+    "domain": "Observation",
+    "isGroupLabel": true,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "in women of child-bearing potential",
+    "conditionalDecidedBy": "49",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "048282c79d29faef02f20f4f55f45363af5c66c0044296630a7859b393d9713d"
+    }
+   },
+   {
+    "criterionId": "50",
+    "role": "inclusion",
+    "label": "Urinary pregnancy test",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "in women of child-bearing potential",
+    "conditionalDecidedBy": "49",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "048282c79d29faef02f20f4f55f45363af5c66c0044296630a7859b393d9713d"
+    }
+   },
+   {
+    "criterionId": "51",
+    "role": "inclusion",
+    "label": "Blood pregnancy test",
+    "domain": "Measurement",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "in women of child-bearing potential",
+    "conditionalDecidedBy": "49",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "048282c79d29faef02f20f4f55f45363af5c66c0044296630a7859b393d9713d"
+    }
+   },
+   {
+    "criterionId": "52",
+    "role": "inclusion",
+    "label": "Pregnancy test performed at least every 6 months",
+    "domain": "Observation",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "in women of child-bearing potential",
+    "conditionalDecidedBy": "49",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "048282c79d29faef02f20f4f55f45363af5c66c0044296630a7859b393d9713d"
+    }
+   },
+   {
+    "criterionId": "53",
+    "role": "inclusion",
+    "label": "use of ≥2 forms of reliable contraception",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "in women of child-bearing potential",
+    "conditionalDecidedBy": "49",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "048282c79d29faef02f20f4f55f45363af5c66c0044296630a7859b393d9713d"
+    }
+   },
+   {
+    "criterionId": "54",
+    "role": "inclusion",
+    "label": "use of one barrier method",
+    "domain": "Condition",
+    "isGroupLabel": false,
+    "reason": "conditional-on-existing-record",
+    "explanation": "The protocol line states this criterion only for patients who already have the record (or belong to the subgroup) it names; a patient without that record is not filtered by it. CIRCE has no conditional occurrence, and emitted as a presence rule it would require that record of every patient.",
+    "conditionalSpan": "in women of child-bearing potential",
+    "conditionalDecidedBy": "49",
+    "conditionalSource": "annotation",
+    "conditionalAgreement": {
+     "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+     "cacheKey": "048282c79d29faef02f20f4f55f45363af5c66c0044296630a7859b393d9713d"
+    }
+   }
+  ]
+ }
+}
