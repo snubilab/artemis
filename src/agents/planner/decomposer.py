@@ -7,7 +7,8 @@ from collections.abc import Mapping
 from typing import Optional, List
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from src.utils.llm import get_llm
+from src.utils.llm import PLANNER_MAX_TOKENS, get_llm, raise_if_truncated
+from src.utils.exceptions import LLMTruncationError
 from src.models.ir import (
     ARTEMISRequest,
     CohortDefinition,
@@ -294,7 +295,9 @@ class CriteriaPlanner:
     """
     
     def __init__(self, model_name: Optional[str] = None):
-        self.llm = get_llm(model_name=model_name, temperature=0.0, json_mode=True)
+        self.llm = get_llm(
+            model_name=model_name, temperature=0.0, json_mode=True, max_tokens=PLANNER_MAX_TOKENS
+        )
     
     def plan(self, ir: ARTEMISRequest) -> ARTEMISRequest:
         """
@@ -378,8 +381,7 @@ class CriteriaPlanner:
         # built), so the failure path returns this copy rather than the half-written one.
         extracted = criterion.model_copy(deep=True)
         try:
-            response = self.llm.invoke(messages)
-            result = self._extract_json(response.content)
+            result = self._ask(messages, criterion.entity_text)
 
             # RFC-016 §3: the entities the line removes from this criterion's set, as the
             # planner stated them, each span checked against the line. Recorded whatever
@@ -518,6 +520,33 @@ class CriteriaPlanner:
         
         return criterion
     
+    def _ask(self, messages: list, entity_text: str | None) -> dict:
+        """The planner's parsed answer, asked again once when the first reply is unusable.
+
+        A reply cut off at :data:`~src.utils.llm.PLANNER_MAX_TOKENS` is refused before it is
+        parsed (``raise_if_truncated`` keeps its body as evidence), and a reply that does not
+        parse is refused by :meth:`_extract_json`. Either is answered by sending the same
+        messages once more: P11 MAIN's EMPA-REG 'Body Mass index' reply ran to 130,054 bytes and
+        failed to parse, and the same prompt re-sent alone finished in 324 tokens and parsed.
+        A second unusable reply raises, so the criterion keeps its ``planning_failure``.
+
+        :param messages: the system and human messages of this criterion's call.
+        :param entity_text: the criterion's entity, for the log line.
+        :returns: the parsed JSON object.
+        :raises LLMTruncationError | ValueError: when the second reply is unusable too.
+        """
+        for attempt in (1, 2):
+            response = self.llm.invoke(messages)
+            try:
+                raise_if_truncated(response, what="planner decomposition")
+                return self._extract_json(response.content)
+            except (LLMTruncationError, ValueError) as exc:
+                if attempt == 2:
+                    raise
+                reason = " ".join(f"{type(exc).__name__}: {exc}".split())[:300]
+                print(f"[Planner] Unusable reply for {entity_text!r}, asking once more: {reason}")
+        raise AssertionError("unreachable")
+
     def _extract_json(self, content: str) -> dict:
         """Extract and parse JSON from LLM response content."""
         if "```json" in content:
