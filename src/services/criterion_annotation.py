@@ -152,6 +152,9 @@ CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v
 #: Calls 7 and 8 (:func:`check_forbidden`); each part of its call's cache key.
 TRIAL_ONLY_PROMPT_VERSION = "fixk12-trial-only-v2"
 TRIAL_ONLY_AGREEMENT_PROMPT_VERSION = "fixk12-trial-only-placebo-v2"
+#: Calls 9 and 10 (:func:`check_own_entity`); each part of its call's cache key.
+OWN_ENTITY_PROMPT_VERSION = "p11-own-entity-v1"
+OWN_ENTITY_AGREEMENT_PROMPT_VERSION = "p11-own-entity-placebo-v1"
 
 #: The row key the annotation is stored under, and the key its rejections go to.
 ANNOTATION_KEY = "annotation"
@@ -177,6 +180,10 @@ CONDITIONAL_CHECK_KEY = "_conditionalCheck"
 #: :func:`check_forbidden`): the fragment shown, each call's answer, and ``trialOnly`` -- True
 #: only when both wordings answer that the entity exists only because of a clinical trial.
 TRIAL_ONLY_CHECK_KEY = "_trialOnlyCheck"
+#: The row key of the own-entity check (calls 9 and 10, :func:`check_own_entity`): asked of a row
+#: whose agreed ``no_entity`` fragment lies wholly outside its own span. Holds the span shown, each
+#: call's answer, and ``named`` -- True only when both wordings say that span names an entity.
+OWN_ENTITY_CHECK_KEY = "_ownEntityCheck"
 #: Expression key: the thresholds a verified annotation says no CIRCE value filter represents.
 UNREPRESENTABLE_THRESHOLDS_KEY = "_unrepresentableThresholds"
 #: The ``reason`` each of those records carries.
@@ -213,6 +220,7 @@ FIELD_ROUTE_SPAN = "route_span"
 FIELD_SPECIMEN = "specimen"
 FIELD_SPECIMEN_SPAN = "specimen_span"
 FIELD_NO_ENTITY = "no_entity"
+FIELD_OWN_ENTITY = "own_entity"
 FIELD_TRIAL_ONLY = "trial_only"
 FIELD_NO_ENTITY_SPAN = "no_entity_span"
 FIELD_RECORD_CHANGE = "record_change"
@@ -846,6 +854,42 @@ conduct toward a trial.
 the line names beside it, a condition, a reaction, a treatment or a measurement that a patient \
 outside every trial can have is `no`.
 """ + _TRIAL_ONLY_TAIL
+
+_OWN_ENTITY_TAIL = """
+Output JSON:
+{{"own_entity": "<named|not_named>"}}"""
+
+#: ``own_entity`` values. Only ``named`` from both calls lifts a row's ``no_entity`` refusal.
+OWN_ENTITY_NAMED = "named"
+OWN_ENTITY_NOT_NAMED = "not_named"
+_OWN_ENTITY_VALUES = frozenset({OWN_ENTITY_NAMED, OWN_ENTITY_NOT_NAMED})
+
+#: Call 9: whether the row's own part of the line names an entity. Field definition only. Shown the
+#: row's own span, because calls 1/2 answer ``no_entity`` for the line: P11 MAIN gave CARMELINA's
+#: 'alcohol' and 'drug abuse' rows the fragment 'in the opinion of the investigator' of line 10.
+OWN_ENTITY_PROMPT = _CHECK_HEAD + """\
+`own_entity` states whether the fragment quoted above, which is this criterion's own part of the \
+protocol line, names a clinical entity that a clinical vocabulary could hold. One of:
+- `named`: the fragment names such an entity: a condition, a finding, a procedure, a drug or \
+drug class, a device, a measurement or an observation that a clinical record could carry.
+- `not_named`: the fragment names no such entity. It leaves what the criterion is about to an \
+assessment, an opinion or a prediction that someone makes about the patient, or it identifies \
+what the criterion is about only by pointing elsewhere: to an item, a list, a table or an \
+appendix of the protocol, to a product's label, or to a product known only by its role in a study.
+""" + _OWN_ENTITY_TAIL
+
+#: Call 10: the same definition in other words, asked only when call 9 answers ``named``.
+OWN_ENTITY_AGREEMENT_PROMPT = _CHECK_HEAD + """\
+`own_entity` says whether a clinical entity that could be held in a clinical vocabulary is named \
+by the fragment quoted above, the part of the protocol line that belongs to this criterion. One of:
+- `named`: such an entity is named by the fragment: a condition, a finding, a procedure, a drug \
+or a drug class, a device, a measurement or an observation that could be carried by a clinical \
+record.
+- `not_named`: no such entity is named by the fragment. What the criterion concerns is left by \
+it to an assessment, an opinion or a prediction someone makes about the patient, or is \
+identified by it only by pointing elsewhere: to an item, a list, a table or an appendix of the \
+protocol, to the label of a product, or to a product known only by its role in a study.
+""" + _OWN_ENTITY_TAIL
 
 # --------------------------------------------------------------------------- #
 # Validation
@@ -1858,6 +1902,63 @@ def check_forbidden(
     return record
 
 
+def _own_span_outside(row: Mapping[str, Any], fragment: Any) -> str | None:
+    """The row's own verified span when it lies wholly outside ``fragment`` in the row's line.
+
+    Offsets only (:func:`~src.utils.span_match.span_offsets`); no word is read.
+
+    :returns: the span, or None when either does not verify in the line or the two overlap.
+    """
+    line = row.get(_LINE)
+    span = row.get("protocolSpan")
+    own = span_offsets(span, line) if span else None
+    frag = span_offsets(fragment, line) if fragment else None
+    if own is None or frag is None or (own[0] < frag[1] and frag[0] < own[1]):
+        return None
+    return span
+
+
+def check_own_entity(
+    row: Mapping[str, Any],
+    role: str,
+    span: str,
+    *,
+    model: str,
+    llm: Any,
+) -> dict[str, Any]:
+    """Calls 9 and 10: does the row's own part of the line name an entity a vocabulary holds?
+
+    Asked of a row whose agreed ``no_entity`` fragment lies wholly outside its own span
+    (:func:`_own_span_outside`), shown that span. Call 10 is made only when call 9 answers
+    ``named``, and the record says ``named`` only when both do; a failed or unreadable answer
+    says nothing, so the row keeps its refusal. P11 MAIN: every row of CARMELINA's line 10
+    ('alcohol', 'drug abuse') and line 13 ('cancer ...') was refused on a judgement clause
+    elsewhere in its line, because calls 1/2 answer ``no_entity`` for the line.
+
+    :returns: the record stored under :data:`OWN_ENTITY_CHECK_KEY`.
+    """
+    record: dict[str, Any] = {"fragment": span, "calls": [], "named": False}
+    for template, system, version in (
+        (OWN_ENTITY_PROMPT, ANNOTATION_SYSTEM_PROMPT, OWN_ENTITY_PROMPT_VERSION),
+        (OWN_ENTITY_AGREEMENT_PROMPT, AGREEMENT_SYSTEM_PROMPT, OWN_ENTITY_AGREEMENT_PROMPT_VERSION),
+    ):
+        outcome, key, payload, error = _ask(
+            llm, row, [], role, model=model, template=template, system=system,
+            version=version, fragment=span,
+        )
+        raw = payload.get(FIELD_OWN_ENTITY) if isinstance(payload, Mapping) else None
+        answer = raw if raw in _OWN_ENTITY_VALUES else None
+        call = {"promptVersion": version, "cacheKey": key, "outcome": outcome,
+                FIELD_OWN_ENTITY: answer}
+        if error is not None:
+            call["error"] = error
+        record["calls"].append(call)
+        if answer != OWN_ENTITY_NAMED:
+            return record
+    record["named"] = True
+    return record
+
+
 def stated_trial_only(row: Mapping[str, Any]) -> str | None:
     """The fragment of a row both wordings said exists only because of a clinical trial.
 
@@ -1935,6 +2036,16 @@ def annotate_row(
             row[TRIAL_ONLY_CHECK_KEY] = check_forbidden(row, members, role, model=model, llm=llm)
         else:
             row.pop(TRIAL_ONLY_CHECK_KEY, None)
+        # A row whose agreed no_entity fragment lies outside its own span is asked about that span.
+        own_span = (
+            _own_span_outside(row, fields.get(FIELD_NO_ENTITY_SPAN))
+            if fields.get(FIELD_NO_ENTITY) not in (None, NoEntity.NONE.value) and not members
+            else None
+        )
+        if own_span is not None:
+            row[OWN_ENTITY_CHECK_KEY] = check_own_entity(row, role, own_span, model=model, llm=llm)
+        else:
+            row.pop(OWN_ENTITY_CHECK_KEY, None)
     change, row[RECORD_CHANGE_KEY] = _record_change(row, members, role, model=model, llm=llm)
     if error is not None:
         row[ANNOTATION_KEY] = {
@@ -1947,6 +2058,7 @@ def annotate_row(
         row.pop(AGREEMENT_KEY, None)
         row.pop(CONDITIONAL_CHECK_KEY, None)
         row.pop(TRIAL_ONLY_CHECK_KEY, None)
+        row.pop(OWN_ENTITY_CHECK_KEY, None)
         row.pop(WINDOW_DISAGREEMENT_KEY, None)
         return "error"
     row[ANNOTATION_KEY] = {
@@ -2593,10 +2705,15 @@ def stated_specimen(row: Mapping[str, Any]) -> SpecimenStatement | None:
 
 
 def stated_no_entity(row: Mapping[str, Any]) -> NoEntityStatement | None:
-    """Whether the row's line names no clinical entity, verified against the line.
+    """Whether the row's line names no clinical entity FOR THIS ROW, verified against the line.
+
+    The fragment is the line's (calls 1/2 answer for the line). It stands for the row unless the
+    row's own verified span lies wholly outside it AND calls 9/10, shown that span, both said it
+    names an entity (:data:`OWN_ENTITY_CHECK_KEY`, recorded for the span the row still carries).
+    A row annotated before that check has no record and keeps the line's verdict.
 
     :param row: the store criterion row.
-    :returns: the kind and span, or None when the line names an entity or nothing verified.
+    :returns: the kind and span, or None when the row names an entity or nothing verified.
     """
     annotation = _annotation(row)
     value = annotation.get(FIELD_NO_ENTITY)
@@ -2604,6 +2721,11 @@ def stated_no_entity(row: Mapping[str, Any]) -> NoEntityStatement | None:
     if value not in _NO_ENTITY_VALUES or value == NoEntity.NONE.value:
         return None
     if not span_in_line(span, row.get(_LINE)):
+        return None
+    own = row.get(OWN_ENTITY_CHECK_KEY)
+    own_span = _own_span_outside(row, span)
+    if (isinstance(own, Mapping) and own.get("named") is True and own_span is not None
+            and own.get("fragment") == own_span):
         return None
     return NoEntityStatement(kind=NoEntity(value), span=span)
 
