@@ -27,6 +27,14 @@ logger = logging.getLogger(__name__)
 # answer ended. OpenAI-compatible servers (vLLM included) spell it this way.
 TRUNCATED_FINISH_REASON = "length"
 
+# The planner's reply budget, by 65924ad's rule: max(2048, 4 x the largest observed legitimate
+# reply), rounded up to a multiple of 1024. Its replies are not cached, so it is read from the
+# response sizes P11 MAIN logged (output/site_gap/2026-10-22_p11_secnest/arm_main/driver.log):
+# 341 planner replies of at most 11,419 bytes, counted as tokens at 2.5 bytes each (an upper
+# bound: the one reproduced reply was 1,244 characters in 324 tokens, 3.8 per token) -> 4,568
+# -> 18,432. The 342nd reply of that run was 130,054 bytes and never terminated.
+PLANNER_MAX_TOKENS = 18432
+
 
 def _response_metadata(response: Any) -> Mapping[str, Any]:
     """``response.response_metadata`` when it is really a mapping, else empty.
