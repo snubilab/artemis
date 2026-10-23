@@ -2629,6 +2629,40 @@ def _with_group_members(rows: list[Mapping[str, Any]], own: dict[str, Any]) -> d
     return decided
 
 
+def header_over_listed_members(
+    label: Mapping[str, Any], rows: Sequence[Mapping[str, Any]], span: Any
+) -> bool:
+    """Whether a group label's span lies in its own line and in none of its members' lines.
+
+    Structural only: every member (nested groups included) carries a line, and the span is
+    a substring of none of them. The members are then lines of their own listed under the
+    header (S10 nesting), so the header's fragment ("age ≥50 and ≥1 of the following
+    criteria:", P11 MAIN LEADER inclusion 9) states the group -- it qualifies none of the
+    rows a skip would remove. A label split from ONE line with its members (PLATO's
+    "Females of child-bearing potential must ...", CARMELINA's pre-menopausal exclusion)
+    shares that line with every member, so the span is in theirs too and this is False.
+
+    shortcut: a header naming a subgroup over a list of its own lines ("Women of
+    child-bearing potential must:" then one line per requirement) reads the same way and
+    would be built as the group; none exists in the six evaluated trials' P11 stores.
+    Upgrade to a field the header annotation fills if one appears.
+
+    :param label: the group label row.
+    :param rows: the role's store rows.
+    :param span: the label's conditional span.
+    :returns: True when the label is a list header over members on lines of their own.
+    """
+    if not (label.get(_IS_LABEL) and label.get(_GROUP) and span_in_line(span, label.get(_LINE))):
+        return False
+    groups = group_descendants(rows, str(label.get(_GROUP)))
+    members = [r for r in rows if r is not label and r.get(_GROUP) in groups]
+    return (
+        bool(members)
+        and all(m.get(_LINE) for m in members)
+        and not any(span_in_line(span, m.get(_LINE)) for m in members)
+    )
+
+
 def conditional_skips(rows: Iterable[Any]) -> dict[str, ConditionalSkip]:
     """The rows of one role that are not emitted because they are conditional.
 
@@ -2637,12 +2671,60 @@ def conditional_skips(rows: Iterable[Any]) -> dict[str, ConditionalSkip]:
     of its group, nested groups included, with it: the members are the presence rule the
     label describes, and emitting them alone would emit what the label's decision removes.
 
+    Except a list header (:func:`header_over_listed_members`): its annotated span is the
+    group itself, so its own decision is dropped and the group is built. A member's own
+    decision stands (CARMELINA inclusion 20 under header 12, P11 MAIN).
+
     :param rows: one role's store rows.
     :returns: criterion id (stringified) -> the decision.
     """
     rows = [r for r in rows if isinstance(r, Mapping)]
-    own = {str(r.get(_ID, "")): skip for r in rows if (skip := _own_conditional(r)) is not None}
+    own = {
+        str(r.get(_ID, "")): skip
+        for r in rows
+        if (skip := _own_conditional(r)) is not None
+        and not (
+            skip.source == SOURCE_ANNOTATION and header_over_listed_members(r, rows, skip.span)
+        )
+    }
     return _with_group_members(rows, own)
+
+
+#: The skip reason of a group whose relation nothing states: the IR declared no
+#: ``group_type`` and neither the planner nor the annotation verified a relation on its
+#: label. Not a permit -- the delivery gate counts it as loss.
+GROUP_RELATION_UNRESOLVED_REASON = "group-relation-unresolved"
+
+
+def unresolved_group_relations(rows: Iterable[Any]) -> dict[str, str]:
+    """The rows of one role whose group has no relation to be built from.
+
+    A group is unresolved when its rows carry ``groupType: None`` (the IR declared none;
+    a row without the key, from a store written before it was kept, is declared) and its
+    label states no verified relation (:func:`stated_relation`). ALL is not a reading of
+    such a group, so nothing is built for it: every row of it and of the groups nested in
+    it is returned.
+
+    :param rows: one role's store rows.
+    :returns: criterion id (stringified) -> the unresolved ``groupId``.
+    """
+    rows = [r for r in rows if isinstance(r, Mapping)]
+    labels = {str(r.get(_GROUP)): r for r in rows if r.get(_IS_LABEL) and r.get(_GROUP)}
+    undeclared = {
+        str(r.get(_GROUP))
+        for r in rows
+        if r.get(_GROUP) and "groupType" in r and r["groupType"] is None
+    }
+    unresolved: dict[str, str] = {}
+    for group in undeclared:
+        label = labels.get(group)
+        if label is not None and stated_relation(label) is not None:
+            continue
+        inside = group_descendants(rows, group)
+        for row in rows:
+            if row.get(_GROUP) in inside:
+                unresolved.setdefault(str(row.get(_ID, "")), group)
+    return unresolved
 
 
 @dataclass(frozen=True)
