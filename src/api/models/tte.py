@@ -216,7 +216,9 @@ class Criterion(TTEModel):
     conceptSetName: str = ""
     logicType: str = "PRESENCE"  # "PRESENCE" or "ABSENCE"
     groupId: str | None = None
-    groupType: str = "ALL"
+    #: None on every row of a group the IR declared no ``group_type`` for: the build's
+    #: ``unresolved_group_relations`` reads it, so it must survive validation (P12).
+    groupType: str | None = "ALL"
     #: The ``groupId`` of the group this row's group sits INSIDE, or None when it sits
     #: at the top level. ``groupId``/``groupType`` are unchanged in meaning: this is the
     #: one extra edge that lets a group nest, which the pair alone could never express.
