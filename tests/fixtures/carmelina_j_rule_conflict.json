@@ -1,0 +1,1000 @@
+{
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "DrugEra": {
+          "CodesetId": 1
+        }
+      }
+    ],
+    "ObservationWindow": {
+      "PriorDays": 365,
+      "PostDays": 0
+    },
+    "PrimaryCriteriaLimit": {
+      "Type": "First"
+    }
+  },
+  "ConceptSets": [
+    {
+      "id": 1,
+      "name": "Linagliptin",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 40239216,
+              "CONCEPT_NAME": "linagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "DPP-4 inhibitors",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1580747,
+              "CONCEPT_NAME": "sitagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 19122137,
+              "CONCEPT_NAME": "vildagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40166035,
+              "CONCEPT_NAME": "saxagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40239216,
+              "CONCEPT_NAME": "linagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43009051,
+              "CONCEPT_NAME": "evogliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43009070,
+              "CONCEPT_NAME": "teneligliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43009089,
+              "CONCEPT_NAME": "gemigliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43013884,
+              "CONCEPT_NAME": "alogliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40239216,
+              "CONCEPT_NAME": "linagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "name": "GLP-1 receptor agonists",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 793143,
+              "CONCEPT_NAME": "semaglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1583722,
+              "CONCEPT_NAME": "exenatide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40170911,
+              "CONCEPT_NAME": "liraglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44506754,
+              "CONCEPT_NAME": "lixisenatide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44816332,
+              "CONCEPT_NAME": "albiglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45774435,
+              "CONCEPT_NAME": "dulaglutide",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "name": "DPP-4 inhibitors",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 1580747,
+              "CONCEPT_NAME": "sitagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 19122137,
+              "CONCEPT_NAME": "vildagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40166035,
+              "CONCEPT_NAME": "saxagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40239216,
+              "CONCEPT_NAME": "linagliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43009051,
+              "CONCEPT_NAME": "evogliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43009070,
+              "CONCEPT_NAME": "teneligliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43009089,
+              "CONCEPT_NAME": "gemigliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43013884,
+              "CONCEPT_NAME": "alogliptin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "name": "SGLT-2 inhibitors",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 793293,
+              "CONCEPT_NAME": "ertugliflozin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 1301517,
+              "CONCEPT_NAME": "bexagliflozin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 35198021,
+              "CONCEPT_NAME": "luseogliflozin hydrate",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43009020,
+              "CONCEPT_NAME": "ipragliflozin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm Extension",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 43526465,
+              "CONCEPT_NAME": "canagliflozin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 44785829,
+              "CONCEPT_NAME": "dapagliflozin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 45774751,
+              "CONCEPT_NAME": "empagliflozin",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    }
+  ],
+  "InclusionRules": [
+    {
+      "name": "Treatment with GLP-1 receptor agonists + Treatment with DPP-4 inhibitors + Treatment with SGLT-2 inhibitors",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [],
+        "DemographicCriteriaList": [],
+        "Groups": [
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 27
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 28
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 1,
+                    "Coeff": -1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          },
+          {
+            "Type": "ALL",
+            "CriteriaList": [
+              {
+                "Criteria": {
+                  "DrugExposure": {
+                    "CodesetId": 29
+                  }
+                },
+                "StartWindow": {
+                  "Start": {
+                    "Days": 365,
+                    "Coeff": -1
+                  },
+                  "End": {
+                    "Days": 0,
+                    "Coeff": 1
+                  }
+                },
+                "RestrictVisit": false,
+                "IgnoreObservationPeriod": false,
+                "Occurrence": {
+                  "Type": 0,
+                  "Count": 0
+                }
+              }
+            ],
+            "DemographicCriteriaList": [],
+            "Groups": []
+          }
+        ]
+      }
+    }
+  ],
+  "_restatedRuleCollapse": [
+    {
+      "reason": "restated-rule-implied",
+      "rule": "DPP-4 inhibitors",
+      "ruleIndex": 3,
+      "criterionKeys": [
+        "inclusion:4"
+      ],
+      "survivorRule": "Treatment with GLP-1 receptor agonists + Treatment with DPP-4 inhibitors + Treatment with SGLT-2 inhibitors",
+      "survivorRuleIndex": 10,
+      "survivorCriterionKeys": [
+        "exclusion:4",
+        "exclusion:5",
+        "exclusion:6"
+      ],
+      "survivorRuleSelection": "maximal-rule-identical-first-else-first-in-document-order",
+      "expression": {
+        "Type": "ALL",
+        "CriteriaList": [
+          {
+            "Criteria": {
+              "DrugExposure": {
+                "CodesetId": 4
+              }
+            },
+            "StartWindow": {
+              "Start": {
+                "Days": 365,
+                "Coeff": -1
+              },
+              "End": {
+                "Days": 1,
+                "Coeff": -1
+              }
+            },
+            "RestrictVisit": false,
+            "IgnoreObservationPeriod": false,
+            "Occurrence": {
+              "Type": 0,
+              "Count": 0
+            }
+          }
+        ],
+        "DemographicCriteriaList": [],
+        "Groups": []
+      }
+    }
+  ],
+  "source": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-26_exception_residual/baseline/arm_main/DELIVERY/carmelina_treatment.circe.json",
+  "protocolRows": [
+    {
+      "id": 4,
+      "protocolLine": "2. Male or female patients who are drug-naïve or pre-treated with any antidiabetic background therapy, excluding treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors if ≥ 7 consecutive days",
+      "window": {
+        "start": -365,
+        "end": 0
+      },
+      "annotation": {
+        "promptVersion": "rfc016-steps1-4-agreement-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "record_requirement": "forbidden",
+        "conditional_span": null,
+        "excepted_entities": [
+          {
+            "text": "GLP-1 receptor agonists",
+            "span": "GLP-1 receptor agonists"
+          },
+          {
+            "text": "DPP-4 inhibitors",
+            "span": "DPP-4 inhibitors"
+          },
+          {
+            "text": "SGLT-2 inhibitors",
+            "span": "SGLT-2 inhibitors"
+          }
+        ],
+        "base_span": "treatment with GLP-1 receptor agonists, DPP-4 inhibitors or SGLT-2 inhibitors",
+        "relation": "any",
+        "relation_span": "or",
+        "cardinality": null,
+        "timing": "prior",
+        "window_span": null,
+        "route": [
+          "any"
+        ],
+        "route_span": null,
+        "specimen": "any",
+        "specimen_span": null,
+        "no_entity": "none",
+        "no_entity_span": null,
+        "threshold_span": null,
+        "quantity_kind": null,
+        "reference_bound": null,
+        "record_change": "none",
+        "record_change_span": null,
+        "window_bound": null,
+        "window_bound_span": null
+      },
+      "conceptSetId": 4
+    },
+    {
+      "id": 4,
+      "protocolLine": "2. Treatment (≥ 7 consecutive days) with GLP-1 receptor agonists, other DPP-4 inhibitors or SGLT-2 inhibitors prior to informed consent. Note: This also includes clinical trials where these antidiabetic drugs have been provided to the patient",
+      "window": {
+        "start": -365,
+        "end": 0
+      },
+      "annotation": {
+        "promptVersion": "rfc016-steps1-4-agreement-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "record_requirement": "required",
+        "conditional_span": null,
+        "excepted_entities": [],
+        "base_span": null,
+        "relation": "any",
+        "relation_span": ", other DPP-4 inhibitors or SGLT-2 inhibitors",
+        "cardinality": null,
+        "timing": "prior",
+        "window_span": "prior to informed consent",
+        "route": [
+          "any"
+        ],
+        "route_span": null,
+        "specimen": "any",
+        "specimen_span": null,
+        "no_entity": "none",
+        "no_entity_span": null,
+        "threshold_span": "≥ 7 consecutive days",
+        "quantity_kind": "duration",
+        "reference_bound": "none",
+        "record_change": "none",
+        "record_change_span": null,
+        "window_bound": "none",
+        "window_bound_span": null
+      },
+      "conceptSetId": 27
+    },
+    {
+      "id": 5,
+      "protocolLine": "2. Treatment (≥ 7 consecutive days) with GLP-1 receptor agonists, other DPP-4 inhibitors or SGLT-2 inhibitors prior to informed consent. Note: This also includes clinical trials where these antidiabetic drugs have been provided to the patient",
+      "window": {
+        "start": -365,
+        "end": 0
+      },
+      "annotation": {
+        "promptVersion": "rfc016-steps1-4-agreement-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "record_requirement": "forbidden",
+        "conditional_span": null,
+        "excepted_entities": [],
+        "base_span": null,
+        "relation": "any",
+        "relation_span": "or",
+        "cardinality": null,
+        "timing": "prior",
+        "window_span": null,
+        "route": [
+          "any"
+        ],
+        "route_span": null,
+        "specimen": "any",
+        "specimen_span": null,
+        "no_entity": "none",
+        "no_entity_span": null,
+        "threshold_span": "≥ 7 consecutive days",
+        "quantity_kind": "duration",
+        "reference_bound": "none",
+        "record_change": "none",
+        "record_change_span": null,
+        "window_bound": "none",
+        "window_bound_span": null
+      },
+      "conceptSetId": 28
+    },
+    {
+      "id": 6,
+      "protocolLine": "2. Treatment (≥ 7 consecutive days) with GLP-1 receptor agonists, other DPP-4 inhibitors or SGLT-2 inhibitors prior to informed consent. Note: This also includes clinical trials where these antidiabetic drugs have been provided to the patient",
+      "window": {
+        "start": -365,
+        "end": 0
+      },
+      "annotation": {
+        "promptVersion": "rfc016-steps1-4-agreement-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "record_requirement": "required",
+        "conditional_span": null,
+        "excepted_entities": [],
+        "base_span": null,
+        "relation": "any",
+        "relation_span": ", other",
+        "cardinality": null,
+        "timing": "prior",
+        "window_span": "prior to informed consent",
+        "route": [
+          "any"
+        ],
+        "route_span": null,
+        "specimen": "any",
+        "specimen_span": null,
+        "no_entity": "none",
+        "no_entity_span": null,
+        "threshold_span": "≥ 7 consecutive days",
+        "quantity_kind": "duration",
+        "reference_bound": "none",
+        "record_change": "none",
+        "record_change_span": null,
+        "window_bound": "none",
+        "window_bound_span": null
+      },
+      "conceptSetId": 29
+    }
+  ],
+  "vocabulary": {
+    "concept_invalid_reason": {
+      "793143": null,
+      "793293": null,
+      "1301517": null,
+      "1580747": null,
+      "1583722": null,
+      "19122137": null,
+      "35198021": null,
+      "40166035": null,
+      "40170911": null,
+      "40239216": null,
+      "43009020": null,
+      "43009051": null,
+      "43009070": null,
+      "43009089": null,
+      "43013884": null,
+      "43526465": null,
+      "44506754": null,
+      "44785829": null,
+      "44816332": null,
+      "45774435": null,
+      "45774751": null,
+      "2926536": null,
+      "2926537": null,
+      "2926538": null
+    },
+    "ancestor_edges": {
+      "40239216": [
+        2926536,
+        2926537,
+        2926538,
+        40239216
+      ],
+      "44506754": [
+        44506754
+      ],
+      "1580747": [
+        1580747
+      ],
+      "19122137": [
+        19122137
+      ],
+      "40166035": [
+        40166035
+      ],
+      "43009051": [
+        43009051
+      ],
+      "35198021": [
+        35198021
+      ],
+      "1301517": [
+        1301517
+      ],
+      "45774751": [
+        2926536,
+        2926537,
+        2926538,
+        45774751
+      ],
+      "40170911": [
+        40170911
+      ],
+      "43009070": [
+        43009070
+      ],
+      "43013884": [
+        43013884
+      ],
+      "43009020": [
+        43009020
+      ],
+      "44785829": [
+        44785829
+      ],
+      "45774435": [
+        45774435
+      ],
+      "43526465": [
+        43526465
+      ],
+      "793143": [
+        793143
+      ],
+      "793293": [
+        793293
+      ],
+      "1583722": [
+        1583722
+      ],
+      "43009089": [
+        43009089
+      ],
+      "44816332": [
+        44816332
+      ]
+    }
+  }
+}

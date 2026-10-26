@@ -70,6 +70,9 @@ from typing import Any
 #: Where each collapse is recorded on the built expression.
 RESTATED_RULE_COLLAPSE_KEY = "_restatedRuleCollapse"
 
+# Arm rewrites can invalidate a build-time collapse; these rules are emitted again.
+RESTORED_RULE_COLLAPSES_KEY = "_restoredRuleCollapses"
+
 #: The rule's conjunct set equals another rule's.
 IDENTICAL_REASON = "restated-rule-identical"
 

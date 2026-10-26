@@ -413,6 +413,7 @@ from src.services.restated_rules import (  # noqa: E402
 )
 from src.services.restated_rules import (  # noqa: E402
     RESTATED_RULE_COLLAPSE_KEY,
+    RESTORED_RULE_COLLAPSES_KEY,
     missing_codeset_ids,
     redundant_inclusion_rule_findings,
     rule_relation,
@@ -886,7 +887,7 @@ def dropped_criteria_violations(records: Any) -> list[str]:
 def reconcile_dropped_rules(
     expression: dict[str, Any], store_names: list[str]
 ) -> tuple[list[str], list[str]]:
-    """Replay the file's recorded drops onto the store's rule names.
+    """Replay the file's recorded restorations and drops onto the store's rule names.
 
     The emission-time repair mutates the expression being delivered and leaves the
     store's ``structuredExpression`` alone, so the two rule multisets legitimately
@@ -894,6 +895,8 @@ def reconcile_dropped_rules(
     side can be moved forward to what the drop should have produced — and only that
     far. A missing rule no record accounts for survives the reconciliation and still
     fails check (b).
+    A restored build-time collapse adds its name back only when the delivered rule
+    exactly matches the recorded expression; a missing or changed restoration fails.
 
     :param expression: the delivered CIRCE expression.
     :param store_names: the store study's ``InclusionRules`` names.
@@ -901,6 +904,23 @@ def reconcile_dropped_rules(
         rule the store does not carry, which means the record describes some other
         file's drop and explains nothing about this one.
     """
+    store_names = list(store_names)
+    restoration_violations: list[str] = []
+    restored = expression.get(RESTORED_RULE_COLLAPSES_KEY, [])
+    if not isinstance(restored, list):
+        restoration_violations.append(f"{RESTORED_RULE_COLLAPSES_KEY} is not a list")
+        restored = []
+    for index, record in enumerate(restored):
+        where = f"{RESTORED_RULE_COLLAPSES_KEY}[{index}]"
+        if not isinstance(record, dict) or not isinstance(record.get("expression"), dict):
+            restoration_violations.append(f"{where} carries no restored expression")
+            continue
+        rule = {"name": record.get("rule"), "expression": record["expression"]}
+        if rule not in (expression.get("InclusionRules") or []):
+            restoration_violations.append(f"{where} restored rule is missing or changed")
+            continue
+        store_names.append(str(record.get("rule") or ""))
+
     # Two record channels, one replay. `_droppedCriteria` removes criteria and may take
     # their rule with them; `_restatedAbsenceRemovals` removes a whole rule because
     # another rule the file still carries forbade its entire range. Both spell
@@ -921,10 +941,10 @@ def reconcile_dropped_rules(
         ),
     ]
     if not any(isinstance(records, list) and records for _key, records in channels):
-        return list(store_names), []
+        return list(store_names), restoration_violations
 
     counter = Counter(store_names)
-    violations: list[str] = []
+    violations: list[str] = restoration_violations
 
     # One transformation per rule the drop touched, not one per criterion: CARMELINA's
     # incretin rule loses two members and leaves the file once. `ruleIndex` keys it, so

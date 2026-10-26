@@ -140,8 +140,12 @@ from src.services.restated_demographics import (
     collapse_all_restated_demographics,
 )
 from src.services.restated_rules import (
+    IDENTICAL_REASON,
+    IMPLIED_REASON,
     RESTATED_RULE_COLLAPSE_KEY,
+    RESTORED_RULE_COLLAPSES_KEY,
     collapse_redundant_inclusion_rules,
+    rule_relation,
 )
 from src.agents.agent1.parser import get_agent1  # lazy factory; import does not construct Agent 1
 from src.agents.agent1.repair_accounting import REPAIR_ACCOUNTING_KEY
@@ -169,6 +173,7 @@ from src.utils.circe_lint import (
     PLANNING_FAILURE_CRITERIA_KEY,
     SPECIMEN_DECISIONS_KEY,
     VALUE_RANGE_CONVERSIONS_KEY,
+    absence_overlap_codesets,
     closure_subsumption_codesets,
     confusable_member_ids,
     convert_value_range_inclusions,
@@ -402,15 +407,36 @@ def _rewrite_with_collapsed_rules(
 
     A carried rule the rewrite removes from the shadow leaves its record as it was, with a
     warning: the gate then decides on the record as built rather than on a guess.
+    If a previously proven collapse loses its structural implication, the carried rule is
+    restored and recorded under `_restoredRuleCollapses` for store reconciliation. Restored
+    records receive subsequent rewrites too; pre-existing invalid collapses still fail the gate.
 
     :param expression: the cohort expression, mutated in place.
     :param rewrite: the export-time rewrite, called on ``expression`` and then on the shadow.
     :returns: whatever ``rewrite`` returned for ``expression``.
     """
+    def supported(record: dict[str, Any]) -> bool:
+        expected = {IDENTICAL_REASON: "identical", IMPLIED_REASON: "implied"}
+        if record.get("reason") not in expected:
+            return False
+        return any(
+            rule.get("name") == record.get("survivorRule")
+            and rule_relation(
+                record["expression"], rule.get("expression") or {}, expression.get("ConceptSets")
+            ) == expected[record["reason"]]
+            for rule in expression.get("InclusionRules") or []
+        )
+
+    supported_before = {
+        id(record) for record in expression.get(RESTATED_RULE_COLLAPSE_KEY) or []
+        if isinstance(record, dict) and isinstance(record.get("expression"), dict)
+        and supported(record)
+    }
     result = rewrite(expression)
     records = [
         record
-        for record in expression.get(RESTATED_RULE_COLLAPSE_KEY) or []
+        for record in (expression.get(RESTATED_RULE_COLLAPSE_KEY) or [])
+        + (expression.get(RESTORED_RULE_COLLAPSES_KEY) or [])
         if isinstance(record, dict) and isinstance(record.get("expression"), dict)
     ]
     if not records:
@@ -420,7 +446,8 @@ def _rewrite_with_collapsed_rules(
     shadow = {
         key: deepcopy(value)
         for key, value in expression.items()
-        if key not in ("InclusionRules", "ConceptSets", RESTATED_RULE_COLLAPSE_KEY)
+        if key not in ("InclusionRules", "ConceptSets", RESTATED_RULE_COLLAPSE_KEY,
+                       RESTORED_RULE_COLLAPSES_KEY)
     }
     shadow["InclusionRules"] = list(carried)
     read_in_shadow = _cohort_codeset_ids(shadow)
@@ -457,6 +484,20 @@ def _rewrite_with_collapsed_rules(
             else:
                 continue
             rewritten_sets.add(codeset_id)
+    # Restore only a proven valid -> invalid transition, never launder an invalid input record.
+    restored = [
+        record for record, rule in zip(records, carried)
+        if id(record) in supported_before and any(r is rule for r in kept)
+        and not supported(record)
+    ]
+    for record in restored:
+        expression.setdefault("InclusionRules", []).append(
+            {"name": record.get("rule"), "expression": deepcopy(record["expression"])}
+        )
+        expression[RESTATED_RULE_COLLAPSE_KEY].remove(record)
+        expression.setdefault(RESTORED_RULE_COLLAPSES_KEY, []).append(deepcopy(record))
+        logging.info("[TTE] Restored rule %r after %s invalidated its collapse",
+                     record.get("rule"), getattr(rewrite, "__name__", rewrite))
     if rewritten_rules or rewritten_sets:
         logging.info(
             "[TTE] %s also rewrote %d collapsed rule(s) (%s) and %d concept set(s) only "
@@ -7704,16 +7745,20 @@ class TTEService:
         :mod:`src.services.entry_exclusion_repair`; this method is the wiring that
         supplies it a vocabulary. Two properties of that wiring are deliberate:
 
-        - the DB-free pre-gate runs first. Conditions 1 and 3 need no vocabulary, so a
-          payload with no rule stating an exception costs nothing -- which is every
-          file in the 2026-06-24 and 2026-08-31 deliveries and five of the six in
-          2026-09-12;
+        - the DB-free pre-gate runs first. Without an exception candidate or a drug-entry
+          overlap candidate no vocabulary is fetched. Drug washouts also use this lookup
+          to end index-day collisions through combination-product descendants before index;
         - a vocabulary failure is NOT swallowed. It propagates. An export that silently
           skipped the repair would ship the unsatisfiable rule, and the only thing
           standing between that and a hospital is the delivery gate -- which needs the
           same vocabulary and would fail for the same reason.
         """
-        if not next(iter_repair_candidates(base, stated_exceptions), None):
+        # Combination products can overlap only through descendants, without an entity exception.
+        drug_washout = (
+            entry_concept_ids(base)[0] in {"DrugEra", "DrugExposure"}
+            and bool(absence_overlap_codesets(base))
+        )
+        if not drug_washout and not next(iter_repair_candidates(base, stated_exceptions), None):
             return
 
         from src.services.conceptset_closure import PostgresVocabulary, items_of_cohort
@@ -7727,6 +7772,7 @@ class TTEService:
         with PostgresVocabulary(settings.DATABASE_URL, settings.CDM_SCHEMA) as vocab:
             lookup = vocab.prefetch(items)
         repair_entry_exclusion_conflicts(base, lookup, stated_exceptions)
+        end_entry_colliding_washouts_before_index(base, lookup)
 
     def _repair_range_disjunctions(
         self, base: dict[str, Any], provenance: CodesetProvenance
