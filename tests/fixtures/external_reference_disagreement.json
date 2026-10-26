@@ -1,0 +1,252 @@
+{
+  "source": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-26_exception_residual/baseline/arm_main",
+  "rows": {
+    "23": {
+      "id": 23,
+      "description": "Contraindications to background therapy",
+      "domain": "Condition",
+      "valueConstraint": null,
+      "sourceText": "Contraindications",
+      "protocolLine": "8. Contraindications to background therapy according to the local label",
+      "protocolSpan": "",
+      "window": {
+        "start": -9999,
+        "end": 0
+      },
+      "conceptSetId": null,
+      "conceptSetName": "",
+      "logicType": "ABSENCE",
+      "groupId": "939521b1-c1b1-4de6-ad0e-6f26fe929fed",
+      "groupType": "ALL",
+      "parentGroupId": null,
+      "isGroupLabel": true,
+      "mappable": false,
+      "_recordChangeAgreement": {
+        "promptVersion": "rfc016-record-change-cf-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "cacheKey": "b7072f856f5130dfb76ceee23aa4e20d635868abaf1cd2097944ebe226717344",
+        "outcome": "called",
+        "record_change": "none",
+        "record_change_span": null,
+        "kept": {},
+        "dropped": {},
+        "second": null
+      },
+      "annotation": {
+        "promptVersion": "rfc016-steps1-4-agreement-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "record_requirement": "forbidden",
+        "conditional_span": null,
+        "excepted_entities": [],
+        "base_span": null,
+        "relation": null,
+        "relation_span": null,
+        "cardinality": null,
+        "timing": "at_index",
+        "window_span": null,
+        "route": [
+          "any"
+        ],
+        "route_span": null,
+        "specimen": "any",
+        "specimen_span": null,
+        "no_entity": "none",
+        "no_entity_span": null,
+        "threshold_span": null,
+        "quantity_kind": null,
+        "reference_bound": null,
+        "record_change": "none",
+        "record_change_span": null
+      }
+    },
+    "24": {
+      "id": 24,
+      "description": "Contraindication to background therapy",
+      "domain": "Condition",
+      "valueConstraint": null,
+      "sourceText": "Contraindication",
+      "protocolLine": "8. Contraindications to background therapy according to the local label",
+      "protocolSpan": "Contraindications",
+      "window": {
+        "start": -9999,
+        "end": 0
+      },
+      "conceptSetId": null,
+      "conceptSetName": "",
+      "logicType": "ABSENCE",
+      "groupId": "939521b1-c1b1-4de6-ad0e-6f26fe929fed",
+      "groupType": "ALL",
+      "parentGroupId": null,
+      "isGroupLabel": false,
+      "mappable": true,
+      "_annotationAgreement": {
+        "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "cacheKey": "7bf5879f7e857483cf74472a221a9dc28f87b6a89b4cf2f91f9befe37afb9df3",
+        "firstCacheKey": "081979f0fc72f65a331cf687b9d4fde3b2d3f5e85f26c17395727c8a0a631174",
+        "outcome": "called",
+        "kept": {},
+        "dropped": {
+          "no_entity": {
+            "value": "refers_elsewhere",
+            "span": "according to the local label"
+          }
+        },
+        "second": {
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "no_entity": "none",
+          "no_entity_span": null
+        }
+      },
+      "_trialOnlyCheck": {
+        "fragment": "Contraindications",
+        "calls": [
+          {
+            "promptVersion": "gatefix-trial-only-routine-records-v1",
+            "cacheKey": "6ca69762691fd1ef5bdec3b10d19a69c83fd2ff17646d048452ca37bf7e3ebaf",
+            "outcome": "called",
+            "trial_only": "no"
+          }
+        ],
+        "trialOnly": false
+      },
+      "_recordChangeAgreement": {
+        "promptVersion": "rfc016-record-change-cf-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "cacheKey": "601723fea4d9233518b9d255180dfe7b6604c22195fa5612b2780ad43b77b692",
+        "outcome": "called",
+        "record_change": "none",
+        "record_change_span": null,
+        "kept": {},
+        "dropped": {},
+        "second": null
+      },
+      "_windowBound": {
+        "promptVersion": "window-bound-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "cacheKey": "8620272e1db2717db713eff83119a7ee8006d7a52679f999c7a77255d4e4c3a2",
+        "outcome": "called",
+        "window_bound": "none",
+        "window_bound_span": null,
+        "kept": {},
+        "dropped": {},
+        "second": null
+      },
+      "annotation": {
+        "promptVersion": "rfc016-steps1-4-agreement-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "record_requirement": "forbidden",
+        "conditional_span": null,
+        "excepted_entities": [],
+        "base_span": null,
+        "relation": null,
+        "relation_span": null,
+        "cardinality": null,
+        "timing": "at_index",
+        "window_span": null,
+        "route": [
+          "any"
+        ],
+        "route_span": null,
+        "specimen": "any",
+        "specimen_span": null,
+        "no_entity": null,
+        "no_entity_span": null,
+        "threshold_span": null,
+        "quantity_kind": null,
+        "reference_bound": null,
+        "record_change": "none",
+        "record_change_span": null,
+        "window_bound": "none",
+        "window_bound_span": null
+      }
+    }
+  },
+  "first": {
+    "key": "081979f0fc72f65a331cf687b9d4fde3b2d3f5e85f26c17395727c8a0a631174",
+    "payload": {
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "at_index",
+      "window_span": null,
+      "route": [
+        "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "refers_elsewhere",
+      "no_entity_span": "according to the local label",
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+    },
+    "model": "vllm/google/gemma-4-E4B-it",
+    "promptVersion": "rfc016-steps1-4-agreement-v1"
+  },
+  "second": {
+    "key": "7bf5879f7e857483cf74472a221a9dc28f87b6a89b4cf2f91f9befe37afb9df3",
+    "payload": {
+      "record_requirement": "forbidden",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "at_index",
+      "window_span": null,
+      "route": [
+        "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": null,
+      "quantity_kind": null,
+      "reference_bound": null
+    },
+    "model": "vllm/google/gemma-4-E4B-it",
+    "promptVersion": "rfc016-steps1-4-agreement-placebo-v1"
+  },
+  "concrete_control": {
+    "id": 4,
+    "description": "Contraindication to clopidogrel or other reason that study drug should not be administered",
+    "domain": "Condition",
+    "valueConstraint": null,
+    "sourceText": "Contraindication to clopidogrel",
+    "protocolLine": "Contraindication to clopidogrel or other reason that study drug should not be administered (eg, hypersensitivity, moderate or severe liver disease, active bleeding or bleeding history, major surgery within 30 d)",
+    "protocolSpan": "",
+    "window": {
+      "start": -9999,
+      "end": 0
+    },
+    "conceptSetId": null,
+    "conceptSetName": "",
+    "logicType": "ABSENCE",
+    "groupId": "6f2ea31e-01ca-40db-94d1-68b64a634414",
+    "groupType": "ALL",
+    "isGroupLabel": true,
+    "mappable": false
+  },
+  "refusal": {
+    "criterionId": "24",
+    "role": "exclusion",
+    "label": "Contraindication",
+    "domain": "Condition",
+    "reason": "CriterionRefused: No concept selected for 'Contraindication': the reranker selected none of the 60 candidates Agent 2 offered (stage reranker_no_match, route=slow); the RAG fallback was not run",
+    "exceptionType": "src.utils.criterion_refusal.CriterionRefused",
+    "refusalCode": "reranker-no-match",
+    "refusalDetail": "60 candidates offered, none selected"
+  }
+}
