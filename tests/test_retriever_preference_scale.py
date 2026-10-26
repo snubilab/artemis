@@ -141,7 +141,8 @@ def test_should_use_one_scoring_implementation_for_search_and_batch_search():
     retriever = _retriever()
 
     class _StubCollection:
-        def query(self, query_texts, n_results, include):
+        def query(self, query_texts, n_results, include, where=None):
+            assert where == {"domain_id": payload["domain_hint"]}
             return {
                 "ids": [ids],
                 "metadatas": [metadatas],

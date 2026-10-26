@@ -199,11 +199,14 @@ class ConceptRetriever:
         fetch_n = max(n_results * 3, 60)
         
         try:
-            results = self.collection.query(
-                query_texts=[query_text],
-                n_results=fetch_n,
-                include=["metadatas", "distances", "documents"]
-            )
+            kwargs: Dict[str, Any] = {
+                "query_texts": [query_text],
+                "n_results": fetch_n,
+                "include": ["metadatas", "distances", "documents"],
+            }
+            if domain_hint:
+                kwargs["where"] = {"domain_id": domain_hint}
+            results = self.collection.query(**kwargs)
         except Exception as e:
             print(f"Vector search failed (DB might be empty): {e}")
             return []
