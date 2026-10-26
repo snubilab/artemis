@@ -7213,6 +7213,23 @@ class TTEService:
             ),
         }
 
+        from src.services.occurrence_threshold import occurrence_filter
+
+        occurrence_bound = occurrence_filter(
+            criterion, exclusion=exclusion or criterion.get("logicType") == "ABSENCE"
+        )
+        if occurrence_bound is not None:
+            # Apply after defaults/prospective clipping so the stated bound is authoritative.
+            criteria_entry["Criteria"] = {occurrence_bound["criteriaType"]: {
+                **criteria_attrs, **occurrence_bound["attributes"],
+            }}
+            for key in ("StartWindow", "Occurrence"):
+                if key in occurrence_bound:
+                    criteria_entry[key] = occurrence_bound[key]
+            if "StartWindow" in occurrence_bound:
+                defaulted_window = None
+                annotated_window_record = None
+
         if len(label) > _MAX_RULE_NAME_LENGTH:
             label = label[: _MAX_RULE_NAME_LENGTH - 3] + "..."
 

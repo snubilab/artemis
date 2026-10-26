@@ -1,0 +1,2079 @@
+{
+  "source": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-26_exception_residual/baseline/arm_main/store/studies.json",
+  "sha256": "6471c6f2704cebe9a563153847b4eadffffa1432ddbe9e495ead67e28f8dc05b",
+  "rows": [
+    {
+      "studyId": 8,
+      "role": "inclusion",
+      "row": {
+        "id": 20,
+        "description": "History of STEMI",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "ST-segment elevation myocardial infarction",
+        "protocolLine": "7.1.1 History of myocardial infarction >2 months prior to informed consent",
+        "protocolSpan": "",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": 10,
+        "conceptSetName": "ST-segment elevation myocardial infarction",
+        "logicType": "PRESENCE",
+        "groupId": "a91f24db-281f-477b-9868-ed6768927884",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "7.1.1 History of myocardial infarction >2 months prior to informed consent",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "3160502bfce34873d868a325804fe466236416a73c2512411bbda0b5769687bc",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "b9181825098350836c82f7315efad7bc58cdf65a85c55cc159e9df381e4159e3",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "6b220aa43277972ef47af9e58cb7007b60decee5c48798d1358339acace0e997",
+          "outcome": "called",
+          "window_bound": "beyond",
+          "window_bound_span": ">2 months",
+          "kept": {
+            "window_bound": {
+              "value": "beyond",
+              "span": ">2 months"
+            }
+          },
+          "dropped": {},
+          "second": {
+            "promptVersion": "window-bound-placebo-v1",
+            "cacheKey": "f1af51b0544c877322dfdb24dc1120ee1e1b8859d5b3ed0eddcf58886713d573",
+            "outcome": "called",
+            "window_bound": "beyond",
+            "window_bound_span": ">2 months"
+          }
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": ">2 months prior to informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "2 months",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "beyond",
+          "window_bound_span": ">2 months"
+        },
+        "_windowDisagreement": {
+          "windowSpan": ">2 months prior to informed consent",
+          "statedDays": [
+            60
+          ],
+          "window": {
+            "start": -180,
+            "end": 0
+          }
+        }
+      }
+    },
+    {
+      "studyId": 8,
+      "role": "inclusion",
+      "row": {
+        "id": 28,
+        "description": "Hospital discharge for unstable angina",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Unstable angina",
+        "protocolLine": "7.1.3.2 Hospital discharge for unstable angina ≤12 months prior to consent",
+        "protocolSpan": "",
+        "window": {
+          "start": -365,
+          "end": 0
+        },
+        "conceptSetId": 16,
+        "conceptSetName": "Unstable angina",
+        "logicType": "PRESENCE",
+        "groupId": "3372eb69-4806-4e12-98ab-d9c1804b2f91",
+        "groupType": null,
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "7.1.3.2 Hospital discharge for unstable angina ≤12 months prior to consent",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "18e23993b4bbe1940f944b80c7dcbc09d5d69923ebc78813457a47ca5696cd48",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "f433199d1bd4bf7300164cacef28901ac4a216db635363c6a0cdff6b3add8b45",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "3d4ace5e700451aab9e12b59de8fec26e54e526e58c60c2d8a5519f71329aa04",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "≤12 months prior to consent",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": "≤12 months prior to consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤12 months",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "≤12 months prior to consent"
+        }
+      }
+    },
+    {
+      "studyId": 8,
+      "role": "inclusion",
+      "row": {
+        "id": 33,
+        "description": "History of Ischemic Stroke",
+        "domain": "Condition",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 2.0,
+          "valueHigh": null,
+          "unitText": "months",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "Ischemic stroke",
+        "protocolLine": "7.1.5 History of stroke (ischemic or hemorrhagic) >2 months prior to consent",
+        "protocolSpan": "ischemic",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": 19,
+        "conceptSetName": "Ischemic stroke",
+        "logicType": "PRESENCE",
+        "groupId": "df307872-af41-4aef-bd2e-b7f83e02a40f",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "ischemic",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "c1bb7b7a290694cd0080cbbc7a9e1c503832df63f8f359d559c34b8210dccf0f",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "ce4b73f4841f884e9f3114b96b3454964944234dc25a4ea373fc88fd25200181",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "b95f5d880b8ee49be88c3e3f8c2410880c19227bc700b7c4db6808cd0683b8f3",
+          "outcome": "called",
+          "window_bound": "beyond",
+          "window_bound_span": ">2 months",
+          "kept": {
+            "window_bound": {
+              "value": "beyond",
+              "span": ">2 months"
+            }
+          },
+          "dropped": {},
+          "second": {
+            "promptVersion": "window-bound-placebo-v1",
+            "cacheKey": "4b2bbaa931d0947b324ef8748bd5d5f290116e5a94e19db2c7abfe8a5ef39bae",
+            "outcome": "called",
+            "window_bound": "beyond",
+            "window_bound_span": ">2 months"
+          }
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": ">2 months prior to consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": ">2 months",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "beyond",
+          "window_bound_span": ">2 months"
+        },
+        "_windowDisagreement": {
+          "windowSpan": ">2 months prior to consent",
+          "statedDays": [
+            60
+          ],
+          "window": {
+            "start": -180,
+            "end": 0
+          }
+        }
+      }
+    },
+    {
+      "studyId": 8,
+      "role": "inclusion",
+      "row": {
+        "id": 34,
+        "description": "History of Hemorrhagic Stroke",
+        "domain": "Condition",
+        "valueConstraint": {
+          "op": "gt",
+          "value": 2.0,
+          "valueHigh": null,
+          "unitText": "months",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "Hemorrhagic stroke",
+        "protocolLine": "7.1.5 History of stroke (ischemic or hemorrhagic) >2 months prior to consent",
+        "protocolSpan": "hemorrhagic",
+        "window": {
+          "start": -180,
+          "end": 0
+        },
+        "conceptSetId": 20,
+        "conceptSetName": "Hemorrhagic stroke",
+        "logicType": "PRESENCE",
+        "groupId": "df307872-af41-4aef-bd2e-b7f83e02a40f",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "hemorrhagic",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "672c17f8cab0dcea747d355102e932d13a39147cc082eb375f44fe275612dd64",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "1e6693947788585ecc9b4c1af0cf7d7d81f83ec1c1917a3e1ec09829a2acca77",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "97248c43b1bba4ae3267f15c4bc18e88dc04d98c80cc20c9bce55c1bfcec9879",
+          "outcome": "called",
+          "window_bound": "beyond",
+          "window_bound_span": ">2 months",
+          "kept": {
+            "window_bound": {
+              "value": "beyond",
+              "span": ">2 months"
+            }
+          },
+          "dropped": {},
+          "second": {
+            "promptVersion": "window-bound-placebo-v1",
+            "cacheKey": "032a628a92494f8649654714c06544d610648859a2e2537c61a122500cf27d51",
+            "outcome": "called",
+            "window_bound": "beyond",
+            "window_bound_span": ">2 months"
+          }
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": ">2 months prior to consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": ">2 months",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "beyond",
+          "window_bound_span": ">2 months"
+        },
+        "_windowDisagreement": {
+          "windowSpan": ">2 months prior to consent",
+          "statedDays": [
+            60
+          ],
+          "window": {
+            "start": -180,
+            "end": 0
+          }
+        }
+      }
+    },
+    {
+      "studyId": 9,
+      "role": "inclusion",
+      "row": {
+        "id": 22,
+        "description": "Prior revascularization of >= 2 major coronary arteries",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "Coronary artery revascularization",
+        "protocolLine": "8.1.2.4 Prior percutaneous or surgical revascularization of ≥ 2 major coronary arteries at least 2 months prior to Visit 1 (screening);",
+        "protocolSpan": "",
+        "window": {
+          "start": -730,
+          "end": -1
+        },
+        "conceptSetId": 11,
+        "conceptSetName": "Coronary artery revascularization",
+        "logicType": "PRESENCE",
+        "groupId": "a06bd27e-53f7-4b22-906e-c8b279699f85",
+        "groupType": null,
+        "parentGroupId": "5cf7635c-a1da-4f4a-aa64-8b44b3d9f955",
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "8.1.2.4 Prior percutaneous or surgical revascularization of ≥ 2 major coronary arteries at least 2 months prior to Visit 1 (screening);",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "a60c2e822e06dc6d15ab347ef6692b0bae6311b27136f2e6ee35868f2a0bbb2d",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "d61d91f5ea440e69b5b398233d722764793a8c3e4d10ab2521a765b5c104b3fb",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "d0e8ee8008409a3045dd0bb393c36d046246eb7f10e7873fcf7ec365dfb3600c",
+          "outcome": "called",
+          "window_bound": "beyond",
+          "window_bound_span": "at least 2 months",
+          "kept": {
+            "window_bound": {
+              "value": "beyond",
+              "span": "at least 2 months"
+            }
+          },
+          "dropped": {},
+          "second": {
+            "promptVersion": "window-bound-placebo-v1",
+            "cacheKey": "05dc146f2bbb360b7dc4ba309676db7e508e64ee94d89ed30215152557b22ab8",
+            "outcome": "called",
+            "window_bound": "beyond",
+            "window_bound_span": "at least 2 months"
+          }
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "at_least",
+          "relation_span": "of",
+          "cardinality": 2,
+          "timing": "prior",
+          "window_span": "at least 2 months prior to Visit 1 (screening)",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≥ 2",
+          "quantity_kind": "count",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "beyond",
+          "window_bound_span": "at least 2 months"
+        },
+        "_windowDisagreement": {
+          "windowSpan": "at least 2 months prior to Visit 1 (screening)",
+          "statedDays": [
+            60
+          ],
+          "window": {
+            "start": -730,
+            "end": -1
+          }
+        }
+      }
+    },
+    {
+      "studyId": 9,
+      "role": "exclusion",
+      "row": {
+        "id": 4,
+        "description": "Treatment with GLP-1 receptor agonists",
+        "domain": "Drug",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 7.0,
+          "valueHigh": null,
+          "unitText": "consecutive days",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "GLP-1 receptor agonists",
+        "protocolLine": "2. Treatment (≥ 7 consecutive days) with GLP-1 receptor agonists, other DPP-4 inhibitors or SGLT-2 inhibitors prior to informed consent. Note: This also includes clinical trials where these antidiabetic drugs have been provided to the patient",
+        "protocolSpan": "GLP-1 receptor agonists",
+        "window": {
+          "start": -365,
+          "end": 0
+        },
+        "conceptSetId": 27,
+        "conceptSetName": "GLP-1 receptor agonists",
+        "logicType": "ABSENCE",
+        "groupId": "5d6e9cee-8375-49a9-8b79-fe4698731942",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "GLP-1 receptor agonists",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "ba4595692d6d821f1742193c2b3a07e1eff7442bf084c83ed8a1a72eafa1f667",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "31082ff3b9af4d605355a215e5ad2c3fd236abb248bac0292c9e8343b42e5d71",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "3dfd69ed3c204d3475af4e79a10b58a7d288723596c90e244fa3b30f5e59cda3",
+          "outcome": "called",
+          "window_bound": "none",
+          "window_bound_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": ", other DPP-4 inhibitors or SGLT-2 inhibitors",
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": "prior to informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≥ 7 consecutive days",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "none",
+          "window_bound_span": null
+        }
+      }
+    },
+    {
+      "studyId": 9,
+      "role": "exclusion",
+      "row": {
+        "id": 5,
+        "description": "Treatment with DPP-4 inhibitors",
+        "domain": "Drug",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 7.0,
+          "valueHigh": null,
+          "unitText": "consecutive days",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "DPP-4 inhibitors",
+        "protocolLine": "2. Treatment (≥ 7 consecutive days) with GLP-1 receptor agonists, other DPP-4 inhibitors or SGLT-2 inhibitors prior to informed consent. Note: This also includes clinical trials where these antidiabetic drugs have been provided to the patient",
+        "protocolSpan": "DPP-4 inhibitors",
+        "window": {
+          "start": -365,
+          "end": 0
+        },
+        "conceptSetId": 28,
+        "conceptSetName": "DPP-4 inhibitors",
+        "logicType": "ABSENCE",
+        "groupId": "5d6e9cee-8375-49a9-8b79-fe4698731942",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "a8ff5f5ac84d8d42fc93ca64b32e44138ada7db7d8fa5013fec658925489252a",
+          "firstCacheKey": "8261d570bf041ab89e5b748d1858aa222ae98b3336279028637c50ca4a8b71b6",
+          "outcome": "called",
+          "kept": {},
+          "dropped": {
+            "excepted_entities": [
+              {
+                "text": "GLP-1 receptor agonists",
+                "span": "GLP-1 receptor agonists",
+                "offsets": [
+                  41,
+                  64
+                ]
+              },
+              {
+                "text": "DPP-4 inhibitors",
+                "span": "DPP-4 inhibitors",
+                "offsets": [
+                  72,
+                  88
+                ]
+              },
+              {
+                "text": "SGLT-2 inhibitors",
+                "span": "SGLT-2 inhibitors",
+                "offsets": [
+                  92,
+                  109
+                ]
+              }
+            ],
+            "base_span": "Treatment (≥ 7 consecutive days) with GLP-1 receptor agonists, other DPP-4 inhibitors or SGLT-2 inhibitors prior to informed consent. Note: This also includes clinical trials where these antidiabetic drugs have been provided to the patient"
+          },
+          "second": {
+            "record_requirement": "required",
+            "conditional_span": null,
+            "excepted_entities": [],
+            "base_span": null,
+            "no_entity": "none",
+            "no_entity_span": null
+          }
+        },
+        "_trialOnlyCheck": {
+          "fragment": "DPP-4 inhibitors",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "34a9796c68fc5cb7369a0217c16d64b9133403c2352c1012af7549060760344f",
+              "outcome": "cached",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "d2eb2c5eb26f02bc0ad53eb0b43fbf790f0ff296f1164a56fb555a7fa4ecf577",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "a2974db87739aae8906393ccb947ee12ac4cf60336a949220946782a78a7ec80",
+          "outcome": "called",
+          "window_bound": "none",
+          "window_bound_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≥ 7 consecutive days",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "none",
+          "window_bound_span": null
+        }
+      }
+    },
+    {
+      "studyId": 9,
+      "role": "exclusion",
+      "row": {
+        "id": 6,
+        "description": "Treatment with SGLT-2 inhibitors",
+        "domain": "Drug",
+        "valueConstraint": {
+          "op": "gte",
+          "value": 7.0,
+          "valueHigh": null,
+          "unitText": "consecutive days",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "SGLT-2 inhibitors",
+        "protocolLine": "2. Treatment (≥ 7 consecutive days) with GLP-1 receptor agonists, other DPP-4 inhibitors or SGLT-2 inhibitors prior to informed consent. Note: This also includes clinical trials where these antidiabetic drugs have been provided to the patient",
+        "protocolSpan": "SGLT-2 inhibitors",
+        "window": {
+          "start": -365,
+          "end": 0
+        },
+        "conceptSetId": 29,
+        "conceptSetName": "SGLT-2 inhibitors",
+        "logicType": "ABSENCE",
+        "groupId": "5d6e9cee-8375-49a9-8b79-fe4698731942",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "bf4bac5754ca6fd099e8ff626fc46e6779040311113219efaf00d65c9b683def",
+          "firstCacheKey": "88f07c6ad44cc48e0f0402f55e39afda483a2709697d11ff7a91f987791e1cd5",
+          "outcome": "called",
+          "kept": {},
+          "dropped": {
+            "excepted_entities": [
+              {
+                "text": "GLP-1 receptor agonists",
+                "span": "GLP-1 receptor agonists",
+                "offsets": [
+                  41,
+                  64
+                ]
+              },
+              {
+                "text": "DPP-4 inhibitors",
+                "span": "DPP-4 inhibitors",
+                "offsets": [
+                  72,
+                  88
+                ]
+              }
+            ],
+            "base_span": "GLP-1 receptor agonists, other DPP-4 inhibitors or SGLT-2 inhibitors"
+          },
+          "second": {
+            "record_requirement": "required",
+            "conditional_span": null,
+            "excepted_entities": [],
+            "base_span": null,
+            "no_entity": "none",
+            "no_entity_span": null
+          }
+        },
+        "_trialOnlyCheck": {
+          "fragment": "SGLT-2 inhibitors",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "add944fbb5302fe80398c29edf51ec488748179454e75459c67244fac371cb76",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "aca35137ed949a63e2abf9bd2d3e448b57ccb81ba26bb682aa38bc5d05478ccb",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "a46558100d8592bf2d4cb7e635b3cd2400317feba6f2a815cbdb1f6de6af2d69",
+          "outcome": "called",
+          "window_bound": "none",
+          "window_bound_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "required",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": ", other",
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": "prior to informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≥ 7 consecutive days",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "none",
+          "window_bound_span": null
+        }
+      }
+    },
+    {
+      "studyId": 9,
+      "role": "exclusion",
+      "row": {
+        "id": 36,
+        "description": "Coronary artery revascularization via PCI",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "Percutaneous coronary intervention",
+        "protocolLine": "6. Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or CABG ≤ 2 months prior informed consent",
+        "protocolSpan": "PCI",
+        "window": {
+          "start": -61,
+          "end": 0
+        },
+        "conceptSetId": 51,
+        "conceptSetName": "Percutaneous coronary intervention",
+        "logicType": "ABSENCE",
+        "groupId": "3b418fc7-2619-499a-bed1-637bf4699cff",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "12c294317915e3fee8cd2dd934fbcd7aea0b14793556833d4d9dd371f8709e04",
+          "firstCacheKey": "75177be9c0846a807265d6c28bf38e15c0bb9ada9c385d37371cf35d49f7ddc6",
+          "outcome": "called",
+          "kept": {},
+          "dropped": {
+            "excepted_entities": [
+              {
+                "text": "Percutaneous coronary intervention",
+                "span": "PCI",
+                "offsets": [
+                  51,
+                  54
+                ]
+              }
+            ],
+            "base_span": "Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or CABG"
+          },
+          "second": {
+            "record_requirement": "forbidden",
+            "conditional_span": null,
+            "excepted_entities": [
+              {
+                "text": "Percutaneous coronary intervention",
+                "span": "any previous PCI",
+                "offsets": [
+                  65,
+                  81
+                ]
+              }
+            ],
+            "base_span": "Pre-planned coronary artery re-vascularisation (PCI, CABG)",
+            "no_entity": "none",
+            "no_entity_span": null
+          }
+        },
+        "_trialOnlyCheck": {
+          "fragment": "PCI",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "5ffe37d5dc8243cab1efaff0639bf4bdd153a915a177b61d16e769a150667254",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "6b75c33c3e1a6d81b5c5449d0b11e0a342feb5ce35afb6bd97cacc25fb66fe87",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "ae01f693e060d1f1657f3195cbdd5060352390afede7ec18a19076adfe37ef30",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "≤ 2 months",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": "≤ 2 months prior informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤ 2 months",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "≤ 2 months"
+        }
+      }
+    },
+    {
+      "studyId": 9,
+      "role": "exclusion",
+      "row": {
+        "id": 70,
+        "description": "Life expectancy less than 5 years for non-CV causes",
+        "domain": "Observation",
+        "valueConstraint": {
+          "op": "lt",
+          "value": 5.0,
+          "valueHigh": null,
+          "unitText": "years",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "Life expectancy less than 5 years for non-CV causes",
+        "protocolLine": "11. Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, have a life expectancy less than 5 years for non-CV causes, or have cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "protocolSpan": "have a life expectancy less than 5 years for non-CV causes",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 71,
+        "conceptSetName": "Life expectancy less than 5 years for non-CV causes",
+        "logicType": "ABSENCE",
+        "groupId": "ba652f53-19d4-4c5d-b38a-c59855812f50",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "75a67459c8ca9da6eb7e84b50d7dd44f8063b937ccbb5892bb32d75491012f86",
+          "firstCacheKey": "2db5d3dc13e39803faee4a23542a41f602b5b0180cd30db3695762844af815ed",
+          "outcome": "called",
+          "kept": {
+            "no_entity": {
+              "value": "investigator_judgement",
+              "span": "in the opinion of the investigator, would not allow safe participation in the study"
+            }
+          },
+          "dropped": {},
+          "second": {
+            "record_requirement": "required",
+            "conditional_span": null,
+            "excepted_entities": [],
+            "base_span": null,
+            "no_entity": "investigator_judgement",
+            "no_entity_span": "in the opinion of the investigator, would not allow safe participation in the study"
+          }
+        },
+        "_ownEntityCheck": {
+          "fragment": "have a life expectancy less than 5 years for non-CV causes",
+          "calls": [
+            {
+              "promptVersion": "p11-own-entity-v1",
+              "cacheKey": "772c250b8f8840d086659376d722984aaa48746f0b0bea3da4602c5c11c24d2c",
+              "outcome": "called",
+              "own_entity": "named"
+            },
+            {
+              "promptVersion": "p11-own-entity-placebo-v1",
+              "cacheKey": "dff2c45df0aa22dd06042e4290124ce18322be25db83fa3e7b468edbf43e7849",
+              "outcome": "called",
+              "own_entity": "named"
+            }
+          ],
+          "named": true
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "516e940fb56ca1eb3a703c195b1a9d623094dc90a5ac980c2f98d340e8548540",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "4dc2bb9e7fb4de02c6b10c162144a3c8b1ffb4b4835466f1489f4ed3eeab44c8",
+          "outcome": "called",
+          "window_bound": "none",
+          "window_bound_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "investigator_judgement",
+          "no_entity_span": "in the opinion of the investigator, would not allow safe participation in the study",
+          "threshold_span": "less than 5 years",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "none",
+          "window_bound_span": null
+        }
+      }
+    },
+    {
+      "studyId": 9,
+      "role": "exclusion",
+      "row": {
+        "id": 79,
+        "description": "Transient Ischemic Attack (TIA)",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "TIA",
+        "protocolLine": "13. Stroke or TIA ≤ 3 months prior to visit 1 (screening)",
+        "protocolSpan": "TIA",
+        "window": {
+          "start": -91,
+          "end": 0
+        },
+        "conceptSetId": 76,
+        "conceptSetName": "TIA",
+        "logicType": "ABSENCE",
+        "groupId": "b91f40df-2e11-4e0e-8dfc-92957fbe67d3",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "TIA",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "0a11ac906faf63a65b7f90e5be45b63416a319fb157f1425419f0c985d1b8b6d",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "bbb7704cd92fc94a903635ba7541ba4a47f91475c61b7096e655e8e94b669826",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "61ffebf53f6a32c687c4b6a2ea6052f495e375905b2a2011b7da701011cda066",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "3 months",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": "≤ 3 months prior to visit 1 (screening)",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤ 3 months",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "3 months"
+        }
+      }
+    },
+    {
+      "studyId": 10,
+      "role": "inclusion",
+      "row": {
+        "id": 24,
+        "description": "T2DM duration > 10 years",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Type 2 diabetes mellitus",
+        "protocolLine": "3.4.1 Type 2 diabetes mellitus duration > 10 years at Visit 1a",
+        "protocolSpan": "",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 12,
+        "conceptSetName": "Type 2 diabetes mellitus",
+        "logicType": "PRESENCE",
+        "groupId": "d0507bae-12d5-42fc-8b09-4941d4610039",
+        "groupType": "ANY",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "b0b882751c66401edeb263ac798f7f893ce43bca0b95110716054e38f01b76b8",
+          "firstCacheKey": "b8d508cbc4492da5544d9dca91dec88d21dfca9ce2f2622e9791840091250077",
+          "outcome": "called",
+          "kept": {},
+          "dropped": {
+            "record_requirement": {
+              "value": "conditional",
+              "span": "Type 2 diabetes mellitus"
+            }
+          },
+          "second": {
+            "record_requirement": "required",
+            "conditional_span": null,
+            "excepted_entities": [],
+            "base_span": null,
+            "no_entity": "none",
+            "no_entity_span": null
+          }
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "50833c8f2ff6fcba56e949582c60c70bfdcf0e2b2f1ca305c3bfc0d457cd361c",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "aca3f37d6b1220a05ed47901187be5a4c174cb6f70ec238639247858b48443d7",
+          "outcome": "called",
+          "window_bound": "none",
+          "window_bound_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": null,
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "> 10 years",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "none",
+          "window_bound_span": null
+        }
+      }
+    },
+    {
+      "studyId": 10,
+      "role": "exclusion",
+      "row": {
+        "id": 23,
+        "description": "Pre-planned PCI",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "Percutaneous coronary intervention",
+        "protocolLine": "7. Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+        "protocolSpan": "PCI",
+        "window": {
+          "start": -42,
+          "end": 180
+        },
+        "conceptSetId": 30,
+        "conceptSetName": "Percutaneous coronary intervention",
+        "logicType": "ABSENCE",
+        "groupId": "67d844fd-8397-44d6-a914-a5ee2a17522f",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "5a63c2029e216e3114b24e5064fd8636e6788bf45c74970e957e6a88b435734f",
+          "firstCacheKey": "e7c5ae3e261304e282da2745f42d71abc021a2fb58fea416b0db6af76b6a9e57",
+          "outcome": "called",
+          "kept": {},
+          "dropped": {
+            "excepted_entities": [
+              {
+                "text": "Percutaneous coronary intervention",
+                "span": "any previous PCI",
+                "offsets": [
+                  96,
+                  112
+                ]
+              }
+            ],
+            "base_span": "any previous PCI and/or CABG"
+          },
+          "second": {
+            "record_requirement": "conditional",
+            "conditional_span": "after V1a or any previous PCI and/or CABG",
+            "excepted_entities": [],
+            "base_span": null,
+            "no_entity": "none",
+            "no_entity_span": null
+          }
+        },
+        "_trialOnlyCheck": {
+          "fragment": "PCI",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "857d3dedacf927b3f075c8032bbe7fa1879d39ab42305a29bb946c3e7936884e",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "830bb87b6215231040695f83348775309641dd38b575a0cc4c418244bba65d25",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "681fb37a01191a7b162832657e9a995268bf3570457d35d19cc19f6b6cbe329d",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "next 6 months",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prospective",
+          "window_span": "within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤ 6 weeks prior informed consent",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "next 6 months"
+        }
+      }
+    },
+    {
+      "studyId": 10,
+      "role": "exclusion",
+      "row": {
+        "id": 24,
+        "description": "Pre-planned CABG",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "Coronary artery bypass grafting",
+        "protocolLine": "7. Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+        "protocolSpan": "CABG",
+        "window": {
+          "start": -42,
+          "end": 180
+        },
+        "conceptSetId": 31,
+        "conceptSetName": "Pre-planned CABG",
+        "logicType": "ABSENCE",
+        "groupId": "67d844fd-8397-44d6-a914-a5ee2a17522f",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "d3f0e1fefc6965fb747b0098baca2078f074bedb994e5437bfb99f007fbc58db",
+          "firstCacheKey": "72fbdf68f09e09da3ef8e018a30d1e9546b944aba507f45276da9760bf6a3916",
+          "outcome": "called",
+          "kept": {
+            "excepted_entities": [
+              {
+                "text": "Coronary artery bypass grafting",
+                "span": "CABG",
+                "offsets": [
+                  56,
+                  60
+                ]
+              }
+            ],
+            "base_span": "Pre-planned coronary artery re-vascularisation (PCI, CABG)"
+          },
+          "dropped": {},
+          "second": {
+            "record_requirement": "forbidden",
+            "conditional_span": null,
+            "excepted_entities": [
+              {
+                "text": "Coronary artery bypass grafting",
+                "span": "CABG",
+                "offsets": [
+                  56,
+                  60
+                ]
+              }
+            ],
+            "base_span": "V1a or any previous PCI and/or CABG",
+            "no_entity": "none",
+            "no_entity_span": null
+          }
+        },
+        "_trialOnlyCheck": {
+          "fragment": "CABG",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "41b403147f71a91234e79ffb2a488aa04aa9ca02bfad8271b2f2b2b262ba385f",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "7eec442cd3bb28263576ad017eb114d83e880b634a3acbfafce2abbeb73bdc27",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "a8b914878d3a5950552c2ce5960f304dbe22f0133698a2a645037859fb1ee47f",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "next 6 months",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [
+            {
+              "text": "Coronary artery bypass grafting",
+              "span": "CABG"
+            }
+          ],
+          "base_span": "Pre-planned coronary artery re-vascularisation (PCI, CABG)",
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prospective",
+          "window_span": "within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤ 6 weeks prior informed consent",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "next 6 months"
+        }
+      }
+    },
+    {
+      "studyId": 10,
+      "role": "exclusion",
+      "row": {
+        "id": 25,
+        "description": "PCI within 6 months after V1a or previous PCI/CABG",
+        "domain": "Procedure",
+        "valueConstraint": null,
+        "sourceText": "Coronary artery re-vascularisation",
+        "protocolLine": "7. Pre-planned coronary artery re-vascularisation (PCI, CABG) within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+        "protocolSpan": "Coronary artery re-vascularisation",
+        "window": {
+          "start": -42,
+          "end": 180
+        },
+        "conceptSetId": 32,
+        "conceptSetName": "Coronary artery re-vascularisation",
+        "logicType": "ABSENCE",
+        "groupId": "67d844fd-8397-44d6-a914-a5ee2a17522f",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "037e1db10aa21f4408e116addc9e29e1adcdc360e5a33366947a7855b627b048",
+          "firstCacheKey": "344dab429cd9e2a01b20a5b7c3cad9d5e8617b8e7f972575c7bfae2141aac3d7",
+          "outcome": "called",
+          "kept": {},
+          "dropped": {
+            "excepted_entities": [
+              {
+                "text": "PCI",
+                "span": "PCI",
+                "offsets": [
+                  51,
+                  54
+                ]
+              }
+            ],
+            "base_span": "Coronary artery re-vascularisation"
+          },
+          "second": {
+            "record_requirement": "forbidden",
+            "conditional_span": null,
+            "excepted_entities": [],
+            "base_span": null,
+            "no_entity": "none",
+            "no_entity_span": null
+          }
+        },
+        "_trialOnlyCheck": {
+          "fragment": "Coronary artery re-vascularisation",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "1c834b8c35e5fee29d717c8b783402b82c8d70c60cf9cf0a291b2e8e44d93954",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "5ab13391628b7a5f358af6cf05c2ea824dec092322acabee35dd564b19319b4a",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "ef38afdac121cb63b178aff30398151eeef8df2c79bf50b6416b965faf3751d0",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "next 6 months",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": "any",
+          "relation_span": "or",
+          "cardinality": null,
+          "timing": "prospective",
+          "window_span": "within next 6 months after V1a or any previous PCI and/or CABG ≤ 6 weeks prior informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤ 6 weeks prior informed consent",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "next 6 months"
+        }
+      }
+    },
+    {
+      "studyId": 10,
+      "role": "exclusion",
+      "row": {
+        "id": 55,
+        "description": "Life expectancy less than 5 years for non-CV causes",
+        "domain": "Observation",
+        "valueConstraint": {
+          "op": "lt",
+          "value": 5.0,
+          "valueHigh": null,
+          "unitText": "years",
+          "referenceBound": "absolute",
+          "unitConceptId": null
+        },
+        "sourceText": "Life expectancy less than 5 years for non-CV causes",
+        "protocolLine": "18. Patients considered unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration, has a life expectancy less than 5 years for non-CV causes, or has cancer other than non-melanoma skin cancer within last 3 years, or has any other condition than mentioned which in the opinion of the investigator, would not allow safe participation in the study",
+        "protocolSpan": "has a life expectancy less than 5 years for non-CV causes",
+        "window": {
+          "start": -9999,
+          "end": 0
+        },
+        "conceptSetId": 45,
+        "conceptSetName": "Life expectancy less than 5 years for non-CV causes",
+        "logicType": "ABSENCE",
+        "groupId": "d806b27b-ca5a-4e6c-8046-b11eedaaee04",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_annotationAgreement": {
+          "promptVersion": "rfc016-steps1-4-agreement-placebo-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "39c31874326e51bf0cebf5f66473a4c8d8aff23e0f51881d9c54ff32494a53e8",
+          "firstCacheKey": "eb9189b62abeb4aac51a3264d2e49cb49b0deacbf63421054beb8520ec6d7bf0",
+          "outcome": "called",
+          "kept": {
+            "no_entity": {
+              "value": "investigator_judgement",
+              "span": "in the opinion of the investigator, would not allow safe participation in the study"
+            }
+          },
+          "dropped": {},
+          "second": {
+            "record_requirement": "forbidden",
+            "conditional_span": null,
+            "excepted_entities": [],
+            "base_span": null,
+            "no_entity": "investigator_judgement",
+            "no_entity_span": "in the opinion of the investigator, would not allow safe participation in the study"
+          }
+        },
+        "_ownEntityCheck": {
+          "fragment": "has a life expectancy less than 5 years for non-CV causes",
+          "calls": [
+            {
+              "promptVersion": "p11-own-entity-v1",
+              "cacheKey": "172d4b2da138230cfc2fed50e3ad88d5ba769164bd26f107186759e32274eadc",
+              "outcome": "called",
+              "own_entity": "named"
+            },
+            {
+              "promptVersion": "p11-own-entity-placebo-v1",
+              "cacheKey": "17fc2d688b7580885e312ab3149ac3d3eb23db109704552370617537896ff497",
+              "outcome": "called",
+              "own_entity": "named"
+            }
+          ],
+          "named": true
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "660194d2aafe2a1d93e9edcfa50cb2ce15facfa0a51f5c120b45a77fcfb9a9dc",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "feaade5b93aa7a358a8e70565ce6038b894fa80fbda2cc05bb7cffe41f3e9f67",
+          "outcome": "called",
+          "window_bound": "none",
+          "window_bound_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "at_index",
+          "window_span": null,
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "investigator_judgement",
+          "no_entity_span": "in the opinion of the investigator, would not allow safe participation in the study",
+          "threshold_span": "less than 5 years",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "none",
+          "window_bound_span": null
+        }
+      }
+    },
+    {
+      "studyId": 10,
+      "role": "exclusion",
+      "row": {
+        "id": 59,
+        "description": "Acute Coronary Syndrome (General)",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Acute coronary syndrome",
+        "protocolLine": "19. Acute coronary syndrome ≤ 6 weeks prior to informed consent",
+        "protocolSpan": "Acute coronary syndrome",
+        "window": {
+          "start": -42,
+          "end": 0
+        },
+        "conceptSetId": 46,
+        "conceptSetName": "Acute coronary syndrome",
+        "logicType": "ABSENCE",
+        "groupId": "997a3660-bd30-457f-8081-0843cde6b31a",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "Acute coronary syndrome",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "7bca7930027cb022148cd25a5b949aaab9104228ed38df8b4e6ea63b05c93bdc",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "83b2c30dceaf6b41341d594259bfd152e2df7013ef6bb5f07e522f1276e6c1de",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "96c960a3adc5ab6fee7fd7c32965571520c7ce6be5098c38a2414a0666c667cd",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "≤ 6 weeks",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": "≤ 6 weeks prior to informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤ 6 weeks",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "≤ 6 weeks"
+        }
+      }
+    },
+    {
+      "studyId": 10,
+      "role": "exclusion",
+      "row": {
+        "id": 61,
+        "description": "Stroke",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "Stroke",
+        "protocolLine": "20. Stroke or TIA ≤ 3 months prior to informed consent",
+        "protocolSpan": "Stroke",
+        "window": {
+          "start": -90,
+          "end": 0
+        },
+        "conceptSetId": 47,
+        "conceptSetName": "Stroke",
+        "logicType": "ABSENCE",
+        "groupId": "9b01e0d3-dc2e-4528-aaa3-8c0774066fe2",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "Stroke",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "117746131c005bf9f520622d70d908a2006ce950ac5c322d363d97f42ad25f8f",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "7cc4723df1fe7512c3473c505ac0f46fce0e20382de67d478aeb49a07c223d3b",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "9bdc6c8d39e17feb047b67283be5d155bd3e70921e28c2fb97dfc35db89977c6",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "3 months",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": "≤ 3 months prior to informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤ 3 months",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "3 months"
+        }
+      }
+    },
+    {
+      "studyId": 10,
+      "role": "exclusion",
+      "row": {
+        "id": 62,
+        "description": "Transient Ischemic Attack (TIA)",
+        "domain": "Condition",
+        "valueConstraint": null,
+        "sourceText": "TIA",
+        "protocolLine": "20. Stroke or TIA ≤ 3 months prior to informed consent",
+        "protocolSpan": "TIA",
+        "window": {
+          "start": -90,
+          "end": 0
+        },
+        "conceptSetId": 48,
+        "conceptSetName": "TIA",
+        "logicType": "ABSENCE",
+        "groupId": "9b01e0d3-dc2e-4528-aaa3-8c0774066fe2",
+        "groupType": "ALL",
+        "parentGroupId": null,
+        "isGroupLabel": false,
+        "mappable": true,
+        "_trialOnlyCheck": {
+          "fragment": "TIA",
+          "calls": [
+            {
+              "promptVersion": "gatefix-trial-only-routine-records-v1",
+              "cacheKey": "cf3c56b17007cc979da86f0cfd8f1a4968294028b2e5fd9bccc0c628bbac01a0",
+              "outcome": "called",
+              "trial_only": "no"
+            }
+          ],
+          "trialOnly": false
+        },
+        "_recordChangeAgreement": {
+          "promptVersion": "rfc016-record-change-cf-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "95ae82f2c4a5535b3e8dd35f239397ab7dadd8b5442d647cf147fbc8cb6d1a8f",
+          "outcome": "called",
+          "record_change": "none",
+          "record_change_span": null,
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "_windowBound": {
+          "promptVersion": "window-bound-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "cacheKey": "43c9edd9b33f001d96994fea90e514cceb59890e37d8c9385a828ca2620fca70",
+          "outcome": "called",
+          "window_bound": "within",
+          "window_bound_span": "≤ 3 months",
+          "kept": {},
+          "dropped": {},
+          "second": null
+        },
+        "annotation": {
+          "promptVersion": "rfc016-steps1-4-agreement-v1",
+          "model": "vllm/google/gemma-4-E4B-it",
+          "record_requirement": "forbidden",
+          "conditional_span": null,
+          "excepted_entities": [],
+          "base_span": null,
+          "relation": null,
+          "relation_span": null,
+          "cardinality": null,
+          "timing": "prior",
+          "window_span": "≤ 3 months prior to informed consent",
+          "route": [
+            "any"
+          ],
+          "route_span": null,
+          "specimen": "any",
+          "specimen_span": null,
+          "no_entity": "none",
+          "no_entity_span": null,
+          "threshold_span": "≤ 3 months",
+          "quantity_kind": "duration",
+          "reference_bound": "none",
+          "record_change": "none",
+          "record_change_span": null,
+          "window_bound": "within",
+          "window_bound_span": "≤ 3 months"
+        }
+      }
+    }
+  ]
+}

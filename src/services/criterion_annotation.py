@@ -140,10 +140,10 @@ logger = logging.getLogger(__name__)
 #: one ``rfc016-steps1-4-v1`` sent, which stage 2 of the over-fill A/B measured as `current`.
 #: The record_change calls (3 and 4) leave both prompts and the use of their answers as they
 #: were, so neither version moves and an answer cached for them stays valid.
-ANNOTATION_PROMPT_VERSION = "rfc016-steps1-4-agreement-v1"
+ANNOTATION_PROMPT_VERSION = "rfc016-occurrence-threshold-v1"
 #: The agreement call's version (:data:`AGREEMENT_SYSTEM_PROMPT`, :data:`AGREEMENT_PROMPT`);
 #: part of its cache key, bumped whenever either of those changes.
-AGREEMENT_PROMPT_VERSION = "rfc016-steps1-4-agreement-placebo-v1"
+AGREEMENT_PROMPT_VERSION = "rfc016-occurrence-threshold-placebo-v1"
 #: Call 3's version (:data:`RECORD_CHANGE_SYSTEM_PROMPT`, :data:`RECORD_CHANGE_PROMPT`: the
 #: over-fill A/B's `cf` arm) and call 4's (the `pf` arm); each part of its call's cache key.
 RECORD_CHANGE_PROMPT_VERSION = "rfc016-record-change-cf-v1"
@@ -746,6 +746,33 @@ def _with_block(template: str, definition: str, keys: str) -> str:
     return template
 
 
+# This schema adds no protocol examples; the model supplies both meaning and evidence.
+OCCURRENCE_THRESHOLD_PROMPT_BLOCK = """\
+`occurrence_threshold` states a representable duration or event-count bound on this
+criterion's own entity. It is null for a judgement about future survival, a count of
+anatomical entities or list members, an unstated unit, or an unsupported anchor.
+When present it is an object with:
+- `target`: `event_age` for elapsed time since an event, `first_diagnosis_age` for
+  elapsed time since the first diagnosis, `drug_era_length` for uninterrupted
+  treatment duration, or `event_count` for the number of recorded events.
+- `op`: `lt`, `lte`, `gt`, `gte`, or `eq`, comparing the elapsed duration or count.
+- `value`: the nonnegative numeric bound stated by the protocol.
+- `unit`: `day`, `week`, `month`, `year`, or `count`; do not infer an unstated unit.
+- `anchor`: `index`, `informed_consent`, or `screening`. These anchors map to cohort entry.
+- `span`: the same verbatim protocol fragment as `threshold_span`, supporting this bound.
+
+"""
+OCCURRENCE_THRESHOLD_PROMPT_KEYS = (
+    '"occurrence_threshold": <object with target, op, value, unit, anchor, span, or null>, '
+)
+ANNOTATION_PROMPT = _with_block(
+    ANNOTATION_PROMPT, OCCURRENCE_THRESHOLD_PROMPT_BLOCK, OCCURRENCE_THRESHOLD_PROMPT_KEYS
+)
+AGREEMENT_PROMPT = _with_block(
+    AGREEMENT_PROMPT, OCCURRENCE_THRESHOLD_PROMPT_BLOCK, OCCURRENCE_THRESHOLD_PROMPT_KEYS
+)
+
+
 def _with_record_change(template: str) -> str:
     """``template`` with the record_change block inserted where the over-fill A/B measured it."""
     return _with_block(template, RECORD_CHANGE_PROMPT_BLOCK, RECORD_CHANGE_PROMPT_KEYS)
@@ -1166,6 +1193,12 @@ def validate_annotation(
         spanless=NoEntity.NONE.value,
     )
     fields.update(_validate_threshold(payload, protocol_line, rejected))
+    from src.services.occurrence_threshold import FIELD, validated_threshold
+
+    if payload.get(FIELD) is not None:
+        fields[FIELD] = validated_threshold(payload[FIELD], protocol_line)
+        if fields[FIELD] is None:
+            rejected.append(_rejection(FIELD, payload[FIELD], "invalid occurrence threshold"))
     return fields, rejected
 
 
@@ -3193,7 +3226,8 @@ class ThresholdUse(str, Enum):
       (the case the build already supports) or on a Demographics row (built as a CIRCE
       ``Age``): applied as a value filter, compared against the annotation's
       ``reference_bound``.
-    * ``not-representable`` -- a verified duration, count, or an ``other`` quantity outside
+    * ``occurrence`` -- a verified structured duration/count applied as an occurrence filter.
+    * ``not-representable`` -- an unsupported duration, count, or an ``other`` quantity outside
       Measurement and Demographics: no value filter is emitted for it, the criterion is
       kept, and the threshold is recorded under :data:`UNREPRESENTABLE_THRESHOLDS_KEY` (the
       delivery gate WARNs on it).
@@ -3207,6 +3241,7 @@ class ThresholdUse(str, Enum):
 
     DEFAULT = "default"
     MEASURED = "measured"
+    OCCURRENCE = "occurrence"
     NOT_REPRESENTABLE = "not-representable"
     SKIP_CRITERION = "skip-criterion"
 
@@ -3233,6 +3268,10 @@ def threshold_use(row: Mapping[str, Any]) -> tuple[ThresholdUse, StatedThreshold
         and (row.get("domain") == MEASUREMENT_DOMAIN or row.get("domain") in DEMOGRAPHIC_DOMAINS)
     ):
         return ThresholdUse.MEASURED, stated
+    from src.services.occurrence_threshold import occurrence_filter
+
+    if occurrence_filter(row) is not None:
+        return ThresholdUse.OCCURRENCE, stated
     if stated.kind in _SKIP_KINDS:
         return ThresholdUse.SKIP_CRITERION, stated
     return ThresholdUse.NOT_REPRESENTABLE, stated
@@ -3253,7 +3292,9 @@ def applied_value_constraint(row: Mapping[str, Any]) -> Any:
     """
     constraint = row.get("valueConstraint")
     use, stated = threshold_use(row)
-    if use in (ThresholdUse.NOT_REPRESENTABLE, ThresholdUse.SKIP_CRITERION):
+    if use in (
+        ThresholdUse.OCCURRENCE, ThresholdUse.NOT_REPRESENTABLE, ThresholdUse.SKIP_CRITERION
+    ):
         return None
     if use is ThresholdUse.MEASURED and isinstance(constraint, Mapping):
         applied = {**constraint, "referenceBound": stated.bound}
