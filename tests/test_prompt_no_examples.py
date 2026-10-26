@@ -749,6 +749,10 @@ PROMPTS: dict[str, PromptSpec] = {
             # RFC-016 step 3: the threshold fields and their enum values.
             "threshold_span", "quantity_kind", "reference_bound", "lab_value", "dose",
             "duration", "count", "statistical", "uln", "lln",
+            # Loss fix F (2026-10-26): the structured duration/count threshold and its enum values.
+            "target", "event_age", "first_diagnosis_age", "drug_era_length", "event_count",
+            "op", "lt", "lte", "gt", "gte", "eq", "value", "unit", "day", "week", "month", "year",
+            "anchor", "index", "informed_consent", "screening",
         }),
     ),
 }
