@@ -443,7 +443,6 @@ from src.utils.circe_lint import (  # noqa: E402
     contradictory_absence_rules,
     contradictory_presence_absence_criteria,
     domain_mismatched_criteria,
-    presence_bound_forbidden_pairs,
     entry_concept_ids,
     entry_concept_set_name,
     entry_matches_expected,
@@ -451,12 +450,13 @@ from src.utils.circe_lint import (  # noqa: E402
     measurement_lab_test_ids,
     missing_arm_roles,
     noop_exclusion_rules,
+    presence_bound_forbidden_pairs,
     presence_unit_axes_ids,
     prospective_occurrence_criteria,
     record_change_occurrence_criteria,
     rule_names,
-    trial_only_occurrence_criteria,
     specimen_mismatched_measurement_criteria,
+    trial_only_occurrence_criteria,
     unfiltered_measurement_absence_criteria,
     unitless_value_bound_criteria,
     unreadable_value_attributes,
@@ -1254,6 +1254,80 @@ class ThresholdFindings(NamedTuple):
     warnings: list[str]
 
 
+def _shared_measurement_threshold(
+    expression: dict[str, Any], index: dict, refs: dict, role: str, row: dict, threshold: Any
+) -> str | None:
+    """Find the same bound on a mandatory sibling of this row, with its unit intact.
+
+    Annotation sees the whole line even on a split Condition row. A Measurement
+    sibling can already carry that line's bound; copying it to the Condition would
+    produce an unreadable filter. No name or protocol words are interpreted here.
+    """
+    from src.services.value_constraint import build_measurement_value_filter
+
+    if (
+        not row.get("groupId")
+        or row.get("domain") not in {"Condition", "Procedure"}
+        or row.get("valueConstraint") is not None
+    ):
+        return None
+
+    def mandatory_entries(group: dict) -> list[dict]:
+        if group.get("Type") != "ALL":
+            return []
+        return list(group.get("CriteriaList") or []) + [
+            entry
+            for child in group.get("Groups") or []
+            for entry in mandatory_entries(child)
+        ]
+
+    own_codeset = refs.get(f"{role}:{row.get('id')}")
+    own_type = {"Condition": "ConditionOccurrence", "Procedure": "ProcedureOccurrence"}[
+        row["domain"]
+    ]
+    for (other_role, other_id), sibling in index.items():
+        if (
+            other_role != role
+            or str(row.get("id")) == other_id
+            or sibling.get("domain") != "Measurement"
+            or sibling.get("isGroupLabel")
+            or sibling.get("groupId") != row.get("groupId")
+            or sibling.get("protocolLine") != row.get("protocolLine")
+        ):
+            continue
+        _, other_threshold = threshold_use(sibling)
+        if other_threshold != threshold:
+            continue
+        expected = build_measurement_value_filter(applied_value_constraint(sibling))
+        # This exception never blesses a new unitless absolute bound.
+        if not expected or ("ValueAsNumber" in expected and not expected.get("Unit")):
+            continue
+        sibling_codeset = refs.get(f"{role}:{other_id}")
+        if sibling_codeset is None or sibling_codeset == own_codeset:
+            continue
+        for rule in expression.get("InclusionRules") or []:
+            entries = mandatory_entries(rule.get("expression") or {})
+            own_entries = [
+                e for e in entries
+                if ((e.get("Criteria") or {}).get(own_type) or {}).get("CodesetId")
+                == own_codeset
+            ]
+            for entry in entries:
+                measurement = (entry.get("Criteria") or {}).get("Measurement") or {}
+                if measurement.get("CodesetId") != sibling_codeset:
+                    continue
+                if any(measurement.get(key) != value for key, value in expected.items()):
+                    continue
+                if any(
+                    {k: v for k, v in entry.items() if k != "Criteria"}
+                    == {k: v for k, v in own.items() if k != "Criteria"}
+                    and entry.get("Occurrence") is not None
+                    for own in own_entries
+                ):
+                    return other_id
+    return None
+
+
 def threshold_without_value_filter_findings(
     expression: dict[str, Any], study: dict[str, Any]
 ) -> ThresholdFindings:
@@ -1274,6 +1348,11 @@ def threshold_without_value_filter_findings(
 
     Nothing reads a name. A row whose line states no threshold, or whose annotation was
     rejected, is not judged: absence of a verified threshold is not evidence of one.
+    A split non-Measurement row can share its threshold with a Measurement sibling:
+    the same verified threshold, source line and store group must agree, and both
+    occurrences must be mandatory in one emitted ALL rule with identical event context.
+    The Measurement must carry its actual expected filter, including the absolute unit.
+    This is reported as a warning; the Condition itself receives no value attribute.
 
     :param expression: the delivered CIRCE expression.
     :param study: the store study it was built from.
@@ -1281,8 +1360,9 @@ def threshold_without_value_filter_findings(
         rows state thresholds and the file carries no refs map to say what they emitted)
         and the warnings (one per recorded threshold the file does not carry).
     """
+    index = criteria_index(study)
     stated = {}
-    for key, row in criteria_index(study).items():
+    for key, row in index.items():
         use, threshold = threshold_use(row)
         if threshold is not None:
             stated[key] = (row, use, threshold)
@@ -1317,6 +1397,13 @@ def threshold_without_value_filter_findings(
             f"codeset {codeset} carries no value condition while its protocol line states "
             f"{threshold.span!r} ({threshold.kind.value})"
         )
+        shared_by = _shared_measurement_threshold(expression, index, refs, role, row, threshold)
+        if shared_by is not None:
+            warnings.append(
+                f"{head} -- threshold carried by mandatory Measurement sibling "
+                f"{role} #{shared_by}, with matching value, unit, window and occurrence"
+            )
+            continue
         if use is ThresholdUse.NOT_REPRESENTABLE and (role, criterion_id) in recorded:
             warnings.append(
                 f"{head} -- kept without it and listed under {UNREPRESENTABLE_THRESHOLDS_KEY}"

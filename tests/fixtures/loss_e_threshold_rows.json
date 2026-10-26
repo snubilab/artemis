@@ -1,0 +1,1397 @@
+{
+  "provenance": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-26_exception_residual/baseline/arm_main",
+  "cases": [
+    {
+      "name": "carmelina_exclusion_29",
+      "role": "exclusion",
+      "criterionId": 29,
+      "study": {
+        "id": 9,
+        "eligibility": {
+          "exclusionCriteria": [
+            {
+              "id": 27,
+              "description": "Severe renal impairment or ESRD",
+              "domain": "Measurement",
+              "valueConstraint": {
+                "op": "lt",
+                "value": 15.0,
+                "valueHigh": null,
+                "unitText": "",
+                "referenceBound": "absolute",
+                "unitConceptId": null
+              },
+              "sourceText": "eGFR",
+              "protocolLine": "4. eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula), as determined during screening at Visit 1 and/or the need for maintenance dialysis",
+              "protocolSpan": "",
+              "window": {
+                "start": -180,
+                "end": 0
+              },
+              "conceptSetId": null,
+              "conceptSetName": "",
+              "logicType": "ABSENCE",
+              "groupId": "162ae159-5b1a-40e5-982f-5f29a1bd04b6",
+              "groupType": "ALL",
+              "parentGroupId": null,
+              "isGroupLabel": true,
+              "plannerRelation": {
+                "relation": "any",
+                "relation_span": "or",
+                "cardinality": null
+              },
+              "mappable": false,
+              "annotation": {
+                "promptVersion": "rfc016-steps1-4-agreement-v1",
+                "model": "vllm/google/gemma-4-E4B-it",
+                "record_requirement": "required",
+                "conditional_span": null,
+                "excepted_entities": [],
+                "base_span": null,
+                "relation": "any",
+                "relation_span": ", as determined during screening at Visit 1 and/or the need for maintenance dialysis",
+                "cardinality": null,
+                "timing": "at_index",
+                "window_span": null,
+                "route": [
+                  "any"
+                ],
+                "route_span": null,
+                "specimen": "any",
+                "specimen_span": null,
+                "no_entity": "none",
+                "no_entity_span": null,
+                "threshold_span": "eGFR <15 ml/min/1.73 m2",
+                "quantity_kind": "lab_value",
+                "reference_bound": "none",
+                "record_change": "none",
+                "record_change_span": null
+              }
+            },
+            {
+              "id": 28,
+              "description": "Severe renal impairment defined by eGFR",
+              "domain": "Measurement",
+              "valueConstraint": {
+                "op": "lt",
+                "value": 15.0,
+                "valueHigh": null,
+                "unitText": "ml/min/1.73 m2",
+                "referenceBound": "absolute",
+                "unitConceptId": null
+              },
+              "sourceText": "eGFR <15 ml/min/1.73 m2",
+              "protocolLine": "4. eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula), as determined during screening at Visit 1 and/or the need for maintenance dialysis",
+              "protocolSpan": "eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula)",
+              "window": {
+                "start": -180,
+                "end": 0
+              },
+              "conceptSetId": 45,
+              "conceptSetName": "eGFR <15 ml/min/1.73 m2",
+              "logicType": "ABSENCE",
+              "groupId": "162ae159-5b1a-40e5-982f-5f29a1bd04b6",
+              "groupType": "ALL",
+              "parentGroupId": null,
+              "isGroupLabel": false,
+              "mappable": true,
+              "annotation": {
+                "promptVersion": "rfc016-steps1-4-agreement-v1",
+                "model": "vllm/google/gemma-4-E4B-it",
+                "record_requirement": "required",
+                "conditional_span": null,
+                "excepted_entities": [],
+                "base_span": null,
+                "relation": null,
+                "relation_span": null,
+                "cardinality": null,
+                "timing": "at_index",
+                "window_span": null,
+                "route": [
+                  "any"
+                ],
+                "route_span": null,
+                "specimen": "any",
+                "specimen_span": null,
+                "no_entity": "none",
+                "no_entity_span": null,
+                "threshold_span": "eGFR <15 ml/min/1.73 m2",
+                "quantity_kind": "lab_value",
+                "reference_bound": "none",
+                "record_change": "none",
+                "record_change_span": null,
+                "window_bound": "none",
+                "window_bound_span": null
+              }
+            },
+            {
+              "id": 29,
+              "description": "End-Stage Renal Disease (ESRD)",
+              "domain": "Condition",
+              "valueConstraint": null,
+              "sourceText": "ESRD",
+              "protocolLine": "4. eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula), as determined during screening at Visit 1 and/or the need for maintenance dialysis",
+              "protocolSpan": "ESRD",
+              "window": {
+                "start": -180,
+                "end": 0
+              },
+              "conceptSetId": 46,
+              "conceptSetName": "ESRD",
+              "logicType": "ABSENCE",
+              "groupId": "162ae159-5b1a-40e5-982f-5f29a1bd04b6",
+              "groupType": "ALL",
+              "parentGroupId": null,
+              "isGroupLabel": false,
+              "mappable": true,
+              "annotation": {
+                "promptVersion": "rfc016-steps1-4-agreement-v1",
+                "model": "vllm/google/gemma-4-E4B-it",
+                "record_requirement": "forbidden",
+                "conditional_span": null,
+                "excepted_entities": [],
+                "base_span": null,
+                "relation": null,
+                "relation_span": null,
+                "cardinality": null,
+                "timing": "at_index",
+                "window_span": null,
+                "route": [
+                  "any"
+                ],
+                "route_span": null,
+                "specimen": "any",
+                "specimen_span": null,
+                "no_entity": "none",
+                "no_entity_span": null,
+                "threshold_span": "eGFR <15 ml/min/1.73 m2",
+                "quantity_kind": "lab_value",
+                "reference_bound": "none",
+                "record_change": "none",
+                "record_change_span": null,
+                "window_bound": "none",
+                "window_bound_span": null
+              }
+            },
+            {
+              "id": 30,
+              "description": "Need for maintenance dialysis",
+              "domain": "Condition",
+              "valueConstraint": null,
+              "sourceText": "need for maintenance dialysis",
+              "protocolLine": "4. eGFR <15 ml/min/1.73 m2 (severe renal impairment or ESRD, MDRD formula), as determined during screening at Visit 1 and/or the need for maintenance dialysis",
+              "protocolSpan": "the need for maintenance dialysis",
+              "window": {
+                "start": -180,
+                "end": 0
+              },
+              "conceptSetId": 47,
+              "conceptSetName": "need for maintenance dialysis",
+              "logicType": "ABSENCE",
+              "groupId": "162ae159-5b1a-40e5-982f-5f29a1bd04b6",
+              "groupType": "ALL",
+              "parentGroupId": null,
+              "isGroupLabel": false,
+              "mappable": true,
+              "annotation": {
+                "promptVersion": "rfc016-steps1-4-agreement-v1",
+                "model": "vllm/google/gemma-4-E4B-it",
+                "record_requirement": "forbidden",
+                "conditional_span": null,
+                "excepted_entities": [],
+                "base_span": null,
+                "relation": null,
+                "relation_span": null,
+                "cardinality": null,
+                "timing": "at_index",
+                "window_span": null,
+                "route": [
+                  "any"
+                ],
+                "route_span": null,
+                "specimen": "any",
+                "specimen_span": null,
+                "no_entity": "none",
+                "no_entity_span": null,
+                "threshold_span": null,
+                "quantity_kind": null,
+                "reference_bound": null,
+                "record_change": "none",
+                "record_change_span": null,
+                "window_bound": "none",
+                "window_bound_span": null
+              }
+            }
+          ]
+        }
+      },
+      "expression": {
+        "_unrepresentableThresholds": [
+          {
+            "criterionId": "22",
+            "role": "inclusion",
+            "label": "Coronary artery revascularization",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "count",
+            "thresholdSpan": "≥ 2",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "3",
+            "role": "exclusion",
+            "label": "GLP-1 receptor agonists",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "4",
+            "role": "exclusion",
+            "label": "GLP-1 receptor agonists",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "5",
+            "role": "exclusion",
+            "label": "DPP-4 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "6",
+            "role": "exclusion",
+            "label": "SGLT-2 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "8",
+            "role": "exclusion",
+            "label": "GLP-1 receptor agonists",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "9",
+            "role": "exclusion",
+            "label": "DPP-4 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "10",
+            "role": "exclusion",
+            "label": "SGLT-2 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "11",
+            "role": "exclusion",
+            "label": "SGLT-2 inhibitors",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "12",
+            "role": "exclusion",
+            "label": "GLP-1 receptor agonists",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "14",
+            "role": "exclusion",
+            "label": "SGLT-2 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "36",
+            "role": "exclusion",
+            "label": "Percutaneous coronary intervention",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 2 months",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "51",
+            "role": "exclusion",
+            "label": "Pre-menopausal women",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 1 year prior to informed consent",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "68",
+            "role": "exclusion",
+            "label": "Unreliable patient",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "less than 5 years",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "69",
+            "role": "exclusion",
+            "label": "Patient deemed unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "less than 5 years",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "70",
+            "role": "exclusion",
+            "label": "Life expectancy less than 5 years for non-CV causes",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "less than 5 years",
+            "valueConstraint": {
+              "op": "lt",
+              "value": 5.0,
+              "valueHigh": null,
+              "unitText": "years",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "79",
+            "role": "exclusion",
+            "label": "TIA",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 3 months",
+            "valueConstraint": null
+          }
+        ],
+        "_criterionConceptSetRefs": {
+          "exclusion:28": 45,
+          "exclusion:29": 46,
+          "exclusion:30": 47
+        },
+        "InclusionRules": [
+          {
+            "name": "Severe renal impairment defined by eGFR + End-Stage Renal Disease (ESRD) + Need for maintenance dialysis",
+            "expression": {
+              "Type": "ALL",
+              "CriteriaList": [],
+              "DemographicCriteriaList": [],
+              "Groups": [
+                {
+                  "Type": "ALL",
+                  "CriteriaList": [
+                    {
+                      "Criteria": {
+                        "Measurement": {
+                          "CodesetId": 45,
+                          "ValueAsNumber": {
+                            "Value": 15.0,
+                            "Op": "lt"
+                          },
+                          "Unit": [
+                            {
+                              "CONCEPT_CODE": "mL/min/(173.10*-2.m2)",
+                              "CONCEPT_ID": 720870,
+                              "CONCEPT_NAME": "milliliter per minute per 1.73 square meter",
+                              "DOMAIN_ID": "Unit",
+                              "INVALID_REASON_CAPTION": "Unknown",
+                              "STANDARD_CONCEPT_CAPTION": "Unknown",
+                              "VOCABULARY_ID": "UCUM"
+                            },
+                            {
+                              "CONCEPT_CODE": "mL/min/1.73.m2",
+                              "CONCEPT_ID": 9117,
+                              "CONCEPT_NAME": "milliliter per minute per 1.73 square meter",
+                              "DOMAIN_ID": "Unit",
+                              "INVALID_REASON_CAPTION": "Unknown",
+                              "STANDARD_CONCEPT_CAPTION": "Unknown",
+                              "VOCABULARY_ID": "UCUM"
+                            },
+                            {
+                              "CONCEPT_CODE": "mL/min/{1.73}m",
+                              "CONCEPT_ID": 9062,
+                              "CONCEPT_NAME": "Milliliter per minute per 1.73 meter",
+                              "DOMAIN_ID": "Unit",
+                              "INVALID_REASON_CAPTION": "Unknown",
+                              "STANDARD_CONCEPT_CAPTION": "Unknown",
+                              "VOCABULARY_ID": "UCUM"
+                            }
+                          ]
+                        }
+                      },
+                      "StartWindow": {
+                        "Start": {
+                          "Days": 180,
+                          "Coeff": -1
+                        },
+                        "End": {
+                          "Days": 0,
+                          "Coeff": 1
+                        }
+                      },
+                      "RestrictVisit": false,
+                      "IgnoreObservationPeriod": false,
+                      "Occurrence": {
+                        "Type": 0,
+                        "Count": 0
+                      }
+                    }
+                  ],
+                  "DemographicCriteriaList": [],
+                  "Groups": []
+                },
+                {
+                  "Type": "ALL",
+                  "CriteriaList": [
+                    {
+                      "Criteria": {
+                        "ConditionOccurrence": {
+                          "CodesetId": 46
+                        }
+                      },
+                      "StartWindow": {
+                        "Start": {
+                          "Days": 180,
+                          "Coeff": -1
+                        },
+                        "End": {
+                          "Days": 0,
+                          "Coeff": 1
+                        }
+                      },
+                      "RestrictVisit": false,
+                      "IgnoreObservationPeriod": false,
+                      "Occurrence": {
+                        "Type": 0,
+                        "Count": 0
+                      }
+                    }
+                  ],
+                  "DemographicCriteriaList": [],
+                  "Groups": []
+                },
+                {
+                  "Type": "ALL",
+                  "CriteriaList": [
+                    {
+                      "Criteria": {
+                        "ConditionOccurrence": {
+                          "CodesetId": 47
+                        }
+                      },
+                      "StartWindow": {
+                        "Start": {
+                          "Days": 180,
+                          "Coeff": -1
+                        },
+                        "End": {
+                          "Days": 0,
+                          "Coeff": 1
+                        }
+                      },
+                      "RestrictVisit": false,
+                      "IgnoreObservationPeriod": false,
+                      "Occurrence": {
+                        "Type": 0,
+                        "Count": 0
+                      }
+                    }
+                  ],
+                  "DemographicCriteriaList": [],
+                  "Groups": []
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "carmelina_inclusion_23",
+      "role": "inclusion",
+      "criterionId": 23,
+      "study": {
+        "id": 9,
+        "eligibility": {
+          "inclusionCriteria": [
+            {
+              "id": 23,
+              "description": "Combination of 1 revascularization and >= 50% narrowing in 1 additional artery",
+              "domain": "Procedure",
+              "valueConstraint": null,
+              "sourceText": "Coronary artery revascularization",
+              "protocolLine": "8.1.2.5 The combination of prior percutaneous or surgical revascularization of 1 major coronary artery at least 2 months prior to visit 1 (screening), and ≥ 50% narrowing of the luminal diameter by coronary angiography, MRI angiography or CT angiography of at least 1 additional major coronary artery",
+              "protocolSpan": "",
+              "window": {
+                "start": -730,
+                "end": -1
+              },
+              "conceptSetId": 12,
+              "conceptSetName": "Coronary artery revascularization",
+              "logicType": "PRESENCE",
+              "groupId": "a06bd27e-53f7-4b22-906e-c8b279699f85",
+              "groupType": null,
+              "parentGroupId": "5cf7635c-a1da-4f4a-aa64-8b44b3d9f955",
+              "isGroupLabel": false,
+              "mappable": true,
+              "annotation": {
+                "promptVersion": "rfc016-steps1-4-agreement-v1",
+                "model": "vllm/google/gemma-4-E4B-it",
+                "record_requirement": "required",
+                "conditional_span": null,
+                "excepted_entities": [],
+                "base_span": null,
+                "relation": "all",
+                "relation_span": ", and",
+                "cardinality": null,
+                "timing": "prior",
+                "window_span": "at least 2 months prior to visit 1 (screening)",
+                "route": [
+                  "any"
+                ],
+                "route_span": null,
+                "specimen": "any",
+                "specimen_span": null,
+                "no_entity": "none",
+                "no_entity_span": null,
+                "threshold_span": "≥ 50% narrowing",
+                "quantity_kind": "lab_value",
+                "reference_bound": "none",
+                "record_change": "none",
+                "record_change_span": null,
+                "window_bound": "beyond",
+                "window_bound_span": "at least 2 months"
+              }
+            }
+          ]
+        }
+      },
+      "expression": {
+        "_unrepresentableThresholds": [
+          {
+            "criterionId": "22",
+            "role": "inclusion",
+            "label": "Coronary artery revascularization",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "count",
+            "thresholdSpan": "≥ 2",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "3",
+            "role": "exclusion",
+            "label": "GLP-1 receptor agonists",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "4",
+            "role": "exclusion",
+            "label": "GLP-1 receptor agonists",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "5",
+            "role": "exclusion",
+            "label": "DPP-4 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "6",
+            "role": "exclusion",
+            "label": "SGLT-2 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "8",
+            "role": "exclusion",
+            "label": "GLP-1 receptor agonists",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "9",
+            "role": "exclusion",
+            "label": "DPP-4 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "10",
+            "role": "exclusion",
+            "label": "SGLT-2 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 7.0,
+              "valueHigh": null,
+              "unitText": "consecutive days",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "11",
+            "role": "exclusion",
+            "label": "SGLT-2 inhibitors",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "12",
+            "role": "exclusion",
+            "label": "GLP-1 receptor agonists",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "14",
+            "role": "exclusion",
+            "label": "SGLT-2 inhibitors",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≥ 7 consecutive days",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "36",
+            "role": "exclusion",
+            "label": "Percutaneous coronary intervention",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 2 months",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "51",
+            "role": "exclusion",
+            "label": "Pre-menopausal women",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 1 year prior to informed consent",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "68",
+            "role": "exclusion",
+            "label": "Unreliable patient",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "less than 5 years",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "69",
+            "role": "exclusion",
+            "label": "Patient deemed unreliable by the investigator concerning the requirements for follow-up during the study and/or compliance with study drug administration",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "less than 5 years",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "70",
+            "role": "exclusion",
+            "label": "Life expectancy less than 5 years for non-CV causes",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "less than 5 years",
+            "valueConstraint": {
+              "op": "lt",
+              "value": 5.0,
+              "valueHigh": null,
+              "unitText": "years",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "79",
+            "role": "exclusion",
+            "label": "TIA",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 3 months",
+            "valueConstraint": null
+          }
+        ],
+        "_criterionConceptSetRefs": {
+          "inclusion:23": 12
+        },
+        "InclusionRules": [
+          {
+            "name": "Confirmed history of MI",
+            "expression": {
+              "Type": "ALL",
+              "CriteriaList": [],
+              "DemographicCriteriaList": [],
+              "Groups": [
+                {
+                  "Type": "ANY",
+                  "CriteriaList": [],
+                  "DemographicCriteriaList": [],
+                  "Groups": [
+                    {
+                      "Type": "ALL",
+                      "CriteriaList": [
+                        {
+                          "Criteria": {
+                            "ProcedureOccurrence": {
+                              "CodesetId": 12
+                            }
+                          },
+                          "StartWindow": {
+                            "Start": {
+                              "Days": 730,
+                              "Coeff": -1
+                            },
+                            "End": {
+                              "Days": 1,
+                              "Coeff": -1
+                            }
+                          },
+                          "RestrictVisit": false,
+                          "IgnoreObservationPeriod": false,
+                          "Occurrence": {
+                            "Type": 2,
+                            "Count": 1
+                          }
+                        }
+                      ],
+                      "DemographicCriteriaList": [],
+                      "Groups": []
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "carolina_inclusion_17",
+      "role": "inclusion",
+      "criterionId": 17,
+      "study": {
+        "id": 10,
+        "eligibility": {
+          "inclusionCriteria": [
+            {
+              "id": 17,
+              "description": "Peripheral occlusive arterial disease",
+              "domain": "Condition",
+              "valueConstraint": null,
+              "sourceText": "Peripheral occlusive arterial disease",
+              "protocolLine": "3.1.6 Peripheral occlusive arterial disease (previous limb bypass surgery, stenting or percutaneous transluminal angioplasty; previous limb or foot amputation due to circulatory insufficiency, angiographic or ultrasound detected significant vessel stenosis (> 50%) of major limb arteries (common iliac artery, internal iliac artery, external iliac artery, femoral artery, popliteal artery), history of intermittent claudication, with an ankle: arm blood pressure ratio < 0.90 on at least one side)",
+              "protocolSpan": "",
+              "window": {
+                "start": -9999,
+                "end": 0
+              },
+              "conceptSetId": 8,
+              "conceptSetName": "Peripheral occlusive arterial disease",
+              "logicType": "PRESENCE",
+              "groupId": "bdcfbe0d-a5ee-425b-bc39-15ad528dc741",
+              "groupType": "ANY",
+              "parentGroupId": null,
+              "isGroupLabel": false,
+              "mappable": true,
+              "annotation": {
+                "promptVersion": "rfc016-steps1-4-agreement-v1",
+                "model": "vllm/google/gemma-4-E4B-it",
+                "record_requirement": "required",
+                "conditional_span": null,
+                "excepted_entities": [],
+                "base_span": null,
+                "relation": "all",
+                "relation_span": ";",
+                "cardinality": null,
+                "timing": "prior",
+                "window_span": null,
+                "route": [
+                  "any"
+                ],
+                "route_span": null,
+                "specimen": "any",
+                "specimen_span": null,
+                "no_entity": "none",
+                "no_entity_span": null,
+                "threshold_span": "ankle: arm blood pressure ratio < 0.90 on at least one side",
+                "quantity_kind": "lab_value",
+                "reference_bound": "none",
+                "record_change": "none",
+                "record_change_span": null,
+                "window_bound": "none",
+                "window_bound_span": null
+              }
+            }
+          ]
+        }
+      },
+      "expression": {
+        "_unrepresentableThresholds": [
+          {
+            "criterionId": "15",
+            "role": "inclusion",
+            "label": "Coronary Artery By-pass Grafting",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "> 4 years",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "24",
+            "role": "inclusion",
+            "label": "Type 2 diabetes mellitus",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "> 10 years",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "39",
+            "role": "inclusion",
+            "label": "Anti-diabetic medication",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "at least 8 weeks",
+            "valueConstraint": {
+              "op": "gte",
+              "value": 8.0,
+              "valueHigh": null,
+              "unitText": "weeks",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "22",
+            "role": "exclusion",
+            "label": "Coronary artery re-vascularisation",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 6 weeks prior informed consent",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "23",
+            "role": "exclusion",
+            "label": "Percutaneous coronary intervention",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 6 weeks prior informed consent",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "24",
+            "role": "exclusion",
+            "label": "Coronary artery bypass grafting",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 6 weeks prior informed consent",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "25",
+            "role": "exclusion",
+            "label": "Coronary artery re-vascularisation",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 6 weeks prior informed consent",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "51",
+            "role": "exclusion",
+            "label": "Pre-menopausal women",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "last menstruation ≤ 1 year prior to informed consent",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "52",
+            "role": "exclusion",
+            "label": "Menopausal status",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 1 year prior to informed consent",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "53",
+            "role": "exclusion",
+            "label": "Unreliable patient/Life expectancy/Cancer",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "less than 5 years",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "55",
+            "role": "exclusion",
+            "label": "Life expectancy less than 5 years for non-CV causes",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "less than 5 years",
+            "valueConstraint": {
+              "op": "lt",
+              "value": 5.0,
+              "valueHigh": null,
+              "unitText": "years",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "58",
+            "role": "exclusion",
+            "label": "Acute coronary syndrome",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 6 weeks",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "59",
+            "role": "exclusion",
+            "label": "Acute coronary syndrome",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 6 weeks",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "60",
+            "role": "exclusion",
+            "label": "Stroke or TIA",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 3 months",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "61",
+            "role": "exclusion",
+            "label": "Stroke",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 3 months",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "62",
+            "role": "exclusion",
+            "label": "TIA",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤ 3 months",
+            "valueConstraint": null
+          }
+        ],
+        "_criterionConceptSetRefs": {
+          "inclusion:17": 8
+        },
+        "InclusionRules": [
+          {
+            "name": "Myocardial infarction + Percutaneous Coronary Intervention (PCI) + Ischemic or hemorrhagic stroke + Peripheral occlusive arterial disease",
+            "expression": {
+              "Type": "ANY",
+              "CriteriaList": [],
+              "DemographicCriteriaList": [],
+              "Groups": [
+                {
+                  "Type": "ALL",
+                  "CriteriaList": [
+                    {
+                      "Criteria": {
+                        "ConditionOccurrence": {
+                          "CodesetId": 8
+                        }
+                      },
+                      "StartWindow": {
+                        "Start": {
+                          "Days": 9999,
+                          "Coeff": -1
+                        },
+                        "End": {
+                          "Days": 0,
+                          "Coeff": 1
+                        }
+                      },
+                      "RestrictVisit": false,
+                      "IgnoreObservationPeriod": false,
+                      "Occurrence": {
+                        "Type": 2,
+                        "Count": 1
+                      }
+                    }
+                  ],
+                  "DemographicCriteriaList": [],
+                  "Groups": []
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "empa-reg_inclusion_25",
+      "role": "inclusion",
+      "criterionId": 25,
+      "study": {
+        "id": 8,
+        "eligibility": {
+          "inclusionCriteria": [
+            {
+              "id": 25,
+              "description": "Combination of revascularization and stenosis in multi-vessel disease",
+              "domain": "Condition",
+              "valueConstraint": null,
+              "sourceText": "stenosis",
+              "protocolLine": "7.1.2.3 The combination of revascularization in one major coronary artery and significant stenosis (≥50% luminal narrowing) in another major coronary artery",
+              "protocolSpan": "",
+              "window": {
+                "start": -9999,
+                "end": 0
+              },
+              "conceptSetId": 14,
+              "conceptSetName": "stenosis",
+              "logicType": "PRESENCE",
+              "groupId": "3f054fb7-52e7-4eda-a50d-98da222acf90",
+              "groupType": null,
+              "parentGroupId": null,
+              "isGroupLabel": false,
+              "mappable": true,
+              "annotation": {
+                "promptVersion": "rfc016-steps1-4-agreement-v1",
+                "model": "vllm/google/gemma-4-E4B-it",
+                "record_requirement": "required",
+                "conditional_span": null,
+                "excepted_entities": [],
+                "base_span": null,
+                "relation": "all",
+                "relation_span": "and",
+                "cardinality": null,
+                "timing": "at_index",
+                "window_span": null,
+                "route": [
+                  "any"
+                ],
+                "route_span": null,
+                "specimen": "any",
+                "specimen_span": null,
+                "no_entity": "none",
+                "no_entity_span": null,
+                "threshold_span": "≥50% luminal narrowing",
+                "quantity_kind": "lab_value",
+                "reference_bound": "none",
+                "record_change": "none",
+                "record_change_span": null,
+                "window_bound": "none",
+                "window_bound_span": null
+              }
+            }
+          ]
+        }
+      },
+      "expression": {
+        "_unrepresentableThresholds": [
+          {
+            "criterionId": "4",
+            "role": "inclusion",
+            "label": "Antidiabetic medication",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "12 weeks",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "20",
+            "role": "inclusion",
+            "label": "ST-segment elevation myocardial infarction",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "2 months",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "28",
+            "role": "inclusion",
+            "label": "Unstable angina",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": "≤12 months",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "32",
+            "role": "inclusion",
+            "label": "Stroke",
+            "isGroupLabel": true,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": ">2 months",
+            "valueConstraint": null
+          },
+          {
+            "criterionId": "33",
+            "role": "inclusion",
+            "label": "Ischemic stroke",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": ">2 months",
+            "valueConstraint": {
+              "op": "gt",
+              "value": 2.0,
+              "valueHigh": null,
+              "unitText": "months",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          },
+          {
+            "criterionId": "34",
+            "role": "inclusion",
+            "label": "Hemorrhagic stroke",
+            "isGroupLabel": false,
+            "reason": "threshold-not-representable",
+            "quantityKind": "duration",
+            "thresholdSpan": ">2 months",
+            "valueConstraint": {
+              "op": "gt",
+              "value": 2.0,
+              "valueHigh": null,
+              "unitText": "months",
+              "referenceBound": "absolute",
+              "unitConceptId": null
+            }
+          }
+        ],
+        "_criterionConceptSetRefs": {
+          "inclusion:25": 14
+        },
+        "InclusionRules": [
+          {
+            "name": "Significant stenosis in multi-vessel disease + Previous revascularization in multi-vessel disease + Combination of revascularization and stenosis in multi-vessel disease",
+            "expression": {
+              "Type": "ANY",
+              "CriteriaList": [],
+              "DemographicCriteriaList": [],
+              "Groups": [
+                {
+                  "Type": "ALL",
+                  "CriteriaList": [
+                    {
+                      "Criteria": {
+                        "ConditionOccurrence": {
+                          "CodesetId": 14
+                        }
+                      },
+                      "StartWindow": {
+                        "Start": {
+                          "Days": 9999,
+                          "Coeff": -1
+                        },
+                        "End": {
+                          "Days": 0,
+                          "Coeff": 1
+                        }
+                      },
+                      "RestrictVisit": false,
+                      "IgnoreObservationPeriod": false,
+                      "Occurrence": {
+                        "Type": 2,
+                        "Count": 1
+                      }
+                    }
+                  ],
+                  "DemographicCriteriaList": [],
+                  "Groups": []
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
