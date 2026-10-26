@@ -1,0 +1,371 @@
+{
+  "provenance": {
+    "base": "445c536",
+    "source": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-26_exception_residual/baseline/arm_main",
+    "studyId": 8,
+    "role": "exclusion",
+    "criterionId": 12
+  },
+  "row": {
+    "id": 12,
+    "description": "Renal impairment",
+    "domain": "Measurement",
+    "valueConstraint": {
+      "op": "lt",
+      "value": 30.0,
+      "valueHigh": null,
+      "unitText": "",
+      "referenceBound": "absolute",
+      "unitConceptId": null
+    },
+    "sourceText": "Estimated glomerular filtration rate",
+    "protocolLine": "4. Estimated glomerular filtration rate <30 ml/min/1.73 m2 (according to the Modification of Diet in Renal Disease equation) at screening or during run-in phase",
+    "protocolSpan": "",
+    "window": {
+      "start": -180,
+      "end": 0
+    },
+    "conceptSetId": 29,
+    "conceptSetName": "Estimated glomerular filtration rate",
+    "logicType": "ABSENCE",
+    "groupId": null,
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+      "promptVersion": "rfc016-steps1-4-agreement-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "at_index",
+      "window_span": "at screening or during run-in phase",
+      "route": [
+        "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "<30 ml/min/1.73 m2",
+      "quantity_kind": "lab_value",
+      "reference_bound": "none",
+      "record_change": "none",
+      "record_change_span": null,
+      "window_bound": "none",
+      "window_bound_span": null
+    }
+  },
+  "cohort": {
+    "ConceptSets": [
+      {
+        "id": 29,
+        "name": "Estimated glomerular filtration rate",
+        "expression": {
+          "items": [
+            {
+              "concept": {
+                "CONCEPT_ID": 3049187,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M among non black population",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": true,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 36303797,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M among non black population",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": true,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 40764999,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": true,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 46236952,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": true,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 1619025,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI 2021)/1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "98979-8",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 1619026,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine and Cystatin C-based formula (CKD-EPI 2021)/1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "98980-6",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 3029829,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M among female population",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "50044-7",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 3029859,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Cystatin C-based formula/1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "50210-4",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 3030104,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (Schwartz)/1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "50384-7",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 3053283,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M among black population",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "48643-1",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 3965919,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine, Cystatin C and Urea-based formula (CKiD)/1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "102097-3",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 36306178,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M among black population",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "88293-6",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 36660257,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine and Cystatin C-based formula (CKD-EPI)/1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "94677-2",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 40771922,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by based on 1.73 sq M",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "69405-9",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 42869913,
+                "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M among male population",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Lab Test",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "70969-1",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": false,
+              "includeMapped": false,
+              "isExcluded": false
+            }
+          ]
+        }
+      }
+    ],
+    "InclusionRules": [
+      {
+        "name": "Estimated glomerular filtration rate",
+        "expression": {
+          "Type": "ALL",
+          "CriteriaList": [
+            {
+              "Criteria": {
+                "Measurement": {
+                  "CodesetId": 29,
+                  "ValueAsNumber": {
+                    "Value": 30.0,
+                    "Op": "lt"
+                  }
+                }
+              },
+              "StartWindow": {
+                "Start": {
+                  "Days": 180,
+                  "Coeff": -1
+                },
+                "End": {
+                  "Days": 0,
+                  "Coeff": 1
+                }
+              },
+              "RestrictVisit": false,
+              "IgnoreObservationPeriod": false,
+              "Occurrence": {
+                "Type": 0,
+                "Count": 0
+              }
+            }
+          ],
+          "DemographicCriteriaList": [],
+          "Groups": []
+        }
+      }
+    ]
+  }
+}
