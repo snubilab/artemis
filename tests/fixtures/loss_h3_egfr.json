@@ -1,0 +1,498 @@
+{
+  "provenance": {
+    "base": "445c536",
+    "source": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-26_exception_residual/baseline/arm_main",
+    "studyId": 9,
+    "vocabularySchema": "synthea23m"
+  },
+  "rows": [
+    {
+      "id": 40,
+      "description": "eGFR 15- <45 with any UACR",
+      "domain": "Measurement",
+      "valueConstraint": {
+        "op": "gte",
+        "value": 15.0,
+        "valueHigh": null,
+        "unitText": "",
+        "referenceBound": "absolute",
+        "unitConceptId": null
+      },
+      "sourceText": "eGFR",
+      "protocolLine": "8.2.1 Impaired renal function (as defined by MDRD formula) with an eGFR:15- <45 mL/min/1.73 m2 at visit 1 (screening) with any UACR",
+      "protocolSpan": "",
+      "window": {
+        "start": -180,
+        "end": 0
+      },
+      "conceptSetId": 24,
+      "conceptSetName": "eGFR",
+      "logicType": "PRESENCE",
+      "groupId": "656b0981-09d1-4e83-8f0e-28e86b655dd6",
+      "groupType": null,
+      "parentGroupId": "5cf7635c-a1da-4f4a-aa64-8b44b3d9f955",
+      "isGroupLabel": false,
+      "mappable": true,
+      "annotation": {
+        "promptVersion": "rfc016-steps1-4-agreement-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "record_requirement": "required",
+        "conditional_span": null,
+        "excepted_entities": [],
+        "base_span": null,
+        "relation": null,
+        "relation_span": null,
+        "cardinality": null,
+        "timing": "at_index",
+        "window_span": "at visit 1 (screening)",
+        "route": [
+          "any"
+        ],
+        "route_span": null,
+        "specimen": "any",
+        "specimen_span": null,
+        "no_entity": "none",
+        "no_entity_span": null,
+        "threshold_span": "eGFR:15- <45 mL/min/1.73 m2",
+        "quantity_kind": "lab_value",
+        "reference_bound": "none",
+        "record_change": "none",
+        "record_change_span": null,
+        "window_bound": "none",
+        "window_bound_span": null
+      }
+    },
+    {
+      "id": 41,
+      "description": "eGFR 45-75 with UACR > 200",
+      "domain": "Measurement",
+      "valueConstraint": {
+        "op": "gte",
+        "value": 45.0,
+        "valueHigh": null,
+        "unitText": "",
+        "referenceBound": "absolute",
+        "unitConceptId": null
+      },
+      "sourceText": "eGFR",
+      "protocolLine": "8.2.2 Impaired renal function (as defined by MDRD formula) with an eGFR ≥ 45-75 mL/min/1.73 m2 at visit 1 (screening) with an UACR > 200 mg/g creatinine or > 200 µg/min (microgram albumin per minute) or > 200 mg/24 h [milligram albumin per 24 hours] demonstrated in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization",
+      "protocolSpan": "",
+      "window": {
+        "start": -180,
+        "end": 0
+      },
+      "conceptSetId": 25,
+      "conceptSetName": "eGFR",
+      "logicType": "PRESENCE",
+      "groupId": "656b0981-09d1-4e83-8f0e-28e86b655dd6",
+      "groupType": null,
+      "parentGroupId": "5cf7635c-a1da-4f4a-aa64-8b44b3d9f955",
+      "isGroupLabel": false,
+      "mappable": true,
+      "annotation": {
+        "promptVersion": "rfc016-steps1-4-agreement-v1",
+        "model": "vllm/google/gemma-4-E4B-it",
+        "record_requirement": "required",
+        "conditional_span": null,
+        "excepted_entities": [],
+        "base_span": null,
+        "relation": null,
+        "relation_span": null,
+        "cardinality": null,
+        "timing": "at_index",
+        "window_span": "at visit 1 (screening)",
+        "route": [
+          "any"
+        ],
+        "route_span": null,
+        "specimen": "urine",
+        "specimen_span": "urine",
+        "no_entity": "none",
+        "no_entity_span": null,
+        "threshold_span": "eGFR ≥ 45-75 mL/min/1.73 m2",
+        "quantity_kind": "lab_value",
+        "reference_bound": "none",
+        "record_change": "none",
+        "record_change_span": null,
+        "window_bound": "within",
+        "window_bound_span": "last 24 months"
+      }
+    }
+  ],
+  "conceptSets": [
+    {
+      "id": 24,
+      "name": "eGFR",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3049187,
+              "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M among non black population",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36303797,
+              "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M among non black population",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40764999,
+              "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46236952,
+              "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "name": "eGFR",
+      "expression": {
+        "items": [
+          {
+            "concept": {
+              "CONCEPT_ID": 3049187,
+              "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M among non black population",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 36303797,
+              "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M among non black population",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 40764999,
+              "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          },
+          {
+            "concept": {
+              "CONCEPT_ID": 46236952,
+              "CONCEPT_NAME": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test",
+              "STANDARD_CONCEPT": "S",
+              "STANDARD_CONCEPT_CAPTION": "Standard",
+              "CONCEPT_CODE": "",
+              "INVALID_REASON": null,
+              "INVALID_REASON_CAPTION": null
+            },
+            "includeDescendants": true,
+            "includeMapped": false,
+            "isExcluded": false
+          }
+        ]
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "codesetId": 24,
+      "criterionId": "40",
+      "role": "inclusion",
+      "analyte": null,
+      "judged": true,
+      "accepted": [
+        {
+          "systemId": 1026166,
+          "system": "Urine and Serum or Plasma",
+          "challenge": null
+        }
+      ],
+      "removed": [],
+      "added": [],
+      "declined": "no LOINC lab-test member in a specimen the criterion states",
+      "specimen": "any",
+      "specimenSpan": null
+    },
+    {
+      "codesetId": 25,
+      "criterionId": "41",
+      "role": "inclusion",
+      "analyte": null,
+      "judged": true,
+      "accepted": [
+        {
+          "systemId": 1026166,
+          "system": "Urine and Serum or Plasma",
+          "challenge": null
+        }
+      ],
+      "removed": [],
+      "added": [],
+      "declined": "no LOINC lab-test member in a specimen the criterion states",
+      "specimen": "urine",
+      "specimenSpan": "urine"
+    }
+  ],
+  "labTests": {
+    "3049187": {
+      "concept_id": 3049187,
+      "concept_name": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M among non black population",
+      "component": "Glomerular filtration rate",
+      "system": "Serum, Plasma or Blood",
+      "property": "Volume Rate/Area",
+      "scale": "Qn",
+      "concept_code": "48642-3",
+      "domain_id": "Measurement",
+      "component_id": 1029770,
+      "time_aspect": "Point in time (spot)",
+      "system_id": 1033343,
+      "method": "Creatinine-based formula (MDRD)/1.73 sq M among non black population"
+    },
+    "36303797": {
+      "concept_id": 36303797,
+      "concept_name": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M among non black population",
+      "component": "Glomerular filtration rate",
+      "system": "Serum, Plasma or Blood",
+      "property": "Volume Rate/Area",
+      "scale": "Qn",
+      "concept_code": "88294-4",
+      "domain_id": "Measurement",
+      "component_id": 1029770,
+      "time_aspect": "Point in time (spot)",
+      "system_id": 1033343,
+      "method": "Creatinine-based formula (CKD-EPI)/1.73 sq M among non black population"
+    },
+    "40764999": {
+      "concept_id": 40764999,
+      "concept_name": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M",
+      "component": "Glomerular filtration rate",
+      "system": "Serum, Plasma or Blood",
+      "property": "Volume Rate/Area",
+      "scale": "Qn",
+      "concept_code": "62238-1",
+      "domain_id": "Measurement",
+      "component_id": 1029770,
+      "time_aspect": "Point in time (spot)",
+      "system_id": 1033343,
+      "method": "Creatinine-based formula (CKD-EPI)/1.73 sq M"
+    },
+    "46236952": {
+      "concept_id": 46236952,
+      "concept_name": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (MDRD)/1.73 sq M",
+      "component": "Glomerular filtration rate",
+      "system": "Serum, Plasma or Blood",
+      "property": "Volume Rate/Area",
+      "scale": "Qn",
+      "concept_code": "77147-7",
+      "domain_id": "Measurement",
+      "component_id": 1029770,
+      "time_aspect": "Point in time (spot)",
+      "system_id": 1033343,
+      "method": "Creatinine-based formula (MDRD)/1.73 sq M"
+    }
+  },
+  "entries": [
+    {
+      "Criteria": {
+        "Measurement": {
+          "CodesetId": 24,
+          "ValueAsNumber": {
+            "Value": 15.0,
+            "Op": "gte"
+          }
+        }
+      },
+      "StartWindow": {
+        "Start": {
+          "Days": 180,
+          "Coeff": -1
+        },
+        "End": {
+          "Days": 0,
+          "Coeff": 1
+        }
+      },
+      "RestrictVisit": false,
+      "IgnoreObservationPeriod": false,
+      "Occurrence": {
+        "Type": 2,
+        "Count": 1
+      }
+    },
+    {
+      "Criteria": {
+        "Measurement": {
+          "CodesetId": 25,
+          "ValueAsNumber": {
+            "Value": 45.0,
+            "Op": "gte"
+          }
+        }
+      },
+      "StartWindow": {
+        "Start": {
+          "Days": 180,
+          "Coeff": -1
+        },
+        "End": {
+          "Days": 0,
+          "Coeff": 1
+        }
+      },
+      "RestrictVisit": false,
+      "IgnoreObservationPeriod": false,
+      "Occurrence": {
+        "Type": 2,
+        "Count": 1
+      }
+    }
+  ],
+  "rejectedLiveResult": {
+    "criterionId": 41,
+    "protocolLine": "8.2.2 Impaired renal function (as defined by MDRD formula) with an eGFR ≥ 45-75 mL/min/1.73 m2 at visit 1 (screening) with an UACR > 200 mg/g creatinine or > 200 µg/min (microgram albumin per minute) or > 200 mg/24 h [milligram albumin per 24 hours] demonstrated in two out of three unrelated spot urine or timed samples in the last 24 months prior to randomization",
+    "record": {
+      "analyte": "Glomerular filtration rate",
+      "judged": true,
+      "accepted": [
+        {
+          "systemId": 1033343,
+          "system": "Serum, Plasma or Blood",
+          "challenge": null,
+          "method": "Creatinine-based formula (MDRD)/1.73 sq M"
+        },
+        {
+          "systemId": 1033343,
+          "system": "Serum, Plasma or Blood",
+          "challenge": null,
+          "method": "Creatinine-based formula (MDRD)/1.73 sq M among female population"
+        },
+        {
+          "systemId": 1033343,
+          "system": "Serum, Plasma or Blood",
+          "challenge": null,
+          "method": "Creatinine-based formula (MDRD)/1.73 sq M among black population"
+        },
+        {
+          "systemId": 1033343,
+          "system": "Serum, Plasma or Blood",
+          "challenge": null,
+          "method": "Creatinine-based formula (MDRD)/1.73 sq M among male population"
+        }
+      ],
+      "removed": [
+        [
+          3049187,
+          [
+            "specimen 'Serum, Plasma or Blood' by 'Creatinine-based formula (MDRD)/1.73 sq M among non black population' is not one the criterion states"
+          ]
+        ],
+        [
+          36303797,
+          [
+            "specimen 'Serum, Plasma or Blood' by 'Creatinine-based formula (CKD-EPI)/1.73 sq M among non black population' is not one the criterion states"
+          ]
+        ],
+        [
+          40764999,
+          [
+            "specimen 'Serum, Plasma or Blood' by 'Creatinine-based formula (CKD-EPI)/1.73 sq M' is not one the criterion states"
+          ]
+        ]
+      ],
+      "added": [
+        3029829,
+        3053283,
+        42869913
+      ],
+      "declined": null,
+      "specimen": "urine",
+      "specimenSpan": "urine"
+    },
+    "kept": [
+      46236952,
+      3029829,
+      3053283,
+      42869913
+    ]
+  }
+}

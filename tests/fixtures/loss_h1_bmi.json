@@ -1,0 +1,167 @@
+{
+  "provenance": {
+    "base": "445c536",
+    "source": "/home/bilab/work/projects/Broadsea/artemis/output/site_gap/2026-10-26_exception_residual/baseline/arm_main",
+    "studyId": 8,
+    "role": "inclusion",
+    "criterionId": 11
+  },
+  "row": {
+    "id": 11,
+    "description": "Body Mass index limit at Visit 1",
+    "domain": "Measurement",
+    "valueConstraint": {
+      "op": "lte",
+      "value": 45.0,
+      "valueHigh": null,
+      "unitText": "",
+      "referenceBound": "absolute",
+      "unitConceptId": null
+    },
+    "sourceText": "Body Mass index",
+    "protocolLine": "5. Body Mass index <= 45 at Visit 1",
+    "protocolSpan": "",
+    "window": {
+      "start": -180,
+      "end": 0
+    },
+    "conceptSetId": 4,
+    "conceptSetName": "Body Mass index",
+    "logicType": "PRESENCE",
+    "groupId": null,
+    "groupType": "ALL",
+    "parentGroupId": null,
+    "isGroupLabel": false,
+    "mappable": true,
+    "annotation": {
+      "promptVersion": "rfc016-steps1-4-agreement-v1",
+      "model": "vllm/google/gemma-4-E4B-it",
+      "record_requirement": "required",
+      "conditional_span": null,
+      "excepted_entities": [],
+      "base_span": null,
+      "relation": null,
+      "relation_span": null,
+      "cardinality": null,
+      "timing": "at_index",
+      "window_span": null,
+      "route": [
+        "any"
+      ],
+      "route_span": null,
+      "specimen": "any",
+      "specimen_span": null,
+      "no_entity": "none",
+      "no_entity_span": null,
+      "threshold_span": "<= 45",
+      "quantity_kind": "lab_value",
+      "reference_bound": "none",
+      "record_change": "none",
+      "record_change_span": null,
+      "window_bound": "none",
+      "window_bound_span": null
+    }
+  },
+  "cohort": {
+    "ConceptSets": [
+      {
+        "id": 4,
+        "name": "Body Mass index",
+        "expression": {
+          "items": [
+            {
+              "concept": {
+                "CONCEPT_ID": 3038553,
+                "CONCEPT_NAME": "Body mass index (BMI) [Ratio]",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Clinical Observation",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": true,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 36304833,
+                "CONCEPT_NAME": "Body mass index (BMI) [Ratio] Estimated",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Clinical Observation",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": true,
+              "includeMapped": false,
+              "isExcluded": false
+            },
+            {
+              "concept": {
+                "CONCEPT_ID": 40762636,
+                "CONCEPT_NAME": "Body mass index (BMI) [Percentile]",
+                "DOMAIN_ID": "Measurement",
+                "VOCABULARY_ID": "LOINC",
+                "CONCEPT_CLASS_ID": "Clinical Observation",
+                "STANDARD_CONCEPT": "S",
+                "STANDARD_CONCEPT_CAPTION": "Standard",
+                "CONCEPT_CODE": "",
+                "INVALID_REASON": null,
+                "INVALID_REASON_CAPTION": null
+              },
+              "includeDescendants": true,
+              "includeMapped": false,
+              "isExcluded": false
+            }
+          ]
+        }
+      }
+    ],
+    "InclusionRules": [
+      {
+        "name": "Body Mass index",
+        "expression": {
+          "Type": "ALL",
+          "CriteriaList": [
+            {
+              "Criteria": {
+                "Measurement": {
+                  "CodesetId": 4,
+                  "ValueAsNumber": {
+                    "Value": 45.0,
+                    "Op": "lte"
+                  }
+                }
+              },
+              "StartWindow": {
+                "Start": {
+                  "Days": 180,
+                  "Coeff": -1
+                },
+                "End": {
+                  "Days": 0,
+                  "Coeff": 1
+                }
+              },
+              "RestrictVisit": false,
+              "IgnoreObservationPeriod": false,
+              "Occurrence": {
+                "Type": 2,
+                "Count": 1
+              }
+            }
+          ],
+          "DemographicCriteriaList": [],
+          "Groups": []
+        }
+      }
+    ]
+  }
+}

@@ -3277,6 +3277,7 @@ def _unit_after_bound(span: str, constraint: Mapping[str, Any]) -> str | None:
     Extraction sometimes writes ``unitText: ''`` while the line says "<= 45 kg/m2" (P8 MAIN
     CAROLINA inclusion 25). Format only: the token directly after the number equal to the
     bound (the upper one of a range), kept only when :func:`normalize_unit` resolves it.
+    A unit may contain whitespace, so try the longest resolvable prefix first.
 
     :param span: the annotation's ``threshold_span``, already checked against the line.
     :param constraint: the row's ``valueConstraint``.
@@ -3295,9 +3296,10 @@ def _unit_after_bound(span: str, constraint: Mapping[str, Any]) -> str | None:
         except ValueError:
             continue
         rest = span[match.end():].split()
-        token = rest[0].rstrip(").,;:") if rest else ""
-        if token and normalize_unit(token) is not None:
-            return token
+        for end in range(len(rest), 0, -1):
+            token = " ".join(rest[:end]).rstrip(").,;:")
+            if normalize_unit(token) is not None:
+                return token
     return None
 
 
