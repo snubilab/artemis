@@ -233,3 +233,31 @@ def test_should_accept_correct_bound_when_another_rule_reads_same_codeset(servic
     circe["InclusionRules"].append(other)
     study = {"eligibility": {"exclusionCriteria": [row]}}
     assert threshold_without_value_filter_findings(circe, study) == ([], [])
+
+
+def test_should_follow_collapse_survivor_when_occurrence_threshold_is_present(service):
+    row = answer(row_for(9, "exclusion", 4), "drug_era_length", "gte", 7, "day")
+    circe = _build(service, exclusion=[row])
+    survivor = circe["InclusionRules"][0]
+    [entry] = list(entries(survivor))
+    [attrs] = entry["Criteria"].values()
+    survivor_id = attrs["CodesetId"]
+    removed_id = survivor_id + 1000
+    removed = deepcopy(survivor["expression"])
+    [removed_entry] = list(entries(removed))
+    [removed_attrs] = removed_entry["Criteria"].values()
+    removed_attrs["CodesetId"] = removed_id
+    duplicate = deepcopy(next(cs for cs in circe["ConceptSets"] if cs["id"] == survivor_id))
+    duplicate["id"] = removed_id
+    circe["ConceptSets"].append(duplicate)
+    circe["_criterionConceptSetRefs"]["exclusion:4"] = removed_id
+    circe["_restatedRuleCollapse"] = [{
+        "criterionKeys": ["exclusion:4"], "survivorRule": survivor["name"],
+        "reason": "restated-rule-identical", "expression": removed,
+    }]
+    study = {"eligibility": {"exclusionCriteria": [row]}}
+    assert threshold_without_value_filter_findings(circe, study) == ([], [])
+    del attrs["EraLength"]
+    assert threshold_without_value_filter_findings(circe, study).failures
+    circe["_restatedRuleCollapse"] = []
+    assert threshold_without_value_filter_findings(circe, study).failures

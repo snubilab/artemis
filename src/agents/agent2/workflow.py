@@ -314,7 +314,7 @@ class Agent2Workflow:
         # Gate: Only attempt ATC expansion when Agent 1 classifies domain as "Drug".
         # Without this gate, ATC matches non-drug queries catastrophically
         # (e.g., "Cardiovascular disease" → ATC "Cardiovascular preparations" → 392K concepts)
-        if domain_hint == "Drug":
+        if domain_hint == "Drug" and not force_slow_path:
             pool = _get_db_pool()
             db_conn = None
             used_pool = False
@@ -366,8 +366,8 @@ class Agent2Workflow:
         
         # Step 1: every query takes the slow path (LLM reranker). The
         # fast path and the word-pattern router that chose it were removed (P5): the
-        # router's verdict had been overwritten to "slow" here for every query, so it
-        # decided nothing. `force_slow_path` is accepted for callers and has no effect.
+        # router's verdict had been overwritten to "slow" here for every query.
+        # force_slow_path also bypasses the ATC shortcut for a sibling rerank retry.
         route_path = "slow"
 
         logger.info(f"[Agent 2] Route: {route_path} path, domain_hint={domain_hint}")

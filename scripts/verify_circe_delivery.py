@@ -1414,7 +1414,7 @@ def threshold_without_value_filter_findings(
                 matches_occurrence_filter,
                 occurrence_filter,
             )
-
+            from src.services.restated_rules import _concept_set_contents
             from src.utils.circe_lint import _walk_criteria_entries
 
             expected = occurrence_filter(
@@ -1428,6 +1428,33 @@ def threshold_without_value_filter_findings(
                 if any(isinstance(attrs, dict) and attrs.get("CodesetId") == codeset
                        for attrs in (entry.get("Criteria") or {}).values())
             ]
+            contents = _concept_set_contents(expression.get("ConceptSets"))
+            for record in expression.get(RESTATED_RULE_COLLAPSE_KEY) or []:
+                if not isinstance(record, Mapping) or f"{role}:{criterion_id}" not in (
+                    record.get("criterionKeys") or []
+                ):
+                    continue
+                removed_entries = _walk_criteria_entries(record.get("expression") or {})
+                if not any(
+                    attrs.get("CodesetId") == codeset
+                    for entry in removed_entries
+                    for attrs in (entry.get("Criteria") or {}).values()
+                    if isinstance(attrs, dict)
+                ) or codeset not in contents:
+                    continue
+                for rule in expression.get("InclusionRules") or []:
+                    if rule.get("name") != record.get("survivorRule"):
+                        continue
+                    entries.extend(
+                        entry
+                        for entry in _walk_criteria_entries(rule.get("expression") or {})
+                        if any(
+                            attrs.get("CodesetId") in contents
+                            and contents[attrs["CodesetId"]] == contents[codeset]
+                            for attrs in (entry.get("Criteria") or {}).values()
+                            if isinstance(attrs, dict)
+                        )
+                    )
             if not any(matches_occurrence_filter(entry, expected) for entry in entries):
                 failures.append(
                     f"{role} #{criterion_id}: stated occurrence threshold missing or incorrect"

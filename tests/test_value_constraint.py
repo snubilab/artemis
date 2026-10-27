@@ -424,3 +424,71 @@ def test_generated_cohorts_set_unit_on_measurement_criteria() -> None:
 )
 def test_regenerated_cohorts_match_gold_range_high_ratio_counts() -> None:
     raise NotImplementedError
+
+
+def test_should_resolve_vocab_unit_when_alias_missing(monkeypatch):
+    api = _api()
+    monkeypatch.setenv('ARTEMIS_ANNOTATION_CACHE', '0')
+    monkeypatch.setattr(api, '_ask_unit_code', lambda unit, analyte: 'mg/g{creat}')
+    monkeypatch.setattr(
+        api, '_lookup_ucum', lambda code: (9017, code, 'milligram per gram creatinine')
+    )
+    constraint, provenance = api.resolve_unit_constraint({'unitText': 'mg/g creatinine'}, 'UACR')
+    assert provenance == 'llm+vocab'
+    assert api.absolute_unit_concept_id(constraint) == 9017
+    assert api.unit_concept(9017)['CONCEPT_CODE'] == 'mg/g{creat}'
+
+
+def test_should_refuse_unit_when_vocab_code_absent(monkeypatch):
+    api = _api()
+    monkeypatch.setattr(api, '_ask_unit_code', lambda unit, analyte: 'unknown')
+    monkeypatch.setattr(api, '_lookup_ucum', lambda code: None)
+    assert api.resolve_unit_constraint({'unitText': 'unknown unit'}, 'analyte') == (
+        {'unitText': 'unknown unit'}, None
+    )
+
+
+def test_should_keep_alias_when_unit_is_known(monkeypatch):
+    api = _api()
+    monkeypatch.setattr(api, '_ask_unit_code', lambda *_: pytest.fail('alias must not call LLM'))
+    constraint, provenance = api.resolve_unit_constraint({'unitText': 'mg/dL'}, 'analyte')
+    assert provenance == 'alias'
+    assert api.absolute_unit_concept_id(constraint) == 8840
+
+
+def test_should_refuse_and_log_when_llm_unavailable(monkeypatch, caplog):
+    api = _api()
+    def fail(*_):
+        raise RuntimeError('unavailable')
+    monkeypatch.setattr(api, '_ask_unit_code', fail)
+    assert api.resolve_unit_constraint({'unitText': 'unknown unit'}, 'analyte')[1] is None
+    assert 'unavailable' in caplog.text
+
+
+@pytest.mark.parametrize(('unit_text', 'code', 'concept_id'), [
+    ('mg/g creatinine', 'mg/g{creat}', 9017),
+    ('µg/min [microgram albumin per minute]', 'ug/min', 8774),
+    ('mg/24 h [milligram albumin per 24 hours]', 'mg/(24.h)', 8909),
+])
+def test_should_emit_vocab_unit_and_provenance_when_building_uacr(
+    monkeypatch, unit_text, code, concept_id
+):
+    api = _api()
+    seen = []
+    monkeypatch.setenv('ARTEMIS_ANNOTATION_CACHE', '0')
+    monkeypatch.setattr(
+        api, '_ask_unit_code', lambda unit, analyte: seen.append((unit, analyte)) or code
+    )
+    monkeypatch.setattr(api, '_lookup_ucum', lambda value: (concept_id, value, 'unit'))
+    criterion = {
+        'sourceText': 'UACR', 'domain': 'Measurement',
+        'valueConstraint': {'op': 'gte', 'value': 2, 'unitText': unit_text},
+        'window': {'start': -365, 'end': 0}, 'logicType': 'PRESENCE',
+    }
+    built = _production_service()._build_seeded_eligibility_rule(
+        criterion=criterion, codeset_id=1, exclusion=False
+    )
+    attrs = built['rule']['expression']['CriteriaList'][0]['Criteria']['Measurement']
+    assert attrs['Unit'][0]['CONCEPT_ID'] == concept_id
+    assert criterion['unit_resolution'] == 'llm+vocab'
+    assert seen == [(unit_text, 'UACR')]

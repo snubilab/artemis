@@ -63,6 +63,7 @@ def _make_recommendation(concept_ids: list[int], name: str = "Test Concept Set")
     expression_mock = MagicMock()
     expression_mock.to_atlas_json.return_value = _make_atlas_expression_with_items(concept_ids)
     rec.expression = expression_mock
+    rec.pre_rollup_expression = None
     return rec
 
 
@@ -445,3 +446,30 @@ class TestBackwardCompatibility:
         assert "expression" in result
         assert "name" in result
         assert "domain" in result
+
+
+def test_should_bypass_cached_and_exact_mapping_when_retry_has_sibling_context():
+    service = _get_service()
+    mapping_result = _make_agent2_mapping_result([4329847])
+    mapping_result.mapping_failures.return_value = []
+    recommendation = _make_recommendation([4329847])
+    workflow = MagicMock()
+    workflow.process_with_details.return_value = mapping_result
+    with (
+        _patch_agent2_imports(mapping_result, recommendation),
+        patch.object(service, "_fetch_concept_candidates", return_value=[
+            _make_concept_candidate(4329847, "Myocardial infarction")
+        ]),
+        patch.object(service, "_resolve_seeded_domain", return_value="Condition"),
+        patch.object(service, "_exact_ingredient_match_enabled",
+                     side_effect=AssertionError("retry must bypass exact tier")),
+        patch("src.services.tte_service.get_criterion_cache",
+              side_effect=AssertionError("retry must bypass cache")),
+    ):
+        result = service._recommend_seeded_concept_set(
+            "myocardial infarction", workflow=workflow, sibling_labels=["sibling entity"]
+        )
+    kwargs = workflow.process_with_details.call_args.kwargs
+    assert kwargs["force_slow_path"] is True
+    assert "sibling entity" in kwargs["context"]
+    assert result["mapping_metadata"].siblingRerank == ["sibling entity"]

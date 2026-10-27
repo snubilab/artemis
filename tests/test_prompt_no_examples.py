@@ -768,6 +768,13 @@ _RECORD_CHANGE_TOKENS = PROMPTS["criterion_annotation"].tokens | frozenset({
 PROMPTS["criterion_annotation.record_change"] = PromptSpec(
     _render_criterion_annotation_record_change, tokens=_RECORD_CHANGE_TOKENS,
 )
+def _render_unit_resolution() -> str:
+    from src.services.value_constraint import _UNIT_PROMPT_SYSTEM
+
+    return _UNIT_PROMPT_SYSTEM
+
+
+PROMPTS["value_constraint.unit_resolution"] = PromptSpec(_render_unit_resolution)
 PROMPTS["criterion_annotation.record_change.agreement"] = PromptSpec(
     _render_criterion_annotation_record_change_agreement, tokens=_RECORD_CHANGE_TOKENS,
 )

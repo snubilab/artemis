@@ -161,6 +161,7 @@ from src.services.value_constraint import (
     build_measurement_value_filter,
     refuse_unstated_unit_bound,
     resolve_group_member_constraint,
+    resolve_unit_constraint,
     restore_dropped_unit_exponent,
 )
 from src.utils.circe_lint import (
@@ -5642,6 +5643,8 @@ class TTEService:
             for index, (criterion, exclusion) in enumerate(mappable_items)
         ]
 
+        self._repair_sibling_aliases(ordered_pairs, pre_fetched, _parent_constraint)
+
         # Collect per-criterion mapping metadata. Role-aware keys avoid collisions
         # because imported criteria commonly reuse numeric IDs across inclusion
         # and exclusion sections.
@@ -6995,6 +6998,122 @@ class TTEService:
             ),
         )
 
+    def _repair_sibling_aliases(self, pairs, pre_fetched, parent_constraint=None):
+        """Undo colliding rollups, then retry each identical same-line sibling once."""
+        def fingerprint(expression):
+            return frozenset(
+                ((item.get("concept") or {}).get("CONCEPT_ID"), bool(item.get("isExcluded")))
+                for item in expression.get("items") or []
+            )
+
+        original = [result["conceptSet"]["expression"] if result else None
+                    for _, result, _ in pairs]
+        originals = deepcopy(pairs)
+        retry_labels = {}
+        for index, (row, result, role) in enumerate(pairs):
+            if result is None:
+                continue
+            expression = original[index]
+            metadata = result.get("_mapping_metadata")
+            unrolled = getattr(metadata, "preRollupExpression", None)
+            if (unrolled and getattr(metadata, "rollupExpression", None) == expression
+                    and self._stated_entity_exception(row, criterion_mapper_seed(row) or "") is None
+                    and fingerprint(unrolled) != fingerprint(expression) and any(
+                other is not None and index != j and fingerprint(expression) == fingerprint(other)
+                for j, other in enumerate(original)
+            )):
+                result["conceptSet"]["expression"] = deepcopy(unrolled)
+                selected = [(item.get("concept") or {}).get("CONCEPT_ID")
+                            for item in unrolled.get("items", []) if not item.get("isExcluded")]
+                result["_mapping_metadata"] = metadata.model_copy(update={
+                    "selectedConceptIds": selected,
+                    "allCandidates": [candidate.model_copy(update={
+                        "included": candidate.conceptId in selected
+                    }) for candidate in metadata.allCandidates],
+                })
+            line = row.get(CRITERION_PROTOCOL_LINE_KEY)
+            if not line or not row.get("groupId"):
+                continue
+            labels = []
+            for j, (sibling, other, sibling_role) in enumerate(pairs):
+                if (index == j or other is None or role != sibling_role
+                        or sibling.get("groupId") != row["groupId"]
+                        or sibling.get(CRITERION_PROTOCOL_LINE_KEY) != line):
+                    continue
+                equal = self._same_concept_set_closure(expression, original[j])
+                if equal:
+                    labels.append(criterion_mapper_seed(sibling) or sibling.get("sourceText")
+                                  or sibling.get("description") or "")
+            if labels:
+                retry_labels[index] = labels
+
+        for index, labels in retry_labels.items():
+            row, result, role = pairs[index]
+            try:
+                mapped = self._rerank_sibling_mapping(row, labels, pre_fetched.get(index))
+                rebuilt = self._build_seeded_eligibility_rule(
+                    criterion=row, codeset_id=result["conceptSet"]["id"],
+                    exclusion=role == "exclusion", mapped_override=mapped,
+                    parent_value_constraint=(parent_constraint(row, role == "exclusion")
+                                             if parent_constraint else None),
+                )
+            except Exception as exc:
+                logging.warning(
+                    "[TTE] sibling rerank retained criterion %s: %s", row.get("id"), exc
+                )
+                continue
+            pairs[index] = (row, rebuilt, role)
+
+        for index, (_, result, _) in enumerate(pairs):
+            if index not in retry_labels and result is not None and any(
+                j != index and other is not None
+                and fingerprint(original[index]) == fingerprint(original[j])
+                and self._same_concept_set_closure(
+                    result["conceptSet"]["expression"], other["conceptSet"]["expression"]
+                ) for j, (_, other, _) in enumerate(pairs)
+            ):
+                pairs[index] = originals[index]
+
+        # A literal-only difference must not hide the original closure collision.
+        unresolved = set()
+        for index in retry_labels:
+            row, result, role = pairs[index]
+            for j in retry_labels:
+                if index >= j:
+                    continue
+                sibling, other, other_role = pairs[j]
+                if (role == other_role and row.get("groupId") == sibling.get("groupId")
+                        and row.get(CRITERION_PROTOCOL_LINE_KEY)
+                        == sibling.get(CRITERION_PROTOCOL_LINE_KEY)
+                        and self._same_concept_set_closure(
+                            result["conceptSet"]["expression"], other["conceptSet"]["expression"]
+                        )):
+                    unresolved.update((index, j))
+        for index in unresolved:
+            pairs[index] = originals[index]
+
+    def _same_concept_set_closure(self, left, right):
+        from src.services.conceptset_closure import ConceptSetItem, resolve_concept_set
+
+        if left == right:
+            return True
+        items = [*left.get("items", []), *right.get("items", [])]
+        lookup = self._vocabulary_lookup([ConceptSetItem.from_circe_item(item) for item in items])
+        a = resolve_concept_set({"expression": left}, lookup)
+        b = resolve_concept_set({"expression": right}, lookup)
+        if a.unresolvable_ids or b.unresolvable_ids:
+            raise ValueError("Cannot verify sibling closure: vocabulary concepts are missing")
+        return bool(a.concept_ids) and a.concept_ids == b.concept_ids
+
+    def _rerank_sibling_mapping(self, row, sibling_labels, candidates=None):
+        """Retry through the shared mapper, including stated exception handling."""
+        seed = criterion_mapper_seed(row) or row.get("sourceText") or row.get("description") or ""
+        return self._recommend_seeded_concept_set(
+            seed, expected_domain=row.get("domain"), pre_fetched_candidates=candidates,
+            entity_exception=self._stated_entity_exception(row, seed),
+            source_line=row.get(CRITERION_PROTOCOL_LINE_KEY), sibling_labels=sibling_labels,
+        )
+
     def _build_seeded_eligibility_rule(
         self,
         *,
@@ -7004,6 +7123,7 @@ class TTEService:
         pre_fetched_candidates: list | None = None,
         workflow: Any | None = None,
         parent_value_constraint: Any = None,
+        mapped_override: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         label = (
             criterion.get("sourceText")
@@ -7041,14 +7161,16 @@ class TTEService:
         # would not change either. Keeping the boundary here is what stops the
         # re-coding from attributing a Circe-side defect to extraction.
         try:
-            mapped_criterion = self._recommend_seeded_concept_set(
-                seed,
-                expected_domain=criterion_domain,
-                pre_fetched_candidates=pre_fetched_candidates,
-                workflow=workflow,
-                entity_exception=seed_exception,
-                source_line=criterion.get(CRITERION_PROTOCOL_LINE_KEY),
-            )
+            mapped_criterion = mapped_override
+            if mapped_criterion is None:
+                mapped_criterion = self._recommend_seeded_concept_set(
+                    seed,
+                    expected_domain=criterion_domain,
+                    pre_fetched_candidates=pre_fetched_candidates,
+                    workflow=workflow,
+                    entity_exception=seed_exception,
+                    source_line=criterion.get(CRITERION_PROTOCOL_LINE_KEY),
+                )
             # Named rather than inlined into `_seeded_criteria_key` because the window
             # default below is keyed by the same resolved domain: the CIRCE table and the
             # lookback are two readings of one answer, and deriving them from two
@@ -7094,6 +7216,12 @@ class TTEService:
         # A member whose criteria type reads none of the attributes the label's bound
         # would emit (a ConditionOccurrence) cannot hold it: the bound is about another
         # member of the group, so this one neither takes it nor is stranded by it.
+        parent_value_constraint, parent_unit_resolution = resolve_unit_constraint(
+            parent_value_constraint, seed
+        )
+        row_constraint, row_unit_resolution = resolve_unit_constraint(
+            applied_value_constraint(criterion), seed
+        )
         member_holds_bound = parent_value_constraint is None or not unreadable_value_attributes(
             criteria_key, build_measurement_value_filter(parent_value_constraint)
         )
@@ -7102,7 +7230,7 @@ class TTEService:
             # The constraint the row's annotation says is applied (RFC-016 step 3): None
             # for a threshold no value filter represents, and the annotation's
             # `reference_bound` on a measured one.
-            applied_value_constraint(criterion),
+            row_constraint,
             member_properties=lambda: self._concept_set_lab_properties(
                 mapped_criterion.get("expression") or {}
             ),
@@ -7126,6 +7254,11 @@ class TTEService:
                 detail=resolution.refusal_reason,
             )
         effective_constraint = resolution.constraint
+        unit_resolution = (
+            row_unit_resolution if row_constraint is not None else parent_unit_resolution
+        )
+        if unit_resolution is not None and effective_constraint is not None:
+            criterion["unit_resolution"] = unit_resolution
         # A unit whose trailing exponent the PDF text lost ("/ mm", "kg/m") resolves when
         # exactly one UCUM unit differing from it by that digit is the LOINC property of
         # this criterion's own concepts; read only when the unit does not resolve.
@@ -8198,6 +8331,7 @@ class TTEService:
         resolving_entity_exception: bool = False,
         entity_exception: Any = None,
         source_line: str | None = None,
+        sibling_labels: list[str] | None = None,
     ) -> dict[str, Any]:
         seed = " ".join(seed_text.split()).strip()
         if not seed:
@@ -8240,6 +8374,7 @@ class TTEService:
                         expected_domain=expected_domain,
                         workflow=workflow,
                         resolving_entity_exception=True,
+                        **({"sibling_labels": sibling_labels} if sibling_labels else {}),
                     )
                     _phrase_failures.extend(
                         getattr(mapped.get("mapping_metadata"), "mappingFailures", None) or []
@@ -8255,12 +8390,36 @@ class TTEService:
                 # neither the exception nor the base span. Ids and concept_ancestor only.
                 _own = " ".join((_exception.own or "").split())
                 if _own and _own != seed:
-                    _own_mapping = self._recommend_seeded_concept_set(
-                        _own,
-                        expected_domain=expected_domain,
-                        workflow=workflow,
-                        resolving_entity_exception=True,
-                    )
+                    try:
+                        _own_mapping = self._recommend_seeded_concept_set(
+                            _own,
+                            expected_domain=expected_domain,
+                            workflow=workflow,
+                            resolving_entity_exception=True,
+                            **({"sibling_labels": sibling_labels} if sibling_labels else {}),
+                        )
+                    except CriterionRefused as exc:
+                        # Sanity evidence cannot invalidate an already mapped base.
+                        _kept = _resolution.mapping or _resolution.base
+                        if not ((_kept or {}).get("expression") or {}).get("items"):
+                            raise
+                        from src.api.models.tte import CriterionMappingMetadata
+
+                        _metadata = _kept.get("mapping_metadata") or CriterionMappingMetadata(
+                            queryUsed=_exception.base
+                        )
+                        logging.warning("[TTE] sanity mapping refused for %r: %s", _own, exc)
+                        return {
+                            **_kept,
+                            "mapping_metadata": _metadata.model_copy(update={
+                                "sanity": "refused",
+                                "sanityReason": str(exc),
+                                "exceptionDropped": (
+                                    _resolution.fallback_reason
+                                    if _resolution.mapping is None else _metadata.exceptionDropped
+                                ),
+                            }),
+                        }
                     _base_items = (
                         ((_resolution.base or {}).get("expression") or {}).get("items") or []
                     )
@@ -8322,6 +8481,7 @@ class TTEService:
                             expected_domain=expected_domain,
                             workflow=workflow,
                             resolving_entity_exception=True,
+                            **({"sibling_labels": sibling_labels} if sibling_labels else {}),
                         )
                     )
                     _why = (
@@ -8382,7 +8542,8 @@ class TTEService:
         #     exposures. glimepiride's zero-overlap pair is a dropped-qualifier
         #     defect upstream of here, not a mapper defect; do not fix it by
         #     loosening this gate.
-        if expected_domain in ("Drug", None) and self._exact_ingredient_match_enabled():
+        if (not sibling_labels and expected_domain in ("Drug", None)
+                and self._exact_ingredient_match_enabled()):
             _exact = self._exact_ingredient_mapping(seed)
             if _exact is not None:
                 return _exact
@@ -8422,7 +8583,7 @@ class TTEService:
         # --- Cache lookup ---
         # On the query exactly as the mapper reads it: the key keeps case, so a query that
         # differs from a cached one only in case is mapped on its own (criterion_cache).
-        _cache_enabled = _criterion_cache_enabled()
+        _cache_enabled = not sibling_labels and _criterion_cache_enabled()
         if _cache_enabled:
             try:
                 cache = get_criterion_cache()
@@ -8471,6 +8632,9 @@ class TTEService:
                 query,
                 domain_hint=expected_domain,
                 pre_fetched_candidates=pre_fetched_candidates,
+                **({"context": "Sibling entities outside this row's intent: "
+                     + json.dumps(sibling_labels), "force_slow_path": True}
+                   if sibling_labels else {}),
             )
 
             if mapping_result.concept_ids:
@@ -8483,6 +8647,7 @@ class TTEService:
                         seed_concept_ids=mapping_result.seed_concept_ids or None,
                     )
                     expression = recommendation.expression.to_atlas_json()
+                    pristine_rollup = deepcopy(expression)
                     # One list, bound into the expression, so the in-place edit below
                     # reaches the returned and cached expression. A route the protocol line
                     # states is applied by `_build_seeded_eligibility_rule`, which holds the
@@ -8533,6 +8698,12 @@ class TTEService:
                             allCandidates=all_candidate_items,
                             rerankConfidence=mean_included_score(all_candidate_items),
                             rerankMethod="agent2",
+                            siblingRerank=sibling_labels,
+                            rollupExpression=pristine_rollup,
+                            preRollupExpression=(
+                                recommendation.pre_rollup_expression.to_atlas_json()
+                                if recommendation.pre_rollup_expression is not None else None
+                            ),
                             queryUsed=query,
                             selectedConceptIds=selected_ids,
                             mappingFailures=[
@@ -8609,6 +8780,12 @@ class TTEService:
                 code=REFUSAL_RERANKER_NO_MATCH,
                 detail=f"{agent2_no_match} candidates offered, none selected",
             )
+
+        if sibling_labels:
+            raise CriterionRefused(
+                "Sibling rerank produced no usable mapping; original mapping retained",
+                code=REFUSAL_RERANKER_NO_MATCH,
+            ) from agent2_exc
 
         # Fallback: ConceptSetRecommender (RAG-only) -- NOT cached
         #

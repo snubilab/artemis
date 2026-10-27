@@ -128,3 +128,18 @@ def test_should_map_nothing_and_record_a_gap_when_the_reranker_selects_nothing()
     # A judgment, not a failure: nothing is booked as a reranker failure.
     assert result.reranker_failure is None and result.mapping_failures() == []
     pool.getconn.assert_not_called()
+
+
+def test_should_skip_atc_tier_when_forced_slow_path_retries_sibling():
+    from src.agents.agent2 import workflow as wf
+
+    workflow = wf.Agent2Workflow()
+    with (
+        patch.object(wf, "_get_db_pool", side_effect=AssertionError("ATC must be bypassed")),
+        patch.object(workflow, "_slow_path", return_value=[]) as slow,
+    ):
+        result = workflow.process_with_details(
+            "study drug", context="sibling intent", domain_hint="Drug", force_slow_path=True,
+        )
+    slow.assert_called_once()
+    assert result.route_path == "slow"

@@ -126,3 +126,42 @@ def test_should_ignore_exception_when_its_cited_span_is_absent(recorded):
     row = recorded["rows"]["10"][1]
     row["annotation"]["excepted_entities"][0]["span"] = "absent source span"
     assert TTEService._stated_entity_exception(row, "cancer") is None
+
+
+@pytest.mark.parametrize("exception_refuses", [False, True])
+def test_should_keep_base_mapping_when_sanity_call_refuses(recorded, exception_refuses):
+    from src.api.models.tte import CriterionMappingMetadata
+    from src.utils.criterion_refusal import REFUSAL_RERANKER_NO_MATCH, CriterionRefused
+
+    row = recorded["rows"]["9"][1]
+    exception = TTEService._stated_entity_exception(row, "cancer")
+    base = {"expression": {"items": [{"concept": {"CONCEPT_ID": 4194405}}]},
+            "mapping_metadata": CriterionMappingMetadata(queryUsed="cancer")}
+    calls = []
+
+    class Service(TTEService):
+        def _recommend_seeded_concept_set(self, seed_text, **kwargs):
+            if kwargs.get("resolving_entity_exception"):
+                calls.append(seed_text)
+                if (seed_text == exception.own
+                        or (exception_refuses and seed_text in exception.excepted)):
+                    raise CriterionRefused("reranker selected none", code=REFUSAL_RERANKER_NO_MATCH)
+                if seed_text == exception.base:
+                    return base
+                return {"expression": {"items": [{"concept": {"CONCEPT_ID": 4031105}}]}}
+            return super()._recommend_seeded_concept_set(seed_text, **kwargs)
+
+    service = Service(store=MagicMock())
+    service._recommend_seeded_concept_set_rag_fallback = MagicMock(
+        side_effect=AssertionError("no RAG override")
+    )
+    result = service._recommend_seeded_concept_set(
+        exception.base, expected_domain=row["domain"], entity_exception=exception,
+    )
+    assert result["expression"]["items"][0]["concept"]["CONCEPT_ID"] == 4194405
+    assert result["mapping_metadata"].sanity == "refused"
+    assert "reranker selected none" in result["mapping_metadata"].sanityReason
+    if not exception_refuses:
+        assert result["expression"]["items"][1]["isExcluded"] is True
+    assert calls.count(exception.own) == 1
+    service._recommend_seeded_concept_set_rag_fallback.assert_not_called()

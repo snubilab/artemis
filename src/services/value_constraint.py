@@ -17,8 +17,10 @@ to a mmol/L concept in the same concept set.
 
 from __future__ import annotations
 
+import logging
 import unicodedata
 from collections.abc import Callable, Mapping
+from contextlib import closing
 from typing import Any, Literal, NamedTuple
 
 # Pure functions over LOINC properties and UCUM grammar; the module imports its database
@@ -361,6 +363,93 @@ def normalize_unit(unit_text: str | None) -> int | None:
     if folded.endswith("s"):
         return _UNIT_ALIASES_CI.get(folded[:-1])
     return None
+
+
+_UNIT_PROMPT_SYSTEM = (
+    "Return a JSON object with field ucum_code: the UCUM code for the stated unit, "
+    "or null if uncertain."
+)
+_UNIT_PROMPT_VERSION = "unit-resolution-v1"
+
+
+def _unit_cache_key(unit_text: str, analyte: str) -> str:
+    from src.services import criterion_annotation as annotation
+    from src.settings import settings
+
+    prompt = f"Unit: {unit_text}\nAnalyte: {analyte}"
+    return annotation.cache_key(
+        prompt, settings.LLM_MODEL, version=_UNIT_PROMPT_VERSION, system=_UNIT_PROMPT_SYSTEM
+    )
+
+
+def _ask_unit_code(unit_text: str, analyte: str) -> str | None:
+    from src.services import criterion_annotation as annotation
+    from src.settings import settings
+
+    prompt = f"Unit: {unit_text}\nAnalyte: {analyte}"
+    key = _unit_cache_key(unit_text, analyte)
+    cached = annotation._cache_get(key)
+    if cached is not None:
+        return cached.get("payload")
+    payload = annotation._complete(
+        annotation._build_llm(settings.LLM_MODEL), prompt, _UNIT_PROMPT_SYSTEM
+    )
+    code = payload.get("ucum_code") if isinstance(payload, dict) else None
+    if not isinstance(code, str) or not code.strip():
+        return None
+    return code.strip()
+
+
+def _lookup_ucum(code: str) -> tuple[int, str, str] | None:
+    import psycopg2
+
+    from src.settings import settings
+
+    with closing(psycopg2.connect(settings.DATABASE_URL)) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT concept_id, concept_code, concept_name FROM omop_vocab.concept "
+                "WHERE vocabulary_id = 'UCUM' AND standard_concept = 'S' "
+                "AND invalid_reason IS NULL AND concept_code = %s",
+                (code,),
+            )
+            rows = cursor.fetchall()
+    return rows[0] if len(rows) == 1 else None
+
+
+def resolve_unit_constraint(vc: Any, analyte: str) -> tuple[Any, str | None]:
+    """Resolve a row's unit and return the constraint and its resolution provenance."""
+    if vc is None:
+        return vc, None
+    bound, unit_text = resolve_reference_bound(vc)
+    if bound != "absolute" or not unit_text:
+        return vc, None
+    if absolute_unit_concept_id(vc) is not None:
+        return vc, "alias"
+    try:
+        code = _ask_unit_code(unit_text, analyte)
+        concept = _lookup_ucum(code) if code else None
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Unit resolution failed for %r: %s", unit_text, exc)
+        return vc, None
+    if concept is None:
+        return vc, None
+    from src.services import criterion_annotation as annotation
+    from src.settings import settings
+
+    annotation._cache_put(
+        _unit_cache_key(unit_text, analyte),
+        {"payload": code, "model": settings.LLM_MODEL, "promptVersion": _UNIT_PROMPT_VERSION},
+    )
+    concept_id, concept_code, concept_name = concept
+    _UNIT_CONCEPTS[concept_id] = (concept_code, concept_name)
+    if isinstance(vc, Mapping):
+        resolved = dict(vc)
+        resolved["unit_concept_id"] = concept_id
+        resolved["unitConceptId"] = concept_id
+    else:
+        resolved = vc.model_copy(update={"unit_concept_id": concept_id})
+    return resolved, "llm+vocab"
 
 
 def _unit_item(concept_id: int, concept_code: str, concept_name: str) -> dict[str, Any]:

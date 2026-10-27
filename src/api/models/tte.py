@@ -501,6 +501,11 @@ class CriterionMappingMetadata(TTEModel):
     # entity text instead (the base span's set shares no concept with the row's own). None
     # when no exception was dropped.
     exceptionDropped: str | None = None
+    sanity: Literal["refused"] | None = None
+    sanityReason: str | None = None
+    rollupExpression: dict[str, Any] | None = None
+    preRollupExpression: dict[str, Any] | None = None
+    siblingRerank: list[str] | None = None
 
 
 class ReRecommendRequest(TTEModel):

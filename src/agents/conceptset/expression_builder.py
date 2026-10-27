@@ -104,6 +104,7 @@ class RecommendationItem(BaseModel):
     conceptSetId: Optional[int] = None
     name: str
     expression: ConceptSetExpression
+    pre_rollup_expression: Optional[ConceptSetExpression] = Field(default=None, exclude=True)
     defaultLogic: Literal["INCLUDE", "EXCLUDE"] = "INCLUDE"
     reason: Optional[str] = None
 
@@ -133,6 +134,7 @@ class ExpressionBuilder:
         default_logic: Literal["INCLUDE", "EXCLUDE"] = "INCLUDE",
         criterion_name: Optional[str] = None,
         seed_concept_ids: Optional[List[int]] = None,
+        sibling_expressions: Optional[List[ConceptSetExpression]] = None,
     ) -> RecommendationItem:
         """
         ConceptCandidate 리스트를 Expression으로 변환.
@@ -172,14 +174,17 @@ class ExpressionBuilder:
         
         # Step 2: Roll-up 최적화 (선택적)
         if roll_up:
-            optimized = self._roll_up(validated, seed_concept_ids=seed_concept_ids)
+            unrolled_candidates = []
+            optimized = self._roll_up(
+                validated, seed_concept_ids=seed_concept_ids,
+                unrolled_candidates=unrolled_candidates,
+            )
         else:
             optimized = validated
+            unrolled_candidates = validated
         
-        # Step 3: Expression 생성
-        items = []
-        for candidate in optimized:
-            items.append(ConceptExpression(
+        def expression_for(concepts):
+            return ConceptSetExpression(items=[ConceptExpression(
                 concept_id=candidate.concept_id,
                 concept_name=candidate.concept_name,
                 domain_id=candidate.domain_id,
@@ -187,14 +192,28 @@ class ExpressionBuilder:
                 concept_class_id=candidate.concept_class_id,
                 includeDescendants=roll_up,
                 isExcluded=(default_logic == "EXCLUDE")
-            ))
+            ) for candidate in concepts])
+
+        pre_rollup = expression_for(unrolled_candidates)
+        expression = expression_for(optimized)
+        if sibling_expressions:
+            def fingerprint(value):
+                return frozenset((item.concept_id, item.isExcluded) for item in value.items)
+
+            rolled = fingerprint(expression)
+            unrolled = fingerprint(pre_rollup)
+            if rolled != unrolled and any(
+                rolled == fingerprint(sibling) for sibling in sibling_expressions
+            ):
+                expression = pre_rollup
         
         # 대표 이름: criterion_name이 있으면 사용, 없으면 첫 concept 이름
         primary_name = criterion_name or (optimized[0].concept_name if optimized else "Unknown")
         
         return RecommendationItem(
             name=primary_name,
-            expression=ConceptSetExpression(items=items),
+            expression=expression,
+            pre_rollup_expression=pre_rollup,
             defaultLogic=default_logic
         )
     
@@ -447,6 +466,7 @@ class ExpressionBuilder:
         self,
         candidates: List[ConceptCandidate],
         seed_concept_ids: Optional[List[int]] = None,
+        unrolled_candidates: Optional[List[ConceptCandidate]] = None,
     ) -> List[ConceptCandidate]:
         """
         Roll-up 최적화: 중복되는 하위 개념을 상위 개념으로 압축.
@@ -461,6 +481,8 @@ class ExpressionBuilder:
         candidates = self._drop_non_seed_ancestors(candidates, seed_concept_ids)
         candidates = self._drop_non_seed_coparents(candidates, seed_concept_ids)
         candidates = self._filter_overbroad(candidates)
+        if unrolled_candidates is not None:
+            unrolled_candidates.extend(candidates)
 
         if len(candidates) <= 1:
             return candidates
