@@ -376,12 +376,13 @@ def _effective_end_days(entry: dict[str, Any]) -> float | None:
 
 
 def _colliding_absence_entries(
-    expression: dict[str, Any], rule: dict[str, Any], entry_ids: set[int]
+    expression: dict[str, Any], rule: dict[str, Any], entry_ids: set[int],
+    lookup: VocabularyLookup | None = None,
 ) -> list[dict[str, Any]]:
     """Absence entries in one rule whose excluded set shares a concept with the entry.
 
-    Overlap is tested on the literal concept ids of both sets: a descendant-level test
-    would need the vocabulary, and this module is deliberately I/O-free.
+    Without a lookup, overlap is tested on literal concept ids. With a lookup, drug
+    absences use Circe closures, including combination products and subtracting exclusions.
 
     An ``isExcluded`` item is NOT part of that id list. Circe subtracts the excluded
     side from the included one, so an entry concept carried as an exclusion is absent
@@ -398,6 +399,12 @@ def _colliding_absence_entries(
             continue
         concept_set = _find_concept_set(expression, codeset_id)
         if concept_set is None:
+            continue
+        if lookup is not None:
+            if not set(leaf_entry.get("Criteria") or {}) & {"DrugEra", "DrugExposure"}:
+                continue
+            if resolve_concept_set(concept_set, lookup).concept_ids & entry_ids:
+                colliding.append(leaf_entry)
             continue
         excluded = {
             item["concept"]["CONCEPT_ID"]
@@ -455,7 +462,9 @@ def contradictory_absence_rules(expression: dict[str, Any]) -> list[str]:
     return flagged
 
 
-def end_entry_colliding_washouts_before_index(expression: dict[str, Any]) -> list[str]:
+def end_entry_colliding_washouts_before_index(
+    expression: dict[str, Any], lookup: VocabularyLookup | None = None,
+) -> list[str]:
     """Move an absence window that ends ON the index day back to the day before it.
 
     Mutates ``expression`` in place and returns the names of the rules changed.
@@ -484,14 +493,22 @@ def end_entry_colliding_washouts_before_index(expression: dict[str, Any]) -> lis
     Scope is the collision itself: an absence leaf reachable through `ALL` nodes only,
     whose excluded concept set shares a concept id with the entry set, and whose
     window provably ends on the index date. A study with no such rule does not move.
+    An optional vocabulary lookup resolves drug-set closures, so combination-product
+    overlap is handled by the same correction without changing future or unbounded windows.
     """
     _entry_domain, entry_ids = entry_concept_ids(expression)
+    if lookup is not None:
+        if _entry_domain not in {"DrugEra", "DrugExposure"}:
+            return []
+        _, codeset_id = _entry_domain_and_codeset(expression)
+        concept_set = _find_concept_set(expression, codeset_id)
+        entry_ids = resolve_concept_set(concept_set, lookup).concept_ids if concept_set else set()
     if not entry_ids:
         return []
     changed: list[str] = []
     for rule in expression.get("InclusionRules") or []:
         moved = False
-        for leaf_entry in _colliding_absence_entries(expression, rule, entry_ids):
+        for leaf_entry in _colliding_absence_entries(expression, rule, entry_ids, lookup):
             if _effective_end_days(leaf_entry) != 0:
                 continue
             leaf_entry["StartWindow"]["End"] = dict(INDEX_EXCLUSIVE_END)
