@@ -1,0 +1,39 @@
+{
+  "record_requirement": "forbidden",
+  "conditional_span": null,
+  "excepted_entities": [
+    {
+      "text": "Percutaneous coronary intervention",
+      "span": "PCI"
+    },
+    {
+      "text": "Coronary artery bypass grafting",
+      "span": "CABG"
+    }
+  ],
+  "base_span": "Pre-planned coronary artery re-vascularisation (PCI, CABG) or any previous PCI and/or CABG",
+  "relation": "any",
+  "relation_span": "or",
+  "cardinality": null,
+  "timing": "prior",
+  "window_span": "≤ 2 months prior informed consent",
+  "route": [
+    "any"
+  ],
+  "route_span": null,
+  "specimen": "any",
+  "specimen_span": null,
+  "no_entity": "none",
+  "no_entity_span": null,
+  "threshold_span": "≤ 2 months",
+  "quantity_kind": "duration",
+  "reference_bound": "none",
+  "occurrence_threshold": {
+    "target": "event_age",
+    "op": "lte",
+    "value": 2,
+    "unit": "month",
+    "anchor": "informed_consent",
+    "span": "≤ 2 months prior informed consent"
+  }
+}

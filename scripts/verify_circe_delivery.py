@@ -1409,6 +1409,30 @@ def threshold_without_value_filter_findings(
     for (role, criterion_id), (row, use, threshold) in sorted(stated.items()):
         codeset = refs.get(f"{role}:{criterion_id}")
         emitted = conditions.get(codeset) if codeset is not None else None
+        if use is ThresholdUse.OCCURRENCE and codeset is not None:
+            from src.services.occurrence_threshold import (
+                matches_occurrence_filter,
+                occurrence_filter,
+            )
+
+            from src.utils.circe_lint import _walk_criteria_entries
+
+            expected = occurrence_filter(
+                row, exclusion=role == "exclusion" or row.get("logicType") == "ABSENCE"
+            )
+
+            entries = [
+                entry
+                for rule in expression.get("InclusionRules") or []
+                for entry in _walk_criteria_entries(rule.get("expression") or {})
+                if any(isinstance(attrs, dict) and attrs.get("CodesetId") == codeset
+                       for attrs in (entry.get("Criteria") or {}).values())
+            ]
+            if not any(matches_occurrence_filter(entry, expected) for entry in entries):
+                failures.append(
+                    f"{role} #{criterion_id}: stated occurrence threshold missing or incorrect"
+                )
+            continue
         if not emitted or any(carries for _where, _type, carries in emitted):
             continue
         where, criteria_type, _carries = emitted[0]
