@@ -154,6 +154,26 @@ def test_should_accept_only_grounded_compatible_bound_when_group_constraint_is_s
 
 
 @pytest.mark.parametrize(
+    "op,expected",
+    [(">", "gt"), ("≥", "gte"), (">=", "gte"), ("<", "lt"), ("≤", "lte"), ("<=", "lte"), ("=", "eq"),
+     ("!=", None), ("greater", None)],
+)
+def test_should_read_comparison_symbol_when_recheck_answers_op_as_symbol(monkeypatch, op, expected):
+    # gatefix3 EMPA #52: the model answered op ">" for a correct, grounded 100 mmHg bound.
+    replay(monkeypatch, [{**BOUND, "op": op}])
+    monkeypatch.setattr(
+        constraints, "check_analyte_unit", lambda props, unit: constraints.AnalyteUnitCheck(True, "")
+    )
+    monkeypatch.setattr(
+        constraints,
+        "resolve_unit_constraint",
+        lambda vc, seed: (vc, "alias" if constraints.absolute_unit_concept_id(vc) else None),
+    )
+    vc, _ = constraints.recheck_member_bound(member(), {1: "Pressure"})
+    assert (vc and vc["op"]) == expected or (vc is None and expected is None)
+
+
+@pytest.mark.parametrize(
     "answer,properties,accepted",
     [
         (BOUND, {1: "Pressure"}, True),

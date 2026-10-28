@@ -1099,6 +1099,9 @@ op is gt, gte, lt, lte, eq or null; value is a number or null;
 unit is the stated unit text or null; span is an exact fragment of the protocol line
 supporting this member's bound or null.
 Return null fields when the line states no bound for this member."""
+# The model's own answer notation, not protocol text: it answers op as a symbol about as
+# often as by name (gatefix3 EMPA #52 answered ">").
+_OP_SYMBOLS = {">": "gt", ">=": "gte", "≥": "gte", "<": "lt", "<=": "lte", "≤": "lte", "=": "eq"}
 
 
 def recheck_member_bound(
@@ -1121,11 +1124,12 @@ def recheck_member_bound(
     if not isinstance(payload, Mapping) or record["outcome"] == "error":
         return None, None
     span, value = payload.get("span"), payload.get("value")
+    op = _OP_SYMBOLS.get(payload.get("op"), payload.get("op"))
     if (
         not isinstance(span, str) or not span or span not in line
         or isinstance(value, bool) or not isinstance(value, (int, float))
         or (isinstance(value, float) and not math.isfinite(value))
-        or payload.get("op") not in ("gt", "gte", "lt", "lte", "eq")
+        or op not in ("gt", "gte", "lt", "lte", "eq")
         or not isinstance(payload.get("unit"), str) or not payload["unit"]
     ):
         return None, None
@@ -1137,7 +1141,7 @@ def recheck_member_bound(
     if not any(float(match.group().replace(",", "")) == value for match in numbers):
         return None, None
     constraint, provenance = resolve_unit_constraint(
-        {"op": payload["op"], "value": value, "unitText": payload["unit"],
+        {"op": op, "value": value, "unitText": payload["unit"],
          "referenceBound": "absolute"},
         row.get("description") or row.get("sourceText") or "",
     )
