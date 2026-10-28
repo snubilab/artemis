@@ -1088,3 +1088,61 @@ if __name__ == "__main__":
     if "--verify-db" in sys.argv:
         issues = verify_unit_table_against_database()
         print("\n".join(issues) if issues else "unit table matches the vocabulary")
+
+
+MEMBER_BOUND_PROMPT_VERSION = "stranded-member-bound-recheck-v1"
+MEMBER_BOUND_SYSTEM = "Identify the bound stated for the named member. Return only JSON."
+MEMBER_BOUND_PROMPT = """Protocol line: {protocol_line}
+Member label: {description}
+Return the numeric bound the line states for this member only. Fields:
+op is gt, gte, lt, lte, eq or null; value is a number or null;
+unit is the stated unit text or null; span is an exact fragment of the protocol line
+supporting this member's bound or null.
+Return null fields when the line states no bound for this member."""
+
+
+def recheck_member_bound(
+    row: dict[str, Any], member_properties: MemberProperties,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Recover only a grounded member bound whose unit measures its mapped analyte."""
+    import math
+    import re
+
+    from src.services import criterion_annotation as annotation
+
+    line = row.get("protocolLine")
+    if not isinstance(line, str) or not line:
+        return None, None
+    payload, record = annotation.ask_recheck(
+        row, template=MEMBER_BOUND_PROMPT, system=MEMBER_BOUND_SYSTEM,
+        version=MEMBER_BOUND_PROMPT_VERSION,
+    )
+    row["_memberBoundCheck"] = record
+    if not isinstance(payload, Mapping) or record["outcome"] == "error":
+        return None, None
+    span, value = payload.get("span"), payload.get("value")
+    if (
+        not isinstance(span, str) or not span or span not in line
+        or isinstance(value, bool) or not isinstance(value, (int, float))
+        or (isinstance(value, float) and not math.isfinite(value))
+        or payload.get("op") not in ("gt", "gte", "lt", "lte", "eq")
+        or not isinstance(payload.get("unit"), str) or not payload["unit"]
+    ):
+        return None, None
+    # Numeric token parsing only; no protocol words determine the bound.
+    numbers = re.finditer(
+        r"(?<![\w.])[+-]?(?:\d[\d,]*(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?(?![\w.])",
+        span,
+    )
+    if not any(float(match.group().replace(",", "")) == value for match in numbers):
+        return None, None
+    constraint, provenance = resolve_unit_constraint(
+        {"op": payload["op"], "value": value, "unitText": payload["unit"],
+         "referenceBound": "absolute"},
+        row.get("description") or row.get("sourceText") or "",
+    )
+    unit_id = absolute_unit_concept_id(constraint)
+    if unit_id is None or not check_analyte_unit(member_properties, unit_id).compatible:
+        return None, None
+    record["boundSource"] = "member-recheck"
+    return constraint, provenance

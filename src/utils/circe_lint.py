@@ -3213,11 +3213,19 @@ def trial_only_occurrence_criteria(
     one reached a rule anyway. Structural: the store row's own record and the file's refs map
     (else the store row's ``conceptSetId`` against the codesets the rules read); no name is read.
 
+    Also rejects emitted rows whose late recordability recheck recorded two no answers.
+
     :param expression: a CIRCE cohort expression.
     :param study: the store study the expression was built from.
-    :returns: one locator per emitted trial-only criterion, empty when none.
+
+    :returns: one locator per emitted trial-only or not-recordable criterion, empty when none.
     """
-    from src.services.criterion_annotation import EXCLUSION, INCLUSION, stated_trial_only
+    from src.services.criterion_annotation import (
+        EXCLUSION,
+        INCLUSION,
+        stated_not_recordable,
+        stated_trial_only,
+    )
 
     eligibility = study.get("eligibility") if isinstance(study, Mapping) else None
     if not isinstance(eligibility, Mapping):
@@ -3232,14 +3240,23 @@ def trial_only_occurrence_criteria(
     findings: list[str] = []
     for role, key in ((INCLUSION, "inclusionCriteria"), (EXCLUSION, "exclusionCriteria")):
         for row in eligibility.get(key) or []:
-            if not isinstance(row, Mapping) or stated_trial_only(row) is None:
+            if not isinstance(row, Mapping):
+                continue
+            trial_only = stated_trial_only(row) is not None
+            not_recordable = stated_not_recordable(row) is not None
+            if not trial_only and not not_recordable:
                 continue
             criterion_id = str(row.get("id", ""))
             if isinstance(refs, Mapping):
                 emitted = f"{role}:{criterion_id}" in refs
             else:
                 emitted = row.get("conceptSetId") is not None and row["conceptSetId"] in referenced
-            if emitted:
+            if emitted and not_recordable:
+                findings.append(
+                    f"{role} #{criterion_id} {(row.get('description') or '')!r} was called "
+                    "not-recordable by both recheck wordings and was emitted"
+                )
+            if emitted and trial_only:
                 findings.append(
                     f"{role} #{criterion_id} {(row.get('description') or '')!r} was called "
                     "trial-only by both wordings (calls 7/8) and was emitted -- it requires a "

@@ -503,6 +503,30 @@ def _own_entity_calls() -> list[str]:
     return [c for c in recorder.calls if f'"{criterion_annotation.FIELD_OWN_ENTITY}"' in c]
 
 
+def _render_not_recordable(agreement: bool = False) -> str:
+    from src.services import criterion_annotation as annotation
+
+    recorder = _Recorder('{"recordable": "no"}')
+    row = {"protocolLine": STUB, "protocolSpan": STUB,
+           "annotation": {"record_requirement": "forbidden"}}
+    with patch.object(annotation, "_build_llm", recorder.factory), \
+            patch.dict("os.environ", {"ARTEMIS_ANNOTATION_CACHE": "0"}):
+        annotation.check_not_recordable(row)
+    assert len(recorder.calls) == 2
+    return recorder.calls[1 if agreement else 0]
+
+
+def _render_member_bound_recheck() -> str:
+    from src.services import criterion_annotation as annotation
+    from src.services.value_constraint import recheck_member_bound
+
+    recorder = _Recorder()
+    with patch.object(annotation, "_build_llm", recorder.factory), \
+            patch.dict("os.environ", {"ARTEMIS_ANNOTATION_CACHE": "0"}):
+        recheck_member_bound({"protocolLine": STUB, "description": STUB}, {})
+    return _joined(recorder.calls)
+
+
 def _render_criterion_annotation_own_entity() -> str:
     """``OWN_ENTITY_PROMPT`` (call 11), linted on its own."""
     from src.services import criterion_annotation
@@ -808,6 +832,17 @@ PROMPTS["criterion_annotation.trial_only"] = PromptSpec(
 PROMPTS["criterion_annotation.trial_only.agreement"] = PromptSpec(
     _render_criterion_annotation_trial_only_agreement, tokens=_TRIAL_ONLY_TOKENS,
 )
+PROMPTS["criterion_annotation.not_recordable"] = PromptSpec(
+    _render_not_recordable, tokens=frozenset({"recordable", "yes", "no"}),
+)
+PROMPTS["criterion_annotation.not_recordable.agreement"] = PromptSpec(
+    lambda: _render_not_recordable(True), tokens=frozenset({"recordable", "yes", "no"}),
+)
+PROMPTS["value_constraint.member_bound_recheck"] = PromptSpec(
+    _render_member_bound_recheck,
+    tokens=frozenset({"op", "value", "unit", "span", "gt", "gte", "lt", "lte", "eq", "null"}),
+)
+
 # Calls 11 and 12 (own_entity, p11-fixes c19f9b9): one field and its two values.
 _OWN_ENTITY_TOKENS = frozenset({"own_entity", "named", "not_named"})
 PROMPTS["criterion_annotation.own_entity"] = PromptSpec(

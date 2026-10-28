@@ -160,6 +160,7 @@ from src.services.value_constraint import (
     STRANDED_GROUP_CONSTRAINT_REASON,
     build_measurement_value_filter,
     refuse_unstated_unit_bound,
+    recheck_member_bound,
     resolve_group_member_constraint,
     resolve_unit_constraint,
     restore_dropped_unit_exponent,
@@ -7170,6 +7171,7 @@ class TTEService:
                     workflow=workflow,
                     entity_exception=seed_exception,
                     source_line=criterion.get(CRITERION_PROTOCOL_LINE_KEY),
+                    criterion=criterion,
                 )
             # Named rather than inlined into `_seeded_criteria_key` because the window
             # default below is keyed by the same resolved domain: the CIRCE table and the
@@ -7243,20 +7245,25 @@ class TTEService:
         # the group emits no rule at all -- that is the correct outcome, not a hole to
         # paper over: the protocol's exclusion has genuinely left the cohort, and a
         # delivery shipping without it should not pass the gate.
-        if resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON:
-            raise CriterionRefused(
-                f"group threshold stranded: the label of {label!r}'s group carries an "
-                f"absolute bound and it cannot be handed down to this member -- "
-                f"{resolution.refusal_explanation}. This member carries no threshold of "
-                f"its own, so emitting it would build an unfiltered occurrence over its "
-                f"whole concept set",
-                code=REFUSAL_STRANDED_GROUP_THRESHOLD,
-                detail=resolution.refusal_reason,
-            )
         effective_constraint = resolution.constraint
         unit_resolution = (
             row_unit_resolution if row_constraint is not None else parent_unit_resolution
         )
+        if resolution.refusal_reason == STRANDED_GROUP_CONSTRAINT_REASON:
+            effective_constraint, unit_resolution = recheck_member_bound(
+                criterion,
+                self._concept_set_lab_properties(mapped_criterion.get("expression") or {}),
+            )
+            if effective_constraint is None:
+                raise CriterionRefused(
+                    f"group threshold stranded: the label of {label!r}'s group carries an "
+                    f"absolute bound and it cannot be handed down to this member -- "
+                    f"{resolution.refusal_explanation}. This member carries no threshold of "
+                    f"its own, so emitting it would build an unfiltered occurrence over its "
+                    f"whole concept set",
+                    code=REFUSAL_STRANDED_GROUP_THRESHOLD,
+                    detail=resolution.refusal_reason,
+                )
         if unit_resolution is not None and effective_constraint is not None:
             criterion["unit_resolution"] = unit_resolution
         # A unit whose trailing exponent the PDF text lost ("/ mm", "kg/m") resolves when
@@ -8332,6 +8339,7 @@ class TTEService:
         entity_exception: Any = None,
         source_line: str | None = None,
         sibling_labels: list[str] | None = None,
+        criterion: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         seed = " ".join(seed_text.split()).strip()
         if not seed:
@@ -8773,6 +8781,16 @@ class TTEService:
         # wrong -- CARMELINA inclusion #9 'Insulin dose change' took back two LOINC dose
         # tests the reranker had rejected. Every other empty cause still falls through.
         if agent2_no_match is not None:
+            if criterion is not None:
+                from src.services.criterion_annotation import check_not_recordable
+
+                fragment = check_not_recordable(criterion)
+                if fragment is not None:
+                    raise CriterionRefused(
+                        "not-recordable recheck: both wordings found no routine record "
+                        f"for {fragment!r}",
+                        code=REFUSAL_UNMAPPABLE_PLACEHOLDER, detail=fragment,
+                    )
             raise CriterionRefused(
                 f"No concept selected for {seed!r}: the reranker selected none of "
                 f"the {agent2_no_match} candidates Agent 2 offered (stage reranker_no_match, "

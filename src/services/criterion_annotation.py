@@ -3424,3 +3424,97 @@ def threshold_skips(rows: Iterable[Any]) -> dict[str, ThresholdSkip]:
             if row is not label and row.get(_GROUP) in groups:
                 decided.setdefault(str(row.get(_ID, "")), decision)
     return decided
+
+
+NOT_RECORDABLE_PROMPT_VERSION = "not-recordable-recheck-v1"
+NOT_RECORDABLE_AGREEMENT_PROMPT_VERSION = "not-recordable-recheck-agreement-v1"
+NOT_RECORDABLE_SYSTEM = (
+    "Decide whether the named entity can be recorded in routine patient health records. "
+    "Return only JSON."
+)
+NOT_RECORDABLE_PROMPT = """Protocol line: {protocol_line}
+Verified fragment: {fragment}
+Could a patient's routine health records (diagnoses, procedures, drugs, measurements,
+observations) hold a record of the thing this fragment names?
+Return field recordable with string value yes or no."""
+NOT_RECORDABLE_AGREEMENT_PROMPT = """Protocol line: {protocol_line}
+Verified fragment: {fragment}
+Can the entity named by this fragment have a record in ordinary clinical care data about
+the patient, across diagnoses, procedures, medication, measurements or observations?
+Return field recordable with string value yes or no."""
+
+
+def ask_recheck(
+    row: Mapping[str, Any], *, template: str, system: str, version: str, fragment: str = "",
+) -> tuple[Any, dict[str, Any]]:
+    """Cached, temperature-zero late check; model setup failures also stay refusals."""
+    from src.settings import settings
+
+    model = settings.LLM_MODEL
+    prompt = render_prompt(row, [], "", template, fragment)
+    key = cache_key(prompt, model, version=version, system=system)
+    cached = _cache_get(key)
+    if cached is not None:
+        outcome, payload, error = "cached", cached.get("payload"), None
+    else:
+        try:
+            outcome, key, payload, error = _ask(
+                _build_llm(model), row, [], "", model=model, template=template,
+                system=system, version=version, fragment=fragment,
+            )
+        except Exception as exc:
+            outcome, payload, error = "error", None, f"{type(exc).__name__}: {exc}"
+    record = {"promptVersion": version, "cacheKey": key, "outcome": outcome, "answer": payload}
+    if error is not None:
+        record["error"] = error
+        logger.warning("Late refusal recheck failed for row %s: %s", row.get(_ID), error)
+    return payload, record
+
+
+def check_not_recordable(row: dict[str, Any]) -> str | None:
+    """Only an agreed pair of no answers can recode a reranker refusal."""
+    if _annotation(row).get(FIELD_RECORD_REQUIREMENT) not in (
+        RecordRequirement.FORBIDDEN.value, RecordRequirement.REQUIRED.value,
+    ):
+        return None
+    line = row.get(_LINE)
+    span = row.get("protocolSpan")
+    fragment = span if span and span_in_line(span, line) else str(line or "")
+    record = {"fragment": fragment, "calls": []}
+    row["_notRecordableCheck"] = record
+    if not fragment:
+        return None
+    for template, version in (
+        (NOT_RECORDABLE_PROMPT, NOT_RECORDABLE_PROMPT_VERSION),
+        (NOT_RECORDABLE_AGREEMENT_PROMPT, NOT_RECORDABLE_AGREEMENT_PROMPT_VERSION),
+    ):
+        payload, call = ask_recheck(
+            row, template=template, system=NOT_RECORDABLE_SYSTEM, version=version,
+            fragment=fragment,
+        )
+        answer = payload.get("recordable") if isinstance(payload, Mapping) else None
+        call["answer"] = answer
+        record["calls"].append(call)
+        if answer != "no" or call["outcome"] == "error":
+            return None
+    return stated_not_recordable(row)
+
+
+def stated_not_recordable(row: Mapping[str, Any]) -> str | None:
+    """Read both recorded decisions and revalidate their source span."""
+    record = row.get("_notRecordableCheck")
+    if not isinstance(record, Mapping):
+        return None
+    calls = record.get("calls")
+    if not isinstance(calls, list) or len(calls) != 2:
+        return None
+    for call, version in zip(calls, (
+        NOT_RECORDABLE_PROMPT_VERSION, NOT_RECORDABLE_AGREEMENT_PROMPT_VERSION,
+    )):
+        if not isinstance(call, Mapping) or (
+            call.get("promptVersion") != version or not call.get("cacheKey")
+            or call.get("outcome") not in ("called", "cached") or call.get("answer") != "no"
+        ):
+            return None
+    fragment = record.get("fragment")
+    return fragment if span_in_line(fragment, row.get(_LINE)) else None
