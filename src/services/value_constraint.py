@@ -20,7 +20,10 @@ from __future__ import annotations
 import logging
 import unicodedata
 from collections.abc import Callable, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
+from difflib import SequenceMatcher
+from functools import lru_cache
 from typing import Any, Literal, NamedTuple
 
 # Pure functions over LOINC properties and UCUM grammar; the module imports its database
@@ -366,10 +369,10 @@ def normalize_unit(unit_text: str | None) -> int | None:
 
 
 _UNIT_PROMPT_SYSTEM = (
-    "Return a JSON object with field ucum_code: the UCUM code for the stated unit, "
-    "or null if uncertain."
+    "Decide whether two unit expressions denote the same unit of measure, including every "
+    "scaling factor and normalisation. Return a JSON object with field same: true or false."
 )
-_UNIT_PROMPT_VERSION = "unit-resolution-v1"
+_UNIT_PROMPT_VERSION = "unit-resolution-candidate-judge-v2"
 
 
 def _unit_cache_key(unit_text: str, analyte: str) -> str:
@@ -382,39 +385,23 @@ def _unit_cache_key(unit_text: str, analyte: str) -> str:
     )
 
 
-def _ask_unit_code(unit_text: str, analyte: str) -> str | None:
-    from src.services import criterion_annotation as annotation
-    from src.settings import settings
-
-    prompt = f"Unit: {unit_text}\nAnalyte: {analyte}"
-    key = _unit_cache_key(unit_text, analyte)
-    cached = annotation._cache_get(key)
-    if cached is not None:
-        return cached.get("payload")
-    payload = annotation._complete(
-        annotation._build_llm(settings.LLM_MODEL), prompt, _UNIT_PROMPT_SYSTEM
-    )
-    code = payload.get("ucum_code") if isinstance(payload, dict) else None
-    if not isinstance(code, str) or not code.strip():
-        return None
-    return code.strip()
-
-
-def _lookup_ucum(code: str) -> tuple[int, str, str] | None:
+@lru_cache(maxsize=1)
+def _load_ucum_rows() -> list[tuple[int, str, str]]:
     import psycopg2
+    from psycopg2 import sql
 
     from src.settings import settings
 
     with closing(psycopg2.connect(settings.DATABASE_URL)) as connection:
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT concept_id, concept_code, concept_name FROM omop_vocab.concept "
-                "WHERE vocabulary_id = 'UCUM' AND standard_concept = 'S' "
-                "AND invalid_reason IS NULL AND concept_code = %s",
-                (code,),
+                sql.SQL(
+                    "SELECT concept_id, concept_code, concept_name FROM {}.concept "
+                    "WHERE vocabulary_id = 'UCUM' AND standard_concept = 'S' "
+                    "AND invalid_reason IS NULL"
+                ).format(sql.Identifier(settings.CDM_SCHEMA))
             )
-            rows = cursor.fetchall()
-    return rows[0] if len(rows) == 1 else None
+            return cursor.fetchall()
 
 
 def resolve_unit_constraint(vc: Any, analyte: str) -> tuple[Any, str | None]:
@@ -426,30 +413,67 @@ def resolve_unit_constraint(vc: Any, analyte: str) -> tuple[Any, str | None]:
         return vc, None
     if absolute_unit_concept_id(vc) is not None:
         return vc, "alias"
-    try:
-        code = _ask_unit_code(unit_text, analyte)
-        concept = _lookup_ucum(code) if code else None
-    except Exception as exc:
-        logging.getLogger(__name__).warning("Unit resolution failed for %r: %s", unit_text, exc)
-        return vc, None
-    if concept is None:
-        return vc, None
     from src.services import criterion_annotation as annotation
     from src.settings import settings
 
-    annotation._cache_put(
-        _unit_cache_key(unit_text, analyte),
-        {"payload": code, "model": settings.LLM_MODEL, "promptVersion": _UNIT_PROMPT_VERSION},
-    )
-    concept_id, concept_code, concept_name = concept
-    _UNIT_CONCEPTS[concept_id] = (concept_code, concept_name)
-    if isinstance(vc, Mapping):
-        resolved = dict(vc)
-        resolved["unit_concept_id"] = concept_id
-        resolved["unitConceptId"] = concept_id
-    else:
-        resolved = vc.model_copy(update={"unit_concept_id": concept_id})
-    return resolved, "llm+vocab"
+    logger = logging.getLogger(__name__)
+    try:
+        key = _unit_cache_key(unit_text, analyte)
+        cached = annotation._cache_get(key)
+        if cached is not None and cached["payload"] is None:
+            return vc, None
+        rows = _load_ucum_rows()
+        if cached is not None:
+            concept = next(row for row in rows if row[0] == cached["payload"])
+        else:
+            candidates = sorted(
+                rows,
+                key=lambda row: max(
+                    SequenceMatcher(None, unit_text.lower(), row[1].lower()).ratio(),
+                    SequenceMatcher(None, unit_text.lower(), row[2].lower()).ratio(),
+                ),
+                reverse=True,
+            )[:20]
+            llm = annotation._build_llm(settings.LLM_MODEL)
+
+            def judge(row: tuple[int, str, str]) -> bool:
+                payload = annotation._complete(
+                    llm,
+                    f"Stated unit: {unit_text}\nCandidate unit: {row[1]} ({row[2]})",
+                    _UNIT_PROMPT_SYSTEM,
+                )
+                return isinstance(payload, dict) and payload.get("same") is True
+
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                passing = [
+                    row for row, same in zip(candidates, pool.map(judge, candidates)) if same
+                ]
+            concept = passing[0] if len(passing) == 1 else None
+            if len(passing) > 1:
+                logger.warning(
+                    "Unit resolution ambiguous for %r: passing candidate ids %s",
+                    unit_text, [row[0] for row in passing],
+                )
+            annotation._cache_put(
+                key,
+                {"payload": concept[0] if concept else None, "model": settings.LLM_MODEL,
+                 "promptVersion": _UNIT_PROMPT_VERSION},
+            )
+        if concept is None:
+            return vc, None
+        concept_id, concept_code, concept_name = concept
+        _UNIT_CONCEPTS[concept_id] = (concept_code, concept_name)
+        if isinstance(vc, Mapping):
+            resolved = dict(vc)
+            resolved["unit_concept_id"] = concept_id
+            resolved["unitConceptId"] = concept_id
+        else:
+            resolved = vc.model_copy(update={"unit_concept_id": concept_id})
+        logger.info("Unit resolution accepted for %r: concept id %s", unit_text, concept_id)
+        return resolved, "llm+vocab"
+    except Exception as exc:
+        logger.warning("Unit resolution failed for %r: %s", unit_text, exc)
+        return vc, None
 
 
 def _unit_item(concept_id: int, concept_code: str, concept_name: str) -> dict[str, Any]:

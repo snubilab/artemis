@@ -426,42 +426,107 @@ def test_regenerated_cohorts_match_gold_range_high_ratio_counts() -> None:
     raise NotImplementedError
 
 
-def test_should_resolve_vocab_unit_when_alias_missing(monkeypatch):
+@pytest.fixture
+def unit_judge(monkeypatch):
+    from src.services import criterion_annotation as annotation
+
     api = _api()
+    rows = [
+        (9017, 'mg/g{creat}', 'milligram per gram creatinine'),
+        (8774, 'ug/min', 'microgram per minute'),
+        (8909, 'mg/(24.h)', 'milligram per 24 hours'),
+    ]
     monkeypatch.setenv('ARTEMIS_ANNOTATION_CACHE', '0')
-    monkeypatch.setattr(api, '_ask_unit_code', lambda unit, analyte: 'mg/g{creat}')
-    monkeypatch.setattr(
-        api, '_lookup_ucum', lambda code: (9017, code, 'milligram per gram creatinine')
-    )
-    constraint, provenance = api.resolve_unit_constraint({'unitText': 'mg/g creatinine'}, 'UACR')
+    monkeypatch.setattr(api, '_load_ucum_rows', lambda: rows)
+    monkeypatch.setattr(annotation, '_build_llm', lambda model: object())
+    judge = MagicMock(return_value={'same': False})
+    monkeypatch.setattr(annotation, '_complete', judge)
+    return rows, judge
+
+
+def test_should_accept_unit_when_exactly_one_candidate_judged_same(unit_judge, caplog):
+    rows, judge = unit_judge
+    judge.side_effect = lambda llm, prompt, system: {'same': 'mg/g{creat}' in prompt}
+    with caplog.at_level('INFO'):
+        constraint, provenance = _api().resolve_unit_constraint(
+            {'unitText': 'mg/g creatinine'}, 'UACR'
+        )
     assert provenance == 'llm+vocab'
-    assert api.absolute_unit_concept_id(constraint) == 9017
-    assert api.unit_concept(9017)['CONCEPT_CODE'] == 'mg/g{creat}'
+    assert _api().absolute_unit_concept_id(constraint) == 9017
+    assert _api().unit_concept(9017)['CONCEPT_CODE'] == 'mg/g{creat}'
+    assert judge.call_count == len(rows)
+    assert '9017' in caplog.text
+    assert all(call.args[2] == (
+        'Decide whether two unit expressions denote the same unit of measure, including every '
+        'scaling factor and normalisation. Return a JSON object with field same: true or false.'
+    ) for call in judge.call_args_list)
 
 
-def test_should_refuse_unit_when_vocab_code_absent(monkeypatch):
+def test_should_refuse_unit_when_two_candidates_judged_same(unit_judge, caplog):
+    _, judge = unit_judge
+    judge.side_effect = lambda llm, prompt, system: {
+        'same': 'mg/g{creat}' in prompt or 'ug/min' in prompt
+    }
+    vc = {'unitText': 'unknown unit'}
+    assert _api().resolve_unit_constraint(vc, 'analyte') == (vc, None)
+    assert 'unknown unit' in caplog.text
+    assert '9017' in caplog.text and '8774' in caplog.text
+
+
+@pytest.mark.parametrize('answer', [False, 'true', 1, None])
+def test_should_refuse_unit_when_no_candidate_judged_same(unit_judge, answer):
+    _, judge = unit_judge
+    judge.return_value = {'same': answer}
+    vc = {'unitText': 'unknown unit'}
+    assert _api().resolve_unit_constraint(vc, 'analyte') == (vc, None)
+
+
+def test_should_query_cdm_schema_vocabulary_when_loading_ucum_rows(monkeypatch):
+    import psycopg2
+    from psycopg2 import sql
+
+    from src.settings import settings
+
     api = _api()
-    monkeypatch.setattr(api, '_ask_unit_code', lambda unit, analyte: 'unknown')
-    monkeypatch.setattr(api, '_lookup_ucum', lambda code: None)
-    assert api.resolve_unit_constraint({'unitText': 'unknown unit'}, 'analyte') == (
-        {'unitText': 'unknown unit'}, None
-    )
+    connection = MagicMock()
+    cursor = connection.cursor.return_value.__enter__.return_value
+    cursor.fetchall.return_value = [(9017, 'mg/g{creat}', 'unit')]
+    connect = MagicMock(return_value=connection)
+    monkeypatch.setattr(psycopg2, 'connect', connect)
+    monkeypatch.setattr(settings, 'CDM_SCHEMA', 'test_cdm')
+    api._load_ucum_rows.cache_clear()
+    try:
+        assert api._load_ucum_rows() == cursor.fetchall.return_value
+        api._load_ucum_rows()
+        connect.assert_called_once_with(settings.DATABASE_URL)
+        query = cursor.execute.call_args.args[0]
+        assert sql.Identifier('test_cdm') in list(query)
+        assert 'omop_vocab' not in repr(query)
+        assert "vocabulary_id = 'UCUM'" in repr(query)
+        assert "standard_concept = 'S'" in repr(query)
+        assert 'invalid_reason IS NULL' in repr(query)
+    finally:
+        api._load_ucum_rows.cache_clear()
 
 
 def test_should_keep_alias_when_unit_is_known(monkeypatch):
-    api = _api()
-    monkeypatch.setattr(api, '_ask_unit_code', lambda *_: pytest.fail('alias must not call LLM'))
-    constraint, provenance = api.resolve_unit_constraint({'unitText': 'mg/dL'}, 'analyte')
+    from src.services import criterion_annotation as annotation
+
+    monkeypatch.setattr(annotation, '_build_llm', lambda *_: pytest.fail('alias must not call LLM'))
+    constraint, provenance = _api().resolve_unit_constraint({'unitText': 'mg/dL'}, 'analyte')
     assert provenance == 'alias'
-    assert api.absolute_unit_concept_id(constraint) == 8840
+    assert _api().absolute_unit_concept_id(constraint) == 8840
 
 
-def test_should_refuse_and_log_when_llm_unavailable(monkeypatch, caplog):
-    api = _api()
-    def fail(*_):
-        raise RuntimeError('unavailable')
-    monkeypatch.setattr(api, '_ask_unit_code', fail)
-    assert api.resolve_unit_constraint({'unitText': 'unknown unit'}, 'analyte')[1] is None
+@pytest.mark.parametrize('failure', ['llm', 'db'])
+def test_should_refuse_and_log_when_service_unavailable(unit_judge, monkeypatch, caplog, failure):
+    _, judge = unit_judge
+    error = RuntimeError('unavailable')
+    if failure == 'llm':
+        judge.side_effect = error
+    else:
+        monkeypatch.setattr(_api(), '_load_ucum_rows', MagicMock(side_effect=error))
+    assert _api().resolve_unit_constraint({'unitText': 'unknown unit'}, 'analyte')[1] is None
     assert 'unavailable' in caplog.text
 
 
@@ -471,15 +536,10 @@ def test_should_refuse_and_log_when_llm_unavailable(monkeypatch, caplog):
     ('mg/24 h [milligram albumin per 24 hours]', 'mg/(24.h)', 8909),
 ])
 def test_should_emit_vocab_unit_and_provenance_when_building_uacr(
-    monkeypatch, unit_text, code, concept_id
+    unit_judge, unit_text, code, concept_id
 ):
-    api = _api()
-    seen = []
-    monkeypatch.setenv('ARTEMIS_ANNOTATION_CACHE', '0')
-    monkeypatch.setattr(
-        api, '_ask_unit_code', lambda unit, analyte: seen.append((unit, analyte)) or code
-    )
-    monkeypatch.setattr(api, '_lookup_ucum', lambda value: (concept_id, value, 'unit'))
+    _, judge = unit_judge
+    judge.side_effect = lambda llm, prompt, system: {'same': f'Candidate unit: {code} (' in prompt}
     criterion = {
         'sourceText': 'UACR', 'domain': 'Measurement',
         'valueConstraint': {'op': 'gte', 'value': 2, 'unitText': unit_text},
@@ -491,4 +551,82 @@ def test_should_emit_vocab_unit_and_provenance_when_building_uacr(
     attrs = built['rule']['expression']['CriteriaList'][0]['Criteria']['Measurement']
     assert attrs['Unit'][0]['CONCEPT_ID'] == concept_id
     assert criterion['unit_resolution'] == 'llm+vocab'
-    assert seen == [(unit_text, 'UACR')]
+
+
+@pytest.mark.parametrize('accepted', [True, False])
+def test_should_cache_final_decision_when_judging_completes(unit_judge, monkeypatch, accepted):
+    from src.services import criterion_annotation as annotation
+
+    _, judge = unit_judge
+    judge.side_effect = lambda llm, prompt, system: {'same': accepted and 'mg/g{creat}' in prompt}
+    cache = {}
+    monkeypatch.setattr(annotation, '_cache_get', cache.get)
+    monkeypatch.setattr(annotation, '_cache_put', lambda key, record: cache.update({key: record}))
+    vc = {'unitText': 'mg/g creatinine'}
+    first = _api().resolve_unit_constraint(vc, 'UACR')
+    second = _api().resolve_unit_constraint(vc, 'UACR')
+    assert first == second
+    assert judge.call_count == 3
+    assert list(cache.values())[0]['payload'] == (9017 if accepted else None)
+    assert _api()._unit_cache_key('mg/g creatinine', 'UACR') != _api()._unit_cache_key(
+        'mg/g creatinine', 'other analyte'
+    )
+
+
+@pytest.mark.parametrize('failure', ['llm', 'db'])
+def test_should_retry_without_caching_when_service_raises(unit_judge, monkeypatch, failure):
+    from src.services import criterion_annotation as annotation
+
+    rows, judge = unit_judge
+    put = MagicMock()
+    monkeypatch.setattr(annotation, '_cache_get', lambda key: None)
+    monkeypatch.setattr(annotation, '_cache_put', put)
+    if failure == 'llm':
+        judge.side_effect = RuntimeError('temporary LLM failure')
+    else:
+        monkeypatch.setattr(
+            _api(), '_load_ucum_rows', MagicMock(side_effect=RuntimeError('DB failure'))
+        )
+    vc = {'unitText': 'mg/g creatinine'}
+    assert _api().resolve_unit_constraint(vc, 'UACR') == (vc, None)
+    put.assert_not_called()
+    monkeypatch.setattr(_api(), '_load_ucum_rows', lambda: rows)
+    judge.side_effect = lambda llm, prompt, system: {'same': 'mg/g{creat}' in prompt}
+    assert _api().resolve_unit_constraint(vc, 'UACR')[1] == 'llm+vocab'
+    put.assert_called_once()
+
+
+def test_should_judge_only_top_twenty_candidates_with_at_most_eight_threads(unit_judge):
+    import threading
+    import time
+    from difflib import SequenceMatcher
+
+    api = _api()
+    rows, judge = unit_judge
+    rows.extend((i, f'code{i}', f'unit name {i}') for i in range(30))
+    unit = 'mg/g creatinine'
+    expected = sorted(rows, key=lambda row: max(
+        SequenceMatcher(None, unit.lower(), row[1].lower()).ratio(),
+        SequenceMatcher(None, unit.lower(), row[2].lower()).ratio(),
+    ), reverse=True)[:20]
+    active = 0
+    peak = 0
+    lock = threading.Lock()
+
+    def complete(llm, prompt, system):
+        nonlocal active, peak
+        with lock:
+            active += 1
+            peak = max(peak, active)
+        time.sleep(0.01)
+        with lock:
+            active -= 1
+        return {'same': False}
+
+    judge.side_effect = complete
+    api.resolve_unit_constraint({'unitText': unit}, 'UACR')
+    assert judge.call_count == 20
+    assert 1 < peak <= 8
+    assert {call.args[1] for call in judge.call_args_list} == {
+        f'Stated unit: {unit}\nCandidate unit: {row[1]} ({row[2]})' for row in expected
+    }
