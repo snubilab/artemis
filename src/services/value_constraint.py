@@ -22,7 +22,6 @@ import unicodedata
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
-from difflib import SequenceMatcher
 from functools import lru_cache
 from typing import Any, Literal, NamedTuple
 
@@ -404,6 +403,40 @@ def _load_ucum_rows() -> list[tuple[int, str, str]]:
             return cursor.fetchall()
 
 
+# Retrieval only: which candidates the judge sees. Acceptance is the judge's, exactly one.
+# 40 because MedCPT ranked the right UCUM concept at worst 35th on the measured units.
+_UNIT_CANDIDATE_COUNT = 40
+
+
+def _unit_embedder() -> Callable[[list[str]], Any]:
+    from src.utils.vector import _get_medcpt_embedding_function
+
+    return _get_medcpt_embedding_function()
+
+
+def _unit_candidate_text(row: tuple[int, str, str]) -> str:
+    return f"{row[1]} ({row[2]})"
+
+
+@lru_cache(maxsize=1)
+def _ucum_embeddings(texts: tuple[str, ...]) -> Any:
+    import numpy as np
+
+    matrix = np.asarray(_unit_embedder()(list(texts)), dtype=float)
+    return matrix / np.linalg.norm(matrix, axis=1, keepdims=True)
+
+
+def _rank_unit_candidates(
+    unit_text: str, rows: list[tuple[int, str, str]]
+) -> list[tuple[int, str, str]]:
+    import numpy as np
+
+    matrix = _ucum_embeddings(tuple(_unit_candidate_text(row) for row in rows))
+    query = np.asarray(_unit_embedder()([unit_text])[0], dtype=float)
+    scores = matrix @ (query / np.linalg.norm(query))
+    return [rows[i] for i in np.argsort(-scores, kind="stable")[:_UNIT_CANDIDATE_COUNT]]
+
+
 def resolve_unit_constraint(vc: Any, analyte: str) -> tuple[Any, str | None]:
     """Resolve a row's unit and return the constraint and its resolution provenance."""
     if vc is None:
@@ -426,14 +459,7 @@ def resolve_unit_constraint(vc: Any, analyte: str) -> tuple[Any, str | None]:
         if cached is not None:
             concept = next(row for row in rows if row[0] == cached["payload"])
         else:
-            candidates = sorted(
-                rows,
-                key=lambda row: max(
-                    SequenceMatcher(None, unit_text.lower(), row[1].lower()).ratio(),
-                    SequenceMatcher(None, unit_text.lower(), row[2].lower()).ratio(),
-                ),
-                reverse=True,
-            )[:20]
+            candidates = _rank_unit_candidates(unit_text, rows)
             llm = annotation._build_llm(settings.LLM_MODEL)
 
             def judge(row: tuple[int, str, str]) -> bool:

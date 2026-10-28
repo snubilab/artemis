@@ -438,6 +438,7 @@ def unit_judge(monkeypatch):
     ]
     monkeypatch.setenv('ARTEMIS_ANNOTATION_CACHE', '0')
     monkeypatch.setattr(api, '_load_ucum_rows', lambda: rows)
+    monkeypatch.setattr(api, '_rank_unit_candidates', lambda unit_text, candidates: candidates)
     monkeypatch.setattr(annotation, '_build_llm', lambda model: object())
     judge = MagicMock(return_value={'same': False})
     monkeypatch.setattr(annotation, '_complete', judge)
@@ -596,19 +597,16 @@ def test_should_retry_without_caching_when_service_raises(unit_judge, monkeypatc
     put.assert_called_once()
 
 
-def test_should_judge_only_top_twenty_candidates_with_at_most_eight_threads(unit_judge):
+def test_should_judge_only_ranked_candidates_with_at_most_eight_threads(unit_judge, monkeypatch):
     import threading
     import time
-    from difflib import SequenceMatcher
 
     api = _api()
     rows, judge = unit_judge
     rows.extend((i, f'code{i}', f'unit name {i}') for i in range(30))
     unit = 'mg/g creatinine'
-    expected = sorted(rows, key=lambda row: max(
-        SequenceMatcher(None, unit.lower(), row[1].lower()).ratio(),
-        SequenceMatcher(None, unit.lower(), row[2].lower()).ratio(),
-    ), reverse=True)[:20]
+    expected = rows[5:25]
+    monkeypatch.setattr(api, '_rank_unit_candidates', lambda unit_text, candidates: expected)
     active = 0
     peak = 0
     lock = threading.Lock()
@@ -630,3 +628,28 @@ def test_should_judge_only_top_twenty_candidates_with_at_most_eight_threads(unit
     assert {call.args[1] for call in judge.call_args_list} == {
         f'Stated unit: {unit}\nCandidate unit: {row[1]} ({row[2]})' for row in expected
     }
+
+
+def test_should_rank_unit_candidates_by_embedding_similarity_when_selecting_top_k(monkeypatch):
+    api = _api()
+    rows = [(i, f'code{i}', f'name{i}') for i in range(50)]
+    # unit text embeds onto axis 0; candidate i embeds at angle proportional to |i - 7|
+    import math
+
+    def embed(texts):
+        out = []
+        for text in texts:
+            if text.startswith('code'):
+                i = int(text[4:].split(' ')[0])
+                angle = abs(i - 7) * 0.03
+                out.append([math.cos(angle), math.sin(angle)])
+            else:
+                out.append([1.0, 0.0])
+        return out
+
+    monkeypatch.setattr(api, '_unit_embedder', lambda: embed)
+    api._ucum_embeddings.cache_clear()
+    ranked = api._rank_unit_candidates('stated', rows)
+    assert len(ranked) == api._UNIT_CANDIDATE_COUNT == 40
+    assert ranked[0][0] == 7
+    assert {row[0] for row in ranked[:3]} == {6, 7, 8}
