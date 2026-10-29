@@ -103,6 +103,16 @@ recorded under :data:`TRIAL_ONLY_CHECK_KEY`. Calls 5/6 were not reused: their
 ``entity_outside_trial`` is about this trial, and another trial's product (P8 CAROLINA K1,
 ARISTOTLE K2) answered ``yes`` to it.
 
+Calls 9 and 10 (conditional patient check, Amendment 3). After calls 5/6 keep a
+``conditional``, two role-specific wordings test whether the criterion applies to every patient
+with its own entity (exclusion), or requires what the fragment names (inclusion). Only two
+reverting answers clear ``record_requirement`` and ``conditional_span``; an
+``entity_outside_trial: no`` in either earlier call prevents this check. The orchestrator's
+2026-10-29 gemma-4-E4B probe (``replay/cond_probe/v2.out``) reported must-revert 6/7 and
+must-keep broken 0/14; these are probe results, not delivery-gate verification. Recorded under
+:data:`CONDITIONAL_PATIENT_CHECK_KEY`. These amendment call numbers overlap the existing
+window-bound calls 9/10; their prompt versions and cache keys are separate.
+
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
 rebuild reaches it.
@@ -151,6 +161,8 @@ RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
 #: Calls 5 and 6 (:func:`check_conditional`); each part of its call's cache key.
 CONDITIONAL_CHECK_PROMPT_VERSION = "rfc016-conditional-check-v1"
 CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v1"
+CONDITIONAL_PATIENT_PROMPT_VERSION = "gatefix-conditional-patient-v1"
+CONDITIONAL_PATIENT_AGREEMENT_PROMPT_VERSION = "gatefix-conditional-patient-placebo-v1"
 #: Calls 7 and 8 (:func:`check_forbidden`); each part of its call's cache key.
 #: gate-fix v3: the routine-records definition; named by field, apart from calls 9-12.
 TRIAL_ONLY_PROMPT_VERSION = "gatefix-trial-only-routine-records-v1"
@@ -182,6 +194,8 @@ RECORD_CHANGE_RECORDS_KEY = "_recordChangeRecords"
 #: answer was ``conditional``, with each call's version, cache key, outcome and answer, and
 #: whether the ``conditional`` was reverted.
 CONDITIONAL_CHECK_KEY = "_conditionalCheck"
+#: Amendment 3's role-specific patient check after calls 5/6 keep a conditional.
+CONDITIONAL_PATIENT_CHECK_KEY = "_conditionalPatientCheck"
 #: The row key of the trial-only check (calls 7 and 8, asked of a ``forbidden`` row,
 #: :func:`check_forbidden`): the fragment shown, each call's answer, and ``trialOnly`` -- True
 #: only when both wordings answer that the entity exists only because of a clinical trial.
@@ -848,6 +862,44 @@ Fragment of the protocol line: {fragment}
 Fields to return:
 
 """
+_PATIENT_TAIL = """
+Output JSON:
+{{"answer": "<yes|no>"}}"""
+
+CONDITIONAL_PATIENT_EXCLUSION_PROMPT = _CHECK_HEAD + """\
+`answer` states whether this protocol line excludes every patient who has this criterion's own \
+entity -- the entity this criterion names, with any amount, duration or time the line attaches to \
+it -- whatever else is or is not true of that patient. One of:
+- `yes`: every such patient is excluded by the line.
+- `no`: some such patients are not excluded, because the line excludes them only when something \
+further also holds.
+""" + _PATIENT_TAIL
+
+CONDITIONAL_PATIENT_EXCLUSION_AGREEMENT_PROMPT = _CHECK_HEAD + """\
+`answer` says whether a patient who has the own entity of this criterion -- the entity named by \
+this criterion, together with any amount, duration or time the line gives for it -- is excluded \
+by this protocol line regardless of anything else about that patient. One of:
+- `yes`: the line excludes all such patients.
+- `no`: the line leaves some such patients in, since it excludes them only when something more \
+is also the case.
+""" + _PATIENT_TAIL
+
+CONDITIONAL_PATIENT_INCLUSION_PROMPT = _CHECK_HEAD + """\
+`answer` states whether a patient who does not have what the fragment above names can still meet \
+this protocol line. One of:
+- `yes`: such a patient can still meet the line, through some other part of it.
+- `no`: no such patient meets the line; every patient who meets it has what the fragment names.
+When the line breaks off before it finishes stating what the fragment names, answer `yes`.
+""" + _PATIENT_TAIL
+
+CONDITIONAL_PATIENT_INCLUSION_AGREEMENT_PROMPT = _CHECK_HEAD + """\
+`answer` says whether this protocol line can be met by a patient lacking what the fragment quoted \
+above names. One of:
+- `yes`: the line can be met by such a patient, by way of some other part of it.
+- `no`: the line cannot be met by such a patient; whoever meets it has what the fragment names.
+Where the line stops before what the fragment names has been fully stated, answer `yes`.
+""" + _PATIENT_TAIL
+
 _CHECK_TAIL = """
 Output JSON:
 {{"fragment_role": "<patients|has_own_entity|time_or_record|other>", \
@@ -2082,6 +2134,46 @@ def check_conditional(
     return {**fields, FIELD_RECORD_REQUIREMENT: None, FIELD_CONDITIONAL_SPAN: None}, record
 
 
+def check_conditional_patient(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    fields: Mapping[str, Any],
+    *,
+    model: str,
+    llm: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Revert a surviving conditional only when both patient-test wordings agree."""
+    fragment = str(fields.get(FIELD_CONDITIONAL_SPAN) or "")
+    record: dict[str, Any] = {"fragment": fragment, "calls": [], "reverted": False}
+    if role == EXCLUSION:
+        prompts = (CONDITIONAL_PATIENT_EXCLUSION_PROMPT,
+                   CONDITIONAL_PATIENT_EXCLUSION_AGREEMENT_PROMPT)
+        reverting = OUTSIDE_YES
+    else:
+        prompts = (CONDITIONAL_PATIENT_INCLUSION_PROMPT,
+                   CONDITIONAL_PATIENT_INCLUSION_AGREEMENT_PROMPT)
+        reverting = OUTSIDE_NO
+    for template, system, version in (
+        (prompts[0], ANNOTATION_SYSTEM_PROMPT, CONDITIONAL_PATIENT_PROMPT_VERSION),
+        (prompts[1], AGREEMENT_SYSTEM_PROMPT, CONDITIONAL_PATIENT_AGREEMENT_PROMPT_VERSION),
+    ):
+        outcome, key, payload, error = _ask(
+            llm, row, members, role, model=model, template=template, system=system,
+            version=version, fragment=fragment,
+        )
+        raw = payload.get("answer") if isinstance(payload, Mapping) else None
+        answer = raw if raw in (OUTSIDE_YES, OUTSIDE_NO) else None
+        call = {"promptVersion": version, "cacheKey": key, "outcome": outcome, "answer": answer}
+        if error is not None:
+            call["error"] = error
+        record["calls"].append(call)
+        if answer != reverting:
+            return dict(fields), record
+    record["reverted"] = True
+    return {**fields, FIELD_RECORD_REQUIREMENT: None, FIELD_CONDITIONAL_SPAN: None}, record
+
+
 def check_forbidden(
     row: Mapping[str, Any],
     members: Sequence[Mapping[str, Any]],
@@ -2262,6 +2354,18 @@ def annotate_row(
             )
         else:
             row.pop(CONDITIONAL_CHECK_KEY, None)
+        if (
+            fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value
+            and not any(
+                call.get("entity_outside_trial") == OUTSIDE_NO
+                for call in row[CONDITIONAL_CHECK_KEY]["calls"]
+            )
+        ):
+            fields, row[CONDITIONAL_PATIENT_CHECK_KEY] = check_conditional_patient(
+                row, members, role, fields, model=model, llm=llm
+            )
+        else:
+            row.pop(CONDITIONAL_PATIENT_CHECK_KEY, None)
         # A label with members is never mapped, so it is not asked. Required rows too (P8 MAIN:
         # every delivered CARMELINA/CAROLINA/EMPA-REG file required a consent-procedure record
         # mapped from an agreed `required` row); a conditional row is skipped by its own reason.
@@ -2307,6 +2411,7 @@ def annotate_row(
         row.pop(ANNOTATION_REJECTED_KEY, None)
         row.pop(AGREEMENT_KEY, None)
         row.pop(CONDITIONAL_CHECK_KEY, None)
+        row.pop(CONDITIONAL_PATIENT_CHECK_KEY, None)
         row.pop(TRIAL_ONLY_CHECK_KEY, None)
         row.pop(OWN_ENTITY_CHECK_KEY, None)
         row.pop(WINDOW_DISAGREEMENT_KEY, None)
@@ -2518,6 +2623,15 @@ def annotate_eligibility(
     ]
     counts["conditionalChecked"] = len(checks)
     counts["conditionalReverted"] = sum(1 for record in checks if record.get("reverted"))
+    patient_checks = [
+        record
+        for row, _m, _role in jobs
+        if isinstance(record := row.get(CONDITIONAL_PATIENT_CHECK_KEY), Mapping)
+    ]
+    counts["conditionalPatientChecked"] = len(patient_checks)
+    counts["conditionalPatientReverted"] = sum(
+        1 for record in patient_checks if record.get("reverted")
+    )
     changes = [
         record
         for row, _m, _role in jobs

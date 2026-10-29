@@ -391,17 +391,26 @@ class TestProcessEligibilityAnnotatesBeforeMapping:
         # The annotation call, the agreement call its `conditional` asks for (the stub
         # answers both the same way, so the conditional is kept), the conditional check
         # (call 5; the stub gives no fragment_role, so the conditional stays and no call 6),
+        # the patient check (amendment call 9; no answer enum, so no agreement call),
         # the record_change call (call 3), whose answer fills no record_change, so no call 4, and
         # the window_bound call (call 9), whose answer fills no window_bound, so no call 10.
-        # Call 3 runs beside calls 1-2-5 (ARTEMIS_ANNOTATION_OVERLAP), so only the order within
-        # each branch is fixed; call 9 runs after both on the row's own thread.
-        assert len(llm.calls) == 5
+        # Call 3 overlaps the main branch (ARTEMIS_ANNOTATION_OVERLAP); only each branch's
+        # own order is fixed, and window_bound runs after both on the row's own thread.
+        assert len(llm.calls) == 6
         block = annotation_mod.RECORD_CHANGE_PROMPT_BLOCK.split("\n")[0]
         assert sum(block in call for call in llm.calls) == 1
         main = [call for call in llm.calls if block not in call]
-        assert len(main) == 4
+        assert len(main) == 5
         assert main[1].startswith(annotation_mod.AGREEMENT_SYSTEM_PROMPT)
         assert "Fragment of the protocol line:" in main[2]
+        assert main[3].endswith(annotation_mod.render_prompt(
+            CARMELINA_7, [], "inclusion", annotation_mod.CONDITIONAL_PATIENT_INCLUSION_PROMPT,
+            CARMELINA_SPAN,
+        ))
+        patient = seen["rows"][0][annotation_mod.CONDITIONAL_PATIENT_CHECK_KEY]
+        assert patient["reverted"] is False
+        assert len(patient["calls"]) == 1
+        assert patient["calls"][0]["answer"] is None
         assert seen["rows"][0][ANNOTATION_KEY]["record_change"] is None
         assert seen["rows"][0][ANNOTATION_KEY]["record_requirement"] == "conditional"
         stored = payload["proposedChanges"]["eligibility"]["inclusionCriteria"][0]
