@@ -16,6 +16,8 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 import time
 
+from src.agents.agent2.seed_tiebreak import judge_seed
+
 # @MX:NOTE: Configurable max thread-pool workers for Agent 2 parallel operations.
 # Override via AGENT2_MAX_WORKERS env var. Default 16 balances concurrency with resource usage.
 MAX_WORKERS = int(os.environ.get("AGENT2_MAX_WORKERS", "16"))
@@ -61,7 +63,7 @@ from src.agents.agent2.logic import logician
 from src.agents.agent2.abbreviation_expander import expand_abbreviation, expand_in_context
 from src.agents.agent2.drug_class_expander import expand_drug_class_via_vocab
 from src.agents.agent2.kg_expander import admit_within_seed_closure, get_kg_expander
-from src.agents.agent2.critic import get_critic
+from src.agents.agent2.critic import _concept_rows, get_critic
 from src.agents.agent2.concept_set_refiner import RefinerLookupError, get_concept_set_refiner
 from src.models.ir import MappingResult, GapReport
 from src.utils.exceptions import LLMConfigurationError
@@ -419,8 +421,8 @@ class Agent2Workflow:
                 # Same shape: the seeds stand alone and the critic's reason is recorded.
                 concept_ids, overbroad_ids, critic_skipped = list(seed_concept_ids), [], False
                 result.critic_failure = str(e)
-            # A retriever-only seed the critic rejected is no longer a seed.
-            rejected = set(result.retriever_only_seed_ids) - set(concept_ids)
+            # Seeds rejected by the critic/tiebreak must also leave seed provenance.
+            rejected = set(seed_concept_ids) - set(concept_ids)
             seed_concept_ids = [s for s in seed_concept_ids if s not in rejected]
             # Apply ingredient rollup for Drug domain and for unknown domain
             # (domain_hint=None covers target cohort calls like "Ticagrelor" where
@@ -580,7 +582,9 @@ class Agent2Workflow:
 
         ``retriever_only_seed_ids`` are seeds no reranker chose (the retriever's #1). The
         critic is the only model that judges them, so one it does not select is dropped
-        before the refiner, which keeps every seed it is given.
+        before the refiner, which keeps every seed it is given. Reranker-chosen seeds
+        rejected by the critic need two negative tiebreak verdicts to be dropped;
+        if all reranker seeds would drop, all are preserved.
         
         Applied to BOTH fast and slow path results.
         A failed expansion of any seed refuses the whole query's expansion: it logs one
@@ -768,19 +772,47 @@ class Agent2Workflow:
             f"[Agent 2][LINEAGE] critic: input_seeds={seed_ids}, "
             f"input_kg_count={len(unique_kg)} → final_ids={final_ids}"
         )
-        # ── ConceptSetRefiner (lab meeting 2026-03-09) ──
-        # Filter unique_kg to only critic-selected concepts to avoid bypassing critic
+        # Filter unique_kg to only critic-selected concepts to avoid bypassing critic.
         critic_selected_set = set(final_ids)
-        rejected = [s for s in seed_ids if s in set(retriever_only_seed_ids) and s not in critic_selected_set]
+        retriever_only = set(retriever_only_seed_ids)
+        rejected = [s for s in seed_ids if s in retriever_only and s not in critic_selected_set]
         if rejected:
             logger.info(f"[Agent 2][LINEAGE] critic rejected retriever-only seeds {rejected} → dropped")
+        reranker_seeds = [s for s in seed_ids if s not in retriever_only]
+        disputed = [s for s in reranker_seeds if s not in critic_selected_set]
+        judgements = {}
+        if disputed:
+            try:
+                names = _concept_rows(disputed)
+            except Exception as exc:
+                logger.warning(
+                    "[Agent 2][LINEAGE] seed_tiebreak query=%r name lookup failed: %s; kept",
+                    query_text, exc,
+                )
+                names = {}
+            for sid in disputed:
+                if sid not in names:
+                    logger.warning("[Agent 2][LINEAGE] seed_tiebreak query=%r seed_id=%s "
+                                   "answer=error (concept name unavailable); kept", query_text, sid)
+                    continue
+                judgements[sid] = judge_seed(query_text, names[sid][0])
+        dropped = [sid for sid, verdict in judgements.items() if verdict["drop"]]
+        preserve_all = bool(reranker_seeds) and set(reranker_seeds).issubset(dropped)
+        if preserve_all:
+            logger.info("[Agent 2][LINEAGE] seed_tiebreak query=%r all_reranker_seeds_preserved=%s",
+                        query_text, reranker_seeds)
+            dropped = []
+        for sid, verdict in judgements.items():
+            logger.info("[Agent 2][LINEAGE] seed_tiebreak query=%r seed_id=%s verdict=%s action=%s",
+                        query_text, sid, verdict, "dropped" if sid in dropped else "kept")
+        rejected.extend(dropped)
+        kept_seeds = [s for s in seed_ids if s not in rejected]
+        critic_kg = [c for c in unique_kg if c.concept_id in critic_selected_set]
         if os.environ.get("ENABLE_REFINER", "1") == "1":
-            critic_kg = [c for c in unique_kg if c.concept_id in critic_selected_set]
-            kept_seeds = [s for s in seed_ids if s not in rejected]
             ref_result = _refine(kept_seeds, critic_kg, query_text, domain_hint)
             final_ids = ref_result.kept_ids
             return final_ids, ref_result.overbroad_ids, False
-        return final_ids, [], False
+        return list(dict.fromkeys(kept_seeds + final_ids)), [], False
 
     # _guess_domain() — REMOVED
     # Domain classification is now handled by Agent 1 (via Criteria.domain field).

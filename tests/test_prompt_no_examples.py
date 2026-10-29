@@ -503,6 +503,19 @@ def _own_entity_calls() -> list[str]:
     return [c for c in recorder.calls if f'"{criterion_annotation.FIELD_OWN_ENTITY}"' in c]
 
 
+def _render_seed_tiebreak(agreement: bool = False) -> str:
+    from src.agents.agent2 import seed_tiebreak
+    from src.agents.agent2.critic_cache import CriticCache
+
+    recorder = _Recorder('{"answer": "no"}')
+    with patch.object(seed_tiebreak, "get_llm", recorder.factory), \
+            patch.object(seed_tiebreak, "resolve_model", lambda: "stub-model"), \
+            patch.object(seed_tiebreak, "_cache", CriticCache()):
+        seed_tiebreak.judge_seed(STUB, STUB)
+    assert len(recorder.calls) == 2
+    return recorder.calls[1 if agreement else 0]
+
+
 def _render_not_recordable(agreement: bool = False) -> str:
     from src.services import criterion_annotation as annotation
 
@@ -847,6 +860,13 @@ PROMPTS["criterion_annotation.trial_only"] = PromptSpec(
 PROMPTS["criterion_annotation.trial_only.agreement"] = PromptSpec(
     _render_criterion_annotation_trial_only_agreement, tokens=_TRIAL_ONLY_TOKENS,
 )
+PROMPTS["agent2.seed_tiebreak"] = PromptSpec(
+    _render_seed_tiebreak, tokens=frozenset({"answer", "yes", "no"}),
+)
+PROMPTS["agent2.seed_tiebreak.agreement"] = PromptSpec(
+    lambda: _render_seed_tiebreak(True), tokens=frozenset({"answer", "yes", "no"}),
+)
+
 PROMPTS["criterion_annotation.not_recordable"] = PromptSpec(
     _render_not_recordable, tokens=frozenset({"recordable", "yes", "no"}),
 )
@@ -1194,6 +1214,9 @@ CALL_SITES: dict[str, tuple[int, tuple[str, ...] | str]] = {
     "src/agents/planner/decomposer.py": (3, ("planner",)),
     "src/agents/agent2/reranker.py": (3, ("agent2.reranker_single_select", "agent2.reranker_topn")),
     "src/agents/agent2/critic.py": (3, ("agent2.critic",)),
+    "src/agents/agent2/seed_tiebreak.py": (
+        2, ("agent2.seed_tiebreak", "agent2.seed_tiebreak.agreement"),
+    ),
     "src/agents/agent2/specimen_critic.py": (3, ("agent2.specimen_critic",)),
     "src/agents/agent2/entity_full_name.py": (3, ("agent2.entity_full_name", "agent2.entity_specific_name")),
     "src/agents/conceptset/nlu_router.py": (2, ("conceptset.nlu_router",)),
