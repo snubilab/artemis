@@ -529,6 +529,20 @@ def _render_not_recordable(agreement: bool = False) -> str:
     return recorder.calls[1 if agreement else 0]
 
 
+def _render_exception_check(agreement: bool = False) -> str:
+    from src.services import criterion_annotation as annotation
+
+    recorder = _Recorder('{"answer": "included"}')
+    row = {"id": 1, "description": STUB, "sourceText": STUB, "protocolLine": f"{STUB} line"}
+    fields = {"excepted_entities": [{"span": STUB}], "base_span": f"{STUB} line"}
+    with patch.dict("os.environ", {"ARTEMIS_ANNOTATION_CACHE": "0"}):
+        annotation.check_exceptions(
+            row, [], "exclusion", fields, model="stub-model", llm=recorder.runnable()
+        )
+    assert len(recorder.calls) == 2, "the second exception-check wording was not asked"
+    return recorder.calls[1 if agreement else 0]
+
+
 def _render_conditional_patient(role: str, agreement: bool = False) -> str:
     from src.services import criterion_annotation as annotation
 
@@ -872,6 +886,13 @@ PROMPTS["criterion_annotation.not_recordable"] = PromptSpec(
 )
 PROMPTS["criterion_annotation.not_recordable.agreement"] = PromptSpec(
     lambda: _render_not_recordable(True), tokens=frozenset({"recordable", "yes", "no"}),
+)
+_EXCEPTION_TOKENS = frozenset({"answer", "removed", "included"})
+PROMPTS["criterion_annotation.exception_check"] = PromptSpec(
+    _render_exception_check, tokens=_EXCEPTION_TOKENS,
+)
+PROMPTS["criterion_annotation.exception_check.agreement"] = PromptSpec(
+    lambda: _render_exception_check(True), tokens=_EXCEPTION_TOKENS,
 )
 _PATIENT_TOKENS = frozenset({"answer", "yes", "no"})
 PROMPTS["criterion_annotation.conditional_patient.exclusion"] = PromptSpec(

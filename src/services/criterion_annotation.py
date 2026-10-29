@@ -113,6 +113,13 @@ must-keep broken 0/14; these are probe results, not delivery-gate verification. 
 :data:`CONDITIONAL_PATIENT_CHECK_KEY`. These amendment call numbers overlap the existing
 window-bound calls 9/10; their prompt versions and cache keys are separate.
 
+Calls E1/E2 (Amendment 5). Each agreed exception is checked in two wordings by
+:func:`check_exceptions`; only two ``included`` answers drop it. The orchestrator's
+2026-10-29 gatefix3 probe (``replay/cond_probe/except_v1.out``) reverted 1/3 must-revert
+rows (CAROLINA exclusion 32's allergy), kept both split gastric-sleeve rows, and broke
+0/6 must-keep exceptions. This is probe evidence, not delivery-gate verification.
+Per-entity calls and decisions are recorded under :data:`EXCEPTION_CHECK_KEY`.
+
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
 rebuild reaches it.
@@ -161,6 +168,8 @@ RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
 #: Calls 5 and 6 (:func:`check_conditional`); each part of its call's cache key.
 CONDITIONAL_CHECK_PROMPT_VERSION = "rfc016-conditional-check-v1"
 CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v1"
+EXCEPTION_CHECK_PROMPT_VERSION = "gatefix-exception-check-v1"
+EXCEPTION_CHECK_AGREEMENT_PROMPT_VERSION = "gatefix-exception-check-placebo-v1"
 CONDITIONAL_PATIENT_PROMPT_VERSION = "gatefix-conditional-patient-v1"
 CONDITIONAL_PATIENT_AGREEMENT_PROMPT_VERSION = "gatefix-conditional-patient-placebo-v1"
 #: Calls 7 and 8 (:func:`check_forbidden`); each part of its call's cache key.
@@ -180,6 +189,8 @@ ANNOTATION_REJECTED_KEY = "_annotationRejected"
 #: The row key of the agreement record (:func:`agree`): present exactly when the second call
 #: was made, and holding what it kept and dropped, its answer, version and cache key.
 AGREEMENT_KEY = "_annotationAgreement"
+#: Amendment 5's per-entity exception checks after agreement.
+EXCEPTION_CHECK_KEY = "_exceptionCheck"
 #: Expression key: one record per criterion the second call was made for
 #: (:func:`agreement_records`), present and empty when there was none.
 AGREEMENT_RECORDS_KEY = "_annotationAgreementRecords"
@@ -862,6 +873,31 @@ Fragment of the protocol line: {fragment}
 Fields to return:
 
 """
+EXCEPTION_REMOVED = "removed"
+EXCEPTION_INCLUDED = "included"
+
+_EXCEPTION_TAIL = """
+Output JSON:
+{{"answer": "<removed|included>"}}"""
+
+EXCEPTION_CHECK_PROMPT = _CHECK_HEAD + """\
+`answer` states what the protocol line does with what the fragment above names, with respect to \
+this criterion. One of:
+- `removed`: the line takes it out of this criterion; a patient who has only it is not covered by \
+the criterion.
+- `included`: the line names it as one of the things this criterion covers, or as an instance of \
+them; a patient who has it is covered by the criterion.
+""" + _EXCEPTION_TAIL
+
+EXCEPTION_CHECK_AGREEMENT_PROMPT = _CHECK_HEAD + """\
+`answer` says how the protocol line treats what the quoted fragment names, as far as this \
+criterion goes. One of:
+- `removed`: the line leaves it out of this criterion; the criterion does not cover a patient who \
+has only it.
+- `included`: the line gives it as one of the things the criterion covers, or as a case of them; \
+the criterion covers a patient who has it.
+""" + _EXCEPTION_TAIL
+
 _PATIENT_TAIL = """
 Output JSON:
 {{"answer": "<yes|no>"}}"""
@@ -2134,6 +2170,52 @@ def check_conditional(
     return {**fields, FIELD_RECORD_REQUIREMENT: None, FIELD_CONDITIONAL_SPAN: None}, record
 
 
+def check_exceptions(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    fields: Mapping[str, Any],
+    *,
+    model: str,
+    llm: Any,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Drop an agreed exception only when both wordings say the line includes it."""
+    survivors = []
+    records = []
+    for entity in fields.get(FIELD_EXCEPTED_ENTITIES) or []:
+        fragment = entity[FIELD_SPAN]
+        record: dict[str, Any] = {"span": fragment, "calls": [], "dropped": False}
+        for template, system, version in (
+            (EXCEPTION_CHECK_PROMPT, ANNOTATION_SYSTEM_PROMPT, EXCEPTION_CHECK_PROMPT_VERSION),
+            (EXCEPTION_CHECK_AGREEMENT_PROMPT, AGREEMENT_SYSTEM_PROMPT,
+             EXCEPTION_CHECK_AGREEMENT_PROMPT_VERSION),
+        ):
+            outcome, key, payload, error = _ask(
+                llm, row, members, role, model=model, template=template, system=system,
+                version=version, fragment=fragment,
+            )
+            raw = payload.get("answer") if isinstance(payload, Mapping) else None
+            answer = raw if raw in (EXCEPTION_REMOVED, EXCEPTION_INCLUDED) else None
+            call = {"promptVersion": version, "cacheKey": key, "outcome": outcome,
+                    "answer": answer}
+            if error is not None:
+                call["error"] = error
+            record["calls"].append(call)
+            if answer != EXCEPTION_INCLUDED:
+                break
+        else:
+            record["dropped"] = True
+        if not record["dropped"]:
+            survivors.append(entity)
+        records.append(record)
+    result = dict(fields)
+    if records:
+        result[FIELD_EXCEPTED_ENTITIES] = survivors
+        if not survivors:
+            result[FIELD_BASE_SPAN] = None
+    return result, records
+
+
 def check_conditional_patient(
     row: Mapping[str, Any],
     members: Sequence[Mapping[str, Any]],
@@ -2348,6 +2430,13 @@ def annotate_row(
             row[AGREEMENT_KEY] = record
         else:
             row.pop(AGREEMENT_KEY, None)
+            row.pop(EXCEPTION_CHECK_KEY, None)
+        if fields.get(FIELD_EXCEPTED_ENTITIES):
+            fields, row[EXCEPTION_CHECK_KEY] = check_exceptions(
+                row, members, role, fields, model=model, llm=llm
+            )
+        else:
+            row.pop(EXCEPTION_CHECK_KEY, None)
         if fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value:
             fields, row[CONDITIONAL_CHECK_KEY] = check_conditional(
                 row, members, role, fields, model=model, llm=llm
@@ -2410,6 +2499,7 @@ def annotate_row(
         }
         row.pop(ANNOTATION_REJECTED_KEY, None)
         row.pop(AGREEMENT_KEY, None)
+        row.pop(EXCEPTION_CHECK_KEY, None)
         row.pop(CONDITIONAL_CHECK_KEY, None)
         row.pop(CONDITIONAL_PATIENT_CHECK_KEY, None)
         row.pop(TRIAL_ONLY_CHECK_KEY, None)
@@ -2632,6 +2722,11 @@ def annotate_eligibility(
     counts["conditionalPatientReverted"] = sum(
         1 for record in patient_checks if record.get("reverted")
     )
+    exception_checks = [
+        record for row, _m, _role in jobs for record in row.get(EXCEPTION_CHECK_KEY, [])
+    ]
+    counts["exceptionChecked"] = len(exception_checks)
+    counts["exceptionDropped"] = sum(1 for record in exception_checks if record.get("dropped"))
     changes = [
         record
         for row, _m, _role in jobs
