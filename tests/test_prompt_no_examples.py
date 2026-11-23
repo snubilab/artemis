@@ -543,6 +543,21 @@ def _render_exception_check(agreement: bool = False) -> str:
     return recorder.calls[1 if agreement else 0]
 
 
+def _render_quantity_kind_check(agreement: bool = False) -> str:
+    from src.services import criterion_annotation as annotation
+
+    recorder = _Recorder('{"answer": "no"}')
+    row = {"description": STUB, "sourceText": STUB, "protocolLine": STUB,
+           "domain": "Procedure"}
+    fields = {"quantity_kind": "lab_value", "threshold_span": STUB}
+    with patch.dict("os.environ", {"ARTEMIS_ANNOTATION_CACHE": "0"}):
+        annotation.check_quantity_kind(
+            row, [], "inclusion", fields, model="stub-model", llm=recorder.runnable()
+        )
+    assert len(recorder.calls) == 2, "the second quantity-kind wording was not asked"
+    return recorder.calls[1 if agreement else 0]
+
+
 def _render_conditional_patient(role: str, agreement: bool = False) -> str:
     from src.services import criterion_annotation as annotation
 
@@ -893,6 +908,13 @@ PROMPTS["criterion_annotation.exception_check"] = PromptSpec(
 )
 PROMPTS["criterion_annotation.exception_check.agreement"] = PromptSpec(
     lambda: _render_exception_check(True), tokens=_EXCEPTION_TOKENS,
+)
+_KIND_CHECK_TOKENS = frozenset({"answer", "yes", "no"})
+PROMPTS["criterion_annotation.quantity_kind_check"] = PromptSpec(
+    _render_quantity_kind_check, tokens=_KIND_CHECK_TOKENS,
+)
+PROMPTS["criterion_annotation.quantity_kind_check.agreement"] = PromptSpec(
+    lambda: _render_quantity_kind_check(True), tokens=_KIND_CHECK_TOKENS,
 )
 _PATIENT_TOKENS = frozenset({"answer", "yes", "no"})
 PROMPTS["criterion_annotation.conditional_patient.exclusion"] = PromptSpec(

@@ -120,6 +120,13 @@ rows (CAROLINA exclusion 32's allergy), kept both split gastric-sleeve rows, and
 0/6 must-keep exceptions. This is probe evidence, not delivery-gate verification.
 Per-entity calls and decisions are recorded under :data:`EXCEPTION_CHECK_KEY`.
 
+Calls K1/K2 (Amendment 6). An agreed ``lab_value`` threshold on a row outside Measurement
+and Demographics is re-checked in two wordings by :func:`check_quantity_kind`; only two
+``no`` answers change its kind to ``other``. The orchestrator's 2026-10-29 gatefix4 probe
+(``replay/cond_probe/kind_v1.out``) changed 4/4 must-change rows and broke 0/4 must-keep
+UACR/eGFR rows. This is probe evidence, not delivery-gate verification. Calls and decisions
+are recorded under :data:`QUANTITY_KIND_CHECK_KEY`.
+
 Separate from Agent 1 on purpose (RFC-016 §2): the annotation can be re-run on an
 existing store without re-extraction, so it runs inside ``process_eligibility`` and a dry
 rebuild reaches it.
@@ -168,6 +175,8 @@ RECORD_CHANGE_AGREEMENT_PROMPT_VERSION = "rfc016-record-change-pf-v1"
 #: Calls 5 and 6 (:func:`check_conditional`); each part of its call's cache key.
 CONDITIONAL_CHECK_PROMPT_VERSION = "rfc016-conditional-check-v1"
 CONDITIONAL_CHECK_AGREEMENT_PROMPT_VERSION = "rfc016-conditional-check-placebo-v1"
+QUANTITY_KIND_CHECK_PROMPT_VERSION = "gatefix-kind-check-v1"
+QUANTITY_KIND_CHECK_AGREEMENT_PROMPT_VERSION = "gatefix-kind-check-placebo-v1"
 EXCEPTION_CHECK_PROMPT_VERSION = "gatefix-exception-check-v1"
 EXCEPTION_CHECK_AGREEMENT_PROMPT_VERSION = "gatefix-exception-check-placebo-v1"
 CONDITIONAL_PATIENT_PROMPT_VERSION = "gatefix-conditional-patient-v1"
@@ -191,6 +200,8 @@ ANNOTATION_REJECTED_KEY = "_annotationRejected"
 AGREEMENT_KEY = "_annotationAgreement"
 #: Amendment 5's per-entity exception checks after agreement.
 EXCEPTION_CHECK_KEY = "_exceptionCheck"
+#: Amendment 6's re-check of lab_value thresholds on non-value rows.
+QUANTITY_KIND_CHECK_KEY = "_quantityKindCheck"
 #: Expression key: one record per criterion the second call was made for
 #: (:func:`agreement_records`), present and empty when there was none.
 AGREEMENT_RECORDS_KEY = "_annotationAgreementRecords"
@@ -873,6 +884,27 @@ Fragment of the protocol line: {fragment}
 Fields to return:
 
 """
+_KIND_CHECK_TAIL = """
+Output JSON:
+{{"answer": "<yes|no>"}}"""
+
+QUANTITY_KIND_CHECK_PROMPT = _CHECK_HEAD + """\
+`answer` states whether the number in the fragment above is the result value of a laboratory \
+test or of a measurement taken on the patient, a number the patient's record stores as that test's \
+or measurement's result. One of:
+- `yes`: it is such a result value.
+- `no`: it is not; it gives the extent or degree of a finding seen on imaging or during a \
+procedure, or it is another kind of quantity.
+""" + _KIND_CHECK_TAIL
+
+QUANTITY_KIND_CHECK_AGREEMENT_PROMPT = _CHECK_HEAD + """\
+`answer` says whether the record would hold the number in the quoted fragment as the numeric \
+result of a laboratory test or of a measurement made on the patient. One of:
+- `yes`: the record holds it as such a numeric result.
+- `no`: it does not; the number describes how large or severe a finding seen on imaging or in a \
+procedure is, or it is some other quantity.
+""" + _KIND_CHECK_TAIL
+
 EXCEPTION_REMOVED = "removed"
 EXCEPTION_INCLUDED = "included"
 
@@ -2216,6 +2248,39 @@ def check_exceptions(
     return result, records
 
 
+def check_quantity_kind(
+    row: Mapping[str, Any],
+    members: Sequence[Mapping[str, Any]],
+    role: str,
+    fields: Mapping[str, Any],
+    *,
+    model: str,
+    llm: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Change lab_value to other only when both wordings deny a stored result value."""
+    fragment = fields[FIELD_THRESHOLD_SPAN]
+    record: dict[str, Any] = {"span": fragment, "calls": [], "changed": False}
+    for template, system, version in (
+        (QUANTITY_KIND_CHECK_PROMPT, ANNOTATION_SYSTEM_PROMPT, QUANTITY_KIND_CHECK_PROMPT_VERSION),
+        (QUANTITY_KIND_CHECK_AGREEMENT_PROMPT, AGREEMENT_SYSTEM_PROMPT,
+         QUANTITY_KIND_CHECK_AGREEMENT_PROMPT_VERSION),
+    ):
+        outcome, key, payload, error = _ask(
+            llm, row, members, role, model=model, template=template, system=system,
+            version=version, fragment=fragment,
+        )
+        raw = payload.get("answer") if isinstance(payload, Mapping) else None
+        answer = raw if raw in (OUTSIDE_YES, OUTSIDE_NO) else None
+        call = {"promptVersion": version, "cacheKey": key, "outcome": outcome, "answer": answer}
+        if error is not None:
+            call["error"] = error
+        record["calls"].append(call)
+        if answer != OUTSIDE_NO:
+            return dict(fields), record
+    record["changed"] = True
+    return {**fields, FIELD_QUANTITY_KIND: QuantityKind.OTHER.value}, record
+
+
 def check_conditional_patient(
     row: Mapping[str, Any],
     members: Sequence[Mapping[str, Any]],
@@ -2430,6 +2495,7 @@ def annotate_row(
             row[AGREEMENT_KEY] = record
         else:
             row.pop(AGREEMENT_KEY, None)
+            row.pop(QUANTITY_KIND_CHECK_KEY, None)
             row.pop(EXCEPTION_CHECK_KEY, None)
         if fields.get(FIELD_EXCEPTED_ENTITIES):
             fields, row[EXCEPTION_CHECK_KEY] = check_exceptions(
@@ -2437,6 +2503,19 @@ def annotate_row(
             )
         else:
             row.pop(EXCEPTION_CHECK_KEY, None)
+        from src.api.models.tte import DEMOGRAPHIC_DOMAINS
+
+        if (
+            fields.get(FIELD_QUANTITY_KIND) == QuantityKind.LAB_VALUE.value
+            and fields.get(FIELD_THRESHOLD_SPAN)
+            and row.get("domain") != MEASUREMENT_DOMAIN
+            and row.get("domain") not in DEMOGRAPHIC_DOMAINS
+        ):
+            fields, row[QUANTITY_KIND_CHECK_KEY] = check_quantity_kind(
+                row, members, role, fields, model=model, llm=llm
+            )
+        else:
+            row.pop(QUANTITY_KIND_CHECK_KEY, None)
         if fields.get(FIELD_RECORD_REQUIREMENT) == RecordRequirement.CONDITIONAL.value:
             fields, row[CONDITIONAL_CHECK_KEY] = check_conditional(
                 row, members, role, fields, model=model, llm=llm
@@ -2499,6 +2578,7 @@ def annotate_row(
         }
         row.pop(ANNOTATION_REJECTED_KEY, None)
         row.pop(AGREEMENT_KEY, None)
+        row.pop(QUANTITY_KIND_CHECK_KEY, None)
         row.pop(EXCEPTION_CHECK_KEY, None)
         row.pop(CONDITIONAL_CHECK_KEY, None)
         row.pop(CONDITIONAL_PATIENT_CHECK_KEY, None)
@@ -2727,6 +2807,13 @@ def annotate_eligibility(
     ]
     counts["exceptionChecked"] = len(exception_checks)
     counts["exceptionDropped"] = sum(1 for record in exception_checks if record.get("dropped"))
+    kind_checks = [
+        record
+        for row, _m, _role in jobs
+        if isinstance(record := row.get(QUANTITY_KIND_CHECK_KEY), Mapping)
+    ]
+    counts["quantityKindChecked"] = len(kind_checks)
+    counts["quantityKindChanged"] = sum(1 for record in kind_checks if record.get("changed"))
     changes = [
         record
         for row, _m, _role in jobs
